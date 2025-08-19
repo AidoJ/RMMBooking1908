@@ -148,51 +148,54 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
   const fetchBookingDetails = async () => {
     setLoading(true);
     try {
-      // Fetch booking with joined data
+      // Fetch booking with joined data (using left joins to be more forgiving)
       const { data: bookingData, error: bookingError } = await supabaseClient
         .from('bookings')
         .select(`
           *,
-          customers!inner(first_name, last_name, email, phone, address, notes),
+          customers(first_name, last_name, email, phone, address, notes),
           therapist_profiles!bookings_therapist_id_fkey(first_name, last_name, email, phone, bio, profile_pic),
-          services!inner(name, description, service_base_price, minimum_duration)
+          services(name, description, service_base_price, minimum_duration)
         `)
         .eq('id', id)
         .single();
 
       if (bookingError) throw bookingError;
 
-      // Transform the data
+      // Transform the data (with null checks)
       const transformedBooking: Booking = {
         ...bookingData,
-        customer_name: `${bookingData.customers.first_name} ${bookingData.customers.last_name}`,
-        therapist_name: `${bookingData.therapist_profiles.first_name} ${bookingData.therapist_profiles.last_name}`,
-        service_name: bookingData.services.name,
-        customer_details: bookingData.customers,
-        therapist_details: bookingData.therapist_profiles,
-        service_details: bookingData.services,
+        customer_name: bookingData.customers 
+          ? `${bookingData.customers.first_name || ''} ${bookingData.customers.last_name || ''}`.trim()
+          : 'Unknown Customer',
+        therapist_name: bookingData.therapist_profiles 
+          ? `${bookingData.therapist_profiles.first_name || ''} ${bookingData.therapist_profiles.last_name || ''}`.trim()
+          : 'Unassigned',
+        service_name: bookingData.services?.name || 'Unknown Service',
+        customer_details: bookingData.customers || null,
+        therapist_details: bookingData.therapist_profiles || null,
+        service_details: bookingData.services || null,
       };
 
       setBooking(transformedBooking);
 
-      // Fetch status history
+      // Fetch status history (without admin_users join since relationship doesn't exist)
       const { data: historyData, error: historyError } = await supabaseClient
         .from('booking_status_history')
-        .select(`
-          *,
-          admin_users(first_name, last_name)
-        `)
+        .select('*')
         .eq('booking_id', id)
         .order('changed_at', { ascending: false });
 
-      if (historyError) throw historyError;
-
-      const transformedHistory = (historyData || []).map((item: any) => ({
-        ...item,
-        changed_by_name: item.admin_users ? `${item.admin_users.first_name} ${item.admin_users.last_name}` : 'System',
-      }));
-
-      setStatusHistory(transformedHistory);
+      if (historyError) {
+        console.warn('Status history not available:', historyError);
+        setStatusHistory([]);
+      } else {
+        const transformedHistory = (historyData || []).map((item: any) => ({
+          ...item,
+          changed_by_name: item.changed_by || 'System',
+        }));
+        setStatusHistory(transformedHistory);
+      }
     } catch (error) {
       console.error('Error fetching booking details:', error);
       message.error('Failed to load booking details');
