@@ -5,6 +5,9 @@
   # Publish directory (where the merged build output will be)
   publish = "dist"
   
+  # Functions directory
+  functions = "netlify/functions"
+  
   # Node version for the build
   [build.environment]
     NODE_VERSION = "18"
