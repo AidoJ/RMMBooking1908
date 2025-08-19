@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+*/node_modules/
+admin/node_modules/
+booking/node_modules/
+
+# Build outputs
+dist/
+build/
+*/dist/
+*/build/
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+*/.env
+*/.env.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing
+/coverage
+
+# Temporary folders
+tmp/
+temp/
+
+# Editor directories and files
+.history/
+
+# Package manager lock files (keep package-lock.json but ignore yarn.lock)
+yarn.lock
