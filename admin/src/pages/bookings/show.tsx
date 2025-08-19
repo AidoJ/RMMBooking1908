@@ -320,6 +320,88 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
     }
   };
 
+  // Handle job failure with reason modal
+  const handleFailureModal = () => {
+    let failureReason = '';
+
+    Modal.confirm({
+      title: 'Unable to Complete Booking',
+      content: (
+        <div style={{ margin: '16px 0' }}>
+          <Text style={{ marginBottom: 8, display: 'block' }}>
+            Please provide the reason why this booking could not be completed:
+          </Text>
+          <Input.TextArea
+            placeholder="e.g., Car breakdown, Emergency, Client unavailable, etc."
+            onChange={(e) => { failureReason = e.target.value; }}
+            rows={3}
+            style={{ marginTop: 8 }}
+          />
+        </div>
+      ),
+      okText: 'Cancel Booking & Release Payment',
+      cancelText: 'Go Back',
+      okType: 'danger',
+      onOk: async () => {
+        if (!failureReason.trim()) {
+          message.error('Please provide a reason for the failure');
+          return Promise.reject();
+        }
+        return handleJobFailure(failureReason.trim());
+      },
+    });
+  };
+
+  // Job failure with payment release and notifications
+  const handleJobFailure = async (reason: string) => {
+    if (!booking) return;
+
+    setUpdating(true);
+    try {
+      // Release payment authorization
+      if (booking.payment_intent_id) {
+        const response = await fetch('/.netlify/functions/cancel-payment-authorization', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payment_intent_id: booking.payment_intent_id,
+            booking_id: booking.booking_id || booking.id,
+            cancelled_by: identity?.id || 'unknown',
+            reason: `Job failed to complete: ${reason}`
+          })
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Payment release failed');
+        }
+      } else {
+        // If no payment intent, just update status
+        const { error } = await supabaseClient
+          .from('bookings')
+          .update({ 
+            status: 'failed',
+            failure_reason: reason,
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', booking.id);
+
+        if (error) throw error;
+      }
+
+      message.success('Booking marked as failed and payment released');
+      fetchBookingDetails();
+
+      // TODO: Send professional apology email to client and notification to admin
+
+    } catch (error) {
+      console.error('Error handling job failure:', error);
+      message.error(`Failed to process failure: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const handleCancelBooking = async (reason: string) => {
     if (!booking || !booking.payment_intent_id) {
       message.error('Cannot cancel booking: No payment authorization found');
@@ -650,18 +732,29 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                   Confirm Booking
                 </Button>
                 
-                {/* NEW: Complete Job & Capture Payment */}
-                {booking.payment_status === 'authorized' && booking.status === 'confirmed' && (
-                  <Button
-                    type="primary"
-                    icon={<DollarOutlined />}
-                    onClick={handleCompleteJob}
-                    loading={updating}
-                    style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-                    block
-                  >
-                    Complete Job & Capture Payment
-                  </Button>
+                {/* Job Completion Buttons - Show for confirmed bookings */}
+                {booking.status === 'confirmed' && (
+                  <>
+                    <Button
+                      type="primary"
+                      icon={<CheckCircleOutlined />}
+                      onClick={handleCompleteJob}
+                      loading={updating}
+                      style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                      block
+                    >
+                      Complete Job & Capture Payment
+                    </Button>
+                    <Button
+                      danger
+                      icon={<ExclamationCircleOutlined />}
+                      onClick={handleFailureModal}
+                      loading={updating}
+                      block
+                    >
+                      Unable to Complete
+                    </Button>
+                  </>
                 )}
                 
                 <Button

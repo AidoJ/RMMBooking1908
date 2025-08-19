@@ -79,6 +79,7 @@ interface BookingRecord {
   therapist_fee: number;
   address?: string;
   notes?: string;
+  payment_intent_id?: string;
   created_at: string;
   updated_at: string;
   first_name?: string;
@@ -296,6 +297,115 @@ export const EnhancedBookingList = () => {
     }
   };
 
+  // Job completion with payment capture
+  const handleCompleteJob = async (booking: BookingRecord) => {
+    if (!booking.payment_intent_id) {
+      message.error('No payment authorization found for this booking');
+      return;
+    }
+
+    try {
+      const response = await fetch('/.netlify/functions/capture-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payment_intent_id: booking.payment_intent_id,
+          booking_id: booking.booking_id || booking.id,
+          completed_by: identity?.id || 'unknown'
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Payment capture failed');
+      }
+
+      message.success('Job completed and payment captured successfully!');
+      fetchBookings();
+    } catch (error) {
+      console.error('Error completing job:', error);
+      message.error(`Failed to complete job: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  // Handle job failure with reason
+  const handleFailureModal = (booking: BookingRecord) => {
+    let failureReason = '';
+
+    Modal.confirm({
+      title: 'Unable to Complete Booking',
+      content: (
+        <div style={{ margin: '16px 0' }}>
+          <Text style={{ marginBottom: 8, display: 'block' }}>
+            Please provide the reason why this booking could not be completed:
+          </Text>
+          <Input.TextArea
+            placeholder="e.g., Car breakdown, Emergency, Client unavailable, etc."
+            onChange={(e) => { failureReason = e.target.value; }}
+            rows={3}
+            style={{ marginTop: 8 }}
+          />
+        </div>
+      ),
+      okText: 'Cancel Booking & Release Payment',
+      cancelText: 'Go Back',
+      okType: 'danger',
+      onOk: async () => {
+        if (!failureReason.trim()) {
+          message.error('Please provide a reason for the failure');
+          return Promise.reject();
+        }
+        return handleJobFailure(booking, failureReason.trim());
+      },
+    });
+  };
+
+  // Job failure with payment release and notifications
+  const handleJobFailure = async (booking: BookingRecord, reason: string) => {
+    try {
+      // Release payment authorization
+      if (booking.payment_intent_id) {
+        const response = await fetch('/.netlify/functions/cancel-payment-authorization', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            payment_intent_id: booking.payment_intent_id,
+            booking_id: booking.booking_id || booking.id,
+            cancelled_by: identity?.id || 'unknown',
+            reason: `Job failed to complete: ${reason}`
+          })
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(result.error || 'Payment release failed');
+        }
+      } else {
+        // If no payment intent, just update status
+        const { error } = await supabaseClient
+          .from('bookings')
+          .update({ 
+            status: 'failed',
+            failure_reason: reason,
+            updated_at: new Date().toISOString() 
+          })
+          .eq('id', booking.id);
+
+        if (error) throw error;
+      }
+
+      message.success('Booking marked as failed and payment released');
+      fetchBookings();
+
+      // TODO: Send professional apology email to client and notification to admin
+
+    } catch (error) {
+      console.error('Error handling job failure:', error);
+      message.error(`Failed to process failure: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   const handleBulkDelete = () => {
     if (selectedRowKeys.length === 0) {
       message.warning('Please select bookings to delete');
@@ -484,13 +594,45 @@ export const EnhancedBookingList = () => {
               onClick={() => show('bookings', record.id)}
             />
           </Tooltip>
-          <Tooltip title="Edit Booking">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={() => edit('bookings', record.id)}
-            />
-          </Tooltip>
+          
+          {/* Job Completion Buttons - Show for confirmed bookings */}
+          {record.status === 'confirmed' && (
+            <>
+              <Tooltip title="Complete Job & Capture Payment">
+                <Button
+                  type="primary"
+                  size="small"
+                  icon={<CheckCircleOutlined />}
+                  onClick={() => handleCompleteJob(record)}
+                  style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                >
+                  Complete
+                </Button>
+              </Tooltip>
+              <Tooltip title="Unable to Complete">
+                <Button
+                  danger
+                  size="small"
+                  onClick={() => handleFailureModal(record)}
+                >
+                  Failed
+                </Button>
+              </Tooltip>
+            </>
+          )}
+          
+          {/* Admin Edit Button */}
+          {(canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
+            <Tooltip title="Edit Booking">
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() => edit('bookings', record.id)}
+              />
+            </Tooltip>
+          )}
+          
+          {/* Admin Status Menu */}
           {(canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
             <Dropdown
               menu={{
