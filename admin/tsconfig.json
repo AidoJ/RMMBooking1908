@@ -28,6 +28,13 @@
     "src/**/*.tsx",
     "src/**/*.ts"
   ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx",
+    "src/**/*.spec.ts",
+    "src/**/*.spec.tsx",
+    "node_modules"
+  ],
   "references": [
     {
       "path": "./tsconfig.node.json"

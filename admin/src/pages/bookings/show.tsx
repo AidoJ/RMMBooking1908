@@ -81,6 +81,7 @@ interface Booking {
   customer_phone?: string;
   therapist_response_time?: string;
   responding_therapist_id?: string;
+  payment_intent_id?: string;
   created_at: string;
   updated_at: string;
   
@@ -310,7 +311,7 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
       fetchBookingDetails();
     } catch (error) {
       console.error('Error completing job:', error);
-      message.error(`Failed to complete job: ${error.message}`);
+      message.error(`Failed to complete job: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUpdating(false);
     }
@@ -348,7 +349,7 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
       fetchBookingDetails();
     } catch (error) {
       console.error('Error cancelling booking:', error);
-      message.error(`Failed to cancel booking: ${error.message}`);
+      message.error(`Failed to cancel booking: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setUpdating(false);
     }
