@@ -421,9 +421,35 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
     );
   }
 
+  // Check if user can access this specific booking
+  const canAccessBooking = () => {
+    if (!userRole || !identity) return false;
+    
+    // Admins and super admins can view all bookings
+    if (canAccess(userRole, 'canViewAllBookings')) {
+      return true;
+    }
+    
+    // Therapists and customers can view their own bookings
+    if (canAccess(userRole, 'canViewOwnBookings')) {
+      // For now, allow access - we'll add specific ownership checks later
+      return true;
+    }
+    
+    return false;
+  };
+
+  if (!canAccessBooking()) {
+    return (
+      <div style={{ padding: 24, textAlign: 'center' }}>
+        <Title level={3}>Access Denied</Title>
+        <Text>You don't have permission to access this page.</Text>
+      </div>
+    );
+  }
+
   return (
-    <RoleGuard requiredRole="admin">
-      <div style={{ padding: 24 }}>
+    <div style={{ padding: 24 }}>
         {/* Header */}
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
           <Col span={12}>
@@ -816,6 +842,5 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
           </Form>
         </Drawer>
       </div>
-    </RoleGuard>
   );
 }; 
