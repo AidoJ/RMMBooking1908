@@ -483,8 +483,31 @@ export const EnhancedBookingList = () => {
   // Table columns with role-based differences
   const columns = [
     {
+      title: 'Booking ID',
+      dataIndex: 'booking_id',
+      key: 'booking_id',
+      width: 120,
+      sorter: (a: BookingRecord, b: BookingRecord) => {
+        const aId = a.booking_id || a.id.slice(0, 8);
+        const bId = b.booking_id || b.id.slice(0, 8);
+        return aId.localeCompare(bId);
+      },
+      render: (_: any, record: BookingRecord) => (
+        <Text code>{record.booking_id || record.id.slice(0, 8)}</Text>
+      ),
+    },
+    {
       title: 'Customer',
       key: 'customer',
+      sorter: (a: BookingRecord, b: BookingRecord) => {
+        const aName = a.customers 
+          ? `${a.customers.first_name} ${a.customers.last_name}`
+          : a.booker_name || `${a.first_name || ''} ${a.last_name || ''}`.trim() || 'Unknown Customer';
+        const bName = b.customers 
+          ? `${b.customers.first_name} ${b.customers.last_name}`
+          : b.booker_name || `${b.first_name || ''} ${b.last_name || ''}`.trim() || 'Unknown Customer';
+        return aName.localeCompare(bName);
+      },
       render: (_: any, record: BookingRecord) => {
         const customerName = record.customers 
           ? `${record.customers.first_name} ${record.customers.last_name}`
@@ -513,6 +536,11 @@ export const EnhancedBookingList = () => {
       title: 'Service',
       dataIndex: 'service_name',
       key: 'service_name',
+      sorter: (a: BookingRecord, b: BookingRecord) => {
+        const aService = a.services?.name || 'Unknown Service';
+        const bService = b.services?.name || 'Unknown Service';
+        return aService.localeCompare(bService);
+      },
       render: (_: any, record: BookingRecord) => (
         <Text>{record.services?.name || 'Unknown Service'}</Text>
       ),
@@ -521,6 +549,15 @@ export const EnhancedBookingList = () => {
       title: 'Therapist',
       dataIndex: 'therapist_name',
       key: 'therapist_name',
+      sorter: (a: BookingRecord, b: BookingRecord) => {
+        const aTherapist = a.therapist_profiles 
+          ? `${a.therapist_profiles.first_name} ${a.therapist_profiles.last_name}`
+          : 'Unassigned';
+        const bTherapist = b.therapist_profiles 
+          ? `${b.therapist_profiles.first_name} ${b.therapist_profiles.last_name}`
+          : 'Unassigned';
+        return aTherapist.localeCompare(bTherapist);
+      },
       render: (_: any, record: BookingRecord) => (
         <Text>
           {record.therapist_profiles 
@@ -533,6 +570,9 @@ export const EnhancedBookingList = () => {
       title: 'Date & Time',
       dataIndex: 'booking_time',
       key: 'booking_time',
+      sorter: (a: BookingRecord, b: BookingRecord) => {
+        return dayjs(a.booking_time).unix() - dayjs(b.booking_time).unix();
+      },
       render: (time: string) => (
         <Space direction="vertical" size="small">
           <Text>{dayjs(time).format('MMM DD, YYYY')}</Text>
@@ -544,6 +584,15 @@ export const EnhancedBookingList = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
+      filters: [
+        { text: 'Requested', value: 'requested' },
+        { text: 'Confirmed', value: 'confirmed' },
+        { text: 'Completed', value: 'completed' },
+        { text: 'Cancelled', value: 'cancelled' },
+        { text: 'Declined', value: 'declined' },
+      ],
+      onFilter: (value: any, record: BookingRecord) => record.status === value,
+      sorter: (a: BookingRecord, b: BookingRecord) => a.status.localeCompare(b.status),
       render: (status: string) => (
         <Tag color={getStatusColor(status)} icon={getStatusIcon(status)}>
           {status.replace('_', ' ').toUpperCase()}
@@ -554,6 +603,13 @@ export const EnhancedBookingList = () => {
       title: 'Payment',
       dataIndex: 'payment_status',
       key: 'payment_status',
+      filters: [
+        { text: 'Pending', value: 'pending' },
+        { text: 'Paid', value: 'paid' },
+        { text: 'Refunded', value: 'refunded' },
+      ],
+      onFilter: (value: any, record: BookingRecord) => record.payment_status === value,
+      sorter: (a: BookingRecord, b: BookingRecord) => a.payment_status.localeCompare(b.payment_status),
       render: (status: string) => (
         <Tag color={getPaymentStatusColor(status)}>
           {status.toUpperCase()}
@@ -565,6 +621,11 @@ export const EnhancedBookingList = () => {
       title: isTherapist(userRole) ? 'Fees' : 'Price',
       dataIndex: isTherapist(userRole) ? 'therapist_fee' : 'price',
       key: isTherapist(userRole) ? 'therapist_fee' : 'price',
+      sorter: (a: BookingRecord, b: BookingRecord) => {
+        const aAmount = isTherapist(userRole) ? (a.therapist_fee || 0) : (a.price || 0);
+        const bAmount = isTherapist(userRole) ? (b.therapist_fee || 0) : (b.price || 0);
+        return aAmount - bAmount;
+      },
       render: (amount: number) => (
         <Text strong style={{ color: '#52c41a' }}>
           ${amount?.toFixed(2) || '0.00'}
@@ -576,6 +637,7 @@ export const EnhancedBookingList = () => {
       title: 'Therapist Fee',
       dataIndex: 'therapist_fee',
       key: 'therapist_fee',
+      sorter: (a: BookingRecord, b: BookingRecord) => (a.therapist_fee || 0) - (b.therapist_fee || 0),
       render: (fee: number) => (
         <Text style={{ color: '#fa541c' }}>
           {fee ? `$${fee.toFixed(2)}` : '-'}

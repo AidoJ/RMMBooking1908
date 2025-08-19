@@ -613,15 +613,17 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                 <Descriptions.Item label="Time">
                   <Text>{dayjs(booking.booking_time).format('HH:mm')}</Text>
                 </Descriptions.Item>
-                <Descriptions.Item label="Price">
-                  <Text strong style={{ color: '#52c41a' }}>
-                    ${booking.price.toFixed(2)}
-                  </Text>
-                </Descriptions.Item>
+                {!isTherapist(userRole) && (
+                  <Descriptions.Item label="Price">
+                    <Text strong style={{ color: '#52c41a' }}>
+                      ${booking.price.toFixed(2)}
+                    </Text>
+                  </Descriptions.Item>
+                )}
                 <Descriptions.Item label="Therapist Fee">
                   <Text>${booking.therapist_fee.toFixed(2)}</Text>
                 </Descriptions.Item>
-                {booking.payment_intent_id && (
+                {!isTherapist(userRole) && booking.payment_intent_id && (
                   <Descriptions.Item label="Payment Authorization" span={2}>
                     <Text code>{booking.payment_intent_id}</Text>
                     <Text type="secondary" style={{ marginLeft: 8 }}>
@@ -678,42 +680,44 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
               </Row>
             </Card>
 
-            {/* Therapist Information */}
-            <Card title="Therapist Information" style={{ marginBottom: 16 }}>
-              <Row gutter={[16, 16]} align="middle">
-                <Col span={4}>
-                  <Avatar 
-                    size={64} 
-                    src={booking.therapist_details?.profile_pic}
-                    icon={<UserOutlined />} 
-                  />
-                </Col>
-                <Col span={20}>
-                  <Descriptions column={1} size="small">
-                    <Descriptions.Item label="Name">
-                      <Text strong>{booking.therapist_name}</Text>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Email">
-                      <Space>
-                        <MailOutlined />
-                        <Text>{booking.therapist_details?.email}</Text>
-                      </Space>
-                    </Descriptions.Item>
-                    <Descriptions.Item label="Phone">
-                      <Space>
-                        <PhoneOutlined />
-                        <Text>{booking.therapist_details?.phone || 'No phone provided'}</Text>
-                      </Space>
-                    </Descriptions.Item>
-                    {booking.therapist_details?.bio && (
-                      <Descriptions.Item label="Bio">
-                        <Text>{booking.therapist_details.bio}</Text>
+            {/* Therapist Information - Only show to non-therapists */}
+            {!isTherapist(userRole) && (
+              <Card title="Therapist Information" style={{ marginBottom: 16 }}>
+                <Row gutter={[16, 16]} align="middle">
+                  <Col span={4}>
+                    <Avatar 
+                      size={64} 
+                      src={booking.therapist_details?.profile_pic}
+                      icon={<UserOutlined />} 
+                    />
+                  </Col>
+                  <Col span={20}>
+                    <Descriptions column={1} size="small">
+                      <Descriptions.Item label="Name">
+                        <Text strong>{booking.therapist_name}</Text>
                       </Descriptions.Item>
-                    )}
-                  </Descriptions>
-                </Col>
-              </Row>
-            </Card>
+                      <Descriptions.Item label="Email">
+                        <Space>
+                          <MailOutlined />
+                          <Text>{booking.therapist_details?.email}</Text>
+                        </Space>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Phone">
+                        <Space>
+                          <PhoneOutlined />
+                          <Text>{booking.therapist_details?.phone || 'No phone provided'}</Text>
+                        </Space>
+                      </Descriptions.Item>
+                      {booking.therapist_details?.bio && (
+                        <Descriptions.Item label="Bio">
+                          <Text>{booking.therapist_details.bio}</Text>
+                        </Descriptions.Item>
+                      )}
+                    </Descriptions>
+                  </Col>
+                </Row>
+              </Card>
+            )}
           </Col>
 
           {/* Sidebar Actions and History */}
@@ -795,37 +799,39 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
               </Space>
             </Card>
 
-            {/* Payment Actions */}
-            <Card title="Payment Status" style={{ marginBottom: 16 }}>
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Button
-                  type="primary"
-                  onClick={() => handlePaymentStatusChange('paid')}
-                  disabled={booking.payment_status === 'paid'}
-                  loading={updating}
-                  block
-                >
-                  Mark as Paid
-                </Button>
-                <Button
-                  onClick={() => handlePaymentStatusChange('pending')}
-                  disabled={booking.payment_status === 'pending'}
-                  loading={updating}
-                  block
-                >
-                  Mark as Pending
-                </Button>
-                <Button
-                  danger
-                  onClick={() => handlePaymentStatusChange('refunded')}
-                  disabled={booking.payment_status === 'refunded'}
-                  loading={updating}
-                  block
-                >
-                  Mark as Refunded
-                </Button>
-              </Space>
-            </Card>
+            {/* Payment Actions - Only show to non-therapists */}
+            {!isTherapist(userRole) && (
+              <Card title="Payment Status" style={{ marginBottom: 16 }}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Button
+                    type="primary"
+                    onClick={() => handlePaymentStatusChange('paid')}
+                    disabled={booking.payment_status === 'paid'}
+                    loading={updating}
+                    block
+                  >
+                    Mark as Paid
+                  </Button>
+                  <Button
+                    onClick={() => handlePaymentStatusChange('pending')}
+                    disabled={booking.payment_status === 'pending'}
+                    loading={updating}
+                    block
+                  >
+                    Mark as Pending
+                  </Button>
+                  <Button
+                    danger
+                    onClick={() => handlePaymentStatusChange('refunded')}
+                    disabled={booking.payment_status === 'refunded'}
+                    loading={updating}
+                    block
+                  >
+                    Mark as Refunded
+                  </Button>
+                </Space>
+              </Card>
+            )}
 
             {/* Status History */}
             <Card title="Status History">
