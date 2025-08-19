@@ -154,7 +154,7 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
         .select(`
           *,
           customers!inner(first_name, last_name, email, phone, address, notes),
-          therapist_profiles!inner(first_name, last_name, email, phone, bio, profile_pic),
+          therapist_profiles!bookings_therapist_id_fkey(first_name, last_name, email, phone, bio, profile_pic),
           services!inner(name, description, service_base_price, minimum_duration)
         `)
         .eq('id', id)
@@ -180,7 +180,7 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
         .from('booking_status_history')
         .select(`
           *,
-          admin_users!inner(first_name, last_name)
+          admin_users(first_name, last_name)
         `)
         .eq('booking_id', id)
         .order('changed_at', { ascending: false });
