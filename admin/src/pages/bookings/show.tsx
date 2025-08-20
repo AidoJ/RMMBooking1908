@@ -17,13 +17,7 @@ import {
   Badge,
   Statistic,
   Alert,
-  Drawer,
-  Form,
-  Select,
   Input,
-  DatePicker,
-  TimePicker,
-  Switch,
 } from 'antd';
 import {
   UserOutlined,
@@ -52,7 +46,6 @@ import { RoleGuard } from '../../components/RoleGuard';
 import dayjs, { Dayjs } from 'dayjs';
 
 const { Title, Text, Paragraph } = Typography;
-const { Option } = Select;
 
 // Interfaces
 interface Booking {
@@ -134,8 +127,6 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
   const [loading, setLoading] = useState(true);
   const [booking, setBooking] = useState<Booking | null>(null);
   const [statusHistory, setStatusHistory] = useState<StatusHistory[]>([]);
-  const [showEditDrawer, setShowEditDrawer] = useState(false);
-  const [editForm] = Form.useForm();
   const [updating, setUpdating] = useState(false);
 
   const userRole = identity?.role;
@@ -476,47 +467,6 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
     }
   };
 
-  const handleEdit = () => {
-    if (booking) {
-      editForm.setFieldsValue({
-        status: booking.status,
-        payment_status: booking.payment_status,
-        notes: booking.notes,
-        price: booking.price,
-        therapist_fee: booking.therapist_fee,
-      });
-      setShowEditDrawer(true);
-    }
-  };
-
-  const handleEditSubmit = async (values: any) => {
-    if (!booking) return;
-
-    setUpdating(true);
-    try {
-      const { error } = await supabaseClient
-        .from('bookings')
-        .update({
-          status: values.status,
-          payment_status: values.payment_status,
-          notes: values.notes,
-          price: values.price,
-          therapist_fee: values.therapist_fee,
-        })
-        .eq('id', booking.id);
-
-      if (error) throw error;
-
-      message.success('Booking updated successfully');
-      setShowEditDrawer(false);
-      fetchBookingDetails();
-    } catch (error) {
-      console.error('Error updating booking:', error);
-      message.error('Failed to update booking');
-    } finally {
-      setUpdating(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -592,15 +542,6 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
               >
                 Refresh
               </Button>
-{canAccess(userRole, 'canEditAllBookings') && (
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  onClick={handleEdit}
-                >
-                  Edit Booking
-                </Button>
-              )}
             </Space>
           </Col>
         </Row>
@@ -836,15 +777,6 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                   </Button>
                 )}
                 
-{canAccess(userRole, 'canEditAllBookings') && (
-                  <Button
-                    icon={<EditOutlined />}
-                    onClick={() => edit('bookings', booking.id)}
-                    block
-                  >
-                    Edit Booking
-                  </Button>
-                )}
               </Space>
             </Card>
 
@@ -938,80 +870,6 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
           </Col>
         </Row>
 
-        {/* Edit Drawer */}
-        <Drawer
-          title="Edit Booking"
-          width={600}
-          open={showEditDrawer}
-          onClose={() => setShowEditDrawer(false)}
-          footer={
-            <Space>
-              <Button onClick={() => setShowEditDrawer(false)}>
-                Cancel
-              </Button>
-              <Button
-                type="primary"
-                onClick={() => editForm.submit()}
-                loading={updating}
-              >
-                Save Changes
-              </Button>
-            </Space>
-          }
-        >
-          <Form
-            form={editForm}
-            layout="vertical"
-            onFinish={handleEditSubmit}
-          >
-            <Form.Item
-              name="status"
-              label="Status"
-            >
-              <Select>
-                <Option value="requested">Requested</Option>
-                <Option value="confirmed">Confirmed</Option>
-                <Option value="completed">Completed</Option>
-                <Option value="cancelled">Cancelled</Option>
-                <Option value="declined">Declined</Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="payment_status"
-              label="Payment Status"
-            >
-              <Select>
-                <Option value="pending">Pending</Option>
-                <Option value="authorized">Authorized</Option>
-                <Option value="captured">Captured</Option>
-                <Option value="paid">Paid</Option>
-                <Option value="refunded">Refunded</Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="price"
-              label="Price"
-            >
-              <Input prefix="$" type="number" step="0.01" />
-            </Form.Item>
-
-            <Form.Item
-              name="therapist_fee"
-              label="Therapist Fee"
-            >
-              <Input prefix="$" type="number" step="0.01" />
-            </Form.Item>
-
-            <Form.Item
-              name="notes"
-              label="Notes"
-            >
-              <Input.TextArea rows={4} />
-            </Form.Item>
-          </Form>
-        </Drawer>
       </div>
   );
 }; 
