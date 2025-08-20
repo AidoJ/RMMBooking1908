@@ -56,6 +56,7 @@ interface BookingStats {
 
 interface RecentBooking {
   id: string;
+  booking_id: string;
   customer_name: string;
   therapist_name: string;
   service_name: string;
@@ -295,6 +296,7 @@ export const Dashboard = () => {
         .slice(0, 50)
         .map(booking => ({
           id: booking.id,
+          booking_id: booking.booking_id || booking.id.slice(0, 8),
           customer_name: booking.customers 
             ? `${booking.customers.first_name} ${booking.customers.last_name}`
             : booking.first_name && booking.last_name 
@@ -339,28 +341,40 @@ export const Dashboard = () => {
     }
   };
 
-  // Table columns for recent bookings - ROLE-BASED
+  // Table columns for recent bookings - ROLE-BASED with sorting
   const columns = [
+    {
+      title: 'Booking ID',
+      dataIndex: 'booking_id',
+      key: 'booking_id',
+      width: 120,
+      sorter: (a: RecentBooking, b: RecentBooking) => a.booking_id.localeCompare(b.booking_id),
+      render: (booking_id: string) => <Text code>{booking_id}</Text>
+    },
     {
       title: 'Customer',
       dataIndex: 'customer_name',
       key: 'customer_name',
+      sorter: (a: RecentBooking, b: RecentBooking) => a.customer_name.localeCompare(b.customer_name),
       render: (name: string) => <Text strong>{name}</Text>
     },
     {
       title: 'Therapist',
       dataIndex: 'therapist_name',
-      key: 'therapist_name'
+      key: 'therapist_name',
+      sorter: (a: RecentBooking, b: RecentBooking) => a.therapist_name.localeCompare(b.therapist_name)
     },
     {
       title: 'Service',
       dataIndex: 'service_name',
-      key: 'service_name'
+      key: 'service_name',
+      sorter: (a: RecentBooking, b: RecentBooking) => a.service_name.localeCompare(b.service_name)
     },
     {
       title: 'Date & Time',
       dataIndex: 'booking_time',
       key: 'booking_time',
+      sorter: (a: RecentBooking, b: RecentBooking) => dayjs(a.booking_time).unix() - dayjs(b.booking_time).unix(),
       render: (time: string) => (
         <div>
           <div>{dayjs(time).format('MMM DD, YYYY')}</div>
@@ -372,6 +386,7 @@ export const Dashboard = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
+      sorter: (a: RecentBooking, b: RecentBooking) => a.status.localeCompare(b.status),
       render: (status: string) => (
         <Tag color={getStatusColor(status)} icon={getStatusIcon(status)}>
           {status.charAt(0).toUpperCase() + status.slice(1)}

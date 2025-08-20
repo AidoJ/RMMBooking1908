@@ -141,7 +141,7 @@ export const getRolePermissions = (role: UserRole | undefined): RolePermissions 
         canViewBookingCalendar: true,
         canAssignTherapists: true,
         canViewAllTherapists: true,
-        canCreateTherapists: false,
+        canCreateTherapists: true,
         canEditAllTherapists: true,
         canEditOwnProfile: true,
         canManageAvailability: true,

@@ -66,6 +66,7 @@ interface Booking {
   price: number;
   therapist_fee: number;
   address: string;
+  business_name?: string;
   notes?: string;
   latitude?: number;
   longitude?: number;
@@ -556,13 +557,15 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
               >
                 Refresh
               </Button>
-              <Button
-                type="primary"
-                icon={<EditOutlined />}
-                onClick={handleEdit}
-              >
-                Edit Booking
-              </Button>
+{canAccess(userRole, 'canEditAllBookings') && (
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  onClick={handleEdit}
+                >
+                  Edit Booking
+                </Button>
+              )}
             </Space>
           </Col>
         </Row>
@@ -636,6 +639,11 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                 <Descriptions.Item label="Address" span={2}>
                   <Text>{booking.address || 'No address provided'}</Text>
                 </Descriptions.Item>
+                {booking.business_name && (
+                  <Descriptions.Item label="Hotel/Business Name" span={2}>
+                    <Text strong>{booking.business_name}</Text>
+                  </Descriptions.Item>
+                )}
                 {booking.notes && (
                   <Descriptions.Item label="Notes" span={2}>
                     <Text>{booking.notes}</Text>
@@ -761,41 +769,47 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                   </>
                 )}
                 
-                <Button
-                  icon={<CheckCircleOutlined />}
-                  onClick={() => handleStatusChange('completed')}
-                  disabled={booking.status === 'completed' || booking.payment_status === 'authorized'}
-                  loading={updating}
-                  block
-                >
-                  Mark Complete (No Payment)
-                </Button>
+{canAccess(userRole, 'canEditAllBookings') && (
+                  <Button
+                    icon={<CheckCircleOutlined />}
+                    onClick={() => handleStatusChange('completed')}
+                    disabled={booking.status === 'completed' || booking.payment_status === 'authorized'}
+                    loading={updating}
+                    block
+                  >
+                    Mark Complete (No Payment)
+                  </Button>
+                )}
                 
-                {/* Enhanced Cancel with Payment Release */}
-                <Button
-                  danger
-                  icon={<CloseCircleOutlined />}
-                  onClick={() => {
-                    if (booking.payment_intent_id) {
-                      handleCancelBooking('Cancelled by admin');
-                    } else {
-                      handleStatusChange('cancelled');
-                    }
-                  }}
-                  disabled={booking.status === 'cancelled' || booking.status === 'completed'}
-                  loading={updating}
-                  block
-                >
-                  {booking.payment_intent_id ? 'Cancel & Release Payment' : 'Cancel Booking'}
-                </Button>
+{/* Enhanced Cancel with Payment Release */}
+                {canAccess(userRole, 'canEditAllBookings') && (
+                  <Button
+                    danger
+                    icon={<CloseCircleOutlined />}
+                    onClick={() => {
+                      if (booking.payment_intent_id) {
+                        handleCancelBooking('Cancelled by admin');
+                      } else {
+                        handleStatusChange('cancelled');
+                      }
+                    }}
+                    disabled={booking.status === 'cancelled' || booking.status === 'completed'}
+                    loading={updating}
+                    block
+                  >
+                    {booking.payment_intent_id ? 'Cancel & Release Payment' : 'Cancel Booking'}
+                  </Button>
+                )}
                 
-                <Button
-                  icon={<EditOutlined />}
-                  onClick={() => edit('bookings', booking.id)}
-                  block
-                >
-                  Edit Booking
-                </Button>
+{canAccess(userRole, 'canEditAllBookings') && (
+                  <Button
+                    icon={<EditOutlined />}
+                    onClick={() => edit('bookings', booking.id)}
+                    block
+                  >
+                    Edit Booking
+                  </Button>
+                )}
               </Space>
             </Card>
 
