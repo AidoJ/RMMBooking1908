@@ -747,7 +747,7 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                       style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                       block
                     >
-                      Complete Job & Capture Payment
+                      Complete Job
                     </Button>
                     <Button
                       danger
