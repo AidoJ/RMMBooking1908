@@ -129,7 +129,7 @@ async function handlePaymentCaptured(paymentIntent) {
     const { data, error } = await supabase
       .from('bookings')
       .update({
-        payment_status: 'captured',
+        payment_status: 'paid',
         status: 'completed',
         updated_at: new Date().toISOString(),
       })
@@ -148,7 +148,7 @@ async function handlePaymentCaptured(paymentIntent) {
       .insert({
         booking_id: data[0]?.id,
         status: 'completed',
-        notes: 'Payment captured - service completed and paid',
+        notes: 'Payment completed - service completed and paid',
         changed_at: new Date().toISOString(),
       });
 

@@ -317,12 +317,12 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
 
         message.success('Job completed and payment captured successfully!');
       } else if (booking.payment_status === 'authorized') {
-        // Manual authorization - just mark as completed and captured
+        // Manual authorization - just mark as completed and paid
         const { error: bookingError } = await supabaseClient
           .from('bookings')
           .update({ 
             status: 'completed',
-            payment_status: 'captured',
+            payment_status: 'paid',
             completed_at: new Date().toISOString(),
             completed_by: identity?.id || 'unknown',
             updated_at: new Date().toISOString()
@@ -666,7 +666,7 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                     <Text code>{booking.payment_intent_id}</Text>
                     <Text type="secondary" style={{ marginLeft: 8 }}>
                       {booking.payment_status === 'authorized' ? '(Funds held - not charged)' : 
-                       booking.payment_status === 'captured' ? '(Payment captured)' : 
+                       booking.payment_status === 'paid' ? '(Payment completed)' : 
                        booking.payment_status === 'cancelled' ? '(Authorization released)' : ''}
                     </Text>
                   </Descriptions.Item>
@@ -856,7 +856,7 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                     type="primary"
                     icon={<CheckCircleOutlined />}
                     onClick={() => handlePaymentStatusChange('authorized')}
-                    disabled={booking.payment_status === 'authorized'}
+                    disabled={booking.payment_status === 'authorized' || booking.payment_status === 'paid'}
                     loading={updating}
                     block
                     style={{ backgroundColor: '#1890ff', borderColor: '#1890ff' }}
@@ -865,13 +865,13 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                   </Button>
                   <Button
                     type="primary"
-                    onClick={() => handlePaymentStatusChange('captured')}
-                    disabled={booking.payment_status === 'captured'}
+                    onClick={() => handlePaymentStatusChange('paid')}
+                    disabled={booking.payment_status === 'paid'}
                     loading={updating}
                     block
                     style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                   >
-                    Mark as Captured
+                    Mark as Paid
                   </Button>
                   <Button
                     type="primary"
@@ -884,7 +884,7 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                   </Button>
                   <Button
                     onClick={() => handlePaymentStatusChange('pending')}
-                    disabled={booking.payment_status === 'pending'}
+                    disabled={booking.payment_status === 'pending' || booking.payment_status === 'paid'}
                     loading={updating}
                     block
                   >

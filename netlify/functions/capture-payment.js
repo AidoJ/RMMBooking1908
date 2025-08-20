@@ -67,14 +67,14 @@ exports.handler = async (event, context) => {
       };
     }
 
-    if (booking.payment_status === 'captured') {
+    if (booking.payment_status === 'paid') {
       return {
         statusCode: 400,
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Headers': 'Content-Type',
         },
-        body: JSON.stringify({ error: 'Payment has already been captured' }),
+        body: JSON.stringify({ error: 'Payment has already been completed' }),
       };
     }
 
@@ -89,7 +89,7 @@ exports.handler = async (event, context) => {
     const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
       .update({
-        payment_status: 'captured',
+        payment_status: 'paid',
         status: 'completed',
         completed_at: new Date().toISOString(),
         completed_by: completed_by,
@@ -111,7 +111,7 @@ exports.handler = async (event, context) => {
       .insert({
         booking_id: booking.id,
         status: 'completed',
-        notes: `Job completed and payment captured. Completed by: ${completed_by}`,
+        notes: `Job completed and payment captured (paid). Completed by: ${completed_by}`,
         changed_by: completed_by,
         changed_at: new Date().toISOString(),
       });
@@ -129,7 +129,7 @@ exports.handler = async (event, context) => {
         payment_intent: paymentIntent.id,
         amount_captured: paymentIntent.amount_received,
         booking_status: 'completed',
-        payment_status: 'captured',
+        payment_status: 'paid',
       }),
     };
 
