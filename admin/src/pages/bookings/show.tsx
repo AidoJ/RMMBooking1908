@@ -221,8 +221,11 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
   const getPaymentStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
       pending: 'orange',
+      authorized: 'blue',
+      captured: 'green',
       paid: 'green',
       refunded: 'red',
+      cancelled: 'red',
     };
     return colors[status] || 'default';
   };
@@ -819,6 +822,27 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Button
                     type="primary"
+                    icon={<CheckCircleOutlined />}
+                    onClick={() => handlePaymentStatusChange('authorized')}
+                    disabled={booking.payment_status === 'authorized'}
+                    loading={updating}
+                    block
+                    style={{ backgroundColor: '#1890ff', borderColor: '#1890ff' }}
+                  >
+                    Mark as Authorized
+                  </Button>
+                  <Button
+                    type="primary"
+                    onClick={() => handlePaymentStatusChange('captured')}
+                    disabled={booking.payment_status === 'captured'}
+                    loading={updating}
+                    block
+                    style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                  >
+                    Mark as Captured
+                  </Button>
+                  <Button
+                    type="primary"
                     onClick={() => handlePaymentStatusChange('paid')}
                     disabled={booking.payment_status === 'paid'}
                     loading={updating}
@@ -927,6 +951,8 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
             >
               <Select>
                 <Option value="pending">Pending</Option>
+                <Option value="authorized">Authorized</Option>
+                <Option value="captured">Captured</Option>
                 <Option value="paid">Paid</Option>
                 <Option value="refunded">Refunded</Option>
               </Select>
