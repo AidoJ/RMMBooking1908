@@ -1,0 +1,9 @@
+{
+  "name": "netlify-functions",
+  "version": "1.0.0",
+  "dependencies": {
+    "stripe": "^14.25.0",
+    "@supabase/supabase-js": "^2.39.3",
+    "twilio": "^4.19.3"
+  }
+}
