@@ -288,33 +288,65 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
   };
 
   const handleCompleteJob = async () => {
-    if (!booking || !booking.payment_intent_id) {
+    if (!booking || (!booking.payment_intent_id && booking.payment_status !== 'authorized')) {
       message.error('Cannot complete job: No payment authorization found');
       return;
     }
 
     setUpdating(true);
     try {
-      // Call our secure backend to capture payment
-      const response = await fetch('/.netlify/functions/capture-payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          payment_intent_id: booking.payment_intent_id,
-          booking_id: booking.booking_id,
-          completed_by: identity?.id || 'unknown'
-        })
-      });
+      if (booking.payment_intent_id) {
+        // Call our secure backend to capture payment via Stripe
+        const response = await fetch('/.netlify/functions/capture-payment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            payment_intent_id: booking.payment_intent_id,
+            booking_id: booking.booking_id,
+            completed_by: identity?.id || 'unknown'
+          })
+        });
 
-      const result = await response.json();
+        const result = await response.json();
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Payment capture failed');
+        if (!response.ok) {
+          throw new Error(result.error || 'Payment capture failed');
+        }
+
+        message.success('Job completed and payment captured successfully!');
+      } else if (booking.payment_status === 'authorized') {
+        // Manual authorization - just mark as completed and captured
+        const { error: bookingError } = await supabaseClient
+          .from('bookings')
+          .update({ 
+            status: 'completed',
+            payment_status: 'captured',
+            completed_at: new Date().toISOString(),
+            completed_by: identity?.id || 'unknown',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', booking.id);
+
+        if (bookingError) throw bookingError;
+
+        // Add to status history
+        const { error: historyError } = await supabaseClient
+          .from('booking_status_history')
+          .insert({
+            booking_id: booking.id,
+            status: 'completed',
+            changed_by: identity?.id,
+            changed_at: new Date().toISOString(),
+            notes: `Job completed manually by ${identity?.email || 'unknown'}`,
+          });
+
+        if (historyError) throw historyError;
+
+        message.success('Job completed successfully!');
       }
-
-      message.success('Job completed and payment captured successfully!');
+      
       fetchBookingDetails();
     } catch (error) {
       console.error('Error completing job:', error);

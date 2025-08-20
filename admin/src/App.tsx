@@ -63,7 +63,7 @@ const Reports = () => <div style={{padding: 24}}><h1>Business Reports</h1><p>Ana
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/admin">
       <RefineKbarProvider>
         <ColorModeContextProvider>
           <AntdApp>
