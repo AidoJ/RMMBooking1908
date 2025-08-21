@@ -657,31 +657,6 @@ export const EnhancedBookingList = () => {
             />
           </Tooltip>
           
-          {/* Job Completion Buttons - Show for confirmed bookings */}
-          {record.status === 'confirmed' && (
-            <>
-              <Tooltip title="Complete Job & Capture Payment">
-                <Button
-                  type="primary"
-                  size="small"
-                  icon={<CheckCircleOutlined />}
-                  onClick={() => handleCompleteJob(record)}
-                  style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
-                >
-                  Complete
-                </Button>
-              </Tooltip>
-              <Tooltip title="Unable to Complete">
-                <Button
-                  danger
-                  size="small"
-                  onClick={() => handleFailureModal(record)}
-                >
-                  Failed
-                </Button>
-              </Tooltip>
-            </>
-          )}
           
           {/* Admin Edit Button */}
           {(canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (

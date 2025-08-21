@@ -806,15 +806,6 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                     Mark as Paid
                   </Button>
                   <Button
-                    type="primary"
-                    onClick={() => handlePaymentStatusChange('paid')}
-                    disabled={booking.payment_status === 'paid'}
-                    loading={updating}
-                    block
-                  >
-                    Mark as Paid
-                  </Button>
-                  <Button
                     onClick={() => handlePaymentStatusChange('pending')}
                     disabled={booking.payment_status === 'pending' || booking.payment_status === 'paid'}
                     loading={updating}
