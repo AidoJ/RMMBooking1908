@@ -220,6 +220,7 @@ export const BookingEdit: React.FC = () => {
         address: bookingData.address,
         business_name: bookingData.business_name,
         duration_minutes: bookingData.duration_minutes,
+        room_number: bookingData.room_number,
         notes: bookingData.notes,
       });
 
@@ -337,6 +338,11 @@ export const BookingEdit: React.FC = () => {
     // Duration change
     if (originalData.duration_minutes !== newValues.duration_minutes) {
       changes.push('Duration updated');
+    }
+    
+    // Room number change
+    if (originalData.room_number !== newValues.room_number) {
+      changes.push('Room number updated');
     }
     
     // Business name change
