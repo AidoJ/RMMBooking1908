@@ -893,7 +893,8 @@ const TherapistProfileManagement: React.FC = () => {
                 </Row>
               </TabPane>
 
-              <TabPane tab="Services" key="services">
+              {isAdmin && (
+                <TabPane tab="Services" key="services">
                 <div style={{ marginBottom: 16 }}>
                   <h3>Services Offered</h3>
                   <p style={{ color: '#666', marginBottom: 16 }}>
@@ -931,9 +932,6 @@ const TherapistProfileManagement: React.FC = () => {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                   <div>
                                     <Text strong>{service.name}</Text>
-                                    <div style={{ fontSize: '12px', color: '#666' }}>
-                                      ${service.service_base_price} • {service.minimum_duration}min
-                                    </div>
                                     {service.short_description && (
                                       <div style={{ fontSize: '12px', color: '#999', marginTop: 4 }}>
                                         {service.short_description}
@@ -982,9 +980,6 @@ const TherapistProfileManagement: React.FC = () => {
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <div>
                                   <Text strong>{therapistService.services.name}</Text>
-                                  <div style={{ fontSize: '12px', color: '#666' }}>
-                                    ${therapistService.services.service_base_price} • {therapistService.services.minimum_duration}min
-                                  </div>
                                   {therapistService.services.short_description && (
                                     <div style={{ fontSize: '12px', color: '#999', marginTop: 4 }}>
                                       {therapistService.services.short_description}
@@ -1021,6 +1016,7 @@ const TherapistProfileManagement: React.FC = () => {
                   </Text>
                 </div>
               </TabPane>
+              )}
             </Tabs>
 
             <div style={{ marginTop: '32px', textAlign: 'right' }}>
