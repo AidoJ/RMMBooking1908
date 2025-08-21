@@ -39,6 +39,9 @@ import ServiceCreate from "./pages/services/create";
 import ServiceEdit from "./pages/services/edit";
 import ServiceShow from "./pages/services/show";
 
+// Import the therapist management components
+import TherapistList from "./pages/therapists/list";
+
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
   const { id } = useParams();
@@ -47,7 +50,7 @@ const BookingShowWrapper = () => {
 
 // Simple placeholder components for features we haven't built yet
 
-const TherapistList = () => <div style={{padding: 24}}><h1>Therapist Management</h1><p>Admin therapist list will go here</p></div>;
+// TherapistList component is now imported above
 const TherapistShow = () => <div style={{padding: 24}}><h1>Therapist Details</h1><p>Therapist details will go here</p></div>;
 const TherapistEdit = () => <div style={{padding: 24}}><h1>Edit Therapist</h1><p>Admin edit therapist will go here</p></div>;
 const TherapistCreate = () => <div style={{padding: 24}}><h1>Add New Therapist</h1><p>Create new therapist account will go here</p></div>;
