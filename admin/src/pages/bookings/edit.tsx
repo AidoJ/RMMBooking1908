@@ -366,7 +366,7 @@ export const BookingEdit: React.FC = () => {
   }
 
   return (
-    <RoleGuard requiredRole="admin">
+    <RoleGuard requiredPermission="canEditAllBookings">
       <div style={{ padding: 24 }}>
         {/* Header */}
         <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
