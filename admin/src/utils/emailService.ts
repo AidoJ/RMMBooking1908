@@ -48,6 +48,7 @@ export interface BookingData {
   business_name?: string;
   duration_minutes?: number;
   price?: number;
+  therapist_fee?: number;
   notes?: string;
   room_number?: string;
 }
@@ -70,19 +71,23 @@ export const EmailService = {
 
       const templateParams = {
         to_email: bookingData.customer_email,
+        to_name: bookingData.customer_name,
         customer_name: bookingData.customer_name,
+        client_name: bookingData.customer_name,
+        customer_email: bookingData.customer_email,
+        client_email: bookingData.customer_email,
         booking_id: bookingData.booking_id || bookingData.id,
         service_name: bookingData.service_name,
+        service: bookingData.service_name,
+        duration: `${bookingData.duration_minutes || 60} minutes`,
         booking_date: new Date(bookingData.booking_time).toLocaleDateString(),
         booking_time: new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+        date_time: new Date(bookingData.booking_time).toLocaleDateString() + ' at ' + new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
         address: bookingData.address,
         business_name: bookingData.business_name || '',
-        duration: `${bookingData.duration_minutes || 60} minutes`,
-        changes: changes.join('\\n• '),
-        // Additional variables that might be expected
-        client_name: bookingData.customer_name,
-        client_email: bookingData.customer_email,
-        room_number: bookingData.room_number || ''
+        room_number: bookingData.room_number || '',
+        notes: bookingData.notes || '',
+        changes: changes.join('\\n• ')
       };
 
       const response = await window.emailjs.send(
@@ -108,22 +113,27 @@ export const EmailService = {
 
       const templateParams = {
         to_email: therapistData.email,
+        to_name: `${therapistData.first_name} ${therapistData.last_name}`,
         therapist_name: `${therapistData.first_name} ${therapistData.last_name}`,
         customer_name: bookingData.customer_name,
+        client_name: bookingData.customer_name,
+        customer_email: bookingData.customer_email,
+        client_email: bookingData.customer_email,
+        customer_phone: bookingData.customer_phone || 'Not provided',
+        client_phone: bookingData.customer_phone || 'Not provided',
         booking_id: bookingData.booking_id || bookingData.id,
         service_name: bookingData.service_name,
+        service: bookingData.service_name,
+        duration: `${bookingData.duration_minutes || 60} minutes`,
         booking_date: new Date(bookingData.booking_time).toLocaleDateString(),
         booking_time: new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+        date_time: new Date(bookingData.booking_time).toLocaleDateString() + ' at ' + new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
         address: bookingData.address,
         business_name: bookingData.business_name || '',
-        duration: `${bookingData.duration_minutes || 60} minutes`,
-        customer_phone: bookingData.customer_phone || 'Not provided',
-        changes: changes.join('\\n• '),
-        // Additional variables that might be expected
-        client_name: bookingData.customer_name,
-        client_email: bookingData.customer_email,
-        client_phone: bookingData.customer_phone || 'Not provided',
-        room_number: bookingData.room_number || ''
+        room_number: bookingData.room_number || '',
+        notes: bookingData.notes || '',
+        therapist_fee: bookingData.therapist_fee ? `$${bookingData.therapist_fee.toFixed(2)}` : 'TBD',
+        changes: changes.join('\\n• ')
       };
 
       const response = await window.emailjs.send(
@@ -197,6 +207,7 @@ export const EmailService = {
         notes: bookingData.notes || '',
         old_therapist_name: `${oldTherapist.first_name || ''} ${oldTherapist.last_name || ''}`.trim() || 'Unknown Therapist',
         new_therapist_name: `${newTherapist.first_name || ''} ${newTherapist.last_name || ''}`.trim() || 'Unknown Therapist',
+        therapist_fee: bookingData.therapist_fee ? `$${bookingData.therapist_fee.toFixed(2)}` : 'TBD',
         reason: 'Administrative change'
       };
 

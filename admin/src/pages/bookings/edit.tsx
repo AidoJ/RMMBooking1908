@@ -466,6 +466,7 @@ export const BookingEdit: React.FC = () => {
         business_name: booking.business_name,
         duration_minutes: booking.duration_minutes,
         price: booking.price,
+        therapist_fee: booking.therapist_fee,
         notes: booking.notes,
         room_number: booking.room_number
       };
