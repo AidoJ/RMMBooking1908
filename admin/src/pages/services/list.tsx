@@ -303,23 +303,20 @@ const ServiceList: React.FC = () => {
       key: 'actions',
       render: (record: ServiceWithCreator) => (
         <Space>
-          <Tooltip title="View service details">
+          <Tooltip title="View Details">
             <Button
+              type="text"
               icon={<EyeOutlined />}
               onClick={() => show('services', record.id)}
-            >
-              View
-            </Button>
+            />
           </Tooltip>
           {canEditServices && (
-            <Tooltip title="Edit service">
+            <Tooltip title="Edit Service">
               <Button
-                type="primary"
+                type="text"
                 icon={<EditOutlined />}
                 onClick={() => edit('services', record.id)}
-              >
-                Edit
-              </Button>
+              />
             </Tooltip>
           )}
           {canDeleteServices && (
@@ -331,13 +328,11 @@ const ServiceList: React.FC = () => {
               cancelText="Cancel"
               okButtonProps={{ danger: true }}
             >
-              <Tooltip title="Delete service">
+              <Tooltip title="Delete Service">
                 <Button
-                  danger
+                  type="text"
                   icon={<DeleteOutlined />}
-                >
-                  Delete
-                </Button>
+                />
               </Tooltip>
             </Popconfirm>
           )}
