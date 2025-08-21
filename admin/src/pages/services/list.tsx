@@ -275,6 +275,7 @@ const ServiceList: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
+      width: 120,
       render: (record: ServiceWithCreator) => (
         <Space>
           <Tooltip title="View Details">
