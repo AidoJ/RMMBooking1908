@@ -209,11 +209,11 @@ export const CalendarBookingManagement: React.FC = () => {
 
   const getStatusColor = (status: string): string => {
     switch (status) {
-      case 'completed': return '#90ee90';        // Light green
-      case 'confirmed': return '#ffd4a3';       // Light orange
-      case 'requested': return '#ffd4a3';       // Light orange (pending)
-      case 'cancelled': return '#ffcccb';       // Light red
-      case 'declined': return '#ffcccb';        // Light red
+      case 'completed': return '#007e8c';       // Teal
+      case 'confirmed': return '#ff7900';       // Orange
+      case 'requested': return '#ff7900';       // Orange (pending)
+      case 'cancelled': return '#c02000';       // Red
+      case 'declined': return '#c02000';        // Red
       default: return '#e0e0e0';                // Light gray
     }
   };
@@ -296,7 +296,7 @@ export const CalendarBookingManagement: React.FC = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={() => window.open('https://rmmbook.netlify.app/', '_blank')}
                 >
                   New Booking
                 </Button>
