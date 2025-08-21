@@ -457,24 +457,29 @@ export const BookingEdit: React.FC = () => {
     try {
       const results: any[] = [];
       
-      // Prepare booking data for email service
+      // Get the current form values (updated data) instead of old booking state
+      const currentFormValues = form.getFieldsValue();
+      const currentTherapist = therapists.find(t => t.id === currentFormValues.therapist_id);
+      const currentService = services.find(s => s.id === currentFormValues.service_id);
+      
+      // Prepare booking data for email service using updated form values
       const emailBookingData: BookingData = {
         id: booking.id,
         booking_id: booking.booking_id,
-        customer_name: booking.customer_name,
-        customer_email: booking.customer_details?.email,
-        customer_phone: booking.customer_details?.phone,
-        therapist_name: booking.therapist_name,
-        therapist_email: booking.therapist_details?.email,
-        service_name: booking.service_name,
-        booking_time: booking.booking_time,
-        address: booking.address,
-        business_name: booking.business_name,
-        duration_minutes: booking.duration_minutes,
-        price: booking.price,
-        therapist_fee: booking.therapist_fee,
-        notes: booking.notes,
-        room_number: booking.room_number
+        customer_name: `${currentFormValues.customer_first_name} ${currentFormValues.customer_last_name}`,
+        customer_email: currentFormValues.customer_email,
+        customer_phone: currentFormValues.customer_phone,
+        therapist_name: currentTherapist ? `${currentTherapist.first_name} ${currentTherapist.last_name}` : booking.therapist_name,
+        therapist_email: currentTherapist?.email || booking.therapist_details?.email,
+        service_name: currentService?.name || booking.service_name,
+        booking_time: currentFormValues.booking_time.format('YYYY-MM-DD HH:mm:ss'),
+        address: currentFormValues.address,
+        business_name: currentFormValues.business_name,
+        duration_minutes: currentFormValues.duration_minutes,
+        price: currentFormValues.price,
+        therapist_fee: currentFormValues.therapist_fee,
+        notes: currentFormValues.notes,
+        room_number: currentFormValues.room_number
       };
       
       // Check if this is a therapist reassignment
