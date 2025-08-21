@@ -5,7 +5,6 @@
   "type": "module",
   "dependencies": {
     "@ant-design/icons": "^5.5.1",
-    "@emailjs/browser": "^4.4.1",
     "@refinedev/antd": "^5.44.0",
     "@refinedev/cli": "^2.16.21",
     "@refinedev/core": "^4.47.1",

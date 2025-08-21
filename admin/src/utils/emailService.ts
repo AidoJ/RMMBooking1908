@@ -1,5 +1,3 @@
-import emailjs from '@emailjs/browser';
-
 // EmailJS configuration (matches booking platform)
 const EMAILJS_SERVICE_ID = 'service_puww2kb';
 const EMAILJS_PUBLIC_KEY = 'qfM_qA664E4JddSMN';
@@ -12,8 +10,29 @@ const TEMPLATE_IDS = {
   THERAPIST_REASSIGNED_NEW: 'template_brnt-v1'
 };
 
-// Initialize EmailJS
-emailjs.init(EMAILJS_PUBLIC_KEY);
+// Declare emailjs as global variable (loaded via CDN)
+declare global {
+  interface Window {
+    emailjs: any;
+  }
+}
+
+// Initialize EmailJS when available
+const initEmailJS = () => {
+  if (typeof window !== 'undefined' && window.emailjs) {
+    window.emailjs.init(EMAILJS_PUBLIC_KEY);
+    console.log('✅ EmailJS initialized successfully');
+    return true;
+  }
+  return false;
+};
+
+// Try to initialize immediately, or wait for window to load
+if (!initEmailJS()) {
+  if (typeof window !== 'undefined') {
+    window.addEventListener('load', initEmailJS);
+  }
+}
 
 export interface BookingData {
   id: string;
@@ -44,6 +63,10 @@ export const EmailService = {
   // Send booking update notification to customer
   async sendBookingUpdateToCustomer(bookingData: BookingData, changes: string[]): Promise<{success: boolean, error?: string}> {
     try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
       const templateParams = {
         to_email: bookingData.customer_email,
         customer_name: bookingData.customer_name,
@@ -57,7 +80,7 @@ export const EmailService = {
         changes: changes.join('\n• ')
       };
 
-      const response = await emailjs.send(
+      const response = await window.emailjs.send(
         EMAILJS_SERVICE_ID,
         TEMPLATE_IDS.BOOKING_UPDATE_CUSTOMER,
         templateParams
@@ -74,6 +97,10 @@ export const EmailService = {
   // Send booking update notification to therapist
   async sendBookingUpdateToTherapist(bookingData: BookingData, therapistData: TherapistData, changes: string[]): Promise<{success: boolean, error?: string}> {
     try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
       const templateParams = {
         to_email: therapistData.email,
         therapist_name: `${therapistData.first_name} ${therapistData.last_name}`,
@@ -89,7 +116,7 @@ export const EmailService = {
         changes: changes.join('\n• ')
       };
 
-      const response = await emailjs.send(
+      const response = await window.emailjs.send(
         EMAILJS_SERVICE_ID,
         TEMPLATE_IDS.BOOKING_UPDATE_THERAPIST,
         templateParams
@@ -106,6 +133,10 @@ export const EmailService = {
   // Send notification to old therapist when reassigned
   async sendReassignmentToOldTherapist(bookingData: BookingData, oldTherapist: TherapistData, newTherapist: TherapistData): Promise<{success: boolean, error?: string}> {
     try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
       const templateParams = {
         to_email: oldTherapist.email,
         therapist_name: `${oldTherapist.first_name} ${oldTherapist.last_name}`,
@@ -118,7 +149,7 @@ export const EmailService = {
         reason: 'Administrative change'
       };
 
-      const response = await emailjs.send(
+      const response = await window.emailjs.send(
         EMAILJS_SERVICE_ID,
         TEMPLATE_IDS.THERAPIST_REASSIGNED_OLD,
         templateParams
@@ -135,6 +166,10 @@ export const EmailService = {
   // Send notification to new therapist when reassigned
   async sendReassignmentToNewTherapist(bookingData: BookingData, newTherapist: TherapistData, oldTherapist: TherapistData): Promise<{success: boolean, error?: string}> {
     try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
       const templateParams = {
         to_email: newTherapist.email,
         therapist_name: `${newTherapist.first_name} ${newTherapist.last_name}`,
@@ -153,7 +188,7 @@ export const EmailService = {
         reason: 'Administrative change'
       };
 
-      const response = await emailjs.send(
+      const response = await window.emailjs.send(
         EMAILJS_SERVICE_ID,
         TEMPLATE_IDS.THERAPIST_REASSIGNED_NEW,
         templateParams
