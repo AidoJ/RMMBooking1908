@@ -176,7 +176,7 @@ export const BookingEdit: React.FC = () => {
         .select(`
           *,
           customers!inner(first_name, last_name, email, phone, address, notes),
-          therapist_profiles!inner(first_name, last_name, email, phone, bio, profile_pic),
+          therapist_profiles!bookings_therapist_id_fkey(first_name, last_name, email, phone, bio, profile_pic),
           services!inner(name, description, service_base_price, minimum_duration)
         `)
         .eq('id', id)
