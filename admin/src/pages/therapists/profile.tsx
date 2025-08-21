@@ -36,7 +36,7 @@ import { useParams, useNavigate } from 'react-router';
 import { supabaseClient } from '../../utility';
 import dayjs from 'dayjs';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 const { TabPane } = Tabs;
@@ -97,6 +97,9 @@ const TherapistProfileManagement: React.FC = () => {
   const [timeOff, setTimeOff] = useState<TimeOff[]>([]);
   const [availabilityModalVisible, setAvailabilityModalVisible] = useState(false);
   const [timeOffModalVisible, setTimeOffModalVisible] = useState(false);
+  const [therapistServices, setTherapistServices] = useState<any[]>([]);
+  const [allServices, setAllServices] = useState<any[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
 
   const isAdmin = identity?.role === 'admin' || identity?.role === 'super_admin';
   const isTherapist = identity?.role === 'therapist';
@@ -181,6 +184,7 @@ const TherapistProfileManagement: React.FC = () => {
 
       await loadAvailability(data.id);
       await loadTimeOff(data.id);
+      await loadTherapistServices(data.id);
 
     } catch (error: any) {
       console.error('Error loading profile:', error);
@@ -223,6 +227,7 @@ const TherapistProfileManagement: React.FC = () => {
 
       await loadAvailability(data.id);
       await loadTimeOff(data.id);
+      await loadTherapistServices(data.id);
 
     } catch (error: any) {
       console.error('Error loading profile:', error);
@@ -260,6 +265,89 @@ const TherapistProfileManagement: React.FC = () => {
       setTimeOff(data || []);
     } catch (error) {
       console.error('Error loading time off:', error);
+    }
+  };
+
+  const loadTherapistServices = async (therapistId: string) => {
+    try {
+      setServicesLoading(true);
+
+      // Load therapist's current services
+      const { data: therapistServicesData, error: therapistError } = await supabaseClient
+        .from('therapist_services')
+        .select(`
+          id,
+          service_id,
+          services!inner(id, name, description, short_description, service_base_price, minimum_duration, is_active)
+        `)
+        .eq('therapist_id', therapistId);
+
+      if (therapistError) throw therapistError;
+
+      // Load all available services
+      const { data: allServicesData, error: allServicesError } = await supabaseClient
+        .from('services')
+        .select('*')
+        .eq('is_active', true)
+        .order('sort_order')
+        .order('name');
+
+      if (allServicesError) throw allServicesError;
+
+      setTherapistServices(therapistServicesData || []);
+      setAllServices(allServicesData || []);
+    } catch (error) {
+      console.error('Error loading services:', error);
+      message.error('Failed to load services');
+    } finally {
+      setServicesLoading(false);
+    }
+  };
+
+  const handleAddService = async (serviceId: string) => {
+    if (!profile?.id) {
+      message.error('Please save the profile first before adding services');
+      return;
+    }
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('therapist_services')
+        .insert([{
+          therapist_id: profile.id,
+          service_id: serviceId
+        }])
+        .select(`
+          id,
+          service_id,
+          services!inner(id, name, description, short_description, service_base_price, minimum_duration, is_active)
+        `)
+        .single();
+
+      if (error) throw error;
+
+      setTherapistServices([...therapistServices, data]);
+      message.success('Service added successfully!');
+    } catch (error) {
+      console.error('Error adding service:', error);
+      message.error('Failed to add service');
+    }
+  };
+
+  const handleRemoveService = async (therapistServiceId: string) => {
+    try {
+      const { error } = await supabaseClient
+        .from('therapist_services')
+        .delete()
+        .eq('id', therapistServiceId);
+
+      if (error) throw error;
+
+      setTherapistServices(therapistServices.filter(ts => ts.id !== therapistServiceId));
+      message.success('Service removed successfully!');
+    } catch (error) {
+      console.error('Error removing service:', error);
+      message.error('Failed to remove service');
     }
   };
 
@@ -803,6 +891,135 @@ const TherapistProfileManagement: React.FC = () => {
                     </Form.Item>
                   </Col>
                 </Row>
+              </TabPane>
+
+              <TabPane tab="Services" key="services">
+                <div style={{ marginBottom: 16 }}>
+                  <h3>Services Offered</h3>
+                  <p style={{ color: '#666', marginBottom: 16 }}>
+                    Select which services this therapist can provide to customers.
+                  </p>
+                  
+                  {!profile?.id && (
+                    <div style={{ marginBottom: 16, padding: 16, backgroundColor: '#fff7e6', border: '1px solid #ffd591', borderRadius: 4 }}>
+                      <Text type="warning">
+                        Please save the profile first before managing services
+                      </Text>
+                    </div>
+                  )}
+                </div>
+
+                <Row gutter={24}>
+                  <Col span={12}>
+                    <Card title="Available Services" size="small" style={{ height: '400px', overflowY: 'auto' }}>
+                      {servicesLoading ? (
+                        <div style={{ textAlign: 'center', padding: 20 }}>
+                          <Spin />
+                        </div>
+                      ) : (
+                        <div>
+                          {allServices
+                            .filter(service => !therapistServices.some(ts => ts.service_id === service.id))
+                            .map(service => (
+                              <div key={service.id} style={{ 
+                                marginBottom: 8, 
+                                padding: 12, 
+                                border: '1px solid #d9d9d9', 
+                                borderRadius: 4,
+                                backgroundColor: '#fafafa'
+                              }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div>
+                                    <Text strong>{service.name}</Text>
+                                    <div style={{ fontSize: '12px', color: '#666' }}>
+                                      ${service.service_base_price} • {service.minimum_duration}min
+                                    </div>
+                                    {service.short_description && (
+                                      <div style={{ fontSize: '12px', color: '#999', marginTop: 4 }}>
+                                        {service.short_description}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <Button
+                                    type="primary"
+                                    size="small"
+                                    icon={<PlusOutlined />}
+                                    onClick={() => handleAddService(service.id)}
+                                    disabled={!profile?.id}
+                                  >
+                                    Add
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
+                          
+                          {allServices.filter(service => !therapistServices.some(ts => ts.service_id === service.id)).length === 0 && (
+                            <div style={{ textAlign: 'center', padding: 20, color: '#999' }}>
+                              All available services have been added
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Card>
+                  </Col>
+
+                  <Col span={12}>
+                    <Card title="Therapist's Services" size="small" style={{ height: '400px', overflowY: 'auto' }}>
+                      {servicesLoading ? (
+                        <div style={{ textAlign: 'center', padding: 20 }}>
+                          <Spin />
+                        </div>
+                      ) : (
+                        <div>
+                          {therapistServices.map(therapistService => (
+                            <div key={therapistService.id} style={{ 
+                              marginBottom: 8, 
+                              padding: 12, 
+                              border: '1px solid #52c41a', 
+                              borderRadius: 4,
+                              backgroundColor: '#f6ffed'
+                            }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                  <Text strong>{therapistService.services.name}</Text>
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    ${therapistService.services.service_base_price} • {therapistService.services.minimum_duration}min
+                                  </div>
+                                  {therapistService.services.short_description && (
+                                    <div style={{ fontSize: '12px', color: '#999', marginTop: 4 }}>
+                                      {therapistService.services.short_description}
+                                    </div>
+                                  )}
+                                </div>
+                                <Button
+                                  danger
+                                  size="small"
+                                  icon={<DeleteOutlined />}
+                                  onClick={() => handleRemoveService(therapistService.id)}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                          
+                          {therapistServices.length === 0 && (
+                            <div style={{ textAlign: 'center', padding: 20, color: '#999' }}>
+                              No services selected. Add services from the available list.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Card>
+                  </Col>
+                </Row>
+
+                <div style={{ marginTop: 16, padding: 12, backgroundColor: '#f0f0f0', borderRadius: 4 }}>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    💡 <strong>Note:</strong> These services will be available for customers to book with this therapist. 
+                    Make sure the therapist is qualified and comfortable providing each selected service.
+                  </Text>
+                </div>
               </TabPane>
             </Tabs>
 
