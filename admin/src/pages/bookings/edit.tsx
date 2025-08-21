@@ -466,7 +466,8 @@ export const BookingEdit: React.FC = () => {
         business_name: booking.business_name,
         duration_minutes: booking.duration_minutes,
         price: booking.price,
-        notes: booking.notes
+        notes: booking.notes,
+        room_number: booking.room_number
       };
       
       // Check if this is a therapist reassignment

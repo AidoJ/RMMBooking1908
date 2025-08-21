@@ -49,6 +49,7 @@ export interface BookingData {
   duration_minutes?: number;
   price?: number;
   notes?: string;
+  room_number?: string;
 }
 
 export interface TherapistData {
@@ -77,7 +78,11 @@ export const EmailService = {
         address: bookingData.address,
         business_name: bookingData.business_name || '',
         duration: `${bookingData.duration_minutes || 60} minutes`,
-        changes: changes.join('\n• ')
+        changes: changes.join('\\n• '),
+        // Additional variables that might be expected
+        client_name: bookingData.customer_name,
+        client_email: bookingData.customer_email,
+        room_number: bookingData.room_number || ''
       };
 
       const response = await window.emailjs.send(
@@ -113,7 +118,12 @@ export const EmailService = {
         business_name: bookingData.business_name || '',
         duration: `${bookingData.duration_minutes || 60} minutes`,
         customer_phone: bookingData.customer_phone || 'Not provided',
-        changes: changes.join('\n• ')
+        changes: changes.join('\\n• '),
+        // Additional variables that might be expected
+        client_name: bookingData.customer_name,
+        client_email: bookingData.customer_email,
+        client_phone: bookingData.customer_phone || 'Not provided',
+        room_number: bookingData.room_number || ''
       };
 
       const response = await window.emailjs.send(
@@ -138,14 +148,15 @@ export const EmailService = {
       }
 
       const templateParams = {
-        to_email: oldTherapist.email,
-        therapist_name: `${oldTherapist.first_name} ${oldTherapist.last_name}`,
-        customer_name: bookingData.customer_name,
+        to_email: oldTherapist.email || '',
+        therapist_name: `${oldTherapist.first_name || ''} ${oldTherapist.last_name || ''}`.trim() || 'Unknown Therapist',
+        customer_name: bookingData.customer_name || 'Unknown Customer',
         booking_id: bookingData.booking_id || bookingData.id,
-        service_name: bookingData.service_name,
+        service_name: bookingData.service_name || 'Service',
         booking_date: new Date(bookingData.booking_time).toLocaleDateString(),
         booking_time: new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-        new_therapist_name: `${newTherapist.first_name} ${newTherapist.last_name}`,
+        new_therapist_name: `${newTherapist.first_name || ''} ${newTherapist.last_name || ''}`.trim() || 'Unknown Therapist',
+        old_therapist_name: `${oldTherapist.first_name || ''} ${oldTherapist.last_name || ''}`.trim() || 'Unknown Therapist',
         reason: 'Administrative change'
       };
 
@@ -171,20 +182,21 @@ export const EmailService = {
       }
 
       const templateParams = {
-        to_email: newTherapist.email,
-        therapist_name: `${newTherapist.first_name} ${newTherapist.last_name}`,
-        customer_name: bookingData.customer_name,
+        to_email: newTherapist.email || '',
+        therapist_name: `${newTherapist.first_name || ''} ${newTherapist.last_name || ''}`.trim() || 'Unknown Therapist',
+        customer_name: bookingData.customer_name || 'Unknown Customer',
         booking_id: bookingData.booking_id || bookingData.id,
-        service_name: bookingData.service_name,
+        service_name: bookingData.service_name || 'Service',
         booking_date: new Date(bookingData.booking_time).toLocaleDateString(),
         booking_time: new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
-        address: bookingData.address,
+        address: bookingData.address || '',
         business_name: bookingData.business_name || '',
         duration: `${bookingData.duration_minutes || 60} minutes`,
         customer_phone: bookingData.customer_phone || 'Not provided',
-        customer_email: bookingData.customer_email,
+        customer_email: bookingData.customer_email || '',
         notes: bookingData.notes || '',
-        old_therapist_name: `${oldTherapist.first_name} ${oldTherapist.last_name}`,
+        old_therapist_name: `${oldTherapist.first_name || ''} ${oldTherapist.last_name || ''}`.trim() || 'Unknown Therapist',
+        new_therapist_name: `${newTherapist.first_name || ''} ${newTherapist.last_name || ''}`.trim() || 'Unknown Therapist',
         reason: 'Administrative change'
       };
 
