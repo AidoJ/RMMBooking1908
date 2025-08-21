@@ -21,6 +21,7 @@ import {
   Tag,
   Descriptions,
   Modal,
+  Checkbox,
 } from 'antd';
 import {
   UserOutlined,
@@ -43,6 +44,7 @@ import { supabaseClient } from '../../utility';
 import { UserIdentity, canAccess, isTherapist, isAdmin } from '../../utils/roleUtils';
 import { RoleGuard } from '../../components/RoleGuard';
 import dayjs, { Dayjs } from 'dayjs';
+import { EmailService, BookingData, TherapistData } from '../../utils/emailService';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -60,6 +62,7 @@ interface Booking {
   price: number;
   therapist_fee: number;
   address: string;
+  business_name?: string;
   notes?: string;
   latitude?: number;
   longitude?: number;
@@ -148,6 +151,13 @@ export const BookingEdit: React.FC = () => {
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [detectedChanges, setDetectedChanges] = useState<string[]>([]);
   const [originalBookingData, setOriginalBookingData] = useState<any>(null);
+  const [sendingNotifications, setSendingNotifications] = useState(false);
+  const [notificationOptions, setNotificationOptions] = useState({
+    notifyCustomer: true,
+    notifyTherapist: true,
+    sendEmail: true,
+    sendSMS: false
+  });
 
   const userRole = identity?.role;
 
@@ -433,6 +443,105 @@ export const BookingEdit: React.FC = () => {
       </div>
     );
   }
+
+  const handleSendNotifications = async () => {
+    if (!booking || !originalBookingData) return;
+    
+    setSendingNotifications(true);
+    try {
+      const results: any[] = [];
+      
+      // Prepare booking data for email service
+      const emailBookingData: BookingData = {
+        id: booking.id,
+        booking_id: booking.booking_id,
+        customer_name: booking.customer_name,
+        customer_email: booking.customer_details?.email,
+        customer_phone: booking.customer_details?.phone,
+        therapist_name: booking.therapist_name,
+        therapist_email: booking.therapist_details?.email,
+        service_name: booking.service_name,
+        booking_time: booking.booking_time,
+        address: booking.address,
+        business_name: booking.business_name,
+        duration_minutes: booking.duration_minutes,
+        price: booking.price,
+        notes: booking.notes
+      };
+      
+      // Check if this is a therapist reassignment
+      const isTherapistReassignment = detectedChanges.some(change => 
+        change.includes('Therapist changed from')
+      );
+      
+      if (isTherapistReassignment && notificationOptions.notifyTherapist) {
+        // Handle therapist reassignment notifications
+        const oldTherapist = therapists.find(t => t.id === originalBookingData.therapist_id);
+        const newTherapist = therapists.find(t => t.id === form.getFieldValue('therapist_id'));
+        
+        if (oldTherapist && newTherapist) {
+          // Notify old therapist
+          const oldTherapistResult = await EmailService.sendReassignmentToOldTherapist(
+            emailBookingData, 
+            oldTherapist as TherapistData, 
+            newTherapist as TherapistData
+          );
+          results.push({ type: 'Old Therapist', ...oldTherapistResult });
+          
+          // Notify new therapist
+          const newTherapistResult = await EmailService.sendReassignmentToNewTherapist(
+            emailBookingData, 
+            newTherapist as TherapistData, 
+            oldTherapist as TherapistData
+          );
+          results.push({ type: 'New Therapist', ...newTherapistResult });
+        }
+      } else {
+        // Handle regular update notifications
+        if (notificationOptions.notifyCustomer && notificationOptions.sendEmail) {
+          const customerResult = await EmailService.sendBookingUpdateToCustomer(
+            emailBookingData, 
+            detectedChanges
+          );
+          results.push({ type: 'Customer', ...customerResult });
+        }
+        
+        if (notificationOptions.notifyTherapist && notificationOptions.sendEmail) {
+          const currentTherapist = therapists.find(t => t.id === form.getFieldValue('therapist_id'));
+          if (currentTherapist) {
+            const therapistResult = await EmailService.sendBookingUpdateToTherapist(
+              emailBookingData, 
+              currentTherapist as TherapistData, 
+              detectedChanges
+            );
+            results.push({ type: 'Therapist', ...therapistResult });
+          }
+        }
+      }
+      
+      // Display results
+      const successCount = results.filter(r => r.success).length;
+      const failureCount = results.filter(r => !r.success).length;
+      
+      if (successCount > 0) {
+        message.success(`Successfully sent ${successCount} notification${successCount > 1 ? 's' : ''}!`);
+      }
+      
+      if (failureCount > 0) {
+        message.error(`Failed to send ${failureCount} notification${failureCount > 1 ? 's' : ''}. Please try again.`);
+        console.error('Notification failures:', results.filter(r => !r.success));
+      }
+      
+      setShowNotificationModal(false);
+      show('bookings', booking.id);
+      
+    } catch (error) {
+      console.error('Error sending notifications:', error);
+      message.error('Failed to send notifications. Please try again.');
+    } finally {
+      setSendingNotifications(false);
+    }
+  };
 
   if (!booking) {
     return (
@@ -830,37 +939,52 @@ export const BookingEdit: React.FC = () => {
           <Form layout="vertical">
             <Form.Item label="📤 Send notifications to:">
               <Space direction="vertical" style={{ width: '100%' }}>
-                <div>
-                  <input type="checkbox" id="notify-all" defaultChecked />
-                  <label htmlFor="notify-all" style={{ marginLeft: 8 }}>
-                    <Text strong>Notify all parties (Customer + Therapist)</Text>
-                  </label>
-                </div>
-                <div>
-                  <input type="checkbox" id="notify-customer" />
-                  <label htmlFor="notify-customer" style={{ marginLeft: 8 }}>
-                    <Text>Notify customer only</Text>
-                  </label>
-                </div>
-                <div>
-                  <input type="checkbox" id="notify-therapist" />
-                  <label htmlFor="notify-therapist" style={{ marginLeft: 8 }}>
-                    <Text>Notify therapist only</Text>
-                  </label>
-                </div>
+                <Checkbox
+                  checked={notificationOptions.notifyCustomer && notificationOptions.notifyTherapist}
+                  indeterminate={notificationOptions.notifyCustomer !== notificationOptions.notifyTherapist}
+                  onChange={(e: any) => {
+                    const checked = e.target.checked;
+                    setNotificationOptions(prev => ({
+                      ...prev,
+                      notifyCustomer: checked,
+                      notifyTherapist: checked
+                    }));
+                  }}
+                >
+                  <Text strong>Notify all parties (Customer + Therapist)</Text>
+                </Checkbox>
+                <Checkbox
+                  checked={notificationOptions.notifyCustomer}
+                  onChange={(e: any) => setNotificationOptions(prev => ({...prev, notifyCustomer: e.target.checked}))}
+                  style={{ marginLeft: 20 }}
+                >
+                  <Text>Customer</Text>
+                </Checkbox>
+                <Checkbox
+                  checked={notificationOptions.notifyTherapist}
+                  onChange={(e: any) => setNotificationOptions(prev => ({...prev, notifyTherapist: e.target.checked}))}
+                  style={{ marginLeft: 20 }}
+                >
+                  <Text>Therapist</Text>
+                </Checkbox>
               </Space>
             </Form.Item>
 
             <Form.Item label="📧 Delivery method:">
               <Space>
-                <div>
-                  <input type="checkbox" id="method-email" defaultChecked />
-                  <label htmlFor="method-email" style={{ marginLeft: 8 }}>Email</label>
-                </div>
-                <div>
-                  <input type="checkbox" id="method-sms" />
-                  <label htmlFor="method-sms" style={{ marginLeft: 8 }}>SMS</label>
-                </div>
+                <Checkbox
+                  checked={notificationOptions.sendEmail}
+                  onChange={(e: any) => setNotificationOptions(prev => ({...prev, sendEmail: e.target.checked}))}
+                >
+                  Email
+                </Checkbox>
+                <Checkbox
+                  checked={notificationOptions.sendSMS}
+                  onChange={(e: any) => setNotificationOptions(prev => ({...prev, sendSMS: e.target.checked}))}
+                  disabled
+                >
+                  SMS (Coming Soon)
+                </Checkbox>
               </Space>
             </Form.Item>
 
@@ -874,12 +998,9 @@ export const BookingEdit: React.FC = () => {
                 </Button>
                 <Button 
                   type="primary" 
-                  onClick={() => {
-                    // TODO: Implement sending notifications
-                    message.success('Notifications sent successfully!');
-                    setShowNotificationModal(false);
-                    show('bookings', booking.id);
-                  }}
+                  loading={sendingNotifications}
+                  disabled={!notificationOptions.sendEmail || (!notificationOptions.notifyCustomer && !notificationOptions.notifyTherapist)}
+                  onClick={handleSendNotifications}
                 >
                   Send Notifications
                 </Button>
