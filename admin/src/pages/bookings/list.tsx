@@ -730,7 +730,8 @@ export const EnhancedBookingList = () => {
                   <Button
                     type="primary"
                     icon={<PlusOutlined />}
-                    onClick={() => create('bookings')}
+                    href="https://rmmbook.netlify.app"
+                    target="_blank"
                   >
                     Create New Booking
                   </Button>

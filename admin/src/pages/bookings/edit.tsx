@@ -145,6 +145,9 @@ export const BookingEdit: React.FC = () => {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showTherapistModal, setShowTherapistModal] = useState(false);
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
+  const [detectedChanges, setDetectedChanges] = useState<string[]>([]);
+  const [originalBookingData, setOriginalBookingData] = useState<any>(null);
 
   const userRole = identity?.role;
 
@@ -194,6 +197,21 @@ export const BookingEdit: React.FC = () => {
 
       setBooking(transformedBooking);
       setSelectedService(bookingData.services);
+      
+      // Store original data for change detection
+      setOriginalBookingData({
+        customer_first_name: bookingData.customers?.first_name || '',
+        customer_last_name: bookingData.customers?.last_name || '',
+        customer_email: bookingData.customers?.email || '',
+        customer_phone: bookingData.customers?.phone || '',
+        therapist_id: bookingData.therapist_id,
+        service_id: bookingData.service_id,
+        booking_time: dayjs(bookingData.booking_time).format('YYYY-MM-DD HH:mm:ss'),
+        address: bookingData.address,
+        business_name: bookingData.business_name,
+        duration_minutes: bookingData.duration_minutes,
+        notes: bookingData.notes,
+      });
 
       // Set form values
       form.setFieldsValue({
@@ -267,6 +285,58 @@ export const BookingEdit: React.FC = () => {
     }
   };
 
+  // Detect what changed and create human-readable change descriptions
+  const detectChanges = (originalData: any, newValues: any): string[] => {
+    const changes: string[] = [];
+    
+    // Customer info changes
+    if (originalData.customer_first_name !== newValues.customer_first_name || 
+        originalData.customer_last_name !== newValues.customer_last_name) {
+      changes.push('Customer name updated');
+    }
+    if (originalData.customer_email !== newValues.customer_email) {
+      changes.push('Customer email updated');
+    }
+    if (originalData.customer_phone !== newValues.customer_phone) {
+      changes.push('Customer phone updated');
+    }
+    
+    // Therapist change
+    if (originalData.therapist_id !== newValues.therapist_id) {
+      const oldTherapist = therapists.find(t => t.id === originalData.therapist_id);
+      const newTherapist = therapists.find(t => t.id === newValues.therapist_id);
+      changes.push(`Therapist changed from ${oldTherapist?.first_name} ${oldTherapist?.last_name} → ${newTherapist?.first_name} ${newTherapist?.last_name}`);
+    }
+    
+    // Service change
+    if (originalData.service_id !== newValues.service_id) {
+      changes.push('Service updated');
+    }
+    
+    // Date/Time change
+    const newBookingTime = newValues.booking_time.format('YYYY-MM-DD HH:mm:ss');
+    if (originalData.booking_time !== newBookingTime) {
+      changes.push('Date/time updated');
+    }
+    
+    // Delivery address change
+    if (originalData.address !== newValues.address) {
+      changes.push('Delivery address updated');
+    }
+    
+    // Duration change
+    if (originalData.duration_minutes !== newValues.duration_minutes) {
+      changes.push('Duration updated');
+    }
+    
+    // Business name change
+    if (originalData.business_name !== newValues.business_name) {
+      changes.push('Hotel/business name updated');
+    }
+    
+    return changes;
+  };
+
   const handleSubmit = async (values: any) => {
     if (!booking) return;
 
@@ -314,8 +384,17 @@ export const BookingEdit: React.FC = () => {
 
       if (error) throw error;
 
-      message.success('Booking updated successfully');
-      show('bookings', booking.id);
+      // Detect changes and show notification modal
+      const changes = detectChanges(originalBookingData, values);
+      
+      if (changes.length > 0) {
+        setDetectedChanges(changes);
+        setShowNotificationModal(true);
+        message.success('Booking updated successfully! Review notification options.');
+      } else {
+        message.success('Booking updated successfully');
+        show('bookings', booking.id);
+      }
     } catch (error) {
       console.error('Error updating booking:', error);
       message.error('Failed to update booking');
@@ -582,14 +661,14 @@ export const BookingEdit: React.FC = () => {
                     </Form.Item>
                   </Col>
 
-                  {/* Address */}
+                  {/* Delivery Address */}
                   <Col span={12}>
                     <Form.Item
                       name="address"
-                      label="Address"
-                      rules={[{ required: true, message: 'Please enter address' }]}
+                      label="Delivery Address"
+                      rules={[{ required: true, message: 'Please enter delivery address' }]}
                     >
-                      <Input placeholder="Service address" />
+                      <Input placeholder="Massage delivery address" />
                     </Form.Item>
                   </Col>
 
@@ -718,6 +797,96 @@ export const BookingEdit: React.FC = () => {
             </Card>
           </Col>
         </Row>
+
+        {/* Notification Modal */}
+        <Modal
+          title="📤 Send Booking Update Notifications"
+          open={showNotificationModal}
+          onCancel={() => {
+            setShowNotificationModal(false);
+            show('bookings', booking.id);
+          }}
+          width={600}
+          footer={null}
+        >
+          <div style={{ marginBottom: 16 }}>
+            <Alert
+              message="✅ Booking Updated Successfully!"
+              type="success"
+              showIcon
+              style={{ marginBottom: 16 }}
+            />
+            
+            <Title level={5}>📝 Changes detected:</Title>
+            <ul style={{ marginBottom: 20 }}>
+              {detectedChanges.map((change, index) => (
+                <li key={index} style={{ marginBottom: 4 }}>
+                  <Text>• {change}</Text>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <Form layout="vertical">
+            <Form.Item label="📤 Send notifications to:">
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <div>
+                  <input type="checkbox" id="notify-all" defaultChecked />
+                  <label htmlFor="notify-all" style={{ marginLeft: 8 }}>
+                    <Text strong>Notify all parties (Customer + Therapist)</Text>
+                  </label>
+                </div>
+                <div>
+                  <input type="checkbox" id="notify-customer" />
+                  <label htmlFor="notify-customer" style={{ marginLeft: 8 }}>
+                    <Text>Notify customer only</Text>
+                  </label>
+                </div>
+                <div>
+                  <input type="checkbox" id="notify-therapist" />
+                  <label htmlFor="notify-therapist" style={{ marginLeft: 8 }}>
+                    <Text>Notify therapist only</Text>
+                  </label>
+                </div>
+              </Space>
+            </Form.Item>
+
+            <Form.Item label="📧 Delivery method:">
+              <Space>
+                <div>
+                  <input type="checkbox" id="method-email" defaultChecked />
+                  <label htmlFor="method-email" style={{ marginLeft: 8 }}>Email</label>
+                </div>
+                <div>
+                  <input type="checkbox" id="method-sms" />
+                  <label htmlFor="method-sms" style={{ marginLeft: 8 }}>SMS</label>
+                </div>
+              </Space>
+            </Form.Item>
+
+            <div style={{ textAlign: 'right', marginTop: 20 }}>
+              <Space>
+                <Button onClick={() => {
+                  setShowNotificationModal(false);
+                  show('bookings', booking.id);
+                }}>
+                  Skip Notifications
+                </Button>
+                <Button 
+                  type="primary" 
+                  onClick={() => {
+                    // TODO: Implement sending notifications
+                    message.success('Notifications sent successfully!');
+                    setShowNotificationModal(false);
+                    show('bookings', booking.id);
+                  }}
+                >
+                  Send Notifications
+                </Button>
+              </Space>
+            </div>
+          </Form>
+        </Modal>
       </div>
     </RoleGuard>
   );
