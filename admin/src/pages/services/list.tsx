@@ -316,6 +316,28 @@ const ServiceList: React.FC = () => {
     },
   ];
 
+  // Show access denied for therapists
+  if (identity?.role === 'therapist') {
+    return (
+      <div style={{ padding: '24px' }}>
+        <Card>
+          <div style={{ textAlign: 'center', padding: '60px 24px' }}>
+            <div style={{ fontSize: '64px', marginBottom: '24px' }}>🚫</div>
+            <Title level={2} style={{ color: '#ff4d4f' }}>Access Denied</Title>
+            <Text type="secondary" style={{ fontSize: '16px' }}>
+              You don't have permission to access the Services management page.
+            </Text>
+            <div style={{ marginTop: '16px' }}>
+              <Text type="secondary">
+                Contact your administrator if you need access to this feature.
+              </Text>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <RoleGuard requiredPermission="canViewServices">
       <div style={{ padding: '24px' }}>

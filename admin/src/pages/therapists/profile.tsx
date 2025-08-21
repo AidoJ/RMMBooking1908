@@ -893,8 +893,7 @@ const TherapistProfileManagement: React.FC = () => {
                 </Row>
               </TabPane>
 
-              {isAdmin && (
-                <TabPane tab="Services" key="services">
+              <TabPane tab="Services" key="services">
                 <div style={{ marginBottom: 16 }}>
                   <h3>Services Offered</h3>
                   <p style={{ color: '#666', marginBottom: 16 }}>
@@ -1016,7 +1015,6 @@ const TherapistProfileManagement: React.FC = () => {
                   </Text>
                 </div>
               </TabPane>
-              )}
             </Tabs>
 
             <div style={{ marginTop: '32px', textAlign: 'right' }}>
