@@ -32,7 +32,7 @@ import {
   FilterOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
-import { useGetIdentity } from '@refinedev/core';
+import { useGetIdentity, useNavigation } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
 import { UserIdentity, canAccess, isTherapist, isAdmin } from '../../utils/roleUtils';
 import { RoleGuard } from '../../components/RoleGuard';
@@ -80,6 +80,7 @@ interface CalendarDay {
 
 export const CalendarBookingManagement: React.FC = () => {
   const { data: identity } = useGetIdentity<UserIdentity>();
+  const { edit } = useNavigation();
   const [loading, setLoading] = useState(true);
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [selectedTherapistId, setSelectedTherapistId] = useState<string>('all');
@@ -210,7 +211,7 @@ export const CalendarBookingManagement: React.FC = () => {
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'completed': return '#007e8c';       // Teal
-      case 'confirmed': return '#ff7900';       // Orange
+      case 'confirmed': return '#B75DD9';       // Purple
       case 'requested': return '#ff7900';       // Orange (pending)
       case 'cancelled': return '#c02000';       // Red
       case 'declined': return '#c02000';        // Red
@@ -438,7 +439,7 @@ export const CalendarBookingManagement: React.FC = () => {
     {(canAccess(userRole, 'canEditAllBookings') || canAccess(userRole, 'canEditOwnBookings')) && (
       <Button 
         type="primary"
-        onClick={() => window.open(`/bookings/edit/${selectedBooking?.id}`, '_self')}
+        onClick={() => edit('bookings', selectedBooking?.id || '')}
       >
         Edit
       </Button>
