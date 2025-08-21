@@ -33,6 +33,12 @@ import { BookingShow } from "./pages/bookings/show";
 import { BookingEdit } from "./pages/bookings/edit";
 import TherapistProfileManagement from "./pages/therapists/profile";
 
+// Import the service management components
+import ServiceList from "./pages/services/list";
+import ServiceCreate from "./pages/services/create";
+import ServiceEdit from "./pages/services/edit";
+import ServiceShow from "./pages/services/show";
+
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
   const { id } = useParams();
@@ -50,10 +56,7 @@ const CustomerList = () => <div style={{padding: 24}}><h1>Customer Management</h
 const CustomerShow = () => <div style={{padding: 24}}><h1>Customer Details</h1><p>Customer profile and booking history will go here</p></div>;
 const CustomerEdit = () => <div style={{padding: 24}}><h1>Edit Customer</h1><p>Edit customer information will go here</p></div>;
 
-const ServiceList = () => <div style={{padding: 24}}><h1>Service Management</h1><p>Massage services list will go here</p></div>;
-const ServiceShow = () => <div style={{padding: 24}}><h1>Service Details</h1><p>Service details will go here</p></div>;
-const ServiceEdit = () => <div style={{padding: 24}}><h1>Edit Service</h1><p>Edit service details will go here</p></div>;
-const ServiceCreate = () => <div style={{padding: 24}}><h1>Add New Service</h1><p>Create new massage service will go here</p></div>;
+// Service components are now imported above
 
 // Super Admin only pages
 const SystemSettings = () => <div style={{padding: 24}}><h1>System Settings</h1><p>System configuration will go here</p></div>;
