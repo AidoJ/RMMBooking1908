@@ -63,6 +63,8 @@ interface BookingEvent {
   service_name: string;
   price: number;
   address: string;
+  business_name?: string;
+  room_number?: string;
   phone?: string;
   notes?: string;
   backgroundColor: string;
@@ -189,6 +191,8 @@ export const CalendarBookingManagement: React.FC = () => {
           service_name: booking.services?.name || 'Unknown Service',
           price: parseFloat(booking.price) || 0,
           address: booking.address || '',
+          business_name: booking.business_name || '',
+          room_number: booking.room_number || '',
           phone: booking.customers?.phone || booking.customer_phone || '',
           notes: booking.notes || '',
           backgroundColor: getStatusColor(booking.status),
@@ -205,12 +209,12 @@ export const CalendarBookingManagement: React.FC = () => {
 
   const getStatusColor = (status: string): string => {
     switch (status) {
-      case 'completed': return '#52c41a';
-      case 'confirmed': return '#1890ff';
-      case 'requested': return '#fa8c16';
-      case 'cancelled': return '#ff4d4f';
-      case 'declined': return '#ff4d4f';
-      default: return '#d9d9d9';
+      case 'completed': return '#90ee90';        // Light green
+      case 'confirmed': return '#ffd4a3';       // Light orange
+      case 'requested': return '#ffd4a3';       // Light orange (pending)
+      case 'cancelled': return '#ffcccb';       // Light red
+      case 'declined': return '#ffcccb';        // Light red
+      default: return '#e0e0e0';                // Light gray
     }
   };
 
@@ -507,13 +511,32 @@ export const CalendarBookingManagement: React.FC = () => {
                 {/* Location */}
                 {selectedBooking.address && (
                   <div>
-                    <Text strong>Location:</Text>
+                    <Text strong>Delivery Address:</Text>
                     <div style={{ marginTop: 4 }}>
                       <EnvironmentOutlined style={{ marginRight: 8 }} />
                       {selectedBooking.address}
                     </div>
                   </div>
                 )}
+
+                {/* Business & Room */}
+                <div>
+                  <Text strong>Business & Room:</Text>
+                  <div style={{ marginTop: 4 }}>
+                    <Space direction="vertical" size="small">
+                      <div>🏨 Business: {selectedBooking.business_name || 'Not specified'}</div>
+                      <div>🚪 Room: {selectedBooking.room_number || 'Not specified'}</div>
+                    </Space>
+                  </div>
+                </div>
+
+                {/* Duration */}
+                <div>
+                  <Text strong>Duration:</Text>
+                  <div style={{ marginTop: 4 }}>
+                    ⏱️ {Math.round((new Date(selectedBooking.end).getTime() - new Date(selectedBooking.start).getTime()) / (1000 * 60))} minutes
+                  </div>
+                </div>
 
                 {/* Notes */}
                 {selectedBooking.notes && (

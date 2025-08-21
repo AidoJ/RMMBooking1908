@@ -95,6 +95,14 @@ function App() {
                     },
                   },
                   {
+                    name: "calendar",
+                    list: "/calendar",
+                    meta: {
+                      label: "Calendar",
+                      icon: "📅",
+                    },
+                  },
+                  {
                     name: "therapist_profiles",
                     list: "/therapists",
                     show: "/therapists/show/:id",
@@ -204,6 +212,9 @@ function App() {
                       <Route path="edit/:id" element={<BookingEdit />} />
                       <Route path="show/:id" element={<BookingShowWrapper />} />
                     </Route>
+                    
+                    {/* Calendar */}
+                    <Route path="/calendar" element={<CalendarBookingManagement />} />
                     
                     {/* Therapist Management (Admin) */}
                     <Route path="/therapists">
