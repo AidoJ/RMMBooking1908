@@ -140,7 +140,6 @@ export const BookingEdit: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [booking, setBooking] = useState<Booking | null>(null);
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
@@ -159,7 +158,6 @@ export const BookingEdit: React.FC = () => {
     try {
       await Promise.all([
         fetchBookingDetails(),
-        fetchCustomers(),
         fetchTherapists(),
         fetchServices(),
       ]);
@@ -199,7 +197,10 @@ export const BookingEdit: React.FC = () => {
 
       // Set form values
       form.setFieldsValue({
-        customer_id: bookingData.customer_id,
+        customer_first_name: bookingData.customers?.first_name || '',
+        customer_last_name: bookingData.customers?.last_name || '', 
+        customer_email: bookingData.customers?.email || '',
+        customer_phone: bookingData.customers?.phone || '',
         therapist_id: bookingData.therapist_id,
         service_id: bookingData.service_id,
         booking_time: dayjs(bookingData.booking_time),
@@ -223,19 +224,6 @@ export const BookingEdit: React.FC = () => {
     }
   };
 
-  const fetchCustomers = async () => {
-    try {
-      const { data, error } = await supabaseClient
-        .from('customers')
-        .select('id, first_name, last_name, email, phone, address')
-        .order('first_name');
-
-      if (error) throw error;
-      setCustomers(data || []);
-    } catch (error) {
-      console.error('Error fetching customers:', error);
-    }
-  };
 
   const fetchTherapists = async () => {
     try {
@@ -284,8 +272,22 @@ export const BookingEdit: React.FC = () => {
 
     setSaving(true);
     try {
+      // First update customer information
+      if (booking.customer_details) {
+        const { error: customerError } = await supabaseClient
+          .from('customers')
+          .update({
+            first_name: values.customer_first_name,
+            last_name: values.customer_last_name,
+            email: values.customer_email,
+            phone: values.customer_phone,
+          })
+          .eq('id', booking.customer_id);
+
+        if (customerError) throw customerError;
+      }
+
       const updateData: any = {
-        customer_id: values.customer_id,
         therapist_id: values.therapist_id,
         service_id: values.service_id,
         booking_time: values.booking_time.format('YYYY-MM-DD HH:mm:ss'),
@@ -455,27 +457,46 @@ export const BookingEdit: React.FC = () => {
                 }}
               >
                 <Row gutter={[16, 16]}>
-                  {/* Customer Selection */}
+                  {/* Customer Details */}
+                  <Col span={8}>
+                    <Form.Item
+                      name="customer_first_name"
+                      label="Customer First Name"
+                      rules={[{ required: true, message: 'Please enter first name' }]}
+                    >
+                      <Input placeholder="First name" />
+                    </Form.Item>
+                  </Col>
+                  
+                  <Col span={8}>
+                    <Form.Item
+                      name="customer_last_name"
+                      label="Customer Last Name"
+                      rules={[{ required: true, message: 'Please enter last name' }]}
+                    >
+                      <Input placeholder="Last name" />
+                    </Form.Item>
+                  </Col>
+                  
+                  <Col span={8}>
+                    <Form.Item
+                      name="customer_email"
+                      label="Customer Email"
+                      rules={[
+                        { required: true, message: 'Please enter email' },
+                        { type: 'email', message: 'Please enter a valid email' }
+                      ]}
+                    >
+                      <Input placeholder="customer@email.com" />
+                    </Form.Item>
+                  </Col>
+                  
                   <Col span={12}>
                     <Form.Item
-                      name="customer_id"
-                      label="Customer"
-                      rules={[{ required: true, message: 'Please select a customer' }]}
+                      name="customer_phone"
+                      label="Customer Phone"
                     >
-                      <Select
-                        placeholder="Select customer"
-                        showSearch
-                        optionFilterProp="children"
-                        filterOption={(input, option) =>
-                          (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
-                        }
-                      >
-                        {customers.map(customer => (
-                          <Option key={customer.id} value={customer.id}>
-                            {customer.first_name} {customer.last_name} ({customer.email})
-                          </Option>
-                        ))}
-                      </Select>
+                      <Input placeholder="Phone number (optional)" />
                     </Form.Item>
                   </Col>
 
