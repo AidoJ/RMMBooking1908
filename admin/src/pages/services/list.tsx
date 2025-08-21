@@ -172,94 +172,75 @@ const ServiceList: React.FC = () => {
       title: 'Service',
       key: 'service',
       render: (record: ServiceWithCreator) => (
-        <Space>
-          <div style={{ width: '60px', height: '60px' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ width: '40px', height: '40px', marginRight: '12px' }}>
             {record.image_url ? (
               <Image
                 src={record.image_url}
                 alt={record.image_alt || record.name}
-                width={60}
-                height={60}
-                style={{ borderRadius: '8px', objectFit: 'cover' }}
+                width={40}
+                height={40}
+                style={{ borderRadius: '6px', objectFit: 'cover' }}
                 fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeHANwDrkl1AuO+pmgAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAAD9b/HnAAAHlklEQVR4Ae3dP3Ik1RnG4W+FvRvYhIAI..."
                 preview={false}
               />
             ) : (
               <div 
                 style={{ 
-                  width: '60px', 
-                  height: '60px', 
-                  backgroundColor: '#f0f0f0', 
-                  borderRadius: '8px',
+                  width: '40px', 
+                  height: '40px', 
+                  backgroundColor: '#f5f5f5', 
+                  borderRadius: '6px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
                 }}
               >
-                <FileImageOutlined style={{ fontSize: '24px', color: '#999' }} />
+                <FileImageOutlined style={{ fontSize: '16px', color: '#bbb' }} />
               </div>
             )}
           </div>
           <div>
-            <div style={{ fontWeight: 'bold', fontSize: '16px' }}>
-              {record.name}
+            <Text strong style={{ fontSize: '14px' }}>{record.name}</Text>
+            <div style={{ fontSize: '12px', color: '#666', marginTop: '2px' }}>
+              <DollarOutlined style={{ marginRight: '4px' }} />${record.service_base_price}
+              <span style={{ margin: '0 8px', color: '#d9d9d9' }}>•</span>
+              <ClockCircleOutlined style={{ marginRight: '4px' }} />{record.minimum_duration}min
             </div>
-            <div style={{ color: '#666', fontSize: '14px', marginBottom: '4px' }}>
-              {record.short_description || record.description?.substring(0, 50) + '...' || 'No description'}
-            </div>
-            <Space>
-              <Tag color="blue">
-                <DollarOutlined /> ${record.service_base_price}
-              </Tag>
-              <Tag color="green">
-                <ClockCircleOutlined /> {record.minimum_duration}min
-              </Tag>
-            </Space>
           </div>
-        </Space>
+        </div>
       ),
       sorter: (a: ServiceWithCreator, b: ServiceWithCreator) => a.name.localeCompare(b.name),
     },
     {
       title: 'Performance',
       key: 'performance',
+      width: 120,
       render: (record: ServiceWithCreator) => (
-        <Space direction="vertical" size="small">
-          <Statistic
-            title="Bookings"
-            value={record.total_bookings}
-            prefix={<span style={{ color: '#1890ff' }}>📋</span>}
-            valueStyle={{ fontSize: '14px' }}
-          />
-          <div>
-            <StarOutlined style={{ color: '#faad14', marginRight: '4px' }} />
-            <span style={{ fontWeight: 'bold' }}>
-              {record.average_rating > 0 ? record.average_rating.toFixed(1) : 'No rating'}
-            </span>
+        <div>
+          <div style={{ fontSize: '14px', fontWeight: 'bold' }}>
+            {record.total_bookings} bookings
           </div>
           <div style={{ fontSize: '12px', color: '#666' }}>
-            Popularity: {record.popularity_score}
+            <StarOutlined style={{ color: '#faad14', marginRight: '4px' }} />
+            {record.average_rating > 0 ? record.average_rating.toFixed(1) : 'No rating'}
           </div>
-        </Space>
+        </div>
       ),
       sorter: (a: ServiceWithCreator, b: ServiceWithCreator) => b.total_bookings - a.total_bookings,
     },
     {
       title: 'Details',
       key: 'details',
+      width: 150,
       render: (record: ServiceWithCreator) => (
         <div>
-          <div style={{ marginBottom: '8px' }}>
-            <Text strong>Order:</Text> {record.sort_order}
+          <div style={{ fontSize: '12px', color: '#666' }}>
+            Order: {record.sort_order}
           </div>
-          {record.creator && (
-            <div style={{ marginBottom: '8px' }}>
-              <Text strong>Created by:</Text> {record.creator.first_name} {record.creator.last_name}
-            </div>
-          )}
           {record.created_at && (
-            <div style={{ fontSize: '12px', color: '#666' }}>
-              Created: {new Date(record.created_at).toLocaleDateString()}
+            <div style={{ fontSize: '12px', color: '#999' }}>
+              {new Date(record.created_at).toLocaleDateString()}
             </div>
           )}
         </div>
@@ -268,29 +249,22 @@ const ServiceList: React.FC = () => {
     {
       title: 'Status',
       key: 'status',
+      width: 100,
       render: (record: ServiceWithCreator) => (
-        <Space direction="vertical" size="small">
+        <div>
           <Tag color={record.is_active ? 'green' : 'red'}>
-            {record.is_active ? (
-              <>
-                <CheckCircleOutlined /> Active
-              </>
-            ) : (
-              <>
-                <CloseCircleOutlined /> Inactive
-              </>
-            )}
+            {record.is_active ? 'Active' : 'Inactive'}
           </Tag>
           {canEditServices && (
-            <Switch
-              size="small"
-              checked={record.is_active}
-              onChange={() => handleToggleActive(record.id, record.is_active)}
-              checkedChildren="Active"
-              unCheckedChildren="Inactive"
-            />
+            <div style={{ marginTop: '4px' }}>
+              <Switch
+                size="small"
+                checked={record.is_active}
+                onChange={() => handleToggleActive(record.id, record.is_active)}
+              />
+            </div>
           )}
-        </Space>
+        </div>
       ),
       filters: [
         { text: 'Active', value: true },
@@ -455,15 +429,16 @@ const ServiceList: React.FC = () => {
             columns={columns}
             rowKey="id"
             loading={loading}
+            size="small"
             pagination={{
               total: getFilteredServices().length,
-              pageSize: 10,
+              pageSize: 15,
               showSizeChanger: true,
               showQuickJumper: true,
               showTotal: (total, range) =>
                 `${range[0]}-${range[1]} of ${total} services`,
             }}
-            scroll={{ x: 1400 }}
+            scroll={{ x: 900 }}
           />
         </Card>
       </div>
