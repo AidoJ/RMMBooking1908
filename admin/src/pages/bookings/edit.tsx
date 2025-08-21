@@ -283,16 +283,13 @@ export const BookingEdit: React.FC = () => {
 
     setSaving(true);
     try {
-      const updateData = {
+      const updateData: any = {
         customer_id: values.customer_id,
         therapist_id: values.therapist_id,
         service_id: values.service_id,
         booking_time: values.booking_time.format('YYYY-MM-DD HH:mm:ss'),
-        status: values.status,
-        payment_status: values.payment_status,
-        price: values.price,
-        therapist_fee: values.therapist_fee,
         address: values.address,
+        business_name: values.business_name,
         notes: values.notes,
         duration_minutes: values.duration_minutes,
         gender_preference: values.gender_preference,
@@ -301,24 +298,18 @@ export const BookingEdit: React.FC = () => {
         updated_at: new Date().toISOString(),
       };
 
+      // Only super admins can update pricing
+      if (userRole === 'super_admin') {
+        updateData.price = values.price;
+        updateData.therapist_fee = values.therapist_fee;
+      }
+
       const { error } = await supabaseClient
         .from('bookings')
         .update(updateData)
         .eq('id', booking.id);
 
       if (error) throw error;
-
-      // Add to status history if status changed
-      if (values.status !== booking.status) {
-        await supabaseClient
-          .from('booking_status_history')
-          .insert({
-            booking_id: booking.id,
-            status: values.status,
-            changed_by: identity?.id,
-            notes: `Status changed to ${values.status}`,
-          });
-      }
 
       message.success('Booking updated successfully');
       show('bookings', booking.id);
@@ -404,6 +395,15 @@ export const BookingEdit: React.FC = () => {
             </Space>
           </Col>
         </Row>
+
+        {/* Information Alert */}
+        <Alert
+          message="Safe Booking Edit"
+          description="This form allows editing of booking details, scheduling, and service assignments. Status and payment changes should be made using action buttons in the booking details view."
+          type="info"
+          showIcon
+          style={{ marginBottom: 24 }}
+        />
 
         <Row gutter={[16, 16]}>
           {/* Current Booking Info */}
@@ -571,71 +571,52 @@ export const BookingEdit: React.FC = () => {
                     </Form.Item>
                   </Col>
 
-                  {/* Status */}
-                  <Col span={8}>
+                  {/* Business Name */}
+                  <Col span={12}>
                     <Form.Item
-                      name="status"
-                      label="Status"
-                      rules={[{ required: true, message: 'Please select status' }]}
+                      name="business_name"
+                      label="Hotel/Business Name"
                     >
-                      <Select placeholder="Select status">
-                        <Option value="requested">Requested</Option>
-                        <Option value="confirmed">Confirmed</Option>
-                        <Option value="completed">Completed</Option>
-                        <Option value="cancelled">Cancelled</Option>
-                        <Option value="declined">Declined</Option>
-                      </Select>
+                      <Input placeholder="Hotel or business name (optional)" />
                     </Form.Item>
                   </Col>
 
-                  {/* Payment Status */}
-                  <Col span={8}>
-                    <Form.Item
-                      name="payment_status"
-                      label="Payment Status"
-                      rules={[{ required: true, message: 'Please select payment status' }]}
-                    >
-                      <Select placeholder="Select payment status">
-                        <Option value="pending">Pending</Option>
-                        <Option value="paid">Paid</Option>
-                        <Option value="refunded">Refunded</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
+                  {/* Super Admin Only - Pricing */}
+                  {userRole === 'super_admin' && (
+                    <>
+                      {/* Price */}
+                      <Col span={6}>
+                        <Form.Item
+                          name="price"
+                          label="Price (Super Admin Only)"
+                        >
+                          <InputNumber
+                            prefix="$"
+                            min={0}
+                            step={0.01}
+                            style={{ width: '100%' }}
+                            placeholder="0.00"
+                          />
+                        </Form.Item>
+                      </Col>
 
-                  {/* Price */}
-                  <Col span={8}>
-                    <Form.Item
-                      name="price"
-                      label="Price"
-                      rules={[{ required: true, message: 'Please enter price' }]}
-                    >
-                      <InputNumber
-                        prefix="$"
-                        min={0}
-                        step={0.01}
-                        style={{ width: '100%' }}
-                        placeholder="0.00"
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  {/* Therapist Fee */}
-                  <Col span={8}>
-                    <Form.Item
-                      name="therapist_fee"
-                      label="Therapist Fee"
-                      rules={[{ required: true, message: 'Please enter therapist fee' }]}
-                    >
-                      <InputNumber
-                        prefix="$"
-                        min={0}
-                        step={0.01}
-                        style={{ width: '100%' }}
-                        placeholder="0.00"
-                      />
-                    </Form.Item>
-                  </Col>
+                      {/* Therapist Fee */}
+                      <Col span={6}>
+                        <Form.Item
+                          name="therapist_fee"
+                          label="Therapist Fee (Super Admin Only)"
+                        >
+                          <InputNumber
+                            prefix="$"
+                            min={0}
+                            step={0.01}
+                            style={{ width: '100%' }}
+                            placeholder="0.00"
+                          />
+                        </Form.Item>
+                      </Col>
+                    </>
+                  )}
 
                   {/* Gender Preference */}
                   <Col span={8}>

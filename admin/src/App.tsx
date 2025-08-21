@@ -30,6 +30,7 @@ import { supabaseClient } from "./utility";
 import { EnhancedBookingList } from "./pages/bookings/list";
 import { CalendarBookingManagement } from "./pages/bookings/calendar";
 import { BookingShow } from "./pages/bookings/show";
+import { BookingEdit } from "./pages/bookings/edit";
 import TherapistProfileManagement from "./pages/therapists/profile";
 
 // Wrapper component to get the ID from route params
@@ -39,7 +40,6 @@ const BookingShowWrapper = () => {
 };
 
 // Simple placeholder components for features we haven't built yet
-const BookingEdit = () => <div style={{padding: 24}}><h1>Edit Booking</h1><p>Edit booking form will go here</p></div>;
 
 const TherapistList = () => <div style={{padding: 24}}><h1>Therapist Management</h1><p>Admin therapist list will go here</p></div>;
 const TherapistShow = () => <div style={{padding: 24}}><h1>Therapist Details</h1><p>Therapist details will go here</p></div>;

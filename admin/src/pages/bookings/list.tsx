@@ -755,10 +755,9 @@ export const EnhancedBookingList = () => {
                   <Button
                     type="primary"
                     icon={<PlusOutlined />}
-                    href="https://your-booking-platform-url.com"
-                    target="_blank"
+                    onClick={() => create('bookings')}
                   >
-                    New Booking
+                    Create New Booking
                   </Button>
                 )}
               </Space>
