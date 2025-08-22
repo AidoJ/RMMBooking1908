@@ -78,6 +78,7 @@ interface Booking {
   customer_phone?: string;
   created_at: string;
   updated_at: string;
+  booking_type?: string;
   
   // Joined data
   customer_name?: string;
@@ -104,6 +105,7 @@ interface Booking {
     description?: string;
     service_base_price: number;
     minimum_duration: number;
+    quote_only?: boolean;
   };
 }
 
@@ -132,6 +134,7 @@ interface Service {
   service_base_price: number;
   minimum_duration: number;
   is_active: boolean;
+  quote_only?: boolean;
 }
 
 export const BookingEdit: React.FC = () => {
@@ -161,6 +164,11 @@ export const BookingEdit: React.FC = () => {
 
   const userRole = identity?.role;
 
+  // Quote detection helper
+  const isQuote = (booking: Booking) => {
+    return booking.service_details?.quote_only || booking.booking_type === 'quote';
+  };
+
   useEffect(() => {
     if (id) {
       initializeData();
@@ -186,9 +194,9 @@ export const BookingEdit: React.FC = () => {
         .from('bookings')
         .select(`
           *,
-          customers!inner(first_name, last_name, email, phone, address, notes),
+          customers(first_name, last_name, email, phone, address, notes),
           therapist_profiles!bookings_therapist_id_fkey(first_name, last_name, email, phone, bio, profile_pic),
-          services!inner(name, description, service_base_price, minimum_duration)
+          services(name, description, service_base_price, minimum_duration, quote_only)
         `)
         .eq('id', id)
         .single();
@@ -197,12 +205,16 @@ export const BookingEdit: React.FC = () => {
 
       const transformedBooking: Booking = {
         ...bookingData,
-        customer_name: `${bookingData.customers.first_name} ${bookingData.customers.last_name}`,
-        therapist_name: `${bookingData.therapist_profiles.first_name} ${bookingData.therapist_profiles.last_name}`,
-        service_name: bookingData.services.name,
-        customer_details: bookingData.customers,
-        therapist_details: bookingData.therapist_profiles,
-        service_details: bookingData.services,
+        customer_name: bookingData.customers 
+          ? `${bookingData.customers.first_name} ${bookingData.customers.last_name}`
+          : 'Unknown Customer',
+        therapist_name: bookingData.therapist_profiles 
+          ? `${bookingData.therapist_profiles.first_name} ${bookingData.therapist_profiles.last_name}`
+          : 'Unassigned',
+        service_name: bookingData.services?.name || 'Unknown Service',
+        customer_details: bookingData.customers || null,
+        therapist_details: bookingData.therapist_profiles || null,
+        service_details: bookingData.services || null,
       };
 
       setBooking(transformedBooking);
@@ -240,7 +252,7 @@ export const BookingEdit: React.FC = () => {
         address: bookingData.address,
         business_name: bookingData.business_name,
         notes: bookingData.notes,
-        duration_minutes: bookingData.duration_minutes || bookingData.services.minimum_duration,
+        duration_minutes: bookingData.duration_minutes || bookingData.services?.minimum_duration || 60,
         gender_preference: bookingData.gender_preference,
         parking: bookingData.parking,
         room_number: bookingData.room_number,
@@ -273,7 +285,7 @@ export const BookingEdit: React.FC = () => {
     try {
       const { data, error } = await supabaseClient
         .from('services')
-        .select('id, name, description, service_base_price, minimum_duration, is_active')
+        .select('id, name, description, service_base_price, minimum_duration, is_active, quote_only')
         .eq('is_active', true)
         .order('name');
 
@@ -582,9 +594,14 @@ export const BookingEdit: React.FC = () => {
               >
                 Back to Booking
               </Button>
-              <Title level={3} style={{ margin: 0 }}>
-                Edit Booking #{booking.booking_id || booking.id.slice(0, 8)}
-              </Title>
+              <Space>
+                <Title level={3} style={{ margin: 0 }}>
+                  Edit {isQuote(booking) ? 'Quote Request' : 'Booking'} #{booking.booking_id || booking.id.slice(0, 8)}
+                </Title>
+                {isQuote(booking) && (
+                  <Tag color="purple">QUOTE REQUEST</Tag>
+                )}
+              </Space>
             </Space>
           </Col>
           <Col span={12} style={{ textAlign: 'right' }}>
