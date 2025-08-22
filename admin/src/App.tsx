@@ -51,6 +51,9 @@ import CustomerShow from "./pages/customers/show";
 import CustomerEdit from "./pages/customers/edit";
 import CustomerCreate from "./pages/customers/create";
 
+// Import the system settings component
+import SystemSettings from "./pages/system-settings";
+
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
   const { id } = useParams();
@@ -60,7 +63,6 @@ const BookingShowWrapper = () => {
 // Service components are now imported above
 
 // Super Admin only pages
-const SystemSettings = () => <div style={{padding: 24}}><h1>System Settings</h1><p>System configuration will go here</p></div>;
 const UserManagement = () => <div style={{padding: 24}}><h1>User Management</h1><p>Manage admin users and therapist accounts</p></div>;
 const ActivityLogs = () => <div style={{padding: 24}}><h1>Activity Logs</h1><p>System activity monitoring will go here</p></div>;
 const Reports = () => <div style={{padding: 24}}><h1>Business Reports</h1><p>Analytics and business reports will go here</p></div>;
