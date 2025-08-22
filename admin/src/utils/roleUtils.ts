@@ -34,6 +34,7 @@ export interface RolePermissions {
   canViewAllEarnings: boolean;
   
   // Customer management
+  canViewCustomers: boolean;
   canViewAllCustomers: boolean;
   canEditCustomers: boolean;
   canCreateCustomers: boolean;
@@ -74,6 +75,7 @@ export const getRolePermissions = (role: UserRole | undefined): RolePermissions 
     canManageAvailability: false,
     canViewOwnEarnings: false,
     canViewAllEarnings: false,
+    canViewCustomers: false,
     canViewAllCustomers: false,
     canEditCustomers: false,
     canCreateCustomers: false,
@@ -111,6 +113,7 @@ export const getRolePermissions = (role: UserRole | undefined): RolePermissions 
         canManageAvailability: true,
         canViewOwnEarnings: true,
         canViewAllEarnings: true,
+        canViewCustomers: true,
         canViewAllCustomers: true,
         canEditCustomers: true,
         canCreateCustomers: true,
@@ -147,6 +150,7 @@ export const getRolePermissions = (role: UserRole | undefined): RolePermissions 
         canManageAvailability: true,
         canViewOwnEarnings: true,
         canViewAllEarnings: true,
+        canViewCustomers: true,
         canViewAllCustomers: true,
         canEditCustomers: true,
         canCreateCustomers: true,
@@ -183,6 +187,7 @@ export const getRolePermissions = (role: UserRole | undefined): RolePermissions 
         canManageAvailability: true,
         canViewOwnEarnings: true,
         canViewAllEarnings: false,
+        canViewCustomers: false,
         canViewAllCustomers: false,
         canEditCustomers: false,
         canCreateCustomers: false,

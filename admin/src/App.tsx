@@ -45,19 +45,17 @@ import TherapistShow from "./pages/therapists/show";
 import TherapistEdit from "./pages/therapists/edit";
 import TherapistCreate from "./pages/therapists/create";
 
+// Import the customer management components
+import CustomerList from "./pages/customers/list";
+import CustomerShow from "./pages/customers/show";
+import CustomerEdit from "./pages/customers/edit";
+import CustomerCreate from "./pages/customers/create";
+
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
   const { id } = useParams();
   return <BookingShow id={id || ''} />;
 };
-
-// Simple placeholder components for features we haven't built yet
-
-// All therapist management components are now imported above
-
-const CustomerList = () => <div style={{padding: 24}}><h1>Customer Management</h1><p>Customer list and management will go here</p></div>;
-const CustomerShow = () => <div style={{padding: 24}}><h1>Customer Details</h1><p>Customer profile and booking history will go here</p></div>;
-const CustomerEdit = () => <div style={{padding: 24}}><h1>Edit Customer</h1><p>Edit customer information will go here</p></div>;
 
 // Service components are now imported above
 
@@ -132,6 +130,7 @@ function App() {
                   {
                     name: "customers",
                     list: "/customers",
+                    create: "/customers/create",
                     show: "/customers/show/:id",
                     edit: "/customers/edit/:id",
                     meta: {
@@ -236,6 +235,7 @@ function App() {
                     {/* Customer Management */}
                     <Route path="/customers">
                       <Route index element={<CustomerList />} />
+                      <Route path="create" element={<CustomerCreate />} />
                       <Route path="edit/:id" element={<CustomerEdit />} />
                       <Route path="show/:id" element={<CustomerShow />} />
                     </Route>
