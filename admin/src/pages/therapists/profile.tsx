@@ -34,6 +34,7 @@ import {
 import { useGetIdentity } from '@refinedev/core';
 import { useParams, useNavigate } from 'react-router';
 import { supabaseClient } from '../../utility';
+import { useAddressGeocoding } from '../../hooks/useAddressGeocoding';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -106,6 +107,25 @@ const TherapistProfileManagement: React.FC = () => {
 
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+  // Geocoding hook for address verification
+  const {
+    isGeocoding,
+    geocodeResult,
+    geocodeError,
+    addressVerified,
+    geocodeAddress,
+    setupAutocomplete,
+    coordinateFields
+  } = useAddressGeocoding({
+    onGeocodeSuccess: (result) => {
+      form.setFieldsValue({
+        latitude: result.lat,
+        longitude: result.lng,
+        address_verified: true
+      });
+    }
+  });
+
   useEffect(() => {
     if (id) {
       // Admin editing a specific therapist by ID
@@ -116,47 +136,21 @@ const TherapistProfileManagement: React.FC = () => {
     } else {
       setInitialLoading(false);
     }
-    loadGoogleMaps();
   }, [id, identity]);
 
-  const loadGoogleMaps = () => {
-    if (!(window as any).google) {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
-      script.onload = () => {
-        setupAddressAutocomplete();
-      };
-      document.head.appendChild(script);
-    } else {
-      setupAddressAutocomplete();
-    }
-  };
+  // Set up address autocomplete after form is rendered
+  useEffect(() => {
+    const setupAddressField = async () => {
+      const addressInput = document.getElementById('home_address') as HTMLInputElement;
+      if (addressInput) {
+        await setupAutocomplete(addressInput);
+      }
+    };
 
-  const setupAddressAutocomplete = () => {
-    setTimeout(() => {
-      const addressInput = document.getElementById('home_address');
-      if (!addressInput || !(window as any).google) return;
-
-      const autocomplete = new (window as any).google.maps.places.Autocomplete(addressInput, {
-        types: ['address'],
-        componentRestrictions: { country: 'AU' },
-        fields: ['address_components', 'formatted_address', 'geometry']
-      });
-
-      autocomplete.addListener('place_changed', () => {
-        const place = autocomplete.getPlace();
-        if (place.geometry) {
-          form.setFieldsValue({
-            home_address: place.formatted_address,
-            latitude: place.geometry.location.lat(),
-            longitude: place.geometry.location.lng(),
-            address_verified: true
-          });
-          message.success('Address verified and coordinates saved!');
-        }
-      });
-    }, 100);
-  };
+    // Delay to ensure form is rendered
+    const timer = setTimeout(setupAddressField, 1000);
+    return () => clearTimeout(timer);
+  }, [profile, setupAutocomplete]);
 
   const loadProfileById = async (profileId: string) => {
     try {
@@ -377,7 +371,10 @@ const TherapistProfileManagement: React.FC = () => {
 
       const profileData = {
         ...values,
-        profile_pic: profilePicUrl
+        profile_pic: profilePicUrl,
+        latitude: coordinateFields.latitude || values.latitude,
+        longitude: coordinateFields.longitude || values.longitude,
+        address_verified: coordinateFields.address_verified || values.address_verified
       };
 
       let savedProfile;
@@ -769,15 +766,35 @@ const TherapistProfileManagement: React.FC = () => {
                 <Form.Item 
                   label="Home Address" 
                   name="home_address"
-                  help="Start typing your address and select from the dropdown for automatic location verification"
+                  help={geocodeError ? <span style={{ color: '#ff4d4f' }}>{geocodeError}</span> : 
+                        addressVerified ? <span style={{ color: '#52c41a' }}>✓ Address verified</span> : 
+                        'Start typing your address and select from the dropdown for automatic location verification'}
                 >
                   <Input 
                     id="home_address"
                     prefix={<EnvironmentOutlined />}
                     placeholder="Start typing your address..."
-                    onFocus={setupAddressAutocomplete}
                   />
                 </Form.Item>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <Button 
+                    type="default"
+                    loading={isGeocoding}
+                    onClick={() => {
+                      const address = form.getFieldValue('home_address');
+                      if (address) {
+                        geocodeAddress(address);
+                      } else {
+                        message.warning('Please enter an address first');
+                      }
+                    }}
+                    icon={<EnvironmentOutlined />}
+                    disabled={!form.getFieldValue('home_address')}
+                  >
+                    {isGeocoding ? 'Verifying...' : 'Verify Address'}
+                  </Button>
+                </div>
 
                 <Row gutter={24}>
                   <Col span={8}>

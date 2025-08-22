@@ -20,12 +20,14 @@ import {
   ArrowLeftOutlined,
   UserOutlined,
   UploadOutlined,
-  UserAddOutlined
+  UserAddOutlined,
+  EnvironmentOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
 import { useGetIdentity } from '@refinedev/core';
 import { RoleGuard } from '../../components/RoleGuard';
 import { supabaseClient } from '../../utility';
+import { useAddressGeocoding } from '../../hooks/useAddressGeocoding';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -56,6 +58,39 @@ const TherapistCreate: React.FC = () => {
   const [profileImage, setProfileImage] = useState<string>('');
 
   const canCreateTherapists = identity?.role === 'admin' || identity?.role === 'super_admin';
+
+  // Geocoding hook for address verification
+  const {
+    isGeocoding,
+    geocodeResult,
+    geocodeError,
+    addressVerified,
+    geocodeAddress,
+    setupAutocomplete,
+    coordinateFields
+  } = useAddressGeocoding({
+    onGeocodeSuccess: (result) => {
+      form.setFieldsValue({
+        latitude: result.lat,
+        longitude: result.lng,
+        address_verified: true
+      });
+    }
+  });
+
+  // Set up address autocomplete after form is rendered
+  useEffect(() => {
+    const setupAddressField = async () => {
+      const addressInput = document.getElementById('home_address') as HTMLInputElement;
+      if (addressInput) {
+        await setupAutocomplete(addressInput);
+      }
+    };
+
+    // Delay to ensure form is rendered
+    const timer = setTimeout(setupAddressField, 500);
+    return () => clearTimeout(timer);
+  }, [setupAutocomplete]);
 
   const handleImageUpload = (file: File) => {
     const reader = new FileReader();
@@ -93,7 +128,7 @@ const TherapistCreate: React.FC = () => {
 
       if (userError) throw userError;
 
-      // Then create the therapist profile
+      // Then create the therapist profile with coordinates
       const { error: therapistError } = await supabaseClient
         .from('therapist_profiles')
         .insert({
@@ -105,12 +140,14 @@ const TherapistCreate: React.FC = () => {
           bio: values.bio,
           profile_pic: profileImage,
           home_address: values.home_address,
+          latitude: coordinateFields.latitude,
+          longitude: coordinateFields.longitude,
           service_radius_km: values.service_radius_km,
           is_active: values.is_active,
           gender: values.gender,
           years_experience: values.years_experience,
           business_abn: values.business_abn,
-          address_verified: values.address_verified,
+          address_verified: coordinateFields.address_verified,
           rating: 0.0,
           total_reviews: 0,
           created_at: new Date().toISOString(),
@@ -324,12 +361,61 @@ const TherapistCreate: React.FC = () => {
 
             <Col span={12}>
               <Card title="Location & Service Area" style={{ marginBottom: '24px' }}>
-                <Form.Item name="home_address" label="Home Address">
+                <Form.Item 
+                  name="home_address" 
+                  label="Home Address"
+                  help={geocodeError ? <span style={{ color: '#ff4d4f' }}>{geocodeError}</span> : 
+                        addressVerified ? <span style={{ color: '#52c41a' }}>✓ Address verified</span> : 
+                        'Enter address for automatic verification'}
+                >
                   <TextArea 
+                    id="home_address"
                     rows={3} 
-                    placeholder="Enter home address..."
+                    placeholder="Start typing address for autocomplete suggestions..."
                   />
                 </Form.Item>
+
+                <div style={{ marginBottom: '16px' }}>
+                  <Button 
+                    type="default"
+                    loading={isGeocoding}
+                    onClick={() => {
+                      const address = form.getFieldValue('home_address');
+                      if (address) {
+                        geocodeAddress(address);
+                      } else {
+                        message.warning('Please enter an address first');
+                      }
+                    }}
+                    icon={<EnvironmentOutlined />}
+                    disabled={!form.getFieldValue('home_address')}
+                  >
+                    {isGeocoding ? 'Verifying...' : 'Verify Address'}
+                  </Button>
+                </div>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item name="latitude" label="Latitude">
+                      <InputNumber 
+                        placeholder="Auto-populated"
+                        readOnly
+                        style={{ width: '100%', backgroundColor: '#f5f5f5' }}
+                        precision={6}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item name="longitude" label="Longitude">
+                      <InputNumber 
+                        placeholder="Auto-populated"
+                        readOnly
+                        style={{ width: '100%', backgroundColor: '#f5f5f5' }}
+                        precision={6}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
 
                 <Form.Item name="service_radius_km" label="Service Radius (km)">
                   <InputNumber 
