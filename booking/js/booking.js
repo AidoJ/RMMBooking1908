@@ -745,7 +745,8 @@ console.log('Globals:', {
       // Submit to database
       const { data, error } = await window.supabase
         .from('bookings')
-        .insert(quoteData);
+        .insert(quoteData)
+        .select();
       
       if (error) throw error;
       
@@ -753,7 +754,7 @@ console.log('Globals:', {
       await sendQuoteNotifications(quoteData);
       
       // Show success message
-      showQuoteSuccess(data[0]);
+      showQuoteSuccess(data && data[0] ? data[0] : { id: 'quote-submitted' });
       
     } catch (error) {
       console.error('Error submitting quote:', error);
@@ -878,13 +879,16 @@ console.log('Globals:', {
   
   // Show quote success
   function showQuoteSuccess(quoteRecord) {
+    const quoteEmail = document.getElementById('quoteEmail')?.value || '';
+    const referenceId = quoteRecord && quoteRecord.id ? quoteRecord.id.substring(0, 8) : 'QUOTE-' + Date.now().toString().substring(-6);
+    
     const successDiv = document.createElement('div');
     successDiv.className = 'quote-success';
     successDiv.innerHTML = `
       <h3>✅ Quote Request Submitted Successfully!</h3>
       <p>Thank you for your interest. We'll review your requirements and send you a detailed quote within 2 business hours.</p>
-      <p><strong>Reference ID:</strong> ${quoteRecord.id.substring(0, 8)}</p>
-      <p>A confirmation email has been sent to ${quoteData.corporate_contact_email}</p>
+      <p><strong>Reference ID:</strong> ${referenceId}</p>
+      <p>A confirmation email will be sent to ${quoteEmail}</p>
     `;
     
     const submitBtn = document.getElementById('submitQuoteBtn');
