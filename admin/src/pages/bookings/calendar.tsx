@@ -59,6 +59,7 @@ interface BookingEvent {
   end: string;
   status: string;
   therapist_id: string;
+  therapist_name?: string;
   customer_name: string;
   service_name: string;
   price: number;
@@ -181,6 +182,10 @@ export const CalendarBookingManagement: React.FC = () => {
           ? `${booking.customers.first_name} ${booking.customers.last_name}`
           : booking.booker_name || `${booking.first_name || ''} ${booking.last_name || ''}`.trim() || 'Unknown Customer';
 
+        const therapistName = booking.therapist_profiles
+          ? `${booking.therapist_profiles.first_name} ${booking.therapist_profiles.last_name}`
+          : 'Unassigned';
+
         return {
           id: booking.id,
           title: `${customerName} - ${booking.services?.name || 'Service'}`,
@@ -188,6 +193,7 @@ export const CalendarBookingManagement: React.FC = () => {
           end: endTime.toISOString(),
           status: booking.status,
           therapist_id: booking.therapist_id,
+          therapist_name: therapistName,
           customer_name: customerName,
           service_name: booking.services?.name || 'Unknown Service',
           price: parseFloat(booking.price) || 0,
@@ -444,8 +450,39 @@ export const CalendarBookingManagement: React.FC = () => {
         Edit
       </Button>
     )}
-              {canAccess(userRole, 'canDeleteBookings') && (
-                <Button danger>Cancel</Button>
+              {(canAccess(userRole, 'canDeleteBookings') || 
+                (isTherapist(userRole) && selectedBooking?.therapist_id === identity?.id)) && (
+                <Button 
+                  danger
+                  onClick={() => {
+                    Modal.confirm({
+                      title: 'Cancel Booking',
+                      content: 'Are you sure you want to cancel this booking? This action cannot be undone.',
+                      okText: 'Yes, Cancel',
+                      cancelText: 'No, Keep Booking',
+                      okType: 'danger',
+                      onOk: async () => {
+                        try {
+                          const { error } = await supabaseClient
+                            .from('bookings')
+                            .update({ status: 'cancelled' })
+                            .eq('id', selectedBooking?.id);
+                          
+                          if (error) throw error;
+                          
+                          message.success('Booking cancelled successfully');
+                          setShowBookingDrawer(false);
+                          fetchBookings(); // Refresh the calendar
+                        } catch (error) {
+                          console.error('Error cancelling booking:', error);
+                          message.error('Failed to cancel booking');
+                        }
+                      }
+                    });
+                  }}
+                >
+                  Cancel
+                </Button>
               )}
             </Space>
           }
@@ -500,6 +537,19 @@ export const CalendarBookingManagement: React.FC = () => {
                     </Space>
                   </div>
                 </div>
+
+                {/* Therapist */}
+                {selectedBooking.therapist_name && (
+                  <div>
+                    <Text strong>Therapist:</Text>
+                    <div style={{ marginTop: 4 }}>
+                      <Space>
+                        <TeamOutlined style={{ marginRight: 8 }} />
+                        {selectedBooking.therapist_name}
+                      </Space>
+                    </div>
+                  </div>
+                )}
 
                 {/* Service */}
                 <div>
