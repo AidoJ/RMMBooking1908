@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Card,
-  Tabs,
+  Table,
   Form,
   Input,
   Button,
@@ -12,33 +12,29 @@ import {
   Space,
   message,
   Spin,
-  Divider,
   Alert,
   Row,
   Col,
   Statistic,
+  Modal,
+  Tag,
+  Tooltip,
+  Tabs,
 } from 'antd';
 import {
   SaveOutlined,
   ReloadOutlined,
   SettingOutlined,
-  DollarOutlined,
-  CalendarOutlined,
-  CarOutlined,
-  PhoneOutlined,
-  ApiOutlined,
-  ExperimentOutlined,
-  LockOutlined,
-  HistoryOutlined,
-  CloudDownloadOutlined,
-  MonitorOutlined,
+  EditOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+  EyeOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
 import { useGetIdentity } from '@refinedev/core';
 import { RoleGuard } from '../../components/RoleGuard';
 import { supabaseClient } from '../../utility';
 import { UserIdentity } from '../../utils/roleUtils';
-import { SettingsAuditLog } from '../../components/SettingsAuditLog';
-import { SettingsBackupRestore } from '../../components/SettingsBackupRestore';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 
@@ -49,40 +45,44 @@ const { TextArea } = Input;
 const { TabPane } = Tabs;
 const { Option } = Select;
 
-// Setting data types and validation
+// System setting interface matching your actual database structure
 interface SystemSetting {
-  id?: string;
+  id: string;
   key: string;
   value: string;
-  category: string;
-  data_type: string;
-  description: string;
+  updated_at: string;
+  // Metadata fields (new)
+  data_type?: string;
+  category?: string;
+  description?: string;
   is_sensitive?: boolean;
-  updated_at?: string;
+  created_at?: string;
 }
 
-interface SettingFormValues {
-  [key: string]: any;
+interface EditModalData {
+  visible: boolean;
+  setting?: SystemSetting;
+  isNew?: boolean;
 }
 
 const SystemSettings: React.FC = () => {
   const { data: identity } = useGetIdentity<UserIdentity>();
-  const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<SystemSetting[]>([]);
-  const [activeTab, setActiveTab] = useState('business');
-  const [auditLogVisible, setAuditLogVisible] = useState(false);
-  const [backupRestoreVisible, setBackupRestoreVisible] = useState(false);
-  const [settingsStats, setSettingsStats] = useState({
-    total: 0,
-    lastUpdated: null as string | null,
-    categoryCounts: {} as { [key: string]: number },
-  });
+  const [filteredSettings, setFilteredSettings] = useState<SystemSetting[]>([]);
+  const [activeTab, setActiveTab] = useState('all');
+  const [editModal, setEditModal] = useState<EditModalData>({ visible: false });
+  const [form] = Form.useForm();
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     loadSettings();
   }, []);
+
+  useEffect(() => {
+    filterSettings();
+  }, [settings, activeTab, searchTerm]);
 
   const loadSettings = async () => {
     try {
@@ -96,30 +96,6 @@ const SystemSettings: React.FC = () => {
 
       setSettings(data || []);
       
-      // Calculate statistics
-      const stats = {
-        total: data?.length || 0,
-        lastUpdated: data?.reduce((latest, setting) => {
-          const updated = setting.updated_at || '';
-          return updated > (latest || '') ? updated : latest;
-        }, null as string | null),
-        categoryCounts: data?.reduce((counts, setting) => {
-          const category = setting.category || 'general';
-          counts[category] = (counts[category] || 0) + 1;
-          return counts;
-        }, {} as { [key: string]: number }) || {},
-      };
-      setSettingsStats(stats);
-      
-      // Transform settings for form
-      const formValues: SettingFormValues = {};
-      (data || []).forEach((setting: SystemSetting) => {
-        const value = parseSettingValue(setting.value, setting.data_type);
-        formValues[setting.key] = value;
-      });
-      
-      form.setFieldsValue(formValues);
-      
     } catch (error: any) {
       console.error('Error loading settings:', error);
       message.error('Failed to load system settings');
@@ -128,741 +104,303 @@ const SystemSettings: React.FC = () => {
     }
   };
 
-  const parseSettingValue = (value: string, dataType: string) => {
-    if (!value) return '';
+  const filterSettings = () => {
+    let filtered = [...settings];
+
+    // Filter by category
+    if (activeTab !== 'all') {
+      filtered = filtered.filter(setting => 
+        (setting.category || 'general') === activeTab
+      );
+    }
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(setting =>
+        setting.key.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        setting.value.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (setting.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    setFilteredSettings(filtered);
+  };
+
+  // Smart input component based on data_type metadata
+  const renderValueInput = (setting: SystemSetting, value: any, onChange: (value: any) => void) => {
+    const dataType = setting.data_type || 'string';
     
     switch (dataType) {
       case 'boolean':
-        return value === 'true';
+        return (
+          <Switch 
+            checked={value === 'true'} 
+            onChange={(checked) => onChange(checked ? 'true' : 'false')}
+          />
+        );
+      
       case 'integer':
-        return parseInt(value);
+        return (
+          <InputNumber
+            value={parseInt(value) || 0}
+            onChange={(val) => onChange(val?.toString() || '0')}
+            style={{ width: '100%' }}
+          />
+        );
+      
       case 'decimal':
-        return parseFloat(value);
+        return (
+          <InputNumber
+            value={parseFloat(value) || 0}
+            precision={2}
+            onChange={(val) => onChange(val?.toString() || '0')}
+            style={{ width: '100%' }}
+            formatter={(val) => setting.key.includes('rate') && parseFloat(val || '0') < 1 
+              ? `${(parseFloat(val || '0') * 100).toFixed(1)}%` 
+              : val || '0'
+            }
+            parser={(val) => setting.key.includes('rate') && val?.includes('%')
+              ? (parseFloat(val.replace('%', '')) / 100).toString()
+              : val?.replace(/[^\d.]/g, '') || '0'
+            }
+          />
+        );
+      
       default:
-        return value;
+        return setting.is_sensitive ? (
+          <Input.Password 
+            value={value} 
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Enter value..."
+          />
+        ) : (
+          <Input 
+            value={value} 
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="Enter value..."
+          />
+        );
     }
   };
 
-  const formatSettingValue = (value: any, dataType: string): string => {
-    if (value === undefined || value === null) return '';
+  const renderValueDisplay = (setting: SystemSetting) => {
+    const { value, data_type, key, is_sensitive } = setting;
     
-    switch (dataType) {
+    if (is_sensitive && value) {
+      return <Text type="secondary">••••••••</Text>;
+    }
+    
+    switch (data_type) {
       case 'boolean':
-        return value.toString();
-      case 'integer':
+        return <Tag color={value === 'true' ? 'green' : 'red'}>{value.toUpperCase()}</Tag>;
+      
       case 'decimal':
-        return value.toString();
+        if (key.includes('rate') && parseFloat(value) < 1) {
+          return <Text>{(parseFloat(value) * 100).toFixed(1)}%</Text>;
+        }
+        if (key.includes('price') || key.includes('fee')) {
+          return <Text style={{ color: '#52c41a' }}>$${parseFloat(value).toFixed(2)}</Text>;
+        }
+        return <Text>{parseFloat(value).toFixed(2)}</Text>;
+      
+      case 'integer':
+        return <Text>{value}</Text>;
+      
       default:
-        return String(value);
+        return <Text>{value}</Text>;
     }
   };
 
-  const handleSave = async (values: SettingFormValues) => {
+  const handleEdit = (setting: SystemSetting) => {
+    form.setFieldsValue({
+      key: setting.key,
+      value: setting.value,
+      category: setting.category || 'general',
+      data_type: setting.data_type || 'string',
+      description: setting.description || '',
+      is_sensitive: setting.is_sensitive || false,
+    });
+    setEditModal({ visible: true, setting, isNew: false });
+  };
+
+  const handleAdd = () => {
+    form.resetFields();
+    form.setFieldsValue({
+      category: 'general',
+      data_type: 'string',
+      is_sensitive: false,
+    });
+    setEditModal({ visible: true, isNew: true });
+  };
+
+  const handleSave = async (values: any) => {
     try {
       setSaving(true);
       
-      // Prepare updates for each changed setting
-      const updates = Object.keys(values).map(key => {
-        const setting = settings.find(s => s.key === key);
-        if (!setting) return null;
-        
-        const formattedValue = formatSettingValue(values[key], setting.data_type);
-        
-        return {
-          id: setting.id,
-          key: setting.key,
-          value: formattedValue,
-          updated_at: new Date().toISOString(),
-        };
-      }).filter(Boolean);
+      // CRITICAL: Always store the actual value in the 'value' field as text
+      const settingData = {
+        key: values.key,
+        value: values.value.toString(), // NEVER change this - always text in value field
+        category: values.category,
+        data_type: values.data_type,
+        description: values.description,
+        is_sensitive: values.is_sensitive,
+        updated_at: new Date().toISOString(),
+      };
 
-      // Update settings in database
-      for (const update of updates) {
+      if (editModal.isNew) {
+        settingData.created_at = new Date().toISOString();
         const { error } = await supabaseClient
           .from('system_settings')
-          .update({
-            value: update!.value,
-            updated_at: update!.updated_at,
-          })
-          .eq('key', update!.key);
-
+          .insert(settingData);
+        
         if (error) throw error;
+        message.success('Setting created successfully');
+      } else {
+        const { error } = await supabaseClient
+          .from('system_settings')
+          .update(settingData)
+          .eq('id', editModal.setting!.id);
+        
+        if (error) throw error;
+        message.success('Setting updated successfully');
       }
 
-      message.success('System settings updated successfully');
-      loadSettings(); // Reload to ensure data consistency
+      setEditModal({ visible: false });
+      loadSettings();
       
     } catch (error: any) {
-      console.error('Error saving settings:', error);
-      message.error('Failed to save system settings');
+      console.error('Error saving setting:', error);
+      message.error('Failed to save setting');
     } finally {
       setSaving(false);
     }
   };
 
-  const initializeDefaultSettings = async () => {
-    const defaultSettings: Omit<SystemSetting, 'id' | 'updated_at'>[] = [
-      // Business Configuration
-      { key: 'company_name', value: 'Rejuvenators Mobile Massage', category: 'business', data_type: 'string', description: 'Company display name' },
-      { key: 'company_email', value: 'info@rejuvenators.com', category: 'business', data_type: 'email', description: 'Primary business email' },
-      { key: 'company_phone', value: '+61 XXX XXX XXX', category: 'business', data_type: 'phone', description: 'Business contact number' },
-      { key: 'business_timezone', value: 'Australia/Sydney', category: 'business', data_type: 'string', description: 'Default timezone' },
-      { key: 'default_currency', value: 'AUD', category: 'business', data_type: 'string', description: 'Default currency code' },
-      
-      // Pricing Configuration
-      { key: 'global_service_base_price', value: '90.00', category: 'pricing', data_type: 'decimal', description: 'Global default service price' },
-      { key: 'platform_commission_rate', value: '0.15', category: 'pricing', data_type: 'decimal', description: 'Platform commission percentage' },
-      { key: 'payment_processing_fee', value: '0.029', category: 'pricing', data_type: 'decimal', description: 'Stripe processing fee' },
-      { key: 'gst_rate', value: '0.10', category: 'pricing', data_type: 'decimal', description: 'GST rate for Australian services' },
-      { key: 'late_cancellation_fee', value: '25.00', category: 'pricing', data_type: 'decimal', description: 'Late cancellation penalty' },
-      
-      // Booking Management
-      { key: 'max_booking_advance_days', value: '30', category: 'booking', data_type: 'integer', description: 'Maximum days to book ahead' },
-      { key: 'min_cancellation_hours', value: '24', category: 'booking', data_type: 'integer', description: 'Free cancellation deadline' },
-      { key: 'auto_confirm_bookings', value: 'false', category: 'booking', data_type: 'boolean', description: 'Auto-confirm new bookings' },
-      { key: 'require_payment_authorization', value: 'true', category: 'booking', data_type: 'boolean', description: 'Require payment upfront' },
-      { key: 'max_daily_bookings_per_therapist', value: '8', category: 'booking', data_type: 'integer', description: 'Daily booking limit per therapist' },
-      { key: 'therapist_response_timeout_minutes', value: '30', category: 'booking', data_type: 'integer', description: 'Minutes for therapist to respond' },
-      
-      // Operations
-      { key: 'default_service_radius_km', value: '25', category: 'operations', data_type: 'integer', description: 'Default therapist service radius' },
-      { key: 'max_service_radius_km', value: '50', category: 'operations', data_type: 'integer', description: 'Maximum allowed service radius' },
-      { key: 'travel_time_buffer_minutes', value: '15', category: 'operations', data_type: 'integer', description: 'Travel time between bookings' },
-      { key: 'setup_cleanup_time_minutes', value: '10', category: 'operations', data_type: 'integer', description: 'Setup and cleanup time' },
-      { key: 'minimum_booking_duration', value: '30', category: 'operations', data_type: 'integer', description: 'Minimum service duration' },
-      
-      // Communications
-      { key: 'sms_notifications_enabled', value: 'true', category: 'communication', data_type: 'boolean', description: 'Enable SMS notifications' },
-      { key: 'email_notifications_enabled', value: 'true', category: 'communication', data_type: 'boolean', description: 'Enable email notifications' },
-      { key: 'booking_confirmation_timeout_hours', value: '2', category: 'communication', data_type: 'integer', description: 'Customer confirmation deadline' },
-      { key: 'reminder_sms_hours_before', value: '4', category: 'communication', data_type: 'integer', description: 'Hours before service for reminder' },
-      
-      // Integrations (Sensitive)
-      { key: 'stripe_publishable_key', value: '', category: 'integration', data_type: 'string', description: 'Stripe publishable key', is_sensitive: false },
-      { key: 'stripe_secret_key', value: '', category: 'integration', data_type: 'string', description: 'Stripe secret key', is_sensitive: true },
-      { key: 'twilio_account_sid', value: '', category: 'integration', data_type: 'string', description: 'Twilio Account SID', is_sensitive: true },
-      { key: 'twilio_auth_token', value: '', category: 'integration', data_type: 'string', description: 'Twilio Auth Token', is_sensitive: true },
-      { key: 'twilio_phone_number', value: '', category: 'integration', data_type: 'string', description: 'Twilio SMS phone number', is_sensitive: false },
-      { key: 'google_maps_api_key', value: '', category: 'integration', data_type: 'string', description: 'Google Maps API Key', is_sensitive: true },
-      { key: 'emailjs_service_id', value: '', category: 'integration', data_type: 'string', description: 'EmailJS Service ID', is_sensitive: false },
-      { key: 'emailjs_template_id', value: '', category: 'integration', data_type: 'string', description: 'EmailJS Template ID', is_sensitive: false },
-      { key: 'emailjs_public_key', value: '', category: 'integration', data_type: 'string', description: 'EmailJS Public Key', is_sensitive: false },
-      
-      // Feature Flags
-      { key: 'enable_guest_bookings', value: 'true', category: 'features', data_type: 'boolean', description: 'Allow guest bookings without registration' },
-      { key: 'enable_online_payments', value: 'true', category: 'features', data_type: 'boolean', description: 'Process payments online via Stripe' },
-      { key: 'enable_sms_confirmations', value: 'true', category: 'features', data_type: 'boolean', description: 'Send SMS booking confirmations' },
-      { key: 'enable_therapist_ratings', value: 'true', category: 'features', data_type: 'boolean', description: 'Customer rating system for therapists' },
-      { key: 'enable_automatic_matching', value: 'false', category: 'features', data_type: 'boolean', description: 'Auto-assign therapists to bookings' },
-      { key: 'enable_weekend_bookings', value: 'true', category: 'features', data_type: 'boolean', description: 'Allow weekend service bookings' },
-      { key: 'enable_therapist_selection', value: 'true', category: 'features', data_type: 'boolean', description: 'Allow customers to choose specific therapists' },
-      { key: 'enable_address_geocoding', value: 'true', category: 'features', data_type: 'boolean', description: 'Verify and geocode customer addresses' },
-    ];
-
-    try {
-      for (const setting of defaultSettings) {
-        const { error } = await supabaseClient
-          .from('system_settings')
-          .upsert(setting, { onConflict: 'key' });
-        
-        if (error) throw error;
-      }
-      
-      message.success('Default settings initialized');
-      loadSettings();
-    } catch (error: any) {
-      console.error('Error initializing settings:', error);
-      message.error('Failed to initialize default settings');
-    }
+  const handleDelete = (setting: SystemSetting) => {
+    Modal.confirm({
+      title: 'Delete Setting',
+      content: `Are you sure you want to delete "${setting.key}"? This action cannot be undone.`,
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          const { error } = await supabaseClient
+            .from('system_settings')
+            .delete()
+            .eq('id', setting.id);
+          
+          if (error) throw error;
+          message.success('Setting deleted successfully');
+          loadSettings();
+        } catch (error: any) {
+          console.error('Error deleting setting:', error);
+          message.error('Failed to delete setting');
+        }
+      },
+    });
   };
 
-  const renderBusinessSettings = () => (
-    <Card title={<><SettingOutlined /> Business Profile</>}>
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item
-            label="Company Name"
-            name="company_name"
-            rules={[{ required: true, message: 'Company name is required' }]}
-          >
-            <Input placeholder="Enter company name" />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Business Email"
-            name="company_email"
-            rules={[
-              { required: true, message: 'Business email is required' },
-              { type: 'email', message: 'Please enter a valid email' }
-            ]}
-          >
-            <Input placeholder="Enter business email" />
-          </Form.Item>
-        </Col>
-      </Row>
-      
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item
-            label="Business Phone"
-            name="company_phone"
-            rules={[{ required: true, message: 'Business phone is required' }]}
-          >
-            <Input placeholder="Enter business phone" />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Default Currency"
-            name="default_currency"
-            rules={[{ required: true, message: 'Currency is required' }]}
-          >
-            <Select placeholder="Select currency">
-              <Option value="AUD">AUD - Australian Dollar</Option>
-              <Option value="USD">USD - US Dollar</Option>
-              <Option value="EUR">EUR - Euro</Option>
-              <Option value="GBP">GBP - British Pound</Option>
-            </Select>
-          </Form.Item>
-        </Col>
-      </Row>
-      
-      <Form.Item
-        label="Business Timezone"
-        name="business_timezone"
-        rules={[{ required: true, message: 'Timezone is required' }]}
-      >
-        <Select placeholder="Select timezone">
-          <Option value="Australia/Sydney">Australia/Sydney</Option>
-          <Option value="Australia/Melbourne">Australia/Melbourne</Option>
-          <Option value="Australia/Brisbane">Australia/Brisbane</Option>
-          <Option value="Australia/Adelaide">Australia/Adelaide</Option>
-          <Option value="Australia/Perth">Australia/Perth</Option>
-        </Select>
-      </Form.Item>
-    </Card>
-  );
+  const getCategories = () => {
+    const categories = new Set(settings.map(s => s.category || 'general'));
+    return Array.from(categories).sort();
+  };
 
-  const renderPricingSettings = () => (
-    <Card title={<><DollarOutlined /> Pricing & Payments</>}>
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item
-            label="Global Service Base Price"
-            name="global_service_base_price"
-            rules={[{ required: true, message: 'Base price is required' }]}
-            extra="Default price for all services (can be overridden per service)"
-          >
-            <InputNumber
-              min={0}
-              precision={2}
-              style={{ width: '100%' }}
-              formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={(value) => parseFloat(value!.replace(/\$\s?|(,*)/g, '') || '0') as any}
+  const getCategoryIcon = (category: string) => {
+    const icons = {
+      general: '⚙️',
+      business: '🏢',
+      pricing: '💰',
+      booking: '📅',
+      operations: '🚀',
+      communication: '📱',
+      integration: '🔗',
+      features: '🧪',
+    };
+    return icons[category] || '📋';
+  };
+
+  const columns = [
+    {
+      title: 'Key',
+      dataIndex: 'key',
+      key: 'key',
+      width: 250,
+      render: (key: string, record: SystemSetting) => (
+        <div>
+          <Text code style={{ fontSize: '12px' }}>{key}</Text>
+          {record.description && (
+            <div>
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                {record.description}
+              </Text>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: 'Value',
+      dataIndex: 'value',
+      key: 'value',
+      width: 200,
+      render: (_: any, record: SystemSetting) => renderValueDisplay(record),
+    },
+    {
+      title: 'Type',
+      dataIndex: 'data_type',
+      key: 'data_type',
+      width: 100,
+      render: (type: string) => (
+        <Tag color="blue">{type || 'string'}</Tag>
+      ),
+    },
+    {
+      title: 'Category',
+      dataIndex: 'category',
+      key: 'category',
+      width: 120,
+      render: (category: string) => (
+        <Tag color="green">
+          {getCategoryIcon(category || 'general')} {category || 'general'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Updated',
+      dataIndex: 'updated_at',
+      key: 'updated_at',
+      width: 120,
+      render: (date: string) => (
+        <Tooltip title={dayjs(date).format('YYYY-MM-DD HH:mm:ss')}>
+          <Text>{dayjs(date).fromNow()}</Text>
+        </Tooltip>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 120,
+      render: (_: any, record: SystemSetting) => (
+        <Space>
+          <Tooltip title="Edit Setting">
+            <Button
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => handleEdit(record)}
             />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Late Cancellation Fee"
-            name="late_cancellation_fee"
-            rules={[{ required: true, message: 'Cancellation fee is required' }]}
-            extra="Fee charged for cancellations within the minimum notice period"
-          >
-            <InputNumber
-              min={0}
-              precision={2}
-              style={{ width: '100%' }}
-              formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              parser={(value) => parseFloat(value!.replace(/\$\s?|(,*)/g, '') || '0') as any}
+          </Tooltip>
+          <Tooltip title="Delete Setting">
+            <Button
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
             />
-          </Form.Item>
-        </Col>
-      </Row>
-      
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item
-            label="Platform Commission Rate"
-            name="platform_commission_rate"
-            rules={[{ required: true, message: 'Commission rate is required' }]}
-            extra="Percentage taken by platform from each booking"
-          >
-            <InputNumber
-              min={0}
-              max={1}
-              precision={3}
-              style={{ width: '100%' }}
-              formatter={(value) => `${((value || 0) * 100).toFixed(1)}%`}
-              parser={(value) => (parseFloat(value!.replace('%', '') || '0') / 100) as any}
-            />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Payment Processing Fee"
-            name="payment_processing_fee"
-            rules={[{ required: true, message: 'Processing fee is required' }]}
-            extra="Stripe processing fee percentage"
-          >
-            <InputNumber
-              min={0}
-              max={1}
-              precision={3}
-              style={{ width: '100%' }}
-              formatter={(value) => `${((value || 0) * 100).toFixed(1)}%`}
-              parser={(value) => (parseFloat(value!.replace('%', '') || '0') / 100) as any}
-            />
-          </Form.Item>
-        </Col>
-      </Row>
-      
-      <Form.Item
-        label="GST Rate"
-        name="gst_rate"
-        rules={[{ required: true, message: 'GST rate is required' }]}
-        extra="Goods and Services Tax rate for Australian services"
-      >
-        <InputNumber
-          min={0}
-          max={1}
-          precision={2}
-          style={{ width: '50%' }}
-          formatter={(value) => `${((value || 0) * 100).toFixed(0)}%`}
-          parser={(value) => (parseFloat(value!.replace('%', '') || '0') / 100) as any}
-        />
-      </Form.Item>
-    </Card>
-  );
-
-  const renderBookingSettings = () => (
-    <Card title={<><CalendarOutlined /> Booking Management</>}>
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item
-            label="Maximum Advance Booking (Days)"
-            name="max_booking_advance_days"
-            rules={[{ required: true, message: 'Max advance days is required' }]}
-            extra="How far in advance customers can book services"
-          >
-            <InputNumber min={1} max={365} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Minimum Cancellation Notice (Hours)"
-            name="min_cancellation_hours"
-            rules={[{ required: true, message: 'Min cancellation hours is required' }]}
-            extra="Minimum hours before service for free cancellation"
-          >
-            <InputNumber min={1} max={168} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-      </Row>
-      
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item
-            label="Max Daily Bookings per Therapist"
-            name="max_daily_bookings_per_therapist"
-            rules={[{ required: true, message: 'Max daily bookings is required' }]}
-            extra="Maximum number of bookings a therapist can have per day"
-          >
-            <InputNumber min={1} max={20} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Therapist Response Timeout (Minutes)"
-            name="therapist_response_timeout_minutes"
-            rules={[{ required: true, message: 'Response timeout is required' }]}
-            extra="Minutes therapist has to respond to booking request"
-          >
-            <InputNumber min={5} max={480} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-      </Row>
-      
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item
-            label="Auto-confirm Bookings"
-            name="auto_confirm_bookings"
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            Automatically confirm bookings without therapist approval
-          </Text>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Require Payment Authorization"
-            name="require_payment_authorization"
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            Require payment authorization before confirming booking
-          </Text>
-        </Col>
-      </Row>
-    </Card>
-  );
-
-  const renderOperationsSettings = () => (
-    <Card title={<><CarOutlined /> Operations & Service Delivery</>}>
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item
-            label="Default Service Radius (km)"
-            name="default_service_radius_km"
-            rules={[{ required: true, message: 'Default service radius is required' }]}
-            extra="Default radius for new therapists"
-          >
-            <InputNumber min={1} max={100} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Maximum Service Radius (km)"
-            name="max_service_radius_km"
-            rules={[{ required: true, message: 'Max service radius is required' }]}
-            extra="Maximum allowed service radius"
-          >
-            <InputNumber min={1} max={200} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-      </Row>
-      
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item
-            label="Travel Time Buffer (Minutes)"
-            name="travel_time_buffer_minutes"
-            rules={[{ required: true, message: 'Travel time buffer is required' }]}
-            extra="Time allocated between bookings for travel"
-          >
-            <InputNumber min={5} max={60} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Setup & Cleanup Time (Minutes)"
-            name="setup_cleanup_time_minutes"
-            rules={[{ required: true, message: 'Setup/cleanup time is required' }]}
-            extra="Time allocated for service preparation and cleanup"
-          >
-            <InputNumber min={5} max={30} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-      </Row>
-      
-      <Form.Item
-        label="Minimum Booking Duration (Minutes)"
-        name="minimum_booking_duration"
-        rules={[{ required: true, message: 'Minimum duration is required' }]}
-        extra="Minimum service duration allowed for bookings"
-      >
-        <InputNumber min={15} max={120} style={{ width: '50%' }} />
-      </Form.Item>
-    </Card>
-  );
-
-  const renderCommunicationSettings = () => (
-    <Card title={<><PhoneOutlined /> Communications</>}>
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item
-            label="SMS Notifications"
-            name="sms_notifications_enabled"
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            Enable SMS notifications for booking updates
-          </Text>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Email Notifications"
-            name="email_notifications_enabled"
-            valuePropName="checked"
-          >
-            <Switch />
-          </Form.Item>
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            Enable email notifications for booking updates
-          </Text>
-        </Col>
-      </Row>
-      
-      <Row gutter={24}>
-        <Col span={12}>
-          <Form.Item
-            label="Booking Confirmation Timeout (Hours)"
-            name="booking_confirmation_timeout_hours"
-            rules={[{ required: true, message: 'Confirmation timeout is required' }]}
-            extra="Hours customer has to confirm booking"
-          >
-            <InputNumber min={1} max={72} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-        <Col span={12}>
-          <Form.Item
-            label="Reminder SMS Hours Before Service"
-            name="reminder_sms_hours_before"
-            rules={[{ required: true, message: 'Reminder timing is required' }]}
-            extra="Hours before service to send reminder SMS"
-          >
-            <InputNumber min={1} max={48} style={{ width: '100%' }} />
-          </Form.Item>
-        </Col>
-      </Row>
-    </Card>
-  );
-
-  const renderIntegrationSettings = () => (
-    <Card title={<><ApiOutlined /> Integration Settings</>} style={{ marginBottom: 16 }}>
-      <Alert
-        message="Sensitive Information"
-        description="API keys and tokens are sensitive data. Only enter production values if you're confident about the security of this environment."
-        type="warning"
-        showIcon
-        style={{ marginBottom: 24 }}
-      />
-      
-      {/* Stripe Payment Integration */}
-      <Card type="inner" title="💳 Stripe Payment Processing" style={{ marginBottom: 16 }}>
-        <Row gutter={24}>
-          <Col span={12}>
-            <Form.Item
-              label="Publishable Key"
-              name="stripe_publishable_key"
-              extra="Stripe public key (pk_live_... or pk_test_...)"
-            >
-              <Input placeholder="pk_live_..." />
-            </Form.Item>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label="Secret Key"
-              name="stripe_secret_key"
-              extra="Stripe secret key (sk_live_... or sk_test_...)"
-            >
-              <Input.Password placeholder="sk_live_..." />
-            </Form.Item>
-          </Col>
-        </Row>
-      </Card>
-
-      {/* Twilio SMS Integration */}
-      <Card type="inner" title="📱 Twilio SMS Service" style={{ marginBottom: 16 }}>
-        <Row gutter={24}>
-          <Col span={8}>
-            <Form.Item
-              label="Account SID"
-              name="twilio_account_sid"
-              extra="Twilio Account SID"
-            >
-              <Input.Password placeholder="AC..." />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item
-              label="Auth Token"
-              name="twilio_auth_token"
-              extra="Twilio Auth Token"
-            >
-              <Input.Password placeholder="Auth token..." />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item
-              label="Phone Number"
-              name="twilio_phone_number"
-              extra="Twilio SMS phone number"
-            >
-              <Input placeholder="+61XXXXXXXXX" />
-            </Form.Item>
-          </Col>
-        </Row>
-      </Card>
-
-      {/* Google Maps Integration */}
-      <Card type="inner" title="🗺️ Google Maps API" style={{ marginBottom: 16 }}>
-        <Form.Item
-          label="Google Maps API Key"
-          name="google_maps_api_key"
-          extra="Required for address geocoding and maps functionality"
-        >
-          <Input.Password placeholder="AIza..." />
-        </Form.Item>
-      </Card>
-
-      {/* EmailJS Integration */}
-      <Card type="inner" title="📧 EmailJS Service">
-        <Row gutter={24}>
-          <Col span={8}>
-            <Form.Item
-              label="Service ID"
-              name="emailjs_service_id"
-              extra="EmailJS Service ID"
-            >
-              <Input placeholder="service_..." />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item
-              label="Template ID"
-              name="emailjs_template_id"
-              extra="EmailJS Template ID"
-            >
-              <Input placeholder="template_..." />
-            </Form.Item>
-          </Col>
-          <Col span={8}>
-            <Form.Item
-              label="Public Key"
-              name="emailjs_public_key"
-              extra="EmailJS Public Key"
-            >
-              <Input placeholder="Public key..." />
-            </Form.Item>
-          </Col>
-        </Row>
-      </Card>
-    </Card>
-  );
-
-  const renderFeatureFlags = () => (
-    <Card title={<><ExperimentOutlined /> Feature Flags</>}>
-      <Paragraph>
-        Enable or disable platform features. Changes take effect immediately across the system.
-      </Paragraph>
-      
-      {/* Core Features */}
-      <Card type="inner" title="Core Platform Features" style={{ marginBottom: 16 }}>
-        <Row gutter={24}>
-          <Col span={12}>
-            <Form.Item
-              label="Guest Bookings"
-              name="enable_guest_bookings"
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              Allow customers to book without creating an account
-            </Text>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label="Online Payments"
-              name="enable_online_payments"
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              Process payments online via Stripe integration
-            </Text>
-          </Col>
-        </Row>
-        
-        <Row gutter={24}>
-          <Col span={12}>
-            <Form.Item
-              label="Weekend Bookings"
-              name="enable_weekend_bookings"
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              Allow services on Saturday and Sunday
-            </Text>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label="Therapist Selection"
-              name="enable_therapist_selection"
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              Allow customers to choose specific therapists
-            </Text>
-          </Col>
-        </Row>
-      </Card>
-
-      {/* Communication Features */}
-      <Card type="inner" title="Communication Features" style={{ marginBottom: 16 }}>
-        <Row gutter={24}>
-          <Col span={12}>
-            <Form.Item
-              label="SMS Confirmations"
-              name="enable_sms_confirmations"
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              Send SMS notifications for booking confirmations
-            </Text>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label="Address Geocoding"
-              name="enable_address_geocoding"
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              Verify and geocode customer addresses using Google Maps
-            </Text>
-          </Col>
-        </Row>
-      </Card>
-
-      {/* Advanced Features */}
-      <Card type="inner" title="Advanced Features">
-        <Row gutter={24}>
-          <Col span={12}>
-            <Form.Item
-              label="Therapist Ratings"
-              name="enable_therapist_ratings"
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              Allow customers to rate and review therapists
-            </Text>
-          </Col>
-          <Col span={12}>
-            <Form.Item
-              label="Automatic Matching"
-              name="enable_automatic_matching"
-              valuePropName="checked"
-            >
-              <Switch />
-            </Form.Item>
-            <Text type="secondary" style={{ fontSize: '12px' }}>
-              Automatically assign available therapists to bookings
-            </Text>
-          </Col>
-        </Row>
-      </Card>
-    </Card>
-  );
+          </Tooltip>
+        </Space>
+      ),
+    },
+  ];
 
   if (loading) {
     return (
@@ -880,148 +418,211 @@ const SystemSettings: React.FC = () => {
             <Col>
               <Title level={2}>System Settings</Title>
               <Paragraph>
-                Configure global system settings and business rules. These settings affect the entire platform.
+                Manage key-value system configuration. All values are stored as text in the database.
               </Paragraph>
             </Col>
             <Col>
               <Space>
                 <Button
-                  icon={<MonitorOutlined />}
-                  onClick={() => setAuditLogVisible(true)}
-                  title="View Settings History"
+                  type="primary"
+                  icon={<PlusOutlined />}
+                  onClick={handleAdd}
                 >
-                  Audit Log
+                  Add Setting
                 </Button>
                 <Button
-                  icon={<CloudDownloadOutlined />}
-                  onClick={() => setBackupRestoreVisible(true)}
-                  title="Backup & Restore Settings"
+                  icon={<ReloadOutlined />}
+                  onClick={loadSettings}
                 >
-                  Backup & Restore
+                  Refresh
                 </Button>
               </Space>
             </Col>
           </Row>
           
-          {/* Settings Statistics */}
-          <Card size="small" style={{ marginBottom: 16 }}>
-            <Row gutter={16}>
-              <Col span={6}>
-                <Statistic 
-                  title="Total Settings" 
-                  value={settingsStats.total} 
+          {/* Statistics */}
+          <Row gutter={16} style={{ marginBottom: 16 }}>
+            <Col span={6}>
+              <Card size="small">
+                <Statistic
+                  title="Total Settings"
+                  value={settings.length}
                   prefix={<SettingOutlined />}
                 />
-              </Col>
-              <Col span={6}>
-                <Statistic 
-                  title="Last Updated" 
-                  value={settingsStats.lastUpdated ? dayjs(settingsStats.lastUpdated).fromNow() : 'Never'} 
-                  prefix={<HistoryOutlined />}
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card size="small">
+                <Statistic
+                  title="Categories"
+                  value={getCategories().length}
                 />
-              </Col>
-              <Col span={6}>
-                <Statistic 
-                  title="Business Settings" 
-                  value={settingsStats.categoryCounts.business || 0}
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card size="small">
+                <Statistic
+                  title="Last Updated"
+                  value={settings.length > 0 
+                    ? dayjs(settings.reduce((latest, s) => s.updated_at > latest ? s.updated_at : latest, '')).fromNow()
+                    : 'Never'
+                  }
                 />
-              </Col>
-              <Col span={6}>
-                <Statistic 
-                  title="Integration Settings" 
-                  value={settingsStats.categoryCounts.integration || 0}
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card size="small">
+                <Input.Search
+                  placeholder="Search settings..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  allowClear
                 />
-              </Col>
-            </Row>
-          </Card>
-          
-          {settings.length === 0 && (
-            <Alert
-              message="No Settings Found"
-              description="Initialize default system settings to get started."
-              type="warning"
-              action={
-                <Button size="small" onClick={initializeDefaultSettings}>
-                  Initialize Default Settings
-                </Button>
-              }
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-          )}
+              </Card>
+            </Col>
+          </Row>
+
+          <Alert
+            message="Database Structure"
+            description="Settings are stored with key, value (always text), updated_at from your existing structure. New metadata fields (category, data_type, description) improve the admin interface but don't affect how your booking platform reads settings."
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+          />
         </div>
 
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleSave}
-          size="large"
-        >
+        <Card>
           <Tabs activeKey={activeTab} onChange={setActiveTab}>
-            <TabPane tab={<><SettingOutlined /> Business</>} key="business">
-              {renderBusinessSettings()}
-            </TabPane>
-            
-            <TabPane tab={<><DollarOutlined /> Pricing</>} key="pricing">
-              {renderPricingSettings()}
-            </TabPane>
-            
-            <TabPane tab={<><CalendarOutlined /> Bookings</>} key="bookings">
-              {renderBookingSettings()}
-            </TabPane>
-            
-            <TabPane tab={<><CarOutlined /> Operations</>} key="operations">
-              {renderOperationsSettings()}
-            </TabPane>
-            
-            <TabPane tab={<><PhoneOutlined /> Communications</>} key="communications">
-              {renderCommunicationSettings()}
-            </TabPane>
-            
-            <TabPane tab={<><ApiOutlined /> Integrations</>} key="integrations">
-              {renderIntegrationSettings()}
-            </TabPane>
-            
-            <TabPane tab={<><ExperimentOutlined /> Features</>} key="features">
-              {renderFeatureFlags()}
-            </TabPane>
+            <TabPane tab="All Settings" key="all" />
+            {getCategories().map(category => (
+              <TabPane 
+                tab={`${getCategoryIcon(category)} ${category}`} 
+                key={category} 
+              />
+            ))}
           </Tabs>
 
-          <Card style={{ marginTop: 24 }}>
-            <div style={{ textAlign: 'center' }}>
-              <Space size="large">
-                <Button
-                  size="large"
-                  icon={<ReloadOutlined />}
-                  onClick={loadSettings}
+          <Table
+            columns={columns}
+            dataSource={filteredSettings}
+            rowKey="id"
+            pagination={{
+              pageSize: 20,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} settings`,
+            }}
+            scroll={{ x: 1000 }}
+          />
+        </Card>
+
+        {/* Edit/Add Modal */}
+        <Modal
+          title={editModal.isNew ? 'Add New Setting' : 'Edit Setting'}
+          open={editModal.visible}
+          onCancel={() => setEditModal({ visible: false })}
+          footer={null}
+          width={600}
+        >
+          <Form
+            form={form}
+            layout="vertical"
+            onFinish={handleSave}
+          >
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="Setting Key"
+                  name="key"
+                  rules={[{ required: true, message: 'Key is required' }]}
                 >
-                  Reset Changes
+                  <Input 
+                    placeholder="e.g., max_booking_advance_days"
+                    disabled={!editModal.isNew}
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Data Type"
+                  name="data_type"
+                  rules={[{ required: true, message: 'Data type is required' }]}
+                >
+                  <Select>
+                    <Option value="string">String</Option>
+                    <Option value="integer">Integer</Option>
+                    <Option value="decimal">Decimal</Option>
+                    <Option value="boolean">Boolean</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Form.Item
+              label="Value"
+              name="value"
+              rules={[{ required: true, message: 'Value is required' }]}
+              extra="This will be stored as text in the database regardless of data type"
+            >
+              <Input placeholder="Enter the setting value" />
+            </Form.Item>
+
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  label="Category"
+                  name="category"
+                >
+                  <Select>
+                    <Option value="general">General</Option>
+                    <Option value="business">Business</Option>
+                    <Option value="pricing">Pricing</Option>
+                    <Option value="booking">Booking</Option>
+                    <Option value="operations">Operations</Option>
+                    <Option value="communication">Communication</Option>
+                    <Option value="integration">Integration</Option>
+                    <Option value="features">Features</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  label="Sensitive Data"
+                  name="is_sensitive"
+                  valuePropName="checked"
+                >
+                  <Switch />
+                </Form.Item>
+              </Col>
+            </Row>
+
+            <Form.Item
+              label="Description"
+              name="description"
+            >
+              <TextArea 
+                rows={3} 
+                placeholder="Optional description of what this setting controls"
+              />
+            </Form.Item>
+
+            <div style={{ textAlign: 'right' }}>
+              <Space>
+                <Button onClick={() => setEditModal({ visible: false })}>
+                  Cancel
                 </Button>
-                <Button
-                  type="primary"
-                  size="large"
-                  htmlType="submit"
-                  icon={<SaveOutlined />}
+                <Button 
+                  type="primary" 
+                  htmlType="submit" 
                   loading={saving}
+                  icon={<SaveOutlined />}
                 >
-                  Save Settings
+                  {editModal.isNew ? 'Create' : 'Update'} Setting
                 </Button>
               </Space>
             </div>
-          </Card>
-        </Form>
-        
-        {/* Advanced Management Components */}
-        <SettingsAuditLog
-          visible={auditLogVisible}
-          onClose={() => setAuditLogVisible(false)}
-        />
-        
-        <SettingsBackupRestore
-          visible={backupRestoreVisible}
-          onClose={() => setBackupRestoreVisible(false)}
-          onSettingsUpdated={loadSettings}
-        />
+          </Form>
+        </Modal>
       </div>
     </RoleGuard>
   );
