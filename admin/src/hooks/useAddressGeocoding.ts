@@ -10,6 +10,7 @@ import geocodingService, { type GeocodeResult, type GeocodeResponse } from '../s
 interface UseAddressGeocodingOptions {
   onGeocodeSuccess?: (result: GeocodeResult) => void;
   onGeocodeError?: (error: string) => void;
+  onAddressChange?: (address: string) => void; // Called when address input changes
   autoGeocode?: boolean; // Whether to geocode automatically on address change
   debounceMs?: number; // Debounce time for automatic geocoding
 }
@@ -40,6 +41,7 @@ export const useAddressGeocoding = (
   const {
     onGeocodeSuccess,
     onGeocodeError,
+    onAddressChange,
     autoGeocode = true,
     debounceMs = 1000
   } = options;
@@ -143,6 +145,11 @@ export const useAddressGeocoding = (
           setGeocodeResult(result);
           setAddressVerified(true);
           setGeocodeError(null);
+          
+          // Notify about the address change to update form field
+          if (onAddressChange) {
+            onAddressChange(result.formatted_address);
+          }
           
           if (onGeocodeSuccess) {
             onGeocodeSuccess(result);

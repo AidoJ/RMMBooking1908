@@ -248,6 +248,9 @@ class GeocodingService {
           return;
         }
 
+        // Update the input field with the formatted address
+        inputElement.value = place.formatted_address;
+
         const result: GeocodeResult = {
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng(),

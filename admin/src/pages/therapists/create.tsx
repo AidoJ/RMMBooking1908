@@ -75,6 +75,12 @@ const TherapistCreate: React.FC = () => {
         longitude: result.lng,
         address_verified: true
       });
+    },
+    onAddressChange: (address) => {
+      // Update the form field with the full formatted address
+      form.setFieldsValue({
+        home_address: address
+      });
     }
   });
 
