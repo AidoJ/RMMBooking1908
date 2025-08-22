@@ -815,6 +815,16 @@ console.log('Globals:', {
     field.insertAdjacentElement('afterend', errorDiv);
   }
   
+  // Map payment method values to database values
+  function mapPaymentMethod(value) {
+    const mapping = {
+      'credit_card': 'card',
+      'invoice': 'invoice', 
+      'bank_transfer': 'bank_transfer'
+    };
+    return mapping[value] || 'card';
+  }
+  
   // Collect quote form data
   function collectQuoteFormData() {
     const serviceSelect = document.getElementById('service');
@@ -846,8 +856,8 @@ console.log('Globals:', {
       corporate_contact_email: document.getElementById('quoteEmail').value,
       corporate_contact_phone: document.getElementById('quotePhone').value,
       
-      // Payment and logistics
-      payment_method: document.getElementById('quotePaymentMethod').value,
+      // Payment and logistics - map to database values
+      payment_method: mapPaymentMethod(document.getElementById('quotePaymentMethod').value),
       po_number: document.getElementById('quotePONumber').value,
       urgency: document.getElementById('quoteUrgency').value,
       setup_requirements: document.getElementById('quoteSetupRequirements').value,
