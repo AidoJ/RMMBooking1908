@@ -114,25 +114,40 @@ const CustomerList: React.FC = () => {
 
       if (customersError) throw customersError;
 
-      // Get booking statistics for each customer
+      console.log('Raw customers data:', customersData);
+      console.log('Number of customers found:', customersData?.length || 0);
+
+      // Get booking statistics for each customer (removed status filter to get all bookings)
       const { data: bookingStats, error: bookingError } = await supabaseClient
         .from('bookings')
         .select(`
           customer_id,
           created_at,
-          total_price
-        `)
-        .eq('status', 'confirmed');
+          price,
+          status
+        `);
 
       if (bookingError) throw bookingError;
+      
+      console.log('Booking stats data:', bookingStats);
+      console.log('Number of bookings found:', bookingStats?.length || 0);
 
       // Process customers with booking data
       const customersWithStats = customersData?.map(customer => {
         const customerBookings = bookingStats?.filter(booking => booking.customer_id === customer.id) || [];
-        const totalSpent = customerBookings.reduce((sum, booking) => sum + (parseFloat(booking.total_price) || 0), 0);
+        // Only count confirmed/completed bookings for spending
+        const confirmedBookings = customerBookings.filter(b => b.status === 'confirmed' || b.status === 'completed');
+        const totalSpent = confirmedBookings.reduce((sum, booking) => sum + (parseFloat(booking.price) || 0), 0);
         const latestBooking = customerBookings.length > 0 
           ? dayjs(Math.max(...customerBookings.map(b => new Date(b.created_at).getTime()))).format('YYYY-MM-DD')
           : undefined;
+
+        console.log(`Customer ${customer.first_name} ${customer.last_name}:`, {
+          totalBookings: customerBookings.length,
+          confirmedBookings: confirmedBookings.length,
+          totalSpent,
+          latestBooking
+        });
 
         return {
           ...customer,
@@ -142,12 +157,15 @@ const CustomerList: React.FC = () => {
         };
       }) || [];
 
+      console.log('Processed customers with stats:', customersWithStats);
+
       setCustomers(customersWithStats);
       calculateStats(customersWithStats);
 
     } catch (error: any) {
       console.error('Error loading customers:', error);
-      message.error('Failed to load customers');
+      console.error('Error details:', error.message, error.code, error.details);
+      message.error(`Failed to load customers: ${error.message}`);
     } finally {
       setLoading(false);
     }

@@ -126,7 +126,7 @@ const CustomerShow: React.FC = () => {
           booking_time,
           duration,
           status,
-          total_price,
+          price,
           customer_rating,
           customer_feedback,
           created_at,
@@ -147,7 +147,7 @@ const CustomerShow: React.FC = () => {
         booking_time: booking.booking_time,
         duration: booking.duration,
         status: booking.status,
-        total_price: booking.total_price,
+        total_price: booking.price,
         customer_rating: booking.customer_rating,
         customer_feedback: booking.customer_feedback,
         created_at: booking.created_at
