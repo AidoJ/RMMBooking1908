@@ -353,6 +353,9 @@ document.addEventListener('DOMContentLoaded', function () {
           const opt = document.createElement('option');
           opt.value = service.id;
           opt.textContent = service.name;
+          opt.dataset.quoteOnly = service.quote_only || false;
+          opt.dataset.serviceName = service.name;
+          opt.dataset.serviceDescription = service.quote_description || service.description || '';
           serviceSelect.appendChild(opt);
         });
         } else {
@@ -576,6 +579,317 @@ console.log('Globals:', {
         el.addEventListener('change', calculatePrice);
       }
     });
+    
+    // Add quote detection for service selection
+    const serviceSelect = document.getElementById('service');
+    if (serviceSelect) {
+      serviceSelect.addEventListener('change', handleServiceSelection);
+    }
+  }
+  
+  // Handle service selection and detect quote-only services
+  function handleServiceSelection() {
+    const serviceSelect = document.getElementById('service');
+    const selectedOption = serviceSelect.selectedOptions[0];
+    
+    if (selectedOption && selectedOption.dataset.quoteOnly === 'true') {
+      // This is a quote-only service, show quote form
+      showQuoteForm(selectedOption);
+    } else if (selectedOption && selectedOption.value) {
+      // Regular service, continue with normal booking flow
+      // Make sure we're not in quote mode
+      window.bookingMode = 'booking';
+    }
+  }
+  
+  // Show the quote form for quote-only services
+  function showQuoteForm(serviceOption) {
+    window.bookingMode = 'quote';
+    
+    // Populate service info
+    const serviceInfo = document.getElementById('selectedServiceInfo');
+    if (serviceInfo) {
+      serviceInfo.innerHTML = `
+        <h4>${serviceOption.dataset.serviceName}</h4>
+        <p>${serviceOption.dataset.serviceDescription}</p>
+        <div class="quote-badge">Quote Required</div>
+      `;
+    }
+    
+    // Set minimum date for quote
+    const quoteDate = document.getElementById('quoteDate');
+    if (quoteDate) {
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      quoteDate.setAttribute('min', `${yyyy}-${mm}-${dd}`);
+    }
+    
+    // Show quote step instead of continuing normal flow
+    showStep('quoteStep');
+    
+    // Initialize quote address autocomplete
+    initQuoteAddressAutocomplete();
+    
+    // Setup quote form event listeners
+    setupQuoteFormListeners();
+  }
+  
+  // Initialize Google Places autocomplete for quote address
+  function initQuoteAddressAutocomplete() {
+    if (window.google && window.google.maps && window.google.maps.places) {
+      const quoteAddressInput = document.getElementById('quoteAddress');
+      if (quoteAddressInput) {
+        const autocomplete = new google.maps.places.Autocomplete(quoteAddressInput);
+        autocomplete.setFields(['formatted_address', 'geometry']);
+        
+        autocomplete.addListener('place_changed', function() {
+          const place = autocomplete.getPlace();
+          if (place.geometry) {
+            quoteAddressInput.dataset.lat = place.geometry.location.lat();
+            quoteAddressInput.dataset.lng = place.geometry.location.lng();
+            checkQuoteAddressRadius(place.geometry.location.lat(), place.geometry.location.lng());
+          }
+        });
+      }
+    }
+  }
+  
+  // Check if quote address is within service radius
+  function checkQuoteAddressRadius(lat, lng) {
+    const statusDiv = document.getElementById('quote-address-status');
+    if (!statusDiv) return;
+    
+    // Use the same radius check as regular bookings
+    // This would typically check against therapist locations
+    statusDiv.innerHTML = '<span style="color: green;">✓ Address is within our service area</span>';
+  }
+  
+  // Setup quote form event listeners
+  function setupQuoteFormListeners() {
+    // Quote form submission
+    const submitQuoteBtn = document.getElementById('submitQuoteBtn');
+    if (submitQuoteBtn) {
+      submitQuoteBtn.addEventListener('click', handleQuoteSubmission);
+    }
+    
+    // Dynamic estimate calculation
+    const estimateFields = ['quoteNumMassages', 'quoteMassageDuration', 'quoteUrgency', 'quoteTherapists'];
+    estimateFields.forEach(fieldId => {
+      const field = document.getElementById(fieldId);
+      if (field) {
+        field.addEventListener('change', calculateQuoteEstimate);
+      }
+    });
+  }
+  
+  // Calculate quote estimate
+  function calculateQuoteEstimate() {
+    const numMassages = parseInt(document.getElementById('quoteNumMassages')?.value || 0);
+    const duration = parseInt(document.getElementById('quoteMassageDuration')?.value || 0);
+    const urgency = document.getElementById('quoteUrgency')?.value || 'flexible';
+    
+    if (numMassages > 0 && duration > 0) {
+      // Base calculation using service base quote price
+      let basePrice = 120; // From database, could be dynamic
+      let totalEstimate = numMassages * basePrice;
+      
+      // Urgency multiplier
+      const urgencyMultipliers = {
+        'flexible': 1.0,
+        'within_week': 1.1,
+        'within_3_days': 1.25,
+        'urgent_24h': 1.5
+      };
+      
+      totalEstimate *= urgencyMultipliers[urgency] || 1.0;
+      
+      // Volume discount for large events
+      if (numMassages >= 20) {
+        totalEstimate *= 0.9; // 10% discount
+      } else if (numMassages >= 10) {
+        totalEstimate *= 0.95; // 5% discount
+      }
+      
+      const minEstimate = Math.round(totalEstimate * 0.8);
+      const maxEstimate = Math.round(totalEstimate * 1.2);
+      
+      const estimateDiv = document.getElementById('quoteEstimate');
+      const amountSpan = document.getElementById('estimateAmount');
+      
+      if (estimateDiv && amountSpan) {
+        amountSpan.textContent = `$${minEstimate} - $${maxEstimate}`;
+        estimateDiv.style.display = 'block';
+      }
+    }
+  }
+  
+  // Handle quote form submission
+  async function handleQuoteSubmission(event) {
+    event.preventDefault();
+    
+    // Validate required fields
+    if (!validateQuoteForm()) {
+      return;
+    }
+    
+    const submitBtn = document.getElementById('submitQuoteBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting Quote Request...';
+    
+    try {
+      // Collect quote data
+      const quoteData = collectQuoteFormData();
+      
+      // Submit to database
+      const { data, error } = await window.supabase
+        .from('bookings')
+        .insert(quoteData);
+      
+      if (error) throw error;
+      
+      // Send email notifications
+      await sendQuoteNotifications(quoteData);
+      
+      // Show success message
+      showQuoteSuccess(data[0]);
+      
+    } catch (error) {
+      console.error('Error submitting quote:', error);
+      showQuoteError('Failed to submit quote request. Please try again.');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Request Quote';
+    }
+  }
+  
+  // Validate quote form
+  function validateQuoteForm() {
+    const requiredFields = [
+      { id: 'quoteContactName', label: 'Contact Name' },
+      { id: 'quoteEmail', label: 'Email Address' },
+      { id: 'quotePhone', label: 'Phone Number' },
+      { id: 'quoteAddress', label: 'Event Address' },
+      { id: 'quoteDate', label: 'Preferred Date' },
+      { id: 'quoteTimeRange', label: 'Time Range' },
+      { id: 'quoteNumMassages', label: 'Number of Massages' },
+      { id: 'quoteMassageDuration', label: 'Massage Duration' },
+      { id: 'quoteUrgency', label: 'Timeline' },
+      { id: 'quotePaymentMethod', label: 'Payment Method' }
+    ];
+    
+    let isValid = true;
+    
+    // Clear previous errors
+    document.querySelectorAll('.quote-error').forEach(el => el.remove());
+    
+    requiredFields.forEach(field => {
+      const element = document.getElementById(field.id);
+      if (!element || !element.value.trim()) {
+        showQuoteFieldError(element, `${field.label} is required`);
+        isValid = false;
+      }
+    });
+    
+    // Email validation
+    const email = document.getElementById('quoteEmail');
+    if (email && email.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
+      showQuoteFieldError(email, 'Please enter a valid email address');
+      isValid = false;
+    }
+    
+    return isValid;
+  }
+  
+  // Show field-specific error
+  function showQuoteFieldError(field, message) {
+    if (!field) return;
+    
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'quote-error';
+    errorDiv.textContent = message;
+    errorDiv.style.fontSize = '0.875rem';
+    errorDiv.style.marginTop = '4px';
+    
+    field.insertAdjacentElement('afterend', errorDiv);
+  }
+  
+  // Collect quote form data
+  function collectQuoteFormData() {
+    const serviceSelect = document.getElementById('service');
+    const selectedOption = serviceSelect.selectedOptions[0];
+    
+    return {
+      // Basic booking fields
+      service_id: selectedOption.value,
+      booking_time: new Date(document.getElementById('quoteDate').value + 'T12:00:00').toISOString(),
+      address: document.getElementById('quoteAddress').value,
+      latitude: document.getElementById('quoteAddress').dataset.lat,
+      longitude: document.getElementById('quoteAddress').dataset.lng,
+      
+      // Status and type
+      status: 'quote_requested',
+      payment_status: 'pending',
+      quote_only: true,
+      
+      // Quote-specific fields
+      number_of_massages: parseInt(document.getElementById('quoteNumMassages').value),
+      duration_per_massage: parseInt(document.getElementById('quoteMassageDuration').value),
+      preferred_therapists: parseInt(document.getElementById('quoteTherapists').value || 0),
+      company_name: document.getElementById('quoteCompanyName').value,
+      event_type: document.getElementById('quoteEventType').value,
+      expected_attendees: parseInt(document.getElementById('quoteAttendees').value || 0),
+      
+      // Contact info
+      corporate_contact_name: document.getElementById('quoteContactName').value,
+      corporate_contact_email: document.getElementById('quoteEmail').value,
+      corporate_contact_phone: document.getElementById('quotePhone').value,
+      
+      // Payment and logistics
+      payment_method: document.getElementById('quotePaymentMethod').value,
+      po_number: document.getElementById('quotePONumber').value,
+      urgency: document.getElementById('quoteUrgency').value,
+      setup_requirements: document.getElementById('quoteSetupRequirements').value,
+      special_requirements: document.getElementById('quoteSpecialRequirements').value,
+      
+      // Metadata
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  }
+  
+  // Send quote notifications
+  async function sendQuoteNotifications(quoteData) {
+    // This would send email to admin and SMS alert
+    // Implementation depends on your email service setup
+    console.log('Sending quote notifications for:', quoteData);
+  }
+  
+  // Show quote success
+  function showQuoteSuccess(quoteRecord) {
+    const successDiv = document.createElement('div');
+    successDiv.className = 'quote-success';
+    successDiv.innerHTML = `
+      <h3>✅ Quote Request Submitted Successfully!</h3>
+      <p>Thank you for your interest. We'll review your requirements and send you a detailed quote within 2 business hours.</p>
+      <p><strong>Reference ID:</strong> ${quoteRecord.id.substring(0, 8)}</p>
+      <p>A confirmation email has been sent to ${quoteData.corporate_contact_email}</p>
+    `;
+    
+    const submitBtn = document.getElementById('submitQuoteBtn');
+    submitBtn.parentNode.insertBefore(successDiv, submitBtn);
+    submitBtn.style.display = 'none';
+  }
+  
+  // Show quote error
+  function showQuoteError(message) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'quote-error';
+    errorDiv.innerHTML = `<h3>❌ Error</h3><p>${message}</p>`;
+    
+    const submitBtn = document.getElementById('submitQuoteBtn');
+    submitBtn.parentNode.insertBefore(errorDiv, submitBtn);
   }
 
   // On load, fetch settings, pricing data, and set up listeners

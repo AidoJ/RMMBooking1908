@@ -296,6 +296,180 @@
         </div>
       </div>
     </div>
+    
+    <!-- Quote Form Step -->
+    <div id="quoteStep" class="step">
+      <div class="step-header">
+        <h2>📋 Request Quote</h2>
+        <p class="step-description">Tell us about your corporate event and we'll provide a custom quote</p>
+      </div>
+      <div class="step-content">
+        <div class="quote-service-info">
+          <div id="selectedServiceInfo" class="service-highlight"></div>
+        </div>
+        
+        <!-- Contact Information -->
+        <div class="form-section">
+          <h3>Contact Information</h3>
+          <div class="form-group horizontal">
+            <div style="flex:1; margin-right:10px;">
+              <label for="quoteContactName">Contact Name *</label>
+              <input type="text" id="quoteContactName" placeholder="Full name" required />
+            </div>
+            <div style="flex:1;">
+              <label for="quoteCompanyName">Company Name</label>
+              <input type="text" id="quoteCompanyName" placeholder="Company name" />
+            </div>
+          </div>
+          <div class="form-group horizontal">
+            <div style="flex:1; margin-right:10px;">
+              <label for="quoteEmail">Email Address *</label>
+              <input type="email" id="quoteEmail" placeholder="Email address" required />
+            </div>
+            <div style="flex:1;">
+              <label for="quotePhone">Phone Number *</label>
+              <input type="tel" id="quotePhone" placeholder="Phone number" required />
+            </div>
+          </div>
+        </div>
+
+        <!-- Event Details -->
+        <div class="form-section">
+          <h3>Event Details</h3>
+          <div class="form-group">
+            <label for="quoteAddress">Event Address *</label>
+            <input id="quoteAddress" autocomplete="off" placeholder="Start typing the event address..." required />
+            <div id="quote-address-status" class="status-message"></div>
+          </div>
+          
+          <div class="form-group horizontal">
+            <div style="flex:1; margin-right:10px;">
+              <label for="quoteEventType">Event Type</label>
+              <select id="quoteEventType">
+                <option value="">Select event type...</option>
+                <option value="corporate_wellness">Corporate Wellness Day</option>
+                <option value="team_building">Team Building Event</option>
+                <option value="client_entertainment">Client Entertainment</option>
+                <option value="conference">Conference/Trade Show</option>
+                <option value="employee_appreciation">Employee Appreciation</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div style="flex:1;">
+              <label for="quoteAttendees">Expected Attendees</label>
+              <input type="number" id="quoteAttendees" placeholder="Number of people" min="1" />
+            </div>
+          </div>
+          
+          <div class="form-group horizontal">
+            <div style="flex:1; margin-right:10px;">
+              <label for="quoteDate">Preferred Date *</label>
+              <input type="date" id="quoteDate" required />
+            </div>
+            <div style="flex:1;">
+              <label for="quoteTimeRange">Preferred Time Range *</label>
+              <select id="quoteTimeRange" required>
+                <option value="">Select time range...</option>
+                <option value="morning">Morning (9:00 AM - 12:00 PM)</option>
+                <option value="afternoon">Afternoon (12:00 PM - 5:00 PM)</option>
+                <option value="evening">Evening (5:00 PM - 8:00 PM)</option>
+                <option value="all_day">All Day Event</option>
+                <option value="custom">Custom Time Range</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Massage Details -->
+        <div class="form-section">
+          <h3>Massage Requirements</h3>
+          <div class="form-group horizontal">
+            <div style="flex:1; margin-right:10px;">
+              <label for="quoteNumMassages">Number of Massages *</label>
+              <input type="number" id="quoteNumMassages" placeholder="How many massages needed" min="1" max="50" required />
+            </div>
+            <div style="flex:1;">
+              <label for="quoteMassageDuration">Duration per Massage *</label>
+              <select id="quoteMassageDuration" required>
+                <option value="">Select duration...</option>
+                <option value="30">30 minutes</option>
+                <option value="45">45 minutes</option>
+                <option value="60">60 minutes</option>
+                <option value="75">75 minutes</option>
+                <option value="90">90 minutes</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-group horizontal">
+            <div style="flex:1; margin-right:10px;">
+              <label for="quoteTherapists">Preferred Number of Therapists</label>
+              <select id="quoteTherapists">
+                <option value="">Let us recommend...</option>
+                <option value="1">1 Therapist</option>
+                <option value="2">2 Therapists</option>
+                <option value="3">3 Therapists</option>
+                <option value="4">4 Therapists</option>
+                <option value="5">5+ Therapists</option>
+              </select>
+              <small class="help-text">We'll recommend the optimal number based on your requirements</small>
+            </div>
+            <div style="flex:1;">
+              <label for="quoteUrgency">Timeline *</label>
+              <select id="quoteUrgency" required>
+                <option value="flexible">Flexible timing</option>
+                <option value="within_week">Within 1 week</option>
+                <option value="within_3_days">Within 3 days</option>
+                <option value="urgent_24h">Urgent (within 24 hours)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment & Setup -->
+        <div class="form-section">
+          <h3>Payment & Setup</h3>
+          <div class="form-group horizontal">
+            <div style="flex:1; margin-right:10px;">
+              <label for="quotePaymentMethod">Preferred Payment Method *</label>
+              <select id="quotePaymentMethod" required>
+                <option value="credit_card">Credit Card</option>
+                <option value="invoice">Invoice (Net 30)</option>
+                <option value="bank_transfer">Bank Transfer/EFT</option>
+              </select>
+            </div>
+            <div style="flex:1;">
+              <label for="quotePONumber">PO Number (if applicable)</label>
+              <input type="text" id="quotePONumber" placeholder="Purchase order number" />
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="quoteSetupRequirements">Setup Requirements</label>
+            <textarea id="quoteSetupRequirements" rows="3" placeholder="e.g., Changing rooms needed, tables provided, music preferences, privacy requirements..."></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="quoteSpecialRequirements">Special Requirements or Notes</label>
+            <textarea id="quoteSpecialRequirements" rows="3" placeholder="Any special requests, accessibility needs, dietary restrictions for therapists, etc."></textarea>
+          </div>
+        </div>
+
+        <!-- Estimate Display -->
+        <div id="quoteEstimate" class="quote-estimate" style="display:none;">
+          <h3>Estimated Investment</h3>
+          <div class="estimate-range">
+            <span id="estimateAmount">Calculating...</span>
+          </div>
+          <p class="estimate-note">This is a preliminary estimate. Your final quote will be provided within 2 business hours.</p>
+        </div>
+
+        <div class="button-group">
+          <button class="btn prev" data-prev="step2">Back to Service Selection</button>
+          <button class="btn next primary" id="submitQuoteBtn">Request Quote</button>
+        </div>
+      </div>
+    </div>
   </div>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
