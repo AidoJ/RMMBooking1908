@@ -80,6 +80,7 @@ interface Booking {
   payment_intent_id?: string;
   created_at: string;
   updated_at: string;
+  booking_type?: string;
   
   // Joined data
   customer_name?: string;

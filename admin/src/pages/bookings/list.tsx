@@ -90,6 +90,7 @@ interface BookingRecord {
   booker_name?: string;
   customer_email?: string;
   customer_phone?: string;
+  booking_type?: string;
   customers?: {
     id: string;
     first_name: string;
