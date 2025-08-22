@@ -650,7 +650,7 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                 {!isTherapist(userRole) && !isQuote(booking) && (
                   <Descriptions.Item label="Price">
                     <Text strong style={{ color: '#52c41a' }}>
-                      ${booking.price.toFixed(2)}
+                      ${booking.price ? booking.price.toFixed(2) : '0.00'}
                     </Text>
                   </Descriptions.Item>
                 )}
@@ -663,7 +663,7 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                 )}
                 {!isQuote(booking) && (
                   <Descriptions.Item label="Therapist Fee">
-                    <Text>${booking.therapist_fee.toFixed(2)}</Text>
+                    <Text>${booking.therapist_fee ? booking.therapist_fee.toFixed(2) : '0.00'}</Text>
                   </Descriptions.Item>
                 )}
                 {!isTherapist(userRole) && !isQuote(booking) && booking.payment_intent_id && (

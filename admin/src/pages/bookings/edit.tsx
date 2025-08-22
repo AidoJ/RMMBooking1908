@@ -655,7 +655,7 @@ export const BookingEdit: React.FC = () => {
                 </Descriptions.Item>
                 <Descriptions.Item label="Price">
                   <Text strong style={{ color: '#52c41a' }}>
-                    ${booking.price.toFixed(2)}
+                    ${booking.price ? booking.price.toFixed(2) : '0.00'}
                   </Text>
                 </Descriptions.Item>
               </Descriptions>

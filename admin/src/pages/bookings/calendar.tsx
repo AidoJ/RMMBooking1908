@@ -532,7 +532,7 @@ export const CalendarBookingManagement: React.FC = () => {
                       </div>
                       <div>
                         <DollarOutlined style={{ marginRight: 8 }} />
-                        ${selectedBooking.price.toFixed(2)}
+                        ${selectedBooking.price ? selectedBooking.price.toFixed(2) : '0.00'}
                       </div>
                     </Space>
                   </div>
