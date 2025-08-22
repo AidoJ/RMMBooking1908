@@ -561,9 +561,11 @@ const TherapistProfileManagement: React.FC = () => {
 
   const handleBack = () => {
     if (isAdmin && id) {
+      // Admin editing a specific therapist - go back to therapists list
       navigate('/therapists');
     } else {
-      navigate('/dashboard');
+      // Therapist editing their own profile - go back to dashboard (root)
+      navigate('/');
     }
   };
 
