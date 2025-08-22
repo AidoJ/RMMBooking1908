@@ -204,6 +204,27 @@ const SystemSettings: React.FC = () => {
       { key: 'email_notifications_enabled', value: 'true', category: 'communication', data_type: 'boolean', description: 'Enable email notifications' },
       { key: 'booking_confirmation_timeout_hours', value: '2', category: 'communication', data_type: 'integer', description: 'Customer confirmation deadline' },
       { key: 'reminder_sms_hours_before', value: '4', category: 'communication', data_type: 'integer', description: 'Hours before service for reminder' },
+      
+      // Integrations (Sensitive)
+      { key: 'stripe_publishable_key', value: '', category: 'integration', data_type: 'string', description: 'Stripe publishable key', is_sensitive: false },
+      { key: 'stripe_secret_key', value: '', category: 'integration', data_type: 'string', description: 'Stripe secret key', is_sensitive: true },
+      { key: 'twilio_account_sid', value: '', category: 'integration', data_type: 'string', description: 'Twilio Account SID', is_sensitive: true },
+      { key: 'twilio_auth_token', value: '', category: 'integration', data_type: 'string', description: 'Twilio Auth Token', is_sensitive: true },
+      { key: 'twilio_phone_number', value: '', category: 'integration', data_type: 'string', description: 'Twilio SMS phone number', is_sensitive: false },
+      { key: 'google_maps_api_key', value: '', category: 'integration', data_type: 'string', description: 'Google Maps API Key', is_sensitive: true },
+      { key: 'emailjs_service_id', value: '', category: 'integration', data_type: 'string', description: 'EmailJS Service ID', is_sensitive: false },
+      { key: 'emailjs_template_id', value: '', category: 'integration', data_type: 'string', description: 'EmailJS Template ID', is_sensitive: false },
+      { key: 'emailjs_public_key', value: '', category: 'integration', data_type: 'string', description: 'EmailJS Public Key', is_sensitive: false },
+      
+      // Feature Flags
+      { key: 'enable_guest_bookings', value: 'true', category: 'features', data_type: 'boolean', description: 'Allow guest bookings without registration' },
+      { key: 'enable_online_payments', value: 'true', category: 'features', data_type: 'boolean', description: 'Process payments online via Stripe' },
+      { key: 'enable_sms_confirmations', value: 'true', category: 'features', data_type: 'boolean', description: 'Send SMS booking confirmations' },
+      { key: 'enable_therapist_ratings', value: 'true', category: 'features', data_type: 'boolean', description: 'Customer rating system for therapists' },
+      { key: 'enable_automatic_matching', value: 'false', category: 'features', data_type: 'boolean', description: 'Auto-assign therapists to bookings' },
+      { key: 'enable_weekend_bookings', value: 'true', category: 'features', data_type: 'boolean', description: 'Allow weekend service bookings' },
+      { key: 'enable_therapist_selection', value: 'true', category: 'features', data_type: 'boolean', description: 'Allow customers to choose specific therapists' },
+      { key: 'enable_address_geocoding', value: 'true', category: 'features', data_type: 'boolean', description: 'Verify and geocode customer addresses' },
     ];
 
     try {
@@ -573,6 +594,244 @@ const SystemSettings: React.FC = () => {
     </Card>
   );
 
+  const renderIntegrationSettings = () => (
+    <Card title={<><ApiOutlined /> Integration Settings</>} style={{ marginBottom: 16 }}>
+      <Alert
+        message="Sensitive Information"
+        description="API keys and tokens are sensitive data. Only enter production values if you're confident about the security of this environment."
+        type="warning"
+        showIcon
+        style={{ marginBottom: 24 }}
+      />
+      
+      {/* Stripe Payment Integration */}
+      <Card type="inner" title="💳 Stripe Payment Processing" style={{ marginBottom: 16 }}>
+        <Row gutter={24}>
+          <Col span={12}>
+            <Form.Item
+              label="Publishable Key"
+              name="stripe_publishable_key"
+              extra="Stripe public key (pk_live_... or pk_test_...)"
+            >
+              <Input placeholder="pk_live_..." />
+            </Form.Item>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="Secret Key"
+              name="stripe_secret_key"
+              extra="Stripe secret key (sk_live_... or sk_test_...)"
+            >
+              <Input.Password placeholder="sk_live_..." />
+            </Form.Item>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Twilio SMS Integration */}
+      <Card type="inner" title="📱 Twilio SMS Service" style={{ marginBottom: 16 }}>
+        <Row gutter={24}>
+          <Col span={8}>
+            <Form.Item
+              label="Account SID"
+              name="twilio_account_sid"
+              extra="Twilio Account SID"
+            >
+              <Input.Password placeholder="AC..." />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item
+              label="Auth Token"
+              name="twilio_auth_token"
+              extra="Twilio Auth Token"
+            >
+              <Input.Password placeholder="Auth token..." />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item
+              label="Phone Number"
+              name="twilio_phone_number"
+              extra="Twilio SMS phone number"
+            >
+              <Input placeholder="+61XXXXXXXXX" />
+            </Form.Item>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Google Maps Integration */}
+      <Card type="inner" title="🗺️ Google Maps API" style={{ marginBottom: 16 }}>
+        <Form.Item
+          label="Google Maps API Key"
+          name="google_maps_api_key"
+          extra="Required for address geocoding and maps functionality"
+        >
+          <Input.Password placeholder="AIza..." />
+        </Form.Item>
+      </Card>
+
+      {/* EmailJS Integration */}
+      <Card type="inner" title="📧 EmailJS Service">
+        <Row gutter={24}>
+          <Col span={8}>
+            <Form.Item
+              label="Service ID"
+              name="emailjs_service_id"
+              extra="EmailJS Service ID"
+            >
+              <Input placeholder="service_..." />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item
+              label="Template ID"
+              name="emailjs_template_id"
+              extra="EmailJS Template ID"
+            >
+              <Input placeholder="template_..." />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item
+              label="Public Key"
+              name="emailjs_public_key"
+              extra="EmailJS Public Key"
+            >
+              <Input placeholder="Public key..." />
+            </Form.Item>
+          </Col>
+        </Row>
+      </Card>
+    </Card>
+  );
+
+  const renderFeatureFlags = () => (
+    <Card title={<><ExperimentOutlined /> Feature Flags</>}>
+      <Paragraph>
+        Enable or disable platform features. Changes take effect immediately across the system.
+      </Paragraph>
+      
+      {/* Core Features */}
+      <Card type="inner" title="Core Platform Features" style={{ marginBottom: 16 }}>
+        <Row gutter={24}>
+          <Col span={12}>
+            <Form.Item
+              label="Guest Bookings"
+              name="enable_guest_bookings"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Allow customers to book without creating an account
+            </Text>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="Online Payments"
+              name="enable_online_payments"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Process payments online via Stripe integration
+            </Text>
+          </Col>
+        </Row>
+        
+        <Row gutter={24}>
+          <Col span={12}>
+            <Form.Item
+              label="Weekend Bookings"
+              name="enable_weekend_bookings"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Allow services on Saturday and Sunday
+            </Text>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="Therapist Selection"
+              name="enable_therapist_selection"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Allow customers to choose specific therapists
+            </Text>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Communication Features */}
+      <Card type="inner" title="Communication Features" style={{ marginBottom: 16 }}>
+        <Row gutter={24}>
+          <Col span={12}>
+            <Form.Item
+              label="SMS Confirmations"
+              name="enable_sms_confirmations"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Send SMS notifications for booking confirmations
+            </Text>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="Address Geocoding"
+              name="enable_address_geocoding"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Verify and geocode customer addresses using Google Maps
+            </Text>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Advanced Features */}
+      <Card type="inner" title="Advanced Features">
+        <Row gutter={24}>
+          <Col span={12}>
+            <Form.Item
+              label="Therapist Ratings"
+              name="enable_therapist_ratings"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Allow customers to rate and review therapists
+            </Text>
+          </Col>
+          <Col span={12}>
+            <Form.Item
+              label="Automatic Matching"
+              name="enable_automatic_matching"
+              valuePropName="checked"
+            >
+              <Switch />
+            </Form.Item>
+            <Text type="secondary" style={{ fontSize: '12px' }}>
+              Automatically assign available therapists to bookings
+            </Text>
+          </Col>
+        </Row>
+      </Card>
+    </Card>
+  );
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: '50px' }}>
@@ -631,6 +890,14 @@ const SystemSettings: React.FC = () => {
             
             <TabPane tab={<><PhoneOutlined /> Communications</>} key="communications">
               {renderCommunicationSettings()}
+            </TabPane>
+            
+            <TabPane tab={<><ApiOutlined /> Integrations</>} key="integrations">
+              {renderIntegrationSettings()}
+            </TabPane>
+            
+            <TabPane tab={<><ExperimentOutlined /> Features</>} key="features">
+              {renderFeatureFlags()}
             </TabPane>
           </Tabs>
 
