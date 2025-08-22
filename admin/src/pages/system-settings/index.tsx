@@ -16,6 +16,7 @@ import {
   Alert,
   Row,
   Col,
+  Statistic,
 } from 'antd';
 import {
   SaveOutlined,
@@ -28,11 +29,20 @@ import {
   ApiOutlined,
   ExperimentOutlined,
   LockOutlined,
+  HistoryOutlined,
+  CloudDownloadOutlined,
+  MonitorOutlined,
 } from '@ant-design/icons';
 import { useGetIdentity } from '@refinedev/core';
 import { RoleGuard } from '../../components/RoleGuard';
 import { supabaseClient } from '../../utility';
 import { UserIdentity } from '../../utils/roleUtils';
+import { SettingsAuditLog } from '../../components/SettingsAuditLog';
+import { SettingsBackupRestore } from '../../components/SettingsBackupRestore';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+
+dayjs.extend(relativeTime);
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -62,6 +72,13 @@ const SystemSettings: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<SystemSetting[]>([]);
   const [activeTab, setActiveTab] = useState('business');
+  const [auditLogVisible, setAuditLogVisible] = useState(false);
+  const [backupRestoreVisible, setBackupRestoreVisible] = useState(false);
+  const [settingsStats, setSettingsStats] = useState({
+    total: 0,
+    lastUpdated: null as string | null,
+    categoryCounts: {} as { [key: string]: number },
+  });
 
   useEffect(() => {
     loadSettings();
@@ -78,6 +95,21 @@ const SystemSettings: React.FC = () => {
       if (error) throw error;
 
       setSettings(data || []);
+      
+      // Calculate statistics
+      const stats = {
+        total: data?.length || 0,
+        lastUpdated: data?.reduce((latest, setting) => {
+          const updated = setting.updated_at || '';
+          return updated > (latest || '') ? updated : latest;
+        }, null as string | null),
+        categoryCounts: data?.reduce((counts, setting) => {
+          const category = setting.category || 'general';
+          counts[category] = (counts[category] || 0) + 1;
+          return counts;
+        }, {} as { [key: string]: number }) || {},
+      };
+      setSettingsStats(stats);
       
       // Transform settings for form
       const formValues: SettingFormValues = {};
@@ -844,10 +876,64 @@ const SystemSettings: React.FC = () => {
     <RoleGuard requiredPermission="canAccessSystemSettings">
       <div style={{ padding: '24px' }}>
         <div style={{ marginBottom: '24px' }}>
-          <Title level={2}>System Settings</Title>
-          <Paragraph>
-            Configure global system settings and business rules. These settings affect the entire platform.
-          </Paragraph>
+          <Row justify="space-between" align="middle">
+            <Col>
+              <Title level={2}>System Settings</Title>
+              <Paragraph>
+                Configure global system settings and business rules. These settings affect the entire platform.
+              </Paragraph>
+            </Col>
+            <Col>
+              <Space>
+                <Button
+                  icon={<MonitorOutlined />}
+                  onClick={() => setAuditLogVisible(true)}
+                  title="View Settings History"
+                >
+                  Audit Log
+                </Button>
+                <Button
+                  icon={<CloudDownloadOutlined />}
+                  onClick={() => setBackupRestoreVisible(true)}
+                  title="Backup & Restore Settings"
+                >
+                  Backup & Restore
+                </Button>
+              </Space>
+            </Col>
+          </Row>
+          
+          {/* Settings Statistics */}
+          <Card size="small" style={{ marginBottom: 16 }}>
+            <Row gutter={16}>
+              <Col span={6}>
+                <Statistic 
+                  title="Total Settings" 
+                  value={settingsStats.total} 
+                  prefix={<SettingOutlined />}
+                />
+              </Col>
+              <Col span={6}>
+                <Statistic 
+                  title="Last Updated" 
+                  value={settingsStats.lastUpdated ? dayjs(settingsStats.lastUpdated).fromNow() : 'Never'} 
+                  prefix={<HistoryOutlined />}
+                />
+              </Col>
+              <Col span={6}>
+                <Statistic 
+                  title="Business Settings" 
+                  value={settingsStats.categoryCounts.business || 0}
+                />
+              </Col>
+              <Col span={6}>
+                <Statistic 
+                  title="Integration Settings" 
+                  value={settingsStats.categoryCounts.integration || 0}
+                />
+              </Col>
+            </Row>
+          </Card>
           
           {settings.length === 0 && (
             <Alert
@@ -924,6 +1010,18 @@ const SystemSettings: React.FC = () => {
             </div>
           </Card>
         </Form>
+        
+        {/* Advanced Management Components */}
+        <SettingsAuditLog
+          visible={auditLogVisible}
+          onClose={() => setAuditLogVisible(false)}
+        />
+        
+        <SettingsBackupRestore
+          visible={backupRestoreVisible}
+          onClose={() => setBackupRestoreVisible(false)}
+          onSettingsUpdated={loadSettings}
+        />
       </div>
     </RoleGuard>
   );
