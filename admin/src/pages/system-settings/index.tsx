@@ -191,7 +191,11 @@ const SystemSettings: React.FC = () => {
     const { value, data_type, key, is_sensitive } = setting;
     
     if (is_sensitive && value) {
-      return <Text type="secondary">••••••••</Text>;
+      return (
+        <Tooltip title="Sensitive data hidden for security. Click edit to modify.">
+          <Text type="secondary" style={{ fontSize: '16px' }}>••••••••</Text>
+        </Tooltip>
+      );
     }
     
     switch (data_type) {
@@ -334,10 +338,10 @@ const SystemSettings: React.FC = () => {
       width: 250,
       render: (key: string, record: SystemSetting) => (
         <div>
-          <Text code style={{ fontSize: '12px' }}>{key}</Text>
+          <Text code style={{ fontSize: '14px', fontWeight: 500 }}>{key}</Text>
           {record.description && (
-            <div>
-              <Text type="secondary" style={{ fontSize: '11px' }}>
+            <div style={{ marginTop: '4px' }}>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
                 {record.description}
               </Text>
             </div>
@@ -594,9 +598,17 @@ const SystemSettings: React.FC = () => {
               </Col>
               <Col span={12}>
                 <Form.Item
-                  label="Sensitive Data"
+                  label={
+                    <span>
+                      Sensitive Data{' '}
+                      <Tooltip title="When enabled, the value will be hidden with dots (••••) in the table view for security. Use this for API keys, passwords, tokens, etc.">
+                        <InfoCircleOutlined style={{ color: '#1890ff' }} />
+                      </Tooltip>
+                    </span>
+                  }
                   name="is_sensitive"
                   valuePropName="checked"
+                  extra="Hide value in table view for security (API keys, passwords, etc.)"
                 >
                   <Switch />
                 </Form.Item>
