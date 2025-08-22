@@ -340,7 +340,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Fetch services
     const { data: services, error: serviceError } = await window.supabase
       .from('services')
-      .select('id, name, service_base_price, is_active')
+      .select('id, name, service_base_price, is_active, quote_only')
       .eq('is_active', true)
       .order('sort_order');
     console.log('Supabase services:', services, 'Error:', serviceError);
