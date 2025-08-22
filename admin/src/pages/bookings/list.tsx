@@ -32,7 +32,9 @@ import {
   MailOutlined,
   PhoneOutlined,
   ClockCircleOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  SwapOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import { useGetIdentity, useNavigation } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
@@ -64,6 +66,7 @@ interface BookingFilters {
   therapist_id: string;
   service_id: string;
   date_range: [Dayjs, Dayjs] | null;
+  booking_type: string;
 }
 
 interface BookingRecord {
@@ -106,6 +109,7 @@ interface BookingRecord {
     name: string;
     description?: string;
     service_base_price: number;
+    quote_only?: boolean;
   };
 }
 
@@ -131,7 +135,8 @@ export const EnhancedBookingList = () => {
     payment_status: '',
     therapist_id: '',
     service_id: '',
-    date_range: null
+    date_range: null,
+    booking_type: ''
   });
   
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -160,7 +165,7 @@ export const EnhancedBookingList = () => {
           *,
           customers(id, first_name, last_name, email, phone),
           therapist_profiles!bookings_therapist_id_fkey(id, first_name, last_name, email, phone),
-          services(id, name, description, service_base_price)
+          services(id, name, description, service_base_price, quote_only)
         `, { count: 'exact' });
 
       // Role-based filtering: if therapist, only show their bookings
@@ -202,6 +207,16 @@ export const EnhancedBookingList = () => {
         query = query
           .gte('booking_time', filters.date_range[0].startOf('day').toISOString())
           .lte('booking_time', filters.date_range[1].endOf('day').toISOString());
+      }
+
+      if (filters.booking_type && filters.booking_type !== 'all') {
+        if (filters.booking_type === 'quotes') {
+          // Filter for quote-only services or booking_type = 'quote'
+          query = query.or('booking_type.eq.quote,services.quote_only.is.true');
+        } else if (filters.booking_type === 'bookings') {
+          // Filter for regular bookings
+          query = query.neq('booking_type', 'quote').is('services.quote_only', false);
+        }
       }
 
       // Apply pagination and ordering
@@ -462,6 +477,33 @@ export const EnhancedBookingList = () => {
     }
   };
 
+  // Quote detection helper
+  const isQuote = (record: BookingRecord) => {
+    return record.services?.quote_only || record.booking_type === 'quote';
+  };
+
+  // Quote conversion handler
+  const handleConvertToBooking = async (quoteId: string) => {
+    try {
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update({ 
+          booking_type: 'booking',
+          status: 'confirmed',
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', quoteId);
+
+      if (error) throw error;
+
+      message.success('Quote converted to confirmed booking');
+      fetchBookings();
+    } catch (error) {
+      console.error('Error converting quote to booking:', error);
+      message.error('Failed to convert quote to booking');
+    }
+  };
+
   // Payment status color helper
   const getPaymentStatusColor = (status: string) => {
     switch (status) {
@@ -542,7 +584,14 @@ export const EnhancedBookingList = () => {
         return aService.localeCompare(bService);
       },
       render: (_: any, record: BookingRecord) => (
-        <Text>{record.services?.name || 'Unknown Service'}</Text>
+        <Space direction="vertical" size="small">
+          <Text>{record.services?.name || 'Unknown Service'}</Text>
+          {isQuote(record) && (
+            <Tag color="purple" style={{ fontSize: '10px' }}>
+              QUOTE REQUEST
+            </Tag>
+          )}
+        </Space>
       ),
     },
     {
@@ -657,10 +706,35 @@ export const EnhancedBookingList = () => {
             />
           </Tooltip>
           
+          {/* Quote-specific actions */}
+          {isQuote(record) && (canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
+            <>
+              <Tooltip title="Generate Quote PDF">
+                <Button
+                  type="text"
+                  icon={<FileTextOutlined />}
+                  onClick={() => {
+                    // TODO: Implement quote PDF generation
+                    message.info('Quote PDF generation coming soon');
+                  }}
+                />
+              </Tooltip>
+              {record.status === 'requested' && (
+                <Tooltip title="Convert to Confirmed Booking">
+                  <Button
+                    type="text"
+                    icon={<SwapOutlined />}
+                    style={{ color: '#52c41a' }}
+                    onClick={() => handleConvertToBooking(record.id)}
+                  />
+                </Tooltip>
+              )}
+            </>
+          )}
           
           {/* Admin Edit Button */}
           {(canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
-            <Tooltip title="Edit Booking">
+            <Tooltip title={isQuote(record) ? "Edit Quote" : "Edit Booking"}>
               <Button
                 type="text"
                 icon={<EditOutlined />}
@@ -813,7 +887,7 @@ export const EnhancedBookingList = () => {
                 <Option value="declined">Declined</Option>
               </Select>
             </Col>
-            <Col span={4}>
+            <Col span={3}>
               <Select
                 placeholder="Payment Status"
                 value={filters.payment_status}
@@ -827,7 +901,20 @@ export const EnhancedBookingList = () => {
                 <Option value="refunded">Refunded</Option>
               </Select>
             </Col>
-            <Col span={6}>
+            <Col span={3}>
+              <Select
+                placeholder="Type"
+                value={filters.booking_type}
+                onChange={(value) => setFilters(prev => ({ ...prev, booking_type: value }))}
+                style={{ width: '100%' }}
+                allowClear
+              >
+                <Option value="all">All Types</Option>
+                <Option value="bookings">Bookings</Option>
+                <Option value="quotes">Quote Requests</Option>
+              </Select>
+            </Col>
+            <Col span={5}>
               <RangePicker
                 style={{ width: '100%' }}
                 onChange={(dates) => setFilters(prev => ({ 
@@ -848,7 +935,8 @@ export const EnhancedBookingList = () => {
                     payment_status: '',
                     therapist_id: '',
                     service_id: '',
-                    date_range: null
+                    date_range: null,
+                    booking_type: ''
                   });
                   setPagination(prev => ({ ...prev, current: 1 }));
                 }}>

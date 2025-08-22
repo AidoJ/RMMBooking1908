@@ -81,11 +81,11 @@ CREATE TABLE public.bookings (
   completed_at timestamp with time zone,
   completed_by text,
   CONSTRAINT bookings_pkey PRIMARY KEY (id),
+  CONSTRAINT bookings_alternate_therapist_id_fkey FOREIGN KEY (alternate_therapist_id) REFERENCES public.therapist_profiles(id),
+  CONSTRAINT bookings_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id),
   CONSTRAINT fk_responding_therapist FOREIGN KEY (responding_therapist_id) REFERENCES public.therapist_profiles(id),
   CONSTRAINT bookings_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id),
-  CONSTRAINT bookings_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id),
-  CONSTRAINT bookings_alternate_therapist_id_fkey FOREIGN KEY (alternate_therapist_id) REFERENCES public.therapist_profiles(id),
-  CONSTRAINT bookings_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id)
+  CONSTRAINT bookings_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id)
 );
 CREATE TABLE public.customers (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -157,13 +157,21 @@ CREATE TABLE public.services (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name character varying NOT NULL,
   description text,
-  image_url character varying,
-  image_alt character varying,
+  image_url text,
+  image_alt text,
   is_active boolean DEFAULT true,
   sort_order integer DEFAULT 0,
   service_base_price numeric DEFAULT 90.00,
   minimum_duration numeric DEFAULT '30'::numeric,
-  CONSTRAINT services_pkey PRIMARY KEY (id)
+  short_description text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  created_by uuid,
+  popularity_score integer DEFAULT 0,
+  total_bookings integer DEFAULT 0,
+  average_rating numeric DEFAULT 0.0,
+  CONSTRAINT services_pkey PRIMARY KEY (id),
+  CONSTRAINT services_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.admin_users(id)
 );
 CREATE TABLE public.system_settings (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

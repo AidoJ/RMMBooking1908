@@ -38,6 +38,8 @@ import {
   ReloadOutlined,
   PhoneOutlined as PhoneIcon,
   MessageOutlined,
+  SwapOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { useGetIdentity, useNavigation, useShow } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
@@ -104,6 +106,7 @@ interface Booking {
     description?: string;
     service_base_price: number;
     minimum_duration: number;
+    quote_only?: boolean;
   };
 }
 
@@ -131,6 +134,11 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
 
   const userRole = identity?.role;
 
+  // Quote detection helper
+  const isQuote = (booking: Booking) => {
+    return booking.service_details?.quote_only || booking.booking_type === 'quote';
+  };
+
   useEffect(() => {
     if (id) {
       fetchBookingDetails();
@@ -147,7 +155,7 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
           *,
           customers(first_name, last_name, email, phone, address, notes),
           therapist_profiles!bookings_therapist_id_fkey(first_name, last_name, email, phone, bio, profile_pic),
-          services(name, description, service_base_price, minimum_duration)
+          services(name, description, service_base_price, minimum_duration, quote_only)
         `)
         .eq('id', id)
         .single();
@@ -193,6 +201,45 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
       message.error('Failed to load booking details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Quote conversion handler
+  const handleConvertToBooking = async () => {
+    if (!booking) return;
+
+    setUpdating(true);
+    try {
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update({ 
+          booking_type: 'booking',
+          status: 'confirmed',
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', booking.id);
+
+      if (error) throw error;
+
+      // Add to status history
+      const { error: historyError } = await supabaseClient
+        .from('booking_status_history')
+        .insert({
+          booking_id: booking.id,
+          status: 'confirmed',
+          changed_by: identity?.id,
+          notes: 'Quote converted to confirmed booking',
+        });
+
+      if (historyError) throw historyError;
+
+      message.success('Quote converted to confirmed booking');
+      fetchBookingDetails();
+    } catch (error) {
+      console.error('Error converting quote to booking:', error);
+      message.error('Failed to convert quote to booking');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -528,9 +575,14 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
               >
                 Back to Bookings
               </Button>
-              <Title level={3} style={{ margin: 0 }}>
-                Booking #{booking.booking_id || booking.id.slice(0, 8)}
-              </Title>
+              <Space>
+                <Title level={3} style={{ margin: 0 }}>
+                  {isQuote(booking) ? 'Quote Request' : 'Booking'} #{booking.booking_id || booking.id.slice(0, 8)}
+                </Title>
+                {isQuote(booking) && (
+                  <Tag color="purple">QUOTE REQUEST</Tag>
+                )}
+              </Space>
             </Space>
           </Col>
           <Col span={12} style={{ textAlign: 'right' }}>
@@ -549,7 +601,7 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
         <Row gutter={[16, 16]}>
           {/* Main Booking Information */}
           <Col span={16}>
-            <Card title="Booking Details" style={{ marginBottom: 16 }}>
+            <Card title={isQuote(booking) ? "Quote Request Details" : "Booking Details"} style={{ marginBottom: 16 }}>
               <Row gutter={[16, 16]}>
                 <Col span={12}>
                   <Statistic
@@ -563,18 +615,20 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                     }
                   />
                 </Col>
-                <Col span={12}>
-                  <Statistic
-                    title="Payment Status"
-                    value={booking.payment_status.toUpperCase()}
-                    valueStyle={{ color: getPaymentStatusColor(booking.payment_status) }}
-                    prefix={
-                      <Tag color={getPaymentStatusColor(booking.payment_status)}>
-                        {booking.payment_status.toUpperCase()}
-                      </Tag>
-                    }
-                  />
-                </Col>
+                {!isQuote(booking) && (
+                  <Col span={12}>
+                    <Statistic
+                      title="Payment Status"
+                      value={booking.payment_status.toUpperCase()}
+                      valueStyle={{ color: getPaymentStatusColor(booking.payment_status) }}
+                      prefix={
+                        <Tag color={getPaymentStatusColor(booking.payment_status)}>
+                          {booking.payment_status.toUpperCase()}
+                        </Tag>
+                      }
+                    />
+                  </Col>
+                )}
               </Row>
 
               <Divider />
@@ -592,17 +646,26 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                 <Descriptions.Item label="Time">
                   <Text>{dayjs(booking.booking_time).format('HH:mm')}</Text>
                 </Descriptions.Item>
-                {!isTherapist(userRole) && (
+                {!isTherapist(userRole) && !isQuote(booking) && (
                   <Descriptions.Item label="Price">
                     <Text strong style={{ color: '#52c41a' }}>
                       ${booking.price.toFixed(2)}
                     </Text>
                   </Descriptions.Item>
                 )}
-                <Descriptions.Item label="Therapist Fee">
-                  <Text>${booking.therapist_fee.toFixed(2)}</Text>
-                </Descriptions.Item>
-                {!isTherapist(userRole) && booking.payment_intent_id && (
+                {isQuote(booking) && (
+                  <Descriptions.Item label="Estimated Price">
+                    <Text style={{ color: '#fa8c16' }}>
+                      ${booking.price ? booking.price.toFixed(2) : 'TBD'}
+                    </Text>
+                  </Descriptions.Item>
+                )}
+                {!isQuote(booking) && (
+                  <Descriptions.Item label="Therapist Fee">
+                    <Text>${booking.therapist_fee.toFixed(2)}</Text>
+                  </Descriptions.Item>
+                )}
+                {!isTherapist(userRole) && !isQuote(booking) && booking.payment_intent_id && (
                   <Descriptions.Item label="Payment Authorization" span={2}>
                     <Text code>{booking.payment_intent_id}</Text>
                     <Text type="secondary" style={{ marginLeft: 8 }}>
@@ -707,18 +770,53 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
           {/* Sidebar Actions and History */}
           <Col span={8}>
             {/* Quick Actions */}
-            <Card title="Quick Actions" style={{ marginBottom: 16 }}>
+            <Card title={isQuote(booking) ? "Quote Actions" : "Quick Actions"} style={{ marginBottom: 16 }}>
               <Space direction="vertical" style={{ width: '100%' }}>
-                <Button
-                  type="primary"
-                  icon={<CheckCircleOutlined />}
-                  onClick={() => handleStatusChange('confirmed')}
-                  disabled={booking.status === 'confirmed' || booking.status === 'completed'}
-                  loading={updating}
-                  block
-                >
-                  Confirm Booking
-                </Button>
+                
+                {/* Quote-specific actions */}
+                {isQuote(booking) && (
+                  <>
+                    <Button
+                      type="primary"
+                      icon={<FileTextOutlined />}
+                      onClick={() => {
+                        // TODO: Implement quote PDF generation
+                        message.info('Quote PDF generation coming soon');
+                      }}
+                      loading={updating}
+                      block
+                      style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+                    >
+                      Generate Quote PDF
+                    </Button>
+                    {booking.status === 'requested' && (
+                      <Button
+                        type="primary"
+                        icon={<SwapOutlined />}
+                        onClick={handleConvertToBooking}
+                        loading={updating}
+                        block
+                        style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                      >
+                        Convert to Confirmed Booking
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                {/* Regular booking actions */}
+                {!isQuote(booking) && (
+                  <Button
+                    type="primary"
+                    icon={<CheckCircleOutlined />}
+                    onClick={() => handleStatusChange('confirmed')}
+                    disabled={booking.status === 'confirmed' || booking.status === 'completed'}
+                    loading={updating}
+                    block
+                  >
+                    Confirm Booking
+                  </Button>
+                )}
                 
                 {/* Job Completion Buttons - Show for confirmed bookings */}
                 {booking.status === 'confirmed' && (
@@ -780,8 +878,8 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
               </Space>
             </Card>
 
-            {/* Payment Actions - Only show to non-therapists */}
-            {!isTherapist(userRole) && (
+            {/* Payment Actions - Only show to non-therapists and non-quotes */}
+            {!isTherapist(userRole) && !isQuote(booking) && (
               <Card title="Payment Status" style={{ marginBottom: 16 }}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Button
