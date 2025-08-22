@@ -138,19 +138,51 @@ const TherapistProfileManagement: React.FC = () => {
     }
   }, [id, identity]);
 
-  // Set up address autocomplete after form is rendered
+  // Enhanced autocomplete setup for tabbed interface
+  const [autocompleteSetup, setAutocompleteSetup] = useState(false);
+  const [currentActiveTab, setCurrentActiveTab] = useState('personal');
+
   useEffect(() => {
     const setupAddressField = async () => {
       const addressInput = document.getElementById('home_address') as HTMLInputElement;
-      if (addressInput) {
-        await setupAutocomplete(addressInput);
+      
+      if (addressInput && addressInput.offsetParent !== null && !autocompleteSetup) {
+        console.log('Setting up autocomplete for My Profile address field');
+        try {
+          await setupAutocomplete(addressInput);
+          setAutocompleteSetup(true);
+          console.log('Autocomplete setup completed for My Profile');
+        } catch (error) {
+          console.error('Error setting up autocomplete:', error);
+        }
       }
     };
 
-    // Delay to ensure form is rendered
-    const timer = setTimeout(setupAddressField, 1000);
-    return () => clearTimeout(timer);
-  }, [profile, setupAutocomplete]);
+    // Only try to set up autocomplete if we're on the location tab
+    if (currentActiveTab === 'location') {
+      const timer = setTimeout(setupAddressField, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [currentActiveTab, profile, setupAutocomplete, autocompleteSetup]);
+
+  // Handle tab changes to set up autocomplete when location tab becomes active
+  const handleTabChange = (activeKey: string) => {
+    setCurrentActiveTab(activeKey);
+    
+    // Reset autocomplete setup when switching away from location tab
+    if (activeKey !== 'location' && autocompleteSetup) {
+      setAutocompleteSetup(false);
+    }
+  };
+
+  // Initial check if location tab is active on page load
+  useEffect(() => {
+    // Check if we should start on the location tab (e.g., URL fragment)
+    const hash = window.location.hash;
+    if (hash === '#location') {
+      setCurrentActiveTab('location');
+    }
+  }, []);
 
   const loadProfileById = async (profileId: string) => {
     try {
@@ -663,7 +695,7 @@ const TherapistProfileManagement: React.FC = () => {
               address_verified: false
             }}
           >
-            <Tabs defaultActiveKey="personal">
+            <Tabs defaultActiveKey="personal" onChange={handleTabChange}>
               <TabPane tab="Personal Info" key="personal">
                 <Row gutter={24}>
                   <Col span={24} style={{ textAlign: 'center', marginBottom: 24 }}>
