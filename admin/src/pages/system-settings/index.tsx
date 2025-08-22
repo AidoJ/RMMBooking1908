@@ -155,14 +155,18 @@ const SystemSettings: React.FC = () => {
             precision={2}
             onChange={(val) => onChange(val?.toString() || '0')}
             style={{ width: '100%' }}
-            formatter={(val) => setting.key.includes('rate') && parseFloat(val || '0') < 1 
-              ? `${(parseFloat(val || '0') * 100).toFixed(1)}%` 
-              : val || '0'
-            }
-            parser={(val) => setting.key.includes('rate') && val?.includes('%')
-              ? (parseFloat(val.replace('%', '')) / 100).toString()
-              : val?.replace(/[^\d.]/g, '') || '0'
-            }
+            formatter={(val) => {
+              const numVal = parseFloat(val?.toString() || '0');
+              return setting.key.includes('rate') && numVal < 1 
+                ? `${(numVal * 100).toFixed(1)}%` 
+                : val?.toString() || '0';
+            }}
+            parser={(val) => {
+              if (setting.key.includes('rate') && val?.includes('%')) {
+                return parseFloat(val.replace('%', '')) / 100;
+              }
+              return parseFloat(val?.replace(/[^\d.]/g, '') || '0');
+            }}
           />
         );
       
@@ -249,10 +253,13 @@ const SystemSettings: React.FC = () => {
       };
 
       if (editModal.isNew) {
-        settingData.created_at = new Date().toISOString();
+        const settingDataWithCreatedAt = {
+          ...settingData,
+          created_at: new Date().toISOString(),
+        };
         const { error } = await supabaseClient
           .from('system_settings')
-          .insert(settingData);
+          .insert(settingDataWithCreatedAt);
         
         if (error) throw error;
         message.success('Setting created successfully');
@@ -306,7 +313,7 @@ const SystemSettings: React.FC = () => {
   };
 
   const getCategoryIcon = (category: string) => {
-    const icons = {
+    const icons: { [key: string]: string } = {
       general: '⚙️',
       business: '🏢',
       pricing: '💰',
