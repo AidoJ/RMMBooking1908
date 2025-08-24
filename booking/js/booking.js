@@ -698,11 +698,6 @@ console.log('Globals:', {
       const pricePerMinute = 160 / 60; // $2.67 per minute
       let totalEstimate = totalMinutes * pricePerMinute;
       
-      // Apply minimum $320 rule (equivalent to 120 minutes)
-      if (totalEstimate < 320) {
-        totalEstimate = 320;
-      }
-      
       // Volume discounts based on total minutes
       if (totalMinutes >= 240) {
         totalEstimate *= 0.9; // 10% discount for 240+ minutes
@@ -720,8 +715,19 @@ console.log('Globals:', {
       
       totalEstimate *= urgencyMultipliers[urgency] || 1.0;
       
-      const minEstimate = Math.round(totalEstimate * 0.8);
-      const maxEstimate = Math.round(totalEstimate * 1.2);
+      // Apply minimum $320 rule AFTER all discounts/multipliers
+      if (totalEstimate < 320) {
+        totalEstimate = 320;
+      }
+      
+      // Calculate range but ensure minimum is never below $320
+      let minEstimate = Math.round(totalEstimate * 0.8);
+      let maxEstimate = Math.round(totalEstimate * 1.2);
+      
+      // Ensure minimum estimate never goes below $320
+      if (minEstimate < 320) {
+        minEstimate = 320;
+      }
       
       const estimateDiv = document.getElementById('quoteEstimate');
       const amountSpan = document.getElementById('estimateAmount');
