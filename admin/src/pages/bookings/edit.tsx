@@ -141,6 +141,22 @@ interface Therapist {
   is_active: boolean;
 }
 
+interface TherapistAssignment {
+  id: string;
+  booking_id: string;
+  therapist_id: string;
+  status: 'assigned' | 'confirmed' | 'completed' | 'declined' | 'cancelled';
+  assigned_at: string;
+  confirmed_at?: string;
+  notes?: string;
+  therapist_details?: {
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone?: string;
+  };
+}
+
 interface Service {
   id: string;
   name: string;
@@ -163,6 +179,8 @@ export const BookingEdit: React.FC = () => {
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [therapistAssignments, setTherapistAssignments] = useState<TherapistAssignment[]>([]);
+  const [selectedTherapistIds, setSelectedTherapistIds] = useState<string[]>([]);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showTherapistModal, setShowTherapistModal] = useState(false);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
@@ -196,6 +214,7 @@ export const BookingEdit: React.FC = () => {
         fetchBookingDetails(),
         fetchTherapists(),
         fetchServices(),
+        fetchTherapistAssignments(),
       ]);
     } catch (error) {
       console.error('Error initializing data:', error);
@@ -339,6 +358,33 @@ export const BookingEdit: React.FC = () => {
     }
   };
 
+  const fetchTherapistAssignments = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('booking_therapist_assignments')
+        .select(`
+          *,
+          therapist_profiles!booking_therapist_assignments_therapist_id_fkey(
+            first_name, last_name, email, phone
+          )
+        `)
+        .eq('booking_id', id)
+        .order('assigned_at');
+
+      if (error) throw error;
+      
+      const assignments = (data || []).map((assignment: any) => ({
+        ...assignment,
+        therapist_details: assignment.therapist_profiles
+      }));
+      
+      setTherapistAssignments(assignments);
+      setSelectedTherapistIds(assignments.map((a: TherapistAssignment) => a.therapist_id));
+    } catch (error) {
+      console.error('Error fetching therapist assignments:', error);
+    }
+  };
+
   const handleServiceChange = (serviceId: string) => {
     const service = services.find(s => s.id === serviceId);
     setSelectedService(service || null);
@@ -348,6 +394,82 @@ export const BookingEdit: React.FC = () => {
         price: service.service_base_price,
         duration_minutes: service.minimum_duration,
       });
+    }
+  };
+
+  // Handle therapist assignments
+  const handleTherapistAssignmentChange = async (therapistIds: string[]) => {
+    if (!booking) return;
+    
+    setSelectedTherapistIds(therapistIds);
+    
+    // Find added and removed therapists
+    const currentIds = therapistAssignments.map(a => a.therapist_id);
+    const toAdd = therapistIds.filter(id => !currentIds.includes(id));
+    const toRemove = currentIds.filter(id => !therapistIds.includes(id));
+    
+    try {
+      // Add new assignments
+      if (toAdd.length > 0) {
+        const newAssignments = toAdd.map(therapistId => ({
+          booking_id: booking.id,
+          therapist_id: therapistId,
+          status: 'assigned' as const,
+          assigned_at: new Date().toISOString()
+        }));
+        
+        const { error: addError } = await supabaseClient
+          .from('booking_therapist_assignments')
+          .insert(newAssignments);
+          
+        if (addError) throw addError;
+      }
+      
+      // Remove assignments
+      if (toRemove.length > 0) {
+        const { error: removeError } = await supabaseClient
+          .from('booking_therapist_assignments')
+          .delete()
+          .eq('booking_id', booking.id)
+          .in('therapist_id', toRemove);
+          
+        if (removeError) throw removeError;
+      }
+      
+      // Refresh assignments
+      await fetchTherapistAssignments();
+      
+      if (toAdd.length > 0 || toRemove.length > 0) {
+        message.success('Therapist assignments updated successfully');
+      }
+      
+    } catch (error) {
+      console.error('Error updating therapist assignments:', error);
+      message.error('Failed to update therapist assignments');
+      // Revert the UI change
+      setSelectedTherapistIds(currentIds);
+    }
+  };
+
+  // Update assignment status
+  const updateAssignmentStatus = async (assignmentId: string, newStatus: string) => {
+    try {
+      const { error } = await supabaseClient
+        .from('booking_therapist_assignments')
+        .update({ 
+          status: newStatus,
+          confirmed_at: newStatus === 'confirmed' ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', assignmentId);
+
+      if (error) throw error;
+
+      message.success(`Assignment status updated to ${newStatus}`);
+      await fetchTherapistAssignments();
+    } catch (error) {
+      console.error('Error updating assignment status:', error);
+      message.error('Failed to update assignment status');
     }
   };
 
@@ -755,15 +877,36 @@ export const BookingEdit: React.FC = () => {
                     </Form.Item>
                   </Col>
                   <Col span={8}>
-                    <Form.Item name="therapist_id" label="Therapist" rules={[{ required: true }]}>
-                      <Select placeholder="Select therapist" showSearch optionFilterProp="children">
-                        {therapists.map(therapist => (
-                          <Option key={therapist.id} value={therapist.id}>
-                            {therapist.first_name} {therapist.last_name}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
+                    {booking && isQuote(booking) ? (
+                      <Form.Item label="Assigned Therapists" required>
+                        <Select
+                          mode="multiple"
+                          placeholder="Select therapists for this event"
+                          value={selectedTherapistIds}
+                          onChange={handleTherapistAssignmentChange}
+                          showSearch
+                          optionFilterProp="children"
+                          maxTagCount={2}
+                          maxTagTextLength={15}
+                        >
+                          {therapists.map(therapist => (
+                            <Option key={therapist.id} value={therapist.id}>
+                              {therapist.first_name} {therapist.last_name}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    ) : (
+                      <Form.Item name="therapist_id" label="Therapist" rules={[{ required: true }]}>
+                        <Select placeholder="Select therapist" showSearch optionFilterProp="children">
+                          {therapists.map(therapist => (
+                            <Option key={therapist.id} value={therapist.id}>
+                              {therapist.first_name} {therapist.last_name}
+                            </Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    )}
                   </Col>
                   <Col span={8}>
                     <Form.Item name="service_id" label="Service" rules={[{ required: true }]}>
@@ -933,6 +1076,54 @@ export const BookingEdit: React.FC = () => {
                           <Input.TextArea rows={2} placeholder="Special requirements..." />
                         </Form.Item>
                       </Col>
+                      
+                      {/* Therapist Assignment Status */}
+                      {therapistAssignments.length > 0 && (
+                        <Col span={24}>
+                          <Form.Item label="Therapist Assignment Status">
+                            <div style={{ border: '1px solid #d9d9d9', borderRadius: '6px', padding: '8px' }}>
+                              {therapistAssignments.map((assignment) => (
+                                <div key={assignment.id} style={{ 
+                                  display: 'flex', 
+                                  justifyContent: 'space-between', 
+                                  alignItems: 'center',
+                                  padding: '4px 0',
+                                  borderBottom: '1px solid #f0f0f0',
+                                  marginBottom: '4px'
+                                }}>
+                                  <span>
+                                    <strong>
+                                      {assignment.therapist_details?.first_name} {assignment.therapist_details?.last_name}
+                                    </strong>
+                                  </span>
+                                  <Space>
+                                    <Tag color={
+                                      assignment.status === 'confirmed' ? 'green' :
+                                      assignment.status === 'assigned' ? 'blue' :
+                                      assignment.status === 'declined' ? 'red' :
+                                      assignment.status === 'completed' ? 'purple' : 'default'
+                                    }>
+                                      {assignment.status.toUpperCase()}
+                                    </Tag>
+                                    <Select
+                                      size="small"
+                                      value={assignment.status}
+                                      onChange={(value) => updateAssignmentStatus(assignment.id, value)}
+                                      style={{ width: 100 }}
+                                    >
+                                      <Option value="assigned">Assigned</Option>
+                                      <Option value="confirmed">Confirmed</Option>
+                                      <Option value="declined">Declined</Option>
+                                      <Option value="completed">Completed</Option>
+                                      <Option value="cancelled">Cancelled</Option>
+                                    </Select>
+                                  </Space>
+                                </div>
+                              ))}
+                            </div>
+                          </Form.Item>
+                        </Col>
+                      )}
                     </>
                   )}
 
