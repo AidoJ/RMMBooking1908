@@ -43,6 +43,7 @@ import { useParams } from 'react-router';
 import { supabaseClient } from '../../utility';
 import { UserIdentity, canAccess, isTherapist, isAdmin } from '../../utils/roleUtils';
 import { RoleGuard } from '../../components/RoleGuard';
+import { calculateTherapistFee, FeeCalculationResult } from '../../services/feeCalculation';
 import dayjs, { Dayjs } from 'dayjs';
 import { EmailService, BookingData, TherapistData } from '../../utils/emailService';
 
@@ -149,6 +150,10 @@ interface TherapistAssignment {
   assigned_at: string;
   confirmed_at?: string;
   notes?: string;
+  therapist_fee?: number;
+  hourly_rate?: number;
+  hours_worked?: number;
+  rate_type?: 'daytime' | 'afterhours' | 'weekend';
   therapist_details?: {
     first_name: string;
     last_name: string;
@@ -436,8 +441,9 @@ export const BookingEdit: React.FC = () => {
         if (removeError) throw removeError;
       }
       
-      // Refresh assignments
+      // Refresh assignments and recalculate fees
       await fetchTherapistAssignments();
+      await recalculateTherapistFees();
       
       if (toAdd.length > 0 || toRemove.length > 0) {
         message.success('Therapist assignments updated successfully');
@@ -448,6 +454,56 @@ export const BookingEdit: React.FC = () => {
       message.error('Failed to update therapist assignments');
       // Revert the UI change
       setSelectedTherapistIds(currentIds);
+    }
+  };
+
+  // Calculate and update therapist fees
+  const recalculateTherapistFees = async () => {
+    if (!booking || therapistAssignments.length === 0) return;
+    
+    try {
+      const bookingDate = dayjs(booking.preferred_date).format('YYYY-MM-DD');
+      const bookingTime = booking.preferred_time || '09:00';
+      const totalDuration = booking.duration || 60;
+      const therapistCount = therapistAssignments.length;
+      
+      // Calculate fee for one therapist (they all get the same rate/duration)
+      const feeCalculation = await calculateTherapistFee(
+        bookingDate,
+        bookingTime,
+        totalDuration,
+        therapistCount
+      );
+      
+      // Update all assignments with the calculated fees
+      const updates = therapistAssignments.map(assignment => ({
+        id: assignment.id,
+        therapist_fee: feeCalculation.therapistFee,
+        hourly_rate: feeCalculation.hourlyRate,
+        hours_worked: feeCalculation.hoursWorked,
+        rate_type: feeCalculation.rateType
+      }));
+      
+      for (const update of updates) {
+        const { error } = await supabaseClient
+          .from('booking_therapist_assignments')
+          .update({
+            therapist_fee: update.therapist_fee,
+            hourly_rate: update.hourly_rate,
+            hours_worked: update.hours_worked,
+            rate_type: update.rate_type
+          })
+          .eq('id', update.id);
+          
+        if (error) throw error;
+      }
+      
+      // Refresh the assignments to show updated fees
+      await fetchTherapistAssignments();
+      
+    } catch (error) {
+      console.error('Error calculating therapist fees:', error);
+      message.warning('Fee calculation failed - please check system settings');
     }
   };
 
@@ -590,6 +646,17 @@ export const BookingEdit: React.FC = () => {
         .eq('id', booking.id);
 
       if (error) throw error;
+
+      // Recalculate therapist fees if date/time/duration changed
+      if (therapistAssignments.length > 0) {
+        const dateChanged = dayjs(booking.preferred_date).format('YYYY-MM-DD') !== dayjs(values.booking_time).format('YYYY-MM-DD');
+        const timeChanged = booking.preferred_time !== values.booking_time.format('HH:mm');
+        const durationChanged = booking.duration !== values.duration_minutes;
+        
+        if (dateChanged || timeChanged || durationChanged) {
+          await recalculateTherapistFees();
+        }
+      }
 
       // Detect changes and show notification modal
       const changes = detectChanges(originalBookingData, values);
@@ -1077,49 +1144,135 @@ export const BookingEdit: React.FC = () => {
                         </Form.Item>
                       </Col>
                       
-                      {/* Therapist Assignment Status */}
+                      {/* Therapist Assignments & Fees */}
                       {therapistAssignments.length > 0 && (
                         <Col span={24}>
-                          <Form.Item label="Therapist Assignment Status">
-                            <div style={{ border: '1px solid #d9d9d9', borderRadius: '6px', padding: '8px' }}>
+                          <Form.Item label="Therapist Assignments & Fees">
+                            <div style={{ border: '1px solid #d9d9d9', borderRadius: '6px', padding: '12px' }}>
+                              {/* Fee Summary Header */}
+                              {booking && (
+                                <div style={{ 
+                                  backgroundColor: '#f8f9fa', 
+                                  padding: '8px 12px', 
+                                  borderRadius: '4px', 
+                                  marginBottom: '12px',
+                                  fontSize: '13px'
+                                }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span>📅 {dayjs(booking.preferred_date).format('ddd, MMM D, YYYY')}</span>
+                                    <span>🕒 {booking.preferred_time || 'Not set'}</span>
+                                    <span>⏱️ {booking.duration || 0} min</span>
+                                  </div>
+                                  <div style={{ marginTop: '4px', fontSize: '12px', color: '#666' }}>
+                                    Rate: {therapistAssignments[0]?.rate_type === 'weekend' ? 'Weekend' : 
+                                           therapistAssignments[0]?.rate_type === 'afterhours' ? 'After Hours' : 'Business Hours'} 
+                                    ({therapistAssignments[0]?.hourly_rate ? `$${therapistAssignments[0].hourly_rate}/hour` : 'Calculating...'})
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Individual Therapist Assignments */}
                               {therapistAssignments.map((assignment) => (
                                 <div key={assignment.id} style={{ 
-                                  display: 'flex', 
-                                  justifyContent: 'space-between', 
-                                  alignItems: 'center',
-                                  padding: '4px 0',
-                                  borderBottom: '1px solid #f0f0f0',
-                                  marginBottom: '4px'
+                                  border: '1px solid #e8e8e8',
+                                  borderRadius: '6px',
+                                  padding: '12px',
+                                  marginBottom: '8px',
+                                  backgroundColor: '#fafafa'
                                 }}>
-                                  <span>
-                                    <strong>
-                                      {assignment.therapist_details?.first_name} {assignment.therapist_details?.last_name}
-                                    </strong>
-                                  </span>
-                                  <Space>
-                                    <Tag color={
-                                      assignment.status === 'confirmed' ? 'green' :
-                                      assignment.status === 'assigned' ? 'blue' :
-                                      assignment.status === 'declined' ? 'red' :
-                                      assignment.status === 'completed' ? 'purple' : 'default'
-                                    }>
-                                      {assignment.status.toUpperCase()}
-                                    </Tag>
-                                    <Select
-                                      size="small"
-                                      value={assignment.status}
-                                      onChange={(value) => updateAssignmentStatus(assignment.id, value)}
-                                      style={{ width: 100 }}
-                                    >
-                                      <Option value="assigned">Assigned</Option>
-                                      <Option value="confirmed">Confirmed</Option>
-                                      <Option value="declined">Declined</Option>
-                                      <Option value="completed">Completed</Option>
-                                      <Option value="cancelled">Cancelled</Option>
-                                    </Select>
-                                  </Space>
+                                  <div style={{ 
+                                    display: 'flex', 
+                                    justifyContent: 'space-between', 
+                                    alignItems: 'center',
+                                    marginBottom: '8px'
+                                  }}>
+                                    <span>
+                                      <strong>
+                                        {assignment.therapist_details?.first_name} {assignment.therapist_details?.last_name}
+                                      </strong>
+                                    </span>
+                                    <Space>
+                                      <Tag color={
+                                        assignment.status === 'confirmed' ? 'green' :
+                                        assignment.status === 'assigned' ? 'blue' :
+                                        assignment.status === 'declined' ? 'red' :
+                                        assignment.status === 'completed' ? 'purple' : 'default'
+                                      }>
+                                        {assignment.status.toUpperCase()}
+                                      </Tag>
+                                      <Select
+                                        size="small"
+                                        value={assignment.status}
+                                        onChange={(value) => updateAssignmentStatus(assignment.id, value)}
+                                        style={{ width: 100 }}
+                                      >
+                                        <Option value="assigned">Assigned</Option>
+                                        <Option value="confirmed">Confirmed</Option>
+                                        <Option value="declined">Declined</Option>
+                                        <Option value="completed">Completed</Option>
+                                        <Option value="cancelled">Cancelled</Option>
+                                      </Select>
+                                    </Space>
+                                  </div>
+                                  
+                                  {/* Fee Information */}
+                                  {assignment.therapist_fee && (
+                                    <div style={{ 
+                                      display: 'flex', 
+                                      justifyContent: 'space-between', 
+                                      fontSize: '13px',
+                                      backgroundColor: '#fff',
+                                      padding: '8px',
+                                      borderRadius: '4px',
+                                      border: '1px solid #e8e8e8'
+                                    }}>
+                                      <span>{assignment.hours_worked}h × ${assignment.hourly_rate}/hr</span>
+                                      <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
+                                        = ${assignment.therapist_fee?.toFixed(2)}
+                                      </span>
+                                    </div>
+                                  )}
                                 </div>
                               ))}
+                              
+                              {/* Total Fee Summary */}
+                              <div style={{ 
+                                marginTop: '12px', 
+                                padding: '12px', 
+                                backgroundColor: '#f0f8ff', 
+                                borderRadius: '6px', 
+                                border: '1px solid #1890ff' 
+                              }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                                  <span><strong>Total Therapist Fees:</strong></span>
+                                  <span style={{ fontWeight: 'bold', color: '#1890ff' }}>
+                                    ${therapistAssignments.reduce((sum, a) => sum + (a.therapist_fee || 0), 0).toFixed(2)}
+                                  </span>
+                                </div>
+                                {booking?.price && (
+                                  <>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginTop: '4px' }}>
+                                      <span><strong>Customer Payment:</strong></span>
+                                      <span>${booking.price.toFixed(2)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginTop: '4px' }}>
+                                      <span><strong>Business Margin:</strong></span>
+                                      <span style={{ color: booking.price - therapistAssignments.reduce((sum, a) => sum + (a.therapist_fee || 0), 0) >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                                        ${(booking.price - therapistAssignments.reduce((sum, a) => sum + (a.therapist_fee || 0), 0)).toFixed(2)}
+                                        {' '}({(((booking.price - therapistAssignments.reduce((sum, a) => sum + (a.therapist_fee || 0), 0)) / booking.price) * 100).toFixed(1)}%)
+                                      </span>
+                                    </div>
+                                  </>
+                                )}
+                                <div style={{ marginTop: '8px' }}>
+                                  <Button 
+                                    size="small" 
+                                    onClick={recalculateTherapistFees}
+                                    icon={<ReloadOutlined />}
+                                  >
+                                    Recalculate Fees
+                                  </Button>
+                                </div>
                             </div>
                           </Form.Item>
                         </Col>
