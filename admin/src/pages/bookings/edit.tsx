@@ -80,6 +80,20 @@ interface Booking {
   updated_at: string;
   booking_type?: string;
   
+  // Quote-specific fields
+  event_type?: string;
+  expected_attendees?: number;
+  number_of_massages?: number;
+  preferred_therapists?: number;
+  corporate_contact_name?: string;
+  corporate_contact_email?: string;
+  corporate_contact_phone?: string;
+  po_number?: string;
+  urgency?: string;
+  setup_requirements?: string;
+  special_requirements?: string;
+  duration_per_massage?: number;
+  
   // Joined data
   customer_name?: string;
   therapist_name?: string;
@@ -161,6 +175,7 @@ export const BookingEdit: React.FC = () => {
     sendEmail: true,
     sendSMS: false
   });
+  const [customDuration, setCustomDuration] = useState(false);
 
   const userRole = identity?.role;
 
@@ -234,6 +249,20 @@ export const BookingEdit: React.FC = () => {
         duration_minutes: bookingData.duration_minutes,
         room_number: bookingData.room_number,
         notes: bookingData.notes,
+        
+        // Quote-specific fields for change detection
+        event_type: bookingData.event_type,
+        expected_attendees: bookingData.expected_attendees,
+        number_of_massages: bookingData.number_of_massages,
+        preferred_therapists: bookingData.preferred_therapists,
+        corporate_contact_name: bookingData.corporate_contact_name,
+        corporate_contact_email: bookingData.corporate_contact_email,
+        corporate_contact_phone: bookingData.corporate_contact_phone,
+        po_number: bookingData.po_number,
+        urgency: bookingData.urgency,
+        setup_requirements: bookingData.setup_requirements,
+        special_requirements: bookingData.special_requirements,
+        duration_per_massage: bookingData.duration_per_massage,
       });
 
       // Set form values
@@ -256,6 +285,20 @@ export const BookingEdit: React.FC = () => {
         gender_preference: bookingData.gender_preference,
         parking: bookingData.parking,
         room_number: bookingData.room_number,
+        
+        // Quote-specific fields
+        event_type: bookingData.event_type,
+        expected_attendees: bookingData.expected_attendees,
+        number_of_massages: bookingData.number_of_massages,
+        preferred_therapists: bookingData.preferred_therapists,
+        corporate_contact_name: bookingData.corporate_contact_name,
+        corporate_contact_email: bookingData.corporate_contact_email,
+        corporate_contact_phone: bookingData.corporate_contact_phone,
+        po_number: bookingData.po_number,
+        urgency: bookingData.urgency,
+        setup_requirements: bookingData.setup_requirements,
+        special_requirements: bookingData.special_requirements,
+        duration_per_massage: bookingData.duration_per_massage,
       });
     } catch (error) {
       console.error('Error fetching booking details:', error);
@@ -397,6 +440,20 @@ export const BookingEdit: React.FC = () => {
         parking: values.parking,
         room_number: values.room_number,
         updated_at: new Date().toISOString(),
+        
+        // Quote-specific fields
+        event_type: values.event_type,
+        expected_attendees: values.expected_attendees,
+        number_of_massages: values.number_of_massages,
+        preferred_therapists: values.preferred_therapists,
+        corporate_contact_name: values.corporate_contact_name,
+        corporate_contact_email: values.corporate_contact_email,
+        corporate_contact_phone: values.corporate_contact_phone,
+        po_number: values.po_number,
+        urgency: values.urgency,
+        setup_requirements: values.setup_requirements,
+        special_requirements: values.special_requirements,
+        duration_per_massage: values.duration_per_massage,
       };
 
       // Only super admins can update pricing
@@ -674,65 +731,32 @@ export const BookingEdit: React.FC = () => {
                   payment_status: 'pending',
                 }}
               >
-                <Row gutter={[16, 16]}>
+                <Row gutter={[12, 8]}>
                   {/* Customer Details */}
                   <Col span={8}>
-                    <Form.Item
-                      name="customer_first_name"
-                      label="Customer First Name"
-                      rules={[{ required: true, message: 'Please enter first name' }]}
-                    >
+                    <Form.Item name="customer_first_name" label="First Name" rules={[{ required: true }]}>
                       <Input placeholder="First name" />
                     </Form.Item>
                   </Col>
-                  
                   <Col span={8}>
-                    <Form.Item
-                      name="customer_last_name"
-                      label="Customer Last Name"
-                      rules={[{ required: true, message: 'Please enter last name' }]}
-                    >
+                    <Form.Item name="customer_last_name" label="Last Name" rules={[{ required: true }]}>
                       <Input placeholder="Last name" />
                     </Form.Item>
                   </Col>
-                  
                   <Col span={8}>
-                    <Form.Item
-                      name="customer_email"
-                      label="Customer Email"
-                      rules={[
-                        { required: true, message: 'Please enter email' },
-                        { type: 'email', message: 'Please enter a valid email' }
-                      ]}
-                    >
+                    <Form.Item name="customer_email" label="Email" rules={[{ required: true, type: 'email' }]}>
                       <Input placeholder="customer@email.com" />
                     </Form.Item>
                   </Col>
                   
-                  <Col span={12}>
-                    <Form.Item
-                      name="customer_phone"
-                      label="Customer Phone"
-                    >
-                      <Input placeholder="Phone number (optional)" />
+                  <Col span={8}>
+                    <Form.Item name="customer_phone" label="Phone">
+                      <Input placeholder="Phone number" />
                     </Form.Item>
                   </Col>
-
-                  {/* Therapist Selection */}
-                  <Col span={12}>
-                    <Form.Item
-                      name="therapist_id"
-                      label="Therapist"
-                      rules={[{ required: true, message: 'Please select a therapist' }]}
-                    >
-                      <Select
-                        placeholder="Select therapist"
-                        showSearch
-                        optionFilterProp="children"
-                        filterOption={(input, option) =>
-                          (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
-                        }
-                      >
+                  <Col span={8}>
+                    <Form.Item name="therapist_id" label="Therapist" rules={[{ required: true }]}>
+                      <Select placeholder="Select therapist" showSearch optionFilterProp="children">
                         {therapists.map(therapist => (
                           <Option key={therapist.id} value={therapist.id}>
                             {therapist.first_name} {therapist.last_name}
@@ -741,23 +765,9 @@ export const BookingEdit: React.FC = () => {
                       </Select>
                     </Form.Item>
                   </Col>
-
-                  {/* Service Selection */}
-                  <Col span={12}>
-                    <Form.Item
-                      name="service_id"
-                      label="Service"
-                      rules={[{ required: true, message: 'Please select a service' }]}
-                    >
-                      <Select
-                        placeholder="Select service"
-                        onChange={handleServiceChange}
-                        showSearch
-                        optionFilterProp="children"
-                        filterOption={(input, option) =>
-                          (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
-                        }
-                      >
+                  <Col span={8}>
+                    <Form.Item name="service_id" label="Service" rules={[{ required: true }]}>
+                      <Select placeholder="Select service" onChange={handleServiceChange} showSearch>
                         {services.map(service => (
                           <Option key={service.id} value={service.id}>
                             {service.name} (${service.service_base_price})
@@ -767,30 +777,9 @@ export const BookingEdit: React.FC = () => {
                     </Form.Item>
                   </Col>
 
-                  {/* Duration */}
+                  {/* Date, Time and Duration */}
                   <Col span={12}>
-                    <Form.Item
-                      name="duration_minutes"
-                      label="Duration (minutes)"
-                      rules={[{ required: true, message: 'Please enter duration' }]}
-                    >
-                      <InputNumber
-                        min={15}
-                        max={240}
-                        step={15}
-                        style={{ width: '100%' }}
-                        placeholder="Duration in minutes"
-                      />
-                    </Form.Item>
-                  </Col>
-
-                  {/* Date and Time */}
-                  <Col span={12}>
-                    <Form.Item
-                      name="booking_time"
-                      label="Date & Time"
-                      rules={[{ required: true, message: 'Please select date and time' }]}
-                    >
+                    <Form.Item name="booking_time" label="Date & Time" rules={[{ required: true }]}>
                       <DatePicker
                         showTime={{ format: 'HH:mm' }}
                         format="YYYY-MM-DD HH:mm"
@@ -799,113 +788,164 @@ export const BookingEdit: React.FC = () => {
                       />
                     </Form.Item>
                   </Col>
-
-                  {/* Delivery Address */}
                   <Col span={12}>
-                    <Form.Item
-                      name="address"
-                      label="Delivery Address"
-                      rules={[{ required: true, message: 'Please enter delivery address' }]}
-                    >
-                      <Input placeholder="Massage delivery address" />
+                    <Form.Item name="duration_minutes" label="Duration (minutes)" rules={[{ required: true }]}>
+                      <InputNumber min={15} max={240} step={15} style={{ width: '100%' }} placeholder="Duration" />
                     </Form.Item>
                   </Col>
 
-                  {/* Business Name */}
+                  {/* Address and Business */}
                   <Col span={12}>
-                    <Form.Item
-                      name="business_name"
-                      label="Hotel/Business Name"
-                    >
-                      <Input placeholder="Hotel or business name (optional)" />
+                    <Form.Item name="address" label="Address" rules={[{ required: true }]}>
+                      <Input placeholder="Delivery address" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item name="business_name" label="Business Name">
+                      <Input placeholder="Hotel or business name" />
                     </Form.Item>
                   </Col>
 
-                  {/* Super Admin Only - Pricing */}
-                  {userRole === 'super_admin' && (
+                  {/* Quote-specific fields - show only for quotes */}
+                  {booking && isQuote(booking) && (
                     <>
-                      {/* Price */}
-                      <Col span={6}>
-                        <Form.Item
-                          name="price"
-                          label="Price (Super Admin Only)"
-                        >
-                          <InputNumber
-                            prefix="$"
-                            min={0}
-                            step={0.01}
-                            style={{ width: '100%' }}
-                            placeholder="0.00"
-                          />
+                      <Col span={24}><Divider style={{ margin: '12px 0' }}><Text strong>Quote Details</Text></Divider></Col>
+                      
+                      <Col span={8}>
+                        <Form.Item name="corporate_contact_name" label="Corporate Contact">
+                          <Input placeholder="Corporate contact name" />
                         </Form.Item>
                       </Col>
-
-                      {/* Therapist Fee */}
+                      <Col span={8}>
+                        <Form.Item name="corporate_contact_email" label="Corporate Email">
+                          <Input placeholder="corporate@company.com" />
+                        </Form.Item>
+                      </Col>
+                      <Col span={8}>
+                        <Form.Item name="corporate_contact_phone" label="Corporate Phone">
+                          <Input placeholder="Corporate phone" />
+                        </Form.Item>
+                      </Col>
+                      
                       <Col span={6}>
-                        <Form.Item
-                          name="therapist_fee"
-                          label="Therapist Fee (Super Admin Only)"
-                        >
-                          <InputNumber
-                            prefix="$"
-                            min={0}
-                            step={0.01}
-                            style={{ width: '100%' }}
-                            placeholder="0.00"
-                          />
+                        <Form.Item name="event_type" label="Event Type">
+                          <Select placeholder="Event type" allowClear>
+                            <Option value="corporate_wellness">Corporate Wellness</Option>
+                            <Option value="conference">Conference</Option>
+                            <Option value="team_building">Team Building</Option>
+                            <Option value="office_party">Office Party</Option>
+                            <Option value="product_launch">Product Launch</Option>
+                            <Option value="other">Other</Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                        <Form.Item name="expected_attendees" label="Attendees">
+                          <InputNumber min={1} max={500} placeholder="Expected attendees" style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                        <Form.Item name="number_of_massages" label="# Massages">
+                          <InputNumber min={1} max={200} placeholder="Number of massages" style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                        <Form.Item name="preferred_therapists" label="# Therapists">
+                          <InputNumber min={1} max={20} placeholder="Preferred therapists" style={{ width: '100%' }} />
+                        </Form.Item>
+                      </Col>
+                      
+                      <Col span={6}>
+                        <Form.Item name="duration_per_massage" label="Duration/Massage">
+                          <Select 
+                            placeholder="Select duration" 
+                            onChange={(value) => setCustomDuration(value === 'custom')}
+                            allowClear
+                          >
+                            <Option value={10}>10 minutes</Option>
+                            <Option value={15}>15 minutes</Option>
+                            <Option value={20}>20 minutes</Option>
+                            <Option value={25}>25 minutes</Option>
+                            <Option value={30}>30 minutes</Option>
+                            <Option value="custom">Custom...</Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      {customDuration && (
+                        <Col span={6}>
+                          <Form.Item name="duration_per_massage" label="Custom Duration">
+                            <InputNumber min={5} max={120} placeholder="Minutes" style={{ width: '100%' }} />
+                          </Form.Item>
+                        </Col>
+                      )}
+                      <Col span={6}>
+                        <Form.Item name="urgency" label="Timeline">
+                          <Select placeholder="Timeline" allowClear>
+                            <Option value="flexible">Flexible</Option>
+                            <Option value="within_week">Within a week</Option>
+                            <Option value="asap">ASAP</Option>
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col span={6}>
+                        <Form.Item name="po_number" label="PO Number">
+                          <Input placeholder="Purchase order number" />
+                        </Form.Item>
+                      </Col>
+                      
+                      <Col span={12}>
+                        <Form.Item name="setup_requirements" label="Setup Requirements">
+                          <Input.TextArea rows={2} placeholder="Setup requirements..." />
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item name="special_requirements" label="Special Requirements">
+                          <Input.TextArea rows={2} placeholder="Special requirements..." />
                         </Form.Item>
                       </Col>
                     </>
                   )}
 
-                  {/* Gender Preference */}
-                  <Col span={8}>
-                    <Form.Item
-                      name="gender_preference"
-                      label="Gender Preference"
-                    >
-                      <Select placeholder="Select preference" allowClear>
+                  {/* Additional Details */}
+                  <Col span={24}><Divider style={{ margin: '12px 0' }}><Text strong>Additional Details</Text></Divider></Col>
+                  
+                  <Col span={6}>
+                    <Form.Item name="gender_preference" label="Gender Preference">
+                      <Select placeholder="Preference" allowClear>
                         <Option value="male">Male</Option>
                         <Option value="female">Female</Option>
                         <Option value="no_preference">No Preference</Option>
                       </Select>
                     </Form.Item>
                   </Col>
-
-                  {/* Room Number */}
-                  <Col span={8}>
-                    <Form.Item
-                      name="room_number"
-                      label="Room Number"
-                    >
+                  <Col span={6}>
+                    <Form.Item name="room_number" label="Room Number">
                       <Input placeholder="Room number" />
                     </Form.Item>
                   </Col>
-
-                  {/* Parking */}
-                  <Col span={8}>
-                    <Form.Item
-                      name="parking"
-                      label="Parking"
-                    >
-                      <Select placeholder="Select parking option" allowClear>
+                  <Col span={6}>
+                    <Form.Item name="parking" label="Parking">
+                      <Select placeholder="Parking" allowClear>
                         <Option value="available">Available</Option>
                         <Option value="street">Street Parking</Option>
                         <Option value="none">No Parking</Option>
                       </Select>
                     </Form.Item>
                   </Col>
+                  
+                  {/* Super Admin Only - Pricing */}
+                  {userRole === 'super_admin' && (
+                    <Col span={6}>
+                      <Form.Item name="price" label="Price ($)">
+                        <InputNumber min={0} step={0.01} style={{ width: '100%' }} placeholder="0.00" />
+                      </Form.Item>
+                    </Col>
+                  )}
 
                   {/* Notes */}
                   <Col span={24}>
-                    <Form.Item
-                      name="notes"
-                      label="Notes"
-                    >
-                      <TextArea
-                        rows={4}
-                        placeholder="Additional notes about the booking..."
-                      />
+                    <Form.Item name="notes" label="Notes">
+                      <TextArea rows={3} placeholder="Additional notes..." />
                     </Form.Item>
                   </Col>
                 </Row>
