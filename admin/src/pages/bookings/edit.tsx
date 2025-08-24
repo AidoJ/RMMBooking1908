@@ -464,10 +464,20 @@ export const BookingEdit: React.FC = () => {
     try {
       const bookingDate = dayjs(booking.booking_time).format('YYYY-MM-DD');
       const bookingTime = dayjs(booking.booking_time).format('HH:mm');
-      const totalDuration = booking.duration_minutes || 60;
       const therapistCount = therapistAssignments.length;
       
-      // Calculate fee for one therapist (they all get the same rate/duration)
+      // For quotes: total duration = attendees × duration_per_massage
+      // For regular bookings: use duration_minutes
+      let totalDuration;
+      if (isQuote(booking)) {
+        const attendees = booking.expected_attendees || booking.number_of_massages || 1;
+        const durationPerMassage = booking.duration_per_massage || booking.duration_minutes || 30;
+        totalDuration = attendees * durationPerMassage;
+      } else {
+        totalDuration = booking.duration_minutes || 60;
+      }
+      
+      // Calculate fee for one therapist (total work divided by therapist count)
       const feeCalculation = await calculateTherapistFee(
         bookingDate,
         bookingTime,
@@ -921,28 +931,6 @@ export const BookingEdit: React.FC = () => {
                 }}
               >
                 <Row gutter={[12, 8]}>
-                  {/* Customer Details */}
-                  <Col span={8}>
-                    <Form.Item name="customer_first_name" label="First Name" rules={[{ required: true }]}>
-                      <Input placeholder="First name" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item name="customer_last_name" label="Last Name" rules={[{ required: true }]}>
-                      <Input placeholder="Last name" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item name="customer_email" label="Email" rules={[{ required: true, type: 'email' }]}>
-                      <Input placeholder="customer@email.com" />
-                    </Form.Item>
-                  </Col>
-                  
-                  <Col span={8}>
-                    <Form.Item name="customer_phone" label="Phone">
-                      <Input placeholder="Phone number" />
-                    </Form.Item>
-                  </Col>
                   <Col span={8}>
                     {booking && isQuote(booking) ? (
                       <Form.Item label="Assigned Therapists" required>
@@ -1144,6 +1132,23 @@ export const BookingEdit: React.FC = () => {
                         </Form.Item>
                       </Col>
                       
+                      {/* Price Field - Prominent Display for Super Admins */}
+                      {userRole === 'super_admin' && (
+                        <Col span={24}>
+                          <Card style={{ backgroundColor: '#f0f8ff', border: '2px solid #1890ff' }}>
+                            <Form.Item name="price" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>💰 Total Price ($)</span>}>
+                              <InputNumber 
+                                min={0} 
+                                step={0.01} 
+                                style={{ width: '200px', fontSize: '18px', fontWeight: 'bold' }} 
+                                placeholder="0.00"
+                                size="large"
+                              />
+                            </Form.Item>
+                          </Card>
+                        </Col>
+                      )}
+                      
                       {/* Therapist Assignments & Fees */}
                       {therapistAssignments.length > 0 && (
                         <Col span={24}>
@@ -1161,7 +1166,14 @@ export const BookingEdit: React.FC = () => {
                                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <span>📅 {dayjs(booking.booking_time).format('ddd, MMM D, YYYY')}</span>
                                     <span>🕒 {dayjs(booking.booking_time).format('HH:mm')}</span>
-                                    <span>⏱️ {booking.duration_minutes || 0} min</span>
+                                    <span>⏱️ {(() => {
+                                      if (isQuote(booking)) {
+                                        const attendees = booking.expected_attendees || booking.number_of_massages || 1;
+                                        const durationPerMassage = booking.duration_per_massage || booking.duration_minutes || 30;
+                                        return attendees * durationPerMassage;
+                                      }
+                                      return booking.duration_minutes || 0;
+                                    })()} min</span>
                                   </div>
                                   <div style={{ marginTop: '4px', fontSize: '12px', color: '#666' }}>
                                     Rate: {therapistAssignments[0]?.rate_type === 'weekend' ? 'Weekend' : 
@@ -1249,21 +1261,24 @@ export const BookingEdit: React.FC = () => {
                                     ${therapistAssignments.reduce((sum, a) => sum + (a.therapist_fee || 0), 0).toFixed(2)}
                                   </span>
                                 </div>
-                                {booking?.price && (
-                                  <>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginTop: '4px' }}>
-                                      <span><strong>Customer Payment:</strong></span>
-                                      <span>${booking.price.toFixed(2)}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginTop: '4px' }}>
-                                      <span><strong>Business Margin:</strong></span>
-                                      <span style={{ color: booking.price - therapistAssignments.reduce((sum, a) => sum + (a.therapist_fee || 0), 0) >= 0 ? '#52c41a' : '#ff4d4f' }}>
-                                        ${(booking.price - therapistAssignments.reduce((sum, a) => sum + (a.therapist_fee || 0), 0)).toFixed(2)}
-                                        {' '}({(((booking.price - therapistAssignments.reduce((sum, a) => sum + (a.therapist_fee || 0), 0)) / booking.price) * 100).toFixed(1)}%)
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginTop: '4px' }}>
+                                  <span><strong>Customer Payment:</strong></span>
+                                  <span>${(booking?.price || 0).toFixed(2)}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginTop: '4px' }}>
+                                  <span><strong>Business Margin:</strong></span>
+                                  {(() => {
+                                    const customerPayment = booking?.price || 0;
+                                    const totalFees = therapistAssignments.reduce((sum, a) => sum + (a.therapist_fee || 0), 0);
+                                    const margin = customerPayment - totalFees;
+                                    const marginPercent = customerPayment > 0 ? (margin / customerPayment) * 100 : 0;
+                                    return (
+                                      <span style={{ color: margin >= 0 ? '#52c41a' : '#ff4d4f' }}>
+                                        ${margin.toFixed(2)} ({marginPercent.toFixed(1)}%)
                                       </span>
-                                    </div>
-                                  </>
-                                )}
+                                    );
+                                  })()}
+                                </div>
                                 <div style={{ marginTop: '8px' }}>
                                   <Button 
                                     size="small" 
@@ -1283,39 +1298,6 @@ export const BookingEdit: React.FC = () => {
 
                   {/* Additional Details */}
                   <Col span={24}><Divider style={{ margin: '12px 0' }}><Text strong>Additional Details</Text></Divider></Col>
-                  
-                  <Col span={6}>
-                    <Form.Item name="gender_preference" label="Gender Preference">
-                      <Select placeholder="Preference" allowClear>
-                        <Option value="male">Male</Option>
-                        <Option value="female">Female</Option>
-                        <Option value="no_preference">No Preference</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                  <Col span={6}>
-                    <Form.Item name="room_number" label="Room Number">
-                      <Input placeholder="Room number" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={6}>
-                    <Form.Item name="parking" label="Parking">
-                      <Select placeholder="Parking" allowClear>
-                        <Option value="available">Available</Option>
-                        <Option value="street">Street Parking</Option>
-                        <Option value="none">No Parking</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                  
-                  {/* Super Admin Only - Pricing */}
-                  {userRole === 'super_admin' && (
-                    <Col span={6}>
-                      <Form.Item name="price" label="Price ($)">
-                        <InputNumber min={0} step={0.01} style={{ width: '100%' }} placeholder="0.00" />
-                      </Form.Item>
-                    </Col>
-                  )}
 
                   {/* Notes */}
                   <Col span={24}>
