@@ -462,9 +462,9 @@ export const BookingEdit: React.FC = () => {
     if (!booking || therapistAssignments.length === 0) return;
     
     try {
-      const bookingDate = dayjs(booking.preferred_date).format('YYYY-MM-DD');
-      const bookingTime = booking.preferred_time || '09:00';
-      const totalDuration = booking.duration || 60;
+      const bookingDate = dayjs(booking.booking_time).format('YYYY-MM-DD');
+      const bookingTime = dayjs(booking.booking_time).format('HH:mm');
+      const totalDuration = booking.duration_minutes || 60;
       const therapistCount = therapistAssignments.length;
       
       // Calculate fee for one therapist (they all get the same rate/duration)
@@ -649,9 +649,9 @@ export const BookingEdit: React.FC = () => {
 
       // Recalculate therapist fees if date/time/duration changed
       if (therapistAssignments.length > 0) {
-        const dateChanged = dayjs(booking.preferred_date).format('YYYY-MM-DD') !== dayjs(values.booking_time).format('YYYY-MM-DD');
-        const timeChanged = booking.preferred_time !== values.booking_time.format('HH:mm');
-        const durationChanged = booking.duration !== values.duration_minutes;
+        const dateChanged = dayjs(booking.booking_time).format('YYYY-MM-DD') !== dayjs(values.booking_time).format('YYYY-MM-DD');
+        const timeChanged = dayjs(booking.booking_time).format('HH:mm') !== values.booking_time.format('HH:mm');
+        const durationChanged = booking.duration_minutes !== values.duration_minutes;
         
         if (dateChanged || timeChanged || durationChanged) {
           await recalculateTherapistFees();
@@ -1159,9 +1159,9 @@ export const BookingEdit: React.FC = () => {
                                   fontSize: '13px'
                                 }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span>📅 {dayjs(booking.preferred_date).format('ddd, MMM D, YYYY')}</span>
-                                    <span>🕒 {booking.preferred_time || 'Not set'}</span>
-                                    <span>⏱️ {booking.duration || 0} min</span>
+                                    <span>📅 {dayjs(booking.booking_time).format('ddd, MMM D, YYYY')}</span>
+                                    <span>🕒 {dayjs(booking.booking_time).format('HH:mm')}</span>
+                                    <span>⏱️ {booking.duration_minutes || 0} min</span>
                                   </div>
                                   <div style={{ marginTop: '4px', fontSize: '12px', color: '#666' }}>
                                     Rate: {therapistAssignments[0]?.rate_type === 'weekend' ? 'Weekend' : 
@@ -1273,6 +1273,7 @@ export const BookingEdit: React.FC = () => {
                                     Recalculate Fees
                                   </Button>
                                 </div>
+                              </div>
                             </div>
                           </Form.Item>
                         </Col>
