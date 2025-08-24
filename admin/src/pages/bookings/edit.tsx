@@ -777,7 +777,7 @@ export const BookingEdit: React.FC = () => {
                     </Form.Item>
                   </Col>
 
-                  {/* Date, Time and Duration */}
+                  {/* Date and Time */}
                   <Col span={12}>
                     <Form.Item name="booking_time" label="Date & Time" rules={[{ required: true }]}>
                       <DatePicker
@@ -788,11 +788,21 @@ export const BookingEdit: React.FC = () => {
                       />
                     </Form.Item>
                   </Col>
-                  <Col span={12}>
-                    <Form.Item name="duration_minutes" label="Duration (minutes)" rules={[{ required: true }]}>
-                      <InputNumber min={15} max={240} step={15} style={{ width: '100%' }} placeholder="Duration" />
-                    </Form.Item>
-                  </Col>
+                  
+                  {/* Duration - different field based on booking type */}
+                  {booking && !isQuote(booking) ? (
+                    <Col span={12}>
+                      <Form.Item name="duration_minutes" label="Total Duration (minutes)" rules={[{ required: true }]}>
+                        <InputNumber min={15} max={240} step={15} style={{ width: '100%' }} placeholder="Total duration" />
+                      </Form.Item>
+                    </Col>
+                  ) : (
+                    <Col span={12}>
+                      <Text type="secondary" style={{ fontSize: '12px' }}>
+                        Duration calculated from: Number of massages × Duration per massage
+                      </Text>
+                    </Col>
+                  )}
 
                   {/* Address and Business */}
                   <Col span={12}>
@@ -856,7 +866,7 @@ export const BookingEdit: React.FC = () => {
                       </Col>
                       
                       <Col span={6}>
-                        <Form.Item name="duration_per_massage" label="Duration/Massage">
+                        <Form.Item name="duration_per_massage" label="Duration/Massage" rules={[{ required: true }]}>
                           <Select 
                             placeholder="Select duration" 
                             onChange={(value) => setCustomDuration(value === 'custom')}
@@ -873,11 +883,31 @@ export const BookingEdit: React.FC = () => {
                       </Col>
                       {customDuration && (
                         <Col span={6}>
-                          <Form.Item name="duration_per_massage" label="Custom Duration">
+                          <Form.Item name="duration_per_massage" label="Custom Duration" rules={[{ required: true }]}>
                             <InputNumber min={5} max={120} placeholder="Minutes" style={{ width: '100%' }} />
                           </Form.Item>
                         </Col>
                       )}
+                      
+                      {/* Show calculated total duration for quotes */}
+                      <Col span={24}>
+                        <Form.Item shouldUpdate>
+                          {() => {
+                            const numMassages = form.getFieldValue('number_of_massages') || 0;
+                            const durationPerMassage = form.getFieldValue('duration_per_massage') || 0;
+                            const totalMinutes = numMassages * durationPerMassage;
+                            const hours = Math.floor(totalMinutes / 60);
+                            const minutes = totalMinutes % 60;
+                            
+                            return totalMinutes > 0 ? (
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                📊 <strong>Total Event Duration:</strong> {totalMinutes} minutes 
+                                {hours > 0 && ` (${hours}h ${minutes}m)`}
+                              </Text>
+                            ) : null;
+                          }}
+                        </Form.Item>
+                      </Col>
                       <Col span={6}>
                         <Form.Item name="urgency" label="Timeline">
                           <Select placeholder="Timeline" allowClear>
