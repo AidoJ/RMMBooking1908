@@ -691,9 +691,24 @@ console.log('Globals:', {
     const urgency = document.getElementById('quoteUrgency')?.value || 'flexible';
     
     if (numMassages > 0 && duration > 0) {
-      // Base calculation using service base quote price
-      let basePrice = 120; // From database, could be dynamic
-      let totalEstimate = numMassages * basePrice;
+      // Calculate total minutes
+      const totalMinutes = numMassages * duration;
+      
+      // New pricing rules: $160 per hour ($2.67 per minute)
+      const pricePerMinute = 160 / 60; // $2.67 per minute
+      let totalEstimate = totalMinutes * pricePerMinute;
+      
+      // Apply minimum $320 rule (equivalent to 120 minutes)
+      if (totalEstimate < 320) {
+        totalEstimate = 320;
+      }
+      
+      // Volume discounts based on total minutes
+      if (totalMinutes >= 240) {
+        totalEstimate *= 0.9; // 10% discount for 240+ minutes
+      } else if (totalMinutes >= 180) {
+        totalEstimate *= 0.95; // 5% discount for 180+ minutes
+      }
       
       // Urgency multiplier
       const urgencyMultipliers = {
@@ -705,13 +720,6 @@ console.log('Globals:', {
       
       totalEstimate *= urgencyMultipliers[urgency] || 1.0;
       
-      // Volume discount for large events
-      if (numMassages >= 20) {
-        totalEstimate *= 0.9; // 10% discount
-      } else if (numMassages >= 10) {
-        totalEstimate *= 0.95; // 5% discount
-      }
-      
       const minEstimate = Math.round(totalEstimate * 0.8);
       const maxEstimate = Math.round(totalEstimate * 1.2);
       
@@ -719,8 +727,14 @@ console.log('Globals:', {
       const amountSpan = document.getElementById('estimateAmount');
       
       if (estimateDiv && amountSpan) {
-        amountSpan.textContent = `$${minEstimate} - $${maxEstimate}`;
-        estimateDiv.style.display = 'block';
+        // Show validation message if under 120 minutes
+        if (totalMinutes < 120) {
+          amountSpan.innerHTML = `<span style="color: #ff6b35;">⚠️ Minimum 120 minutes required (Current: ${totalMinutes} minutes)</span>`;
+          estimateDiv.style.display = 'block';
+        } else {
+          amountSpan.textContent = `$${minEstimate} - $${maxEstimate}`;
+          estimateDiv.style.display = 'block';
+        }
       }
     }
   }
