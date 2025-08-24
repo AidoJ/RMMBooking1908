@@ -49,6 +49,7 @@ interface Service {
   popularity_score: number;
   total_bookings: number;
   average_rating: number;
+  quote_only?: boolean;
 }
 
 interface ServiceFormData {
@@ -61,6 +62,7 @@ interface ServiceFormData {
   sort_order: number;
   service_base_price: number;
   minimum_duration: number;
+  quote_only: boolean;
 }
 
 const ServiceEdit: React.FC = () => {
@@ -397,6 +399,17 @@ const ServiceEdit: React.FC = () => {
                       <Switch
                         checkedChildren="Active"
                         unCheckedChildren="Inactive"
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label="Quote Only Service"
+                      name="quote_only"
+                      valuePropName="checked"
+                      tooltip="When enabled, this service will require customers to request a quote instead of booking directly"
+                    >
+                      <Switch
+                        checkedChildren="Quote Only"
+                        unCheckedChildren="Regular Booking"
                       />
                     </Form.Item>
                   </Card>

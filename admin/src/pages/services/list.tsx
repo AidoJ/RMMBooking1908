@@ -55,6 +55,7 @@ interface Service {
   popularity_score: number;
   total_bookings: number;
   average_rating: number;
+  quote_only?: boolean;
 }
 
 interface ServiceWithCreator extends Service {
@@ -125,6 +126,32 @@ const ServiceList: React.FC = () => {
     } catch (error: any) {
       console.error('Error updating service status:', error);
       message.error('Failed to update service status');
+    }
+  };
+
+  const handleToggleQuoteOnly = async (id: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabaseClient
+        .from('services')
+        .update({ 
+          quote_only: !currentStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update local state
+      setServices(services.map(service => 
+        service.id === id 
+          ? { ...service, quote_only: !currentStatus }
+          : service
+      ));
+      
+      message.success(`Service marked as ${!currentStatus ? 'Quote Only' : 'Regular Booking'} successfully`);
+    } catch (error: any) {
+      console.error('Error toggling quote only status:', error);
+      message.error('Failed to update quote only status');
     }
   };
 
@@ -271,6 +298,32 @@ const ServiceList: React.FC = () => {
         { text: 'Inactive', value: false },
       ],
       onFilter: (value: any, record: ServiceWithCreator) => record.is_active === value,
+    },
+    {
+      title: 'Quote Only',
+      key: 'quote_only',
+      width: 120,
+      render: (record: ServiceWithCreator) => (
+        <div>
+          <Tag color={record.quote_only ? 'purple' : 'blue'}>
+            {record.quote_only ? 'Quote Only' : 'Regular'}
+          </Tag>
+          {canEditServices && (
+            <div style={{ marginTop: '4px' }}>
+              <Switch
+                size="small"
+                checked={record.quote_only || false}
+                onChange={() => handleToggleQuoteOnly(record.id, record.quote_only || false)}
+              />
+            </div>
+          )}
+        </div>
+      ),
+      filters: [
+        { text: 'Quote Only', value: true },
+        { text: 'Regular Booking', value: false },
+      ],
+      onFilter: (value: any, record: ServiceWithCreator) => (record.quote_only || false) === value,
     },
     {
       title: 'Actions',

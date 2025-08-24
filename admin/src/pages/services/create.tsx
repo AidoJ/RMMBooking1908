@@ -38,6 +38,7 @@ interface ServiceFormData {
   sort_order: number;
   service_base_price: number;
   minimum_duration: number;
+  quote_only: boolean;
 }
 
 const ServiceCreate: React.FC = () => {
@@ -147,6 +148,7 @@ const ServiceCreate: React.FC = () => {
               onFinish={handleSubmit}
               initialValues={{
                 is_active: true,
+                quote_only: false,
                 sort_order: 0,
                 service_base_price: 90.00,
                 minimum_duration: 30
@@ -284,6 +286,17 @@ const ServiceCreate: React.FC = () => {
                       <Switch
                         checkedChildren="Active"
                         unCheckedChildren="Inactive"
+                      />
+                    </Form.Item>
+                    <Form.Item
+                      label="Quote Only Service"
+                      name="quote_only"
+                      valuePropName="checked"
+                      tooltip="When enabled, customers must request a quote instead of booking directly"
+                    >
+                      <Switch
+                        checkedChildren="Quote Only"
+                        unCheckedChildren="Regular Booking"
                       />
                     </Form.Item>
                   </Card>

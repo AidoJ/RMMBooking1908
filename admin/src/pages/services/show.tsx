@@ -48,6 +48,7 @@ interface Service {
   popularity_score: number;
   total_bookings: number;
   average_rating: number;
+  quote_only?: boolean;
 }
 
 interface ServiceWithCreator extends Service {
@@ -275,6 +276,11 @@ const ServiceShow: React.FC = () => {
                       <Descriptions.Item label="Status">
                         <Tag color={service.is_active ? 'green' : 'red'}>
                           {service.is_active ? 'Active' : 'Inactive'}
+                        </Tag>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Booking Type">
+                        <Tag color={service.quote_only ? 'purple' : 'blue'}>
+                          {service.quote_only ? 'Quote Only' : 'Regular Booking'}
                         </Tag>
                       </Descriptions.Item>
                     </Descriptions>
