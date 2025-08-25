@@ -244,6 +244,10 @@ export const BookingEdit: React.FC = () => {
 
       if (bookingError) throw bookingError;
 
+      console.log('Raw booking data from database:', bookingData);
+      console.log('business_name value:', bookingData.business_name);
+      console.log('price value:', bookingData.price);
+      
       const transformedBooking: Booking = {
         ...bookingData,
         customer_name: bookingData.customers 

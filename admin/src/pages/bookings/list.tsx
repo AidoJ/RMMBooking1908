@@ -81,6 +81,7 @@ interface BookingRecord {
   price: number;
   therapist_fee: number;
   address?: string;
+  business_name?: string;
   notes?: string;
   payment_intent_id?: string;
   created_at: string;
@@ -574,6 +575,16 @@ export const EnhancedBookingList = () => {
           </Space>
         );
       },
+    },
+    {
+      title: 'Company',
+      dataIndex: 'business_name',
+      key: 'business_name',
+      render: (text: string) => (
+        <Text style={{ fontSize: '13px' }}>
+          {text || <span style={{ color: '#999', fontStyle: 'italic' }}>—</span>}
+        </Text>
+      ),
     },
     {
       title: 'Service',
