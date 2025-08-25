@@ -717,17 +717,7 @@ console.log('Globals:', {
         totalEstimate *= 0.95; // 5% discount for 180+ minutes
       }
       
-      // Urgency multiplier
-      const urgencyMultipliers = {
-        'flexible': 1.0,
-        'within_week': 1.1,
-        'within_3_days': 1.25,
-        'urgent_24h': 1.5
-      };
-      
-      totalEstimate *= urgencyMultipliers[urgency] || 1.0;
-      
-      // Step 4: Apply minimum based on 120-minute rule
+      // Step 4: Apply minimum based on 120-minute rule (before urgency)
       const minimumMinutes = 120;
       const minimumHours = minimumMinutes / 60; // 2 hours
       let minimumPrice = minimumHours * 160; // 2 × $160 = $320
@@ -746,9 +736,22 @@ console.log('Globals:', {
         totalEstimate = minimumPrice;
       }
       
-      // Use the actual calculated price as both min and max (no artificial range)
-      let minEstimate = Math.round(totalEstimate);
-      let maxEstimate = Math.round(totalEstimate);
+      // Calculate range: base price (flexible) to urgency price
+      const basePrice = Math.round(totalEstimate); // Base price without urgency
+      
+      // Apply urgency multiplier for max estimate
+      const urgencyMultipliers = {
+        'flexible': 1.0,
+        'within_week': 1.1,
+        'within_3_days': 1.25,
+        'urgent_24h': 1.5
+      };
+      const urgencyMultiplier = urgencyMultipliers[urgency] || 1.0;
+      const urgencyPrice = Math.round(totalEstimate * urgencyMultiplier);
+      
+      // Range: base price to urgency price
+      let minEstimate = basePrice;
+      let maxEstimate = urgencyPrice;
       
       const estimateDiv = document.getElementById('quoteEstimate');
       const amountSpan = document.getElementById('estimateAmount');
