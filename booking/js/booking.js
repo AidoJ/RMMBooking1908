@@ -892,9 +892,12 @@ console.log('Globals:', {
       number_of_massages: parseInt(document.getElementById('quoteNumMassages').value),
       duration_per_massage: parseInt(document.getElementById('quoteMassageDuration').value),
       preferred_therapists: parseInt(document.getElementById('quoteTherapists').value || 0),
-      company_name: document.getElementById('quoteCompanyName').value,
+      business_name: document.getElementById('quoteCompanyName').value, // Fixed: use business_name not company_name
       event_type: document.getElementById('quoteEventType').value,
       expected_attendees: parseInt(document.getElementById('quoteAttendees').value || 0),
+      
+      // Calculate and save the price
+      price: calculateFinalQuotePrice(),
       
       // Contact info
       corporate_contact_name: document.getElementById('quoteContactName').value,
@@ -912,6 +915,55 @@ console.log('Globals:', {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
+  }
+  
+  // Calculate final quote price for database storage
+  function calculateFinalQuotePrice() {
+    const numMassages = parseInt(document.getElementById('quoteNumMassages')?.value || 0);
+    const duration = parseInt(document.getElementById('quoteMassageDuration')?.value || 0);
+    
+    if (numMassages <= 0 || duration <= 0) return 0;
+    
+    // Step 1: Base calculation
+    const totalMinutes = numMassages * duration;
+    const totalHours = totalMinutes / 60;
+    let totalPrice = totalHours * 160; // $160 service rate
+    
+    // Step 2: Weekend uplift
+    const selectedDate = document.getElementById('quoteDate').value;
+    if (selectedDate) {
+      const dayOfWeek = new Date(selectedDate).getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      if (isWeekend) {
+        totalPrice *= 1.25; // 25% weekend uplift
+      }
+    }
+    
+    // Step 3: Volume discounts
+    if (totalMinutes >= 240) {
+      totalPrice *= 0.9; // 10% discount
+    } else if (totalMinutes >= 180) {
+      totalPrice *= 0.95; // 5% discount
+    }
+    
+    // Step 4: Minimum price check
+    const minimumMinutes = 120;
+    const minimumHours = minimumMinutes / 60;
+    let minimumPrice = minimumHours * 160; // $320 base minimum
+    
+    if (selectedDate) {
+      const dayOfWeek = new Date(selectedDate).getDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      if (isWeekend) {
+        minimumPrice *= 1.25; // $400 weekend minimum
+      }
+    }
+    
+    if (totalPrice < minimumPrice) {
+      totalPrice = minimumPrice;
+    }
+    
+    return Math.round(totalPrice * 100) / 100; // Round to 2 decimal places
   }
   
   // Send quote notifications
