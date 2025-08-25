@@ -95,6 +95,7 @@ interface Booking {
   special_requirements?: string;
   duration_per_massage?: number;
   payment_method?: string;
+  preferred_time_range?: string;
   
   // Joined data
   customer_name?: string;
@@ -289,6 +290,7 @@ export const BookingEdit: React.FC = () => {
         special_requirements: bookingData.special_requirements,
         duration_per_massage: bookingData.duration_per_massage,
         payment_method: bookingData.payment_method,
+        preferred_time_range: bookingData.preferred_time_range,
       });
 
       // Set form values
@@ -326,6 +328,7 @@ export const BookingEdit: React.FC = () => {
         special_requirements: bookingData.special_requirements,
         duration_per_massage: bookingData.duration_per_massage,
         payment_method: bookingData.payment_method,
+        preferred_time_range: bookingData.preferred_time_range,
       });
     } catch (error) {
       console.error('Error fetching booking details:', error);
@@ -652,6 +655,7 @@ export const BookingEdit: React.FC = () => {
         special_requirements: values.special_requirements,
         duration_per_massage: values.duration_per_massage,
         payment_method: values.payment_method,
+        preferred_time_range: values.preferred_time_range,
       };
 
       // Only super admins can update pricing
@@ -1012,17 +1016,21 @@ export const BookingEdit: React.FC = () => {
                     </Col>
                   )}
 
-                  {/* Address and Business */}
-                  <Col span={12}>
-                    <Form.Item name="address" label="Address" rules={[{ required: true }]}>
-                      <Input placeholder="Delivery address" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item name="business_name" label="Business Name">
-                      <Input placeholder="Hotel or business name" />
-                    </Form.Item>
-                  </Col>
+                  {/* Regular booking fields - only show for non-quotes */}
+                  {!isQuote(booking) && (
+                    <>
+                      <Col span={12}>
+                        <Form.Item name="address" label="Address" rules={[{ required: true }]}>
+                          <Input placeholder="Delivery address" />
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item name="business_name" label="Business Name">
+                          <Input placeholder="Hotel or business name" />
+                        </Form.Item>
+                      </Col>
+                    </>
+                  )}
 
                   {/* Quote-specific fields - show only for quotes */}
                   {booking && isQuote(booking) && (
@@ -1034,22 +1042,22 @@ export const BookingEdit: React.FC = () => {
                             👤 Contact Information
                           </Title>
                           <Row gutter={[16, 8]}>
-                            <Col span={8}>
+                            <Col span={12}>
                               <Form.Item name="corporate_contact_name" label="Contact Name" rules={[{ required: true }]}>
                                 <Input placeholder="Full name" />
                               </Form.Item>
                             </Col>
-                            <Col span={8}>
+                            <Col span={12}>
                               <Form.Item name="business_name" label="Company Name">
                                 <Input placeholder="Company name" />
                               </Form.Item>
                             </Col>
-                            <Col span={8}>
+                            <Col span={12}>
                               <Form.Item name="corporate_contact_email" label="Email Address" rules={[{ required: true, type: 'email' }]}>
                                 <Input placeholder="email@company.com" />
                               </Form.Item>
                             </Col>
-                            <Col span={8}>
+                            <Col span={12}>
                               <Form.Item name="corporate_contact_phone" label="Phone Number" rules={[{ required: true }]}>
                                 <Input placeholder="Phone number" />
                               </Form.Item>
@@ -1062,9 +1070,14 @@ export const BookingEdit: React.FC = () => {
                       <Col span={24}>
                         <Card style={{ marginBottom: '16px' }}>
                           <Title level={4} style={{ marginBottom: '16px', color: '#1890ff' }}>
-                            🎉 Event Details
+                            📅 Event Details
                           </Title>
                           <Row gutter={[16, 8]}>
+                            <Col span={24}>
+                              <Form.Item name="address" label="Event Address" rules={[{ required: true }]}>
+                                <Input placeholder="Start typing the event address..." />
+                              </Form.Item>
+                            </Col>
                             <Col span={12}>
                               <Form.Item name="event_type" label="Event Type">
                                 <Select placeholder="Select event type..." allowClear>
@@ -1080,6 +1093,26 @@ export const BookingEdit: React.FC = () => {
                             <Col span={12}>
                               <Form.Item name="expected_attendees" label="Expected Attendees">
                                 <InputNumber min={1} max={500} placeholder="Number of people" style={{ width: '100%' }} />
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item name="booking_time" label="Preferred Date" rules={[{ required: true }]}>
+                                <DatePicker
+                                  format="YYYY-MM-DD"
+                                  style={{ width: '100%' }}
+                                  placeholder="Select preferred date"
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item name="preferred_time_range" label="Preferred Time Range" rules={[{ required: true }]}>
+                                <Select placeholder="Select time range...">
+                                  <Option value="morning">Morning (9:00 AM - 12:00 PM)</Option>
+                                  <Option value="afternoon">Afternoon (12:00 PM - 5:00 PM)</Option>
+                                  <Option value="evening">Evening (5:00 PM - 8:00 PM)</Option>
+                                  <Option value="all_day">All Day Event</Option>
+                                  <Option value="custom">Custom Time Range</Option>
+                                </Select>
                               </Form.Item>
                             </Col>
                           </Row>
