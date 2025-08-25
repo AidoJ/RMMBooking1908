@@ -94,6 +94,7 @@ interface Booking {
   setup_requirements?: string;
   special_requirements?: string;
   duration_per_massage?: number;
+  payment_method?: string;
   
   // Joined data
   customer_name?: string;
@@ -287,6 +288,7 @@ export const BookingEdit: React.FC = () => {
         setup_requirements: bookingData.setup_requirements,
         special_requirements: bookingData.special_requirements,
         duration_per_massage: bookingData.duration_per_massage,
+        payment_method: bookingData.payment_method,
       });
 
       // Set form values
@@ -323,6 +325,7 @@ export const BookingEdit: React.FC = () => {
         setup_requirements: bookingData.setup_requirements,
         special_requirements: bookingData.special_requirements,
         duration_per_massage: bookingData.duration_per_massage,
+        payment_method: bookingData.payment_method,
       });
     } catch (error) {
       console.error('Error fetching booking details:', error);
@@ -473,9 +476,13 @@ export const BookingEdit: React.FC = () => {
         const attendees = booking.expected_attendees || booking.number_of_massages || 1;
         const durationPerMassage = booking.duration_per_massage || booking.duration_minutes || 30;
         totalDuration = attendees * durationPerMassage;
+        console.log(`Quote fee calculation: ${attendees} attendees × ${durationPerMassage} min/massage = ${totalDuration} total minutes`);
       } else {
         totalDuration = booking.duration_minutes || 60;
+        console.log(`Regular booking duration: ${totalDuration} minutes`);
       }
+      
+      console.log(`Fee calculation inputs: date=${bookingDate}, time=${bookingTime}, totalDuration=${totalDuration}, therapistCount=${therapistCount}`);
       
       // Calculate fee for one therapist (total work divided by therapist count)
       const feeCalculation = await calculateTherapistFee(
@@ -484,6 +491,8 @@ export const BookingEdit: React.FC = () => {
         totalDuration,
         therapistCount
       );
+      
+      console.log('Fee calculation result:', feeCalculation);
       
       // Update all assignments with the calculated fees
       const updates = therapistAssignments.map(assignment => ({
@@ -642,6 +651,7 @@ export const BookingEdit: React.FC = () => {
         setup_requirements: values.setup_requirements,
         special_requirements: values.special_requirements,
         duration_per_massage: values.duration_per_massage,
+        payment_method: values.payment_method,
       };
 
       // Only super admins can update pricing
@@ -1017,130 +1027,197 @@ export const BookingEdit: React.FC = () => {
                   {/* Quote-specific fields - show only for quotes */}
                   {booking && isQuote(booking) && (
                     <>
-                      <Col span={24}><Divider style={{ margin: '12px 0' }}><Text strong>Quote Details</Text></Divider></Col>
-                      
-                      <Col span={8}>
-                        <Form.Item name="corporate_contact_name" label="Corporate Contact">
-                          <Input placeholder="Corporate contact name" />
-                        </Form.Item>
-                      </Col>
-                      <Col span={8}>
-                        <Form.Item name="corporate_contact_email" label="Corporate Email">
-                          <Input placeholder="corporate@company.com" />
-                        </Form.Item>
-                      </Col>
-                      <Col span={8}>
-                        <Form.Item name="corporate_contact_phone" label="Corporate Phone">
-                          <Input placeholder="Corporate phone" />
-                        </Form.Item>
-                      </Col>
-                      
-                      <Col span={6}>
-                        <Form.Item name="event_type" label="Event Type">
-                          <Select placeholder="Event type" allowClear>
-                            <Option value="corporate_wellness">Corporate Wellness</Option>
-                            <Option value="conference">Conference</Option>
-                            <Option value="team_building">Team Building</Option>
-                            <Option value="office_party">Office Party</Option>
-                            <Option value="product_launch">Product Launch</Option>
-                            <Option value="other">Other</Option>
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                      <Col span={6}>
-                        <Form.Item name="expected_attendees" label="Attendees">
-                          <InputNumber min={1} max={500} placeholder="Expected attendees" style={{ width: '100%' }} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={6}>
-                        <Form.Item name="number_of_massages" label="# Massages">
-                          <InputNumber min={1} max={200} placeholder="Number of massages" style={{ width: '100%' }} />
-                        </Form.Item>
-                      </Col>
-                      <Col span={6}>
-                        <Form.Item name="preferred_therapists" label="# Therapists">
-                          <InputNumber min={1} max={20} placeholder="Preferred therapists" style={{ width: '100%' }} />
-                        </Form.Item>
-                      </Col>
-                      
-                      <Col span={6}>
-                        <Form.Item name="duration_per_massage" label="Duration/Massage" rules={[{ required: true }]}>
-                          <Select 
-                            placeholder="Select duration" 
-                            onChange={(value) => setCustomDuration(value === 'custom')}
-                            allowClear
-                          >
-                            <Option value={10}>10 minutes</Option>
-                            <Option value={15}>15 minutes</Option>
-                            <Option value={20}>20 minutes</Option>
-                            <Option value={25}>25 minutes</Option>
-                            <Option value={30}>30 minutes</Option>
-                            <Option value="custom">Custom...</Option>
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                      {customDuration && (
-                        <Col span={6}>
-                          <Form.Item name="duration_per_massage" label="Custom Duration" rules={[{ required: true }]}>
-                            <InputNumber min={5} max={120} placeholder="Minutes" style={{ width: '100%' }} />
-                          </Form.Item>
-                        </Col>
-                      )}
-                      
-                      {/* Show calculated total duration for quotes */}
+                      {/* Contact Information Section */}
                       <Col span={24}>
-                        <Form.Item shouldUpdate>
-                          {() => {
-                            const numMassages = form.getFieldValue('number_of_massages') || 0;
-                            const durationPerMassage = form.getFieldValue('duration_per_massage') || 0;
-                            const totalMinutes = numMassages * durationPerMassage;
-                            const hours = Math.floor(totalMinutes / 60);
-                            const minutes = totalMinutes % 60;
+                        <Card style={{ marginBottom: '16px' }}>
+                          <Title level={4} style={{ marginBottom: '16px', color: '#1890ff' }}>
+                            👤 Contact Information
+                          </Title>
+                          <Row gutter={[16, 8]}>
+                            <Col span={8}>
+                              <Form.Item name="corporate_contact_name" label="Contact Name" rules={[{ required: true }]}>
+                                <Input placeholder="Full name" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                              <Form.Item name="business_name" label="Company Name">
+                                <Input placeholder="Company name" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                              <Form.Item name="corporate_contact_email" label="Email Address" rules={[{ required: true, type: 'email' }]}>
+                                <Input placeholder="email@company.com" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                              <Form.Item name="corporate_contact_phone" label="Phone Number" rules={[{ required: true }]}>
+                                <Input placeholder="Phone number" />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+                        </Card>
+                      </Col>
+
+                      {/* Event Details Section */}
+                      <Col span={24}>
+                        <Card style={{ marginBottom: '16px' }}>
+                          <Title level={4} style={{ marginBottom: '16px', color: '#1890ff' }}>
+                            🎉 Event Details
+                          </Title>
+                          <Row gutter={[16, 8]}>
+                            <Col span={12}>
+                              <Form.Item name="event_type" label="Event Type">
+                                <Select placeholder="Select event type..." allowClear>
+                                  <Option value="corporate_wellness">Corporate Wellness Day</Option>
+                                  <Option value="team_building">Team Building Event</Option>
+                                  <Option value="client_entertainment">Client Entertainment</Option>
+                                  <Option value="conference">Conference/Trade Show</Option>
+                                  <Option value="employee_appreciation">Employee Appreciation</Option>
+                                  <Option value="other">Other</Option>
+                                </Select>
+                              </Form.Item>
+                            </Col>
+                            <Col span={12}>
+                              <Form.Item name="expected_attendees" label="Expected Attendees">
+                                <InputNumber min={1} max={500} placeholder="Number of people" style={{ width: '100%' }} />
+                              </Form.Item>
+                            </Col>
+                          </Row>
+                        </Card>
+                      </Col>
+
+                      {/* Massage Requirements Section */}
+                      <Col span={24}>
+                        <Card style={{ marginBottom: '16px' }}>
+                          <Title level={4} style={{ marginBottom: '16px', color: '#1890ff' }}>
+                            💆‍♀️ Massage Requirements
+                          </Title>
+                          <Row gutter={[16, 8]}>
+                            <Col span={8}>
+                              <Form.Item name="number_of_massages" label="Number of Massages" rules={[{ required: true }]}>
+                                <InputNumber min={1} max={50} placeholder="How many massages needed" style={{ width: '100%' }} />
+                              </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                              <Form.Item name="duration_per_massage" label="Duration per Massage" rules={[{ required: true }]}>
+                                <Select 
+                                  placeholder="Select duration..."
+                                  onChange={(value) => setCustomDuration(value === 'custom')}
+                                >
+                                  <Option value={30}>30 minutes</Option>
+                                  <Option value={45}>45 minutes</Option>
+                                  <Option value={60}>60 minutes</Option>
+                                  <Option value={75}>75 minutes</Option>
+                                  <Option value={90}>90 minutes</Option>
+                                  <Option value="custom">Custom...</Option>
+                                </Select>
+                              </Form.Item>
+                            </Col>
+                            {customDuration && (
+                              <Col span={8}>
+                                <Form.Item name="duration_per_massage" label="Custom Duration (min)" rules={[{ required: true }]}>
+                                  <InputNumber min={5} max={120} placeholder="Minutes" style={{ width: '100%' }} />
+                                </Form.Item>
+                              </Col>
+                            )}
+                            <Col span={8}>
+                              <Form.Item name="preferred_therapists" label="Preferred Number of Therapists">
+                                <Select placeholder="Let us recommend..." allowClear>
+                                  <Option value={1}>1 Therapist</Option>
+                                  <Option value={2}>2 Therapists</Option>
+                                  <Option value={3}>3 Therapists</Option>
+                                  <Option value={4}>4 Therapists</Option>
+                                  <Option value={5}>5+ Therapists</Option>
+                                </Select>
+                              </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                              <Form.Item name="urgency" label="Timeline" rules={[{ required: true }]}>
+                                <Select placeholder="Timeline">
+                                  <Option value="flexible">Flexible timing</Option>
+                                  <Option value="within_week">Within 1 week</Option>
+                                  <Option value="within_3_days">Within 3 days</Option>
+                                  <Option value="urgent_24h">Urgent (within 24 hours)</Option>
+                                </Select>
+                              </Form.Item>
+                            </Col>
                             
-                            return totalMinutes > 0 ? (
-                              <Text type="secondary" style={{ fontSize: '12px' }}>
-                                📊 <strong>Total Event Duration:</strong> {totalMinutes} minutes 
-                                {hours > 0 && ` (${hours}h ${minutes}m)`}
-                              </Text>
-                            ) : null;
-                          }}
-                        </Form.Item>
+                            {/* Show calculated total duration */}
+                            <Col span={24}>
+                              <Form.Item shouldUpdate>
+                                {() => {
+                                  const numMassages = form.getFieldValue('number_of_massages') || 0;
+                                  const durationPerMassage = form.getFieldValue('duration_per_massage') || 0;
+                                  const totalMinutes = numMassages * durationPerMassage;
+                                  const hours = Math.floor(totalMinutes / 60);
+                                  const minutes = totalMinutes % 60;
+                                  
+                                  return totalMinutes > 0 ? (
+                                    <Alert
+                                      message={`Total Event Duration: ${totalMinutes} minutes${hours > 0 ? ` (${hours}h ${minutes}m)` : ''}`}
+                                      type="info"
+                                      icon={<span>📊</span>}
+                                      style={{ backgroundColor: '#e6f4ff' }}
+                                    />
+                                  ) : null;
+                                }}
+                              </Form.Item>
+                            </Col>
+                          </Row>
+                        </Card>
                       </Col>
-                      <Col span={6}>
-                        <Form.Item name="urgency" label="Timeline">
-                          <Select placeholder="Timeline" allowClear>
-                            <Option value="flexible">Flexible</Option>
-                            <Option value="within_week">Within a week</Option>
-                            <Option value="asap">ASAP</Option>
-                          </Select>
-                        </Form.Item>
+
+                      {/* Payment & Setup Section */}
+                      <Col span={24}>
+                        <Card style={{ marginBottom: '16px' }}>
+                          <Title level={4} style={{ marginBottom: '16px', color: '#1890ff' }}>
+                            💳 Payment & Setup
+                          </Title>
+                          <Row gutter={[16, 8]}>
+                            <Col span={8}>
+                              <Form.Item name="payment_method" label="Preferred Payment Method" rules={[{ required: true }]}>
+                                <Select placeholder="Payment method">
+                                  <Option value="credit_card">Credit Card</Option>
+                                  <Option value="invoice">Invoice (Net 30)</Option>
+                                  <Option value="bank_transfer">Bank Transfer/EFT</Option>
+                                </Select>
+                              </Form.Item>
+                            </Col>
+                            <Col span={8}>
+                              <Form.Item name="po_number" label="PO Number (if applicable)">
+                                <Input placeholder="Purchase order number" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={24}>
+                              <Row gutter={[16, 8]}>
+                                <Col span={12}>
+                                  <Form.Item name="setup_requirements" label="Setup Requirements">
+                                    <Input.TextArea rows={3} placeholder="e.g., Changing rooms needed, tables provided, music preferences, privacy requirements..." />
+                                  </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                  <Form.Item name="special_requirements" label="Special Requirements or Notes">
+                                    <Input.TextArea rows={3} placeholder="Any special requests, accessibility needs, dietary restrictions for therapists, etc." />
+                                  </Form.Item>
+                                </Col>
+                              </Row>
+                            </Col>
+                          </Row>
+                        </Card>
                       </Col>
-                      <Col span={6}>
-                        <Form.Item name="po_number" label="PO Number">
-                          <Input placeholder="Purchase order number" />
-                        </Form.Item>
-                      </Col>
-                      
-                      <Col span={12}>
-                        <Form.Item name="setup_requirements" label="Setup Requirements">
-                          <Input.TextArea rows={2} placeholder="Setup requirements..." />
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item name="special_requirements" label="Special Requirements">
-                          <Input.TextArea rows={2} placeholder="Special requirements..." />
-                        </Form.Item>
-                      </Col>
-                      
+
                       {/* Price Field - Prominent Display for Super Admins */}
                       {userRole === 'super_admin' && (
                         <Col span={24}>
-                          <Card style={{ backgroundColor: '#f0f8ff', border: '2px solid #1890ff' }}>
-                            <Form.Item name="price" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>💰 Total Price ($)</span>}>
+                          <Card style={{ backgroundColor: '#f0f8ff', border: '2px solid #1890ff', marginBottom: '16px' }}>
+                            <Title level={4} style={{ marginBottom: '16px', color: '#1890ff' }}>
+                              💰 Pricing
+                            </Title>
+                            <Form.Item name="price" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>Total Price ($)</span>}>
                               <InputNumber 
                                 min={0} 
                                 step={0.01} 
-                                style={{ width: '200px', fontSize: '18px', fontWeight: 'bold' }} 
+                                style={{ width: '300px', fontSize: '18px', fontWeight: 'bold' }} 
                                 placeholder="0.00"
                                 size="large"
                               />
@@ -1228,7 +1305,7 @@ export const BookingEdit: React.FC = () => {
                                   </div>
                                   
                                   {/* Fee Information */}
-                                  {assignment.therapist_fee && (
+                                  {(assignment.therapist_fee || assignment.hours_worked || assignment.hourly_rate) && (
                                     <div style={{ 
                                       display: 'flex', 
                                       justifyContent: 'space-between', 
@@ -1238,9 +1315,17 @@ export const BookingEdit: React.FC = () => {
                                       borderRadius: '4px',
                                       border: '1px solid #e8e8e8'
                                     }}>
-                                      <span>{assignment.hours_worked}h × ${assignment.hourly_rate}/hr</span>
+                                      <span>
+                                        {assignment.hours_worked ? `${assignment.hours_worked}h` : '0h'} × 
+                                        ${assignment.hourly_rate ? assignment.hourly_rate : '0'}/hr
+                                        {assignment.rate_type && (
+                                          <span style={{ fontSize: '11px', color: '#666', marginLeft: '4px' }}>
+                                            ({assignment.rate_type})
+                                          </span>
+                                        )}
+                                      </span>
                                       <span style={{ fontWeight: 'bold', color: '#52c41a' }}>
-                                        = ${assignment.therapist_fee?.toFixed(2)}
+                                        = ${assignment.therapist_fee ? assignment.therapist_fee.toFixed(2) : '0.00'}
                                       </span>
                                     </div>
                                   )}
@@ -1280,13 +1365,22 @@ export const BookingEdit: React.FC = () => {
                                   })()}
                                 </div>
                                 <div style={{ marginTop: '8px' }}>
-                                  <Button 
-                                    size="small" 
-                                    onClick={recalculateTherapistFees}
-                                    icon={<ReloadOutlined />}
-                                  >
-                                    Recalculate Fees
-                                  </Button>
+                                  <Space>
+                                    <Button 
+                                      size="small" 
+                                      onClick={recalculateTherapistFees}
+                                      icon={<ReloadOutlined />}
+                                      type="primary"
+                                    >
+                                      Recalculate Fees
+                                    </Button>
+                                    {isQuote(booking) && (
+                                      <Text style={{ fontSize: '11px', color: '#666' }}>
+                                        Attendees: {booking.expected_attendees || booking.number_of_massages || 1}, 
+                                        Duration/massage: {booking.duration_per_massage || booking.duration_minutes || 30}min
+                                      </Text>
+                                    )}
+                                  </Space>
                                 </div>
                               </div>
                             </div>
