@@ -694,11 +694,23 @@ console.log('Globals:', {
       // Calculate total minutes
       const totalMinutes = numMassages * duration;
       
-      // New pricing rules: $160 per hour ($2.67 per minute)
-      const pricePerMinute = 160 / 60; // $2.67 per minute
-      let totalEstimate = totalMinutes * pricePerMinute;
+      // Step 1: Base calculation using service rate from services table ($160/hour)
+      const totalHours = totalMinutes / 60;
+      let totalEstimate = totalHours * 160; // $160 from services.service_base_price
       
-      // Volume discounts based on total minutes
+      // Step 2: Apply weekend/afterhours uplift (BEFORE discounts)
+      const selectedDate = document.getElementById('quoteDate').value;
+      if (selectedDate) {
+        const dayOfWeek = new Date(selectedDate).getDay(); // 0=Sunday, 6=Saturday
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        
+        if (isWeekend) {
+          // Apply 25% weekend uplift from system_settings
+          totalEstimate *= 1.25;
+        }
+      }
+      
+      // Step 3: Apply volume discounts (AFTER uplift)
       if (totalMinutes >= 240) {
         totalEstimate *= 0.9; // 10% discount for 240+ minutes
       } else if (totalMinutes >= 180) {
@@ -715,19 +727,28 @@ console.log('Globals:', {
       
       totalEstimate *= urgencyMultipliers[urgency] || 1.0;
       
-      // Apply minimum $320 rule AFTER all discounts/multipliers
-      if (totalEstimate < 320) {
-        totalEstimate = 320;
+      // Step 4: Apply minimum based on 120-minute rule
+      const minimumMinutes = 120;
+      const minimumHours = minimumMinutes / 60; // 2 hours
+      let minimumPrice = minimumHours * 160; // 2 × $160 = $320
+      
+      // Apply same uplifts to minimum price
+      if (selectedDate) {
+        const dayOfWeek = new Date(selectedDate).getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        if (isWeekend) {
+          minimumPrice *= 1.25; // Weekend minimum = $320 × 1.25 = $400
+        }
       }
       
-      // Calculate range but ensure minimum is never below $320
-      let minEstimate = Math.round(totalEstimate * 0.8);
-      let maxEstimate = Math.round(totalEstimate * 1.2);
-      
-      // Ensure minimum estimate never goes below $320
-      if (minEstimate < 320) {
-        minEstimate = 320;
+      // Apply minimum if calculated price is below it
+      if (totalEstimate < minimumPrice) {
+        totalEstimate = minimumPrice;
       }
+      
+      // Use the actual calculated price as both min and max (no artificial range)
+      let minEstimate = Math.round(totalEstimate);
+      let maxEstimate = Math.round(totalEstimate);
       
       const estimateDiv = document.getElementById('quoteEstimate');
       const amountSpan = document.getElementById('estimateAmount');
