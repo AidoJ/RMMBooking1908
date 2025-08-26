@@ -1000,8 +1000,8 @@ console.log('Globals:', {
 
       // Send email using EmailJS
       const result = await emailjs.send(
-        'service_booking', // Replace with your EmailJS service ID
-        'template_quote_confirmation', // Replace with your EmailJS template ID
+        'service_booking', // EmailJS service ID
+        'template_dyah74g', // Quote confirmation template ID
         emailData
       );
 
