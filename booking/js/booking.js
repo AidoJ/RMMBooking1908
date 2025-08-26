@@ -794,8 +794,8 @@ console.log('Globals:', {
       
       if (error) throw error;
       
-      // Send email notifications
-      await sendQuoteNotifications(quoteData);
+      // Send confirmation email to customer
+      await sendQuoteConfirmationEmail(quoteData, data[0]);
       
       // Show success message
       showQuoteSuccess(data && data[0] ? data[0] : { id: 'quote-submitted' });
@@ -966,11 +966,70 @@ console.log('Globals:', {
     return Math.round(totalPrice * 100) / 100; // Round to 2 decimal places
   }
   
-  // Send quote notifications
-  async function sendQuoteNotifications(quoteData) {
-    // This would send email to admin and SMS alert
-    // Implementation depends on your email service setup
-    console.log('Sending quote notifications for:', quoteData);
+  // Send quote confirmation email
+  async function sendQuoteConfirmationEmail(quoteData, quoteRecord) {
+    try {
+      // Prepare email template data
+      const emailData = {
+        to_email: quoteData.corporate_contact_email,
+        to_name: quoteData.corporate_contact_name,
+        contact_name: quoteData.corporate_contact_name,
+        business_name: quoteData.business_name || 'Not specified',
+        contact_email: quoteData.corporate_contact_email,
+        contact_phone: quoteData.corporate_contact_phone,
+        event_address: quoteData.address,
+        event_date: new Date(quoteData.booking_time).toLocaleDateString('en-AU', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }),
+        event_type: quoteData.event_type || 'Corporate Event',
+        expected_attendees: quoteData.expected_attendees || 'Not specified',
+        number_of_massages: quoteData.number_of_massages,
+        duration_per_massage: quoteData.duration_per_massage,
+        total_duration: `${Math.floor((quoteData.number_of_massages * quoteData.duration_per_massage) / 60)}h ${(quoteData.number_of_massages * quoteData.duration_per_massage) % 60}m`,
+        preferred_therapists: quoteData.preferred_therapists || 'Let us recommend',
+        urgency: formatUrgency(quoteData.urgency),
+        payment_method: formatPaymentMethod(quoteData.payment_method),
+        po_number: quoteData.po_number || 'Not provided',
+        setup_requirements: quoteData.setup_requirements || 'None specified',
+        special_requirements: quoteData.special_requirements || 'None specified',
+        quote_reference: quoteRecord ? quoteRecord.id.substring(0, 8).toUpperCase() : 'QR' + Date.now().toString().substring(-6)
+      };
+
+      // Send email using EmailJS
+      const result = await emailjs.send(
+        'service_booking', // Replace with your EmailJS service ID
+        'template_quote_confirmation', // Replace with your EmailJS template ID
+        emailData
+      );
+
+      console.log('Quote confirmation email sent:', result);
+    } catch (error) {
+      console.error('Error sending quote confirmation email:', error);
+      // Don't throw error - we don't want to fail the quote submission if email fails
+    }
+  }
+
+  // Helper functions for email formatting
+  function formatUrgency(urgency) {
+    const urgencyMap = {
+      'flexible': 'Flexible timing',
+      'within_week': 'Within 1 week',
+      'within_3_days': 'Within 3 days',
+      'urgent_24h': 'Urgent (within 24 hours)'
+    };
+    return urgencyMap[urgency] || urgency;
+  }
+
+  function formatPaymentMethod(method) {
+    const methodMap = {
+      'credit_card': 'Credit Card',
+      'invoice': 'Invoice (Net 30)',
+      'bank_transfer': 'Bank Transfer/EFT'
+    };
+    return methodMap[method] || method;
   }
   
   // Show quote success
