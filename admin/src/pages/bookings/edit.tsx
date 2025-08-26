@@ -46,6 +46,7 @@ import { RoleGuard } from '../../components/RoleGuard';
 import { calculateTherapistFee, FeeCalculationResult } from '../../services/feeCalculation';
 import dayjs, { Dayjs } from 'dayjs';
 import { EmailService, BookingData, TherapistData } from '../../utils/emailService';
+import { generateQuotePDF } from '../../utils/pdfGenerator';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -842,6 +843,44 @@ export const BookingEdit: React.FC = () => {
     }
   };
 
+  // Generate PDF quote
+  const handleGeneratePDF = () => {
+    if (!booking || !isQuote(booking)) {
+      message.error('PDF generation is only available for quote requests');
+      return;
+    }
+
+    try {
+      const quoteData = {
+        corporate_contact_name: booking.corporate_contact_name || '',
+        business_name: booking.business_name || '',
+        corporate_contact_email: booking.corporate_contact_email || '',
+        corporate_contact_phone: booking.corporate_contact_phone || '',
+        address: booking.address || '',
+        booking_time: booking.booking_time,
+        event_type: booking.event_type || '',
+        expected_attendees: booking.expected_attendees || 0,
+        number_of_massages: booking.number_of_massages || 0,
+        duration_per_massage: booking.duration_per_massage || 0,
+        preferred_therapists: booking.preferred_therapists || 0,
+        urgency: booking.urgency || '',
+        payment_method: booking.payment_method || '',
+        po_number: booking.po_number || '',
+        setup_requirements: booking.setup_requirements || '',
+        special_requirements: booking.special_requirements || '',
+        price: booking.price || 0,
+        id: booking.id,
+        created_at: booking.created_at || new Date().toISOString()
+      };
+
+      generateQuotePDF(quoteData);
+      message.success('PDF quote generated successfully!');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      message.error('Failed to generate PDF quote. Please try again.');
+    }
+  };
+
   if (!booking) {
     return (
       <div style={{ padding: 24 }}>
@@ -1262,6 +1301,35 @@ export const BookingEdit: React.FC = () => {
                           </Card>
                         </Col>
                       )}
+                      
+                      {/* PDF Quote Generation */}
+                      <Col span={24}>
+                        <Card style={{ marginBottom: '16px', borderColor: '#52c41a' }}>
+                          <Title level={4} style={{ marginBottom: '16px', color: '#52c41a' }}>
+                            📄 Official Quote
+                          </Title>
+                          <Row gutter={[16, 8]}>
+                            <Col span={12}>
+                              <Text>Generate a professional PDF quote to send to the customer.</Text>
+                              <br />
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                Includes all event details, pricing breakdown, and terms & conditions.
+                              </Text>
+                            </Col>
+                            <Col span={12} style={{ textAlign: 'right' }}>
+                              <Button
+                                type="primary"
+                                size="large"
+                                icon={<DollarOutlined />}
+                                onClick={handleGeneratePDF}
+                                style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                              >
+                                Generate Official Quote PDF
+                              </Button>
+                            </Col>
+                          </Row>
+                        </Card>
+                      </Col>
                       
                       {/* Therapist Assignments & Fees */}
                       {therapistAssignments.length > 0 && (
