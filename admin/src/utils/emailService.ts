@@ -291,7 +291,7 @@ export const EmailService = {
         corporate_contact_name: bookingData.corporate_contact_name,
         
         // Company Details
-        business_name: bookingData.business_name,
+        business_name: bookingData.business_name || 'Your Company',
         event_type: bookingData.event_type || 'Corporate Wellness Event',
         
         // Quote Information
@@ -302,12 +302,12 @@ export const EmailService = {
         // Event Details
         event_date: eventDate,
         event_time: eventTime,
-        event_address: bookingData.address,
-        number_of_massages: bookingData.number_of_massages?.toString() || '1',
+        event_address: bookingData.address || 'Address TBD',
+        number_of_massages: (bookingData.number_of_massages || 1).toString(),
         duration_per_massage: `${bookingData.duration_per_massage || 30} minutes`,
-        expected_attendees: bookingData.expected_attendees?.toString() || '1',
+        expected_attendees: (bookingData.expected_attendees || 1).toString(),
         total_event_duration: totalDuration,
-        preferred_therapists: bookingData.preferred_therapists?.toString() || 'As recommended',
+        preferred_therapists: (bookingData.preferred_therapists || 1).toString(),
         
         // Requirements
         special_requirements: bookingData.special_requirements || 'None specified',
