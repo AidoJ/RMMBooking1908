@@ -1,4 +1,3 @@
-const htmlPdf = require('html-pdf-node');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -65,18 +64,7 @@ exports.handler = async (event, context) => {
     // Generate HTML content for PDF
     const htmlContent = generateQuoteHTML(booking);
     
-    // PDF options
-    const options = {
-      format: 'A4',
-      margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' },
-      printBackground: true
-    };
-
-    // Generate PDF
-    const file = { content: htmlContent };
-    const pdfBuffer = await htmlPdf.generatePdf(file, options);
-    
-    // Return PDF as base64
+    // Return HTML content that can be opened in a new tab for printing/saving as PDF
     return {
       statusCode: 200,
       headers: {
@@ -85,18 +73,18 @@ exports.handler = async (event, context) => {
       },
       body: JSON.stringify({
         success: true,
-        filename: `Quote-${booking.id.substring(0, 8).toUpperCase()}-${new Date().toLocaleDateString('en-AU').replace(/\//g, '-')}.pdf`,
-        pdf: pdfBuffer.toString('base64')
+        html: htmlContent,
+        filename: `Quote-${booking.id.substring(0, 8).toUpperCase()}-${new Date().toLocaleDateString('en-AU').replace(/\//g, '-')}.pdf`
       })
     };
 
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    console.error('Error generating quote:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
-        error: 'Failed to generate PDF',
+        error: 'Failed to generate quote',
         details: error.message 
       })
     };
@@ -132,14 +120,78 @@ function generateQuoteHTML(booking) {
     <html>
     <head>
       <meta charset="UTF-8">
+      <title>Quote ${quoteRef} - Rejuvenators Mobile Massage</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-          font-family: 'Helvetica', Arial, sans-serif;
-          color: #333;
-          line-height: 1.6;
-          padding: 20px;
+        
+        @media screen {
+          body {
+            font-family: 'Helvetica', Arial, sans-serif;
+            color: #333;
+            line-height: 1.6;
+            padding: 40px;
+            background: #f5f5f5;
+          }
+          .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          }
+          .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #007e8c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 1000;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          }
+          .print-button:hover {
+            background: #005f6b;
+          }
+          .instructions {
+            background: #e8f4f5;
+            border: 1px solid #007e8c;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 30px;
+            color: #005f6b;
+          }
         }
+        
+        @media print {
+          body {
+            font-family: 'Helvetica', Arial, sans-serif;
+            color: #333;
+            line-height: 1.6;
+            padding: 0;
+            background: white;
+          }
+          .container {
+            max-width: none;
+            margin: 0;
+            background: white;
+            padding: 20px;
+            border-radius: 0;
+            box-shadow: none;
+          }
+          .print-button, .instructions {
+            display: none !important;
+          }
+          .page-break {
+            page-break-before: always;
+          }
+        }
+        
         .header {
           border-bottom: 2px solid #007e8c;
           padding-bottom: 20px;
@@ -243,140 +295,157 @@ function generateQuoteHTML(booking) {
       </style>
     </head>
     <body>
-      <div class="header">
-        <div class="brand">
-          <h1>REJUVENATORS®</h1>
-          <p>Mobile Massage</p>
-        </div>
-        <div class="quote-title">OFFICIAL QUOTE</div>
+      <button class="print-button" onclick="window.print()">💾 Save as PDF</button>
+      
+      <div class="instructions">
+        <strong>📝 Instructions:</strong> Click the "Save as PDF" button or use Ctrl+P (Cmd+P on Mac) to save this quote as a PDF file.
       </div>
+      
+      <div class="container">
+        <div class="header">
+          <div class="brand">
+            <h1>REJUVENATORS®</h1>
+            <p>Mobile Massage</p>
+          </div>
+          <div class="quote-title">OFFICIAL QUOTE</div>
+        </div>
 
-      <div class="quote-details">
-        <div class="detail-row">
-          <div class="detail-label">Quote Reference:</div>
-          <div class="detail-value">${quoteRef}</div>
+        <div class="quote-details">
+          <div class="detail-row">
+            <div class="detail-label">Quote Reference:</div>
+            <div class="detail-value">${quoteRef}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Quote Date:</div>
+            <div class="detail-value">${quoteDate}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Valid Until:</div>
+            <div class="detail-value">${validUntil}</div>
+          </div>
         </div>
-        <div class="detail-row">
-          <div class="detail-label">Quote Date:</div>
-          <div class="detail-value">${quoteDate}</div>
-        </div>
-        <div class="detail-row">
-          <div class="detail-label">Valid Until:</div>
-          <div class="detail-value">${validUntil}</div>
-        </div>
-      </div>
 
-      <div class="section">
-        <div class="section-header">Contact Information</div>
-        <div class="detail-row">
-          <div class="detail-label">Contact Name:</div>
-          <div class="detail-value">${booking.corporate_contact_name || 'Not specified'}</div>
+        <div class="section">
+          <div class="section-header">Contact Information</div>
+          <div class="detail-row">
+            <div class="detail-label">Contact Name:</div>
+            <div class="detail-value">${booking.corporate_contact_name || 'Not specified'}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Company:</div>
+            <div class="detail-value">${booking.business_name || 'Not specified'}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Email:</div>
+            <div class="detail-value">${booking.corporate_contact_email || 'Not specified'}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Phone:</div>
+            <div class="detail-value">${booking.corporate_contact_phone || 'Not specified'}</div>
+          </div>
         </div>
-        <div class="detail-row">
-          <div class="detail-label">Company:</div>
-          <div class="detail-value">${booking.business_name || 'Not specified'}</div>
-        </div>
-        <div class="detail-row">
-          <div class="detail-label">Email:</div>
-          <div class="detail-value">${booking.corporate_contact_email || 'Not specified'}</div>
-        </div>
-        <div class="detail-row">
-          <div class="detail-label">Phone:</div>
-          <div class="detail-value">${booking.corporate_contact_phone || 'Not specified'}</div>
-        </div>
-      </div>
 
-      <div class="section">
-        <div class="section-header">Event Details</div>
-        <div class="detail-row">
-          <div class="detail-label">Event Date:</div>
-          <div class="detail-value">${eventDate}</div>
+        <div class="section">
+          <div class="section-header">Event Details</div>
+          <div class="detail-row">
+            <div class="detail-label">Event Date:</div>
+            <div class="detail-value">${eventDate}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Event Address:</div>
+            <div class="detail-value">${booking.address || 'Not specified'}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Event Type:</div>
+            <div class="detail-value">${booking.event_type || 'Corporate Event'}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Expected Attendees:</div>
+            <div class="detail-value">${booking.expected_attendees || 'Not specified'}</div>
+          </div>
         </div>
-        <div class="detail-row">
-          <div class="detail-label">Event Address:</div>
-          <div class="detail-value">${booking.address || 'Not specified'}</div>
-        </div>
-        <div class="detail-row">
-          <div class="detail-label">Event Type:</div>
-          <div class="detail-value">${booking.event_type || 'Corporate Event'}</div>
-        </div>
-        <div class="detail-row">
-          <div class="detail-label">Expected Attendees:</div>
-          <div class="detail-value">${booking.expected_attendees || 'Not specified'}</div>
-        </div>
-      </div>
 
-      <div class="section">
-        <div class="section-header">Massage Requirements</div>
-        <div class="detail-row">
-          <div class="detail-label">Number of Massages:</div>
-          <div class="detail-value">${booking.number_of_massages}</div>
+        <div class="section">
+          <div class="section-header">Massage Requirements</div>
+          <div class="detail-row">
+            <div class="detail-label">Number of Massages:</div>
+            <div class="detail-value">${booking.number_of_massages}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Duration per Massage:</div>
+            <div class="detail-value">${booking.duration_per_massage} minutes</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Total Event Duration:</div>
+            <div class="detail-value">${totalDuration}</div>
+          </div>
+          <div class="detail-row">
+            <div class="detail-label">Preferred Therapists:</div>
+            <div class="detail-value">${booking.preferred_therapists || 'Let us recommend'}</div>
+          </div>
+          ${booking.setup_requirements ? `
+          <div class="detail-row">
+            <div class="detail-label">Setup Requirements:</div>
+            <div class="detail-value">${booking.setup_requirements}</div>
+          </div>
+          ` : ''}
+          ${booking.special_requirements ? `
+          <div class="detail-row">
+            <div class="detail-label">Special Requirements:</div>
+            <div class="detail-value">${booking.special_requirements}</div>
+          </div>
+          ` : ''}
         </div>
-        <div class="detail-row">
-          <div class="detail-label">Duration per Massage:</div>
-          <div class="detail-value">${booking.duration_per_massage} minutes</div>
-        </div>
-        <div class="detail-row">
-          <div class="detail-label">Total Event Duration:</div>
-          <div class="detail-value">${totalDuration}</div>
-        </div>
-        <div class="detail-row">
-          <div class="detail-label">Preferred Therapists:</div>
-          <div class="detail-value">${booking.preferred_therapists || 'Let us recommend'}</div>
-        </div>
-        ${booking.setup_requirements ? `
-        <div class="detail-row">
-          <div class="detail-label">Setup Requirements:</div>
-          <div class="detail-value">${booking.setup_requirements}</div>
-        </div>
-        ` : ''}
-        ${booking.special_requirements ? `
-        <div class="detail-row">
-          <div class="detail-label">Special Requirements:</div>
-          <div class="detail-value">${booking.special_requirements}</div>
-        </div>
-        ` : ''}
-      </div>
 
-      <div class="section">
-        <div class="section-header">Investment</div>
-        <div class="investment-box">
-          <div class="label">Total Investment</div>
-          <div class="amount">$${(booking.price || 0).toFixed(2)}</div>
+        <div class="section">
+          <div class="section-header">Investment</div>
+          <div class="investment-box">
+            <div class="label">Total Investment</div>
+            <div class="amount">$${(booking.price || 0).toFixed(2)}</div>
+          </div>
+          ${booking.payment_method ? `
+          <div class="detail-row">
+            <div class="detail-label">Payment Method:</div>
+            <div class="detail-value">${formatPaymentMethod(booking.payment_method)}</div>
+          </div>
+          ` : ''}
+          ${booking.po_number ? `
+          <div class="detail-row">
+            <div class="detail-label">PO Number:</div>
+            <div class="detail-value">${booking.po_number}</div>
+          </div>
+          ` : ''}
         </div>
-        ${booking.payment_method ? `
-        <div class="detail-row">
-          <div class="detail-label">Payment Method:</div>
-          <div class="detail-value">${formatPaymentMethod(booking.payment_method)}</div>
-        </div>
-        ` : ''}
-        ${booking.po_number ? `
-        <div class="detail-row">
-          <div class="detail-label">PO Number:</div>
-          <div class="detail-value">${booking.po_number}</div>
-        </div>
-        ` : ''}
-      </div>
 
-      <div class="section">
-        <div class="section-header">Terms & Conditions</div>
-        <div class="terms">
-          <ul>
-            <li>This quote is valid for 30 days from the date of issue</li>
-            <li>Prices include GST where applicable</li>
-            <li>Payment is required within 7 days of service completion</li>
-            <li>Cancellation must be made at least 24 hours in advance</li>
-            <li>All therapists are fully qualified and insured</li>
-            <li>Equipment and massage tables will be provided by Rejuvenators</li>
-            <li>A suitable private space must be provided for each treatment</li>
-          </ul>
+        <div class="section">
+          <div class="section-header">Terms & Conditions</div>
+          <div class="terms">
+            <ul>
+              <li>This quote is valid for 30 days from the date of issue</li>
+              <li>Prices include GST where applicable</li>
+              <li>Payment is required within 7 days of service completion</li>
+              <li>Cancellation must be made at least 24 hours in advance</li>
+              <li>All therapists are fully qualified and insured</li>
+              <li>Equipment and massage tables will be provided by Rejuvenators</li>
+              <li>A suitable private space must be provided for each treatment</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="footer">
+          <p><strong>Thank you for choosing Rejuvenators Mobile Massage</strong></p>
+          <p>📧 info@rejuvenators.com | 📞 1300 302 542</p>
         </div>
       </div>
-
-      <div class="footer">
-        <p><strong>Thank you for choosing Rejuvenators Mobile Massage</strong></p>
-        <p>📧 info@rejuvenators.com | 📞 1300 302 542</p>
-      </div>
+      
+      <script>
+        // Auto-focus print dialog on mobile devices
+        if (/Mobi|Android/i.test(navigator.userAgent)) {
+          setTimeout(() => {
+            document.querySelector('.print-button').textContent = '📄 Open Print Dialog';
+          }, 1000);
+        }
+      </script>
     </body>
     </html>
   `;

@@ -16,39 +16,38 @@ export const generateQuotePDF = async (quoteData: QuoteData): Promise<void> => {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.error || 'Failed to generate PDF');
+      throw new Error(error.error || 'Failed to generate quote');
     }
 
     const result = await response.json();
     
-    // Convert base64 to blob and trigger download
-    const pdfBlob = base64ToBlob(result.pdf, 'application/pdf');
-    const url = URL.createObjectURL(pdfBlob);
+    // Open the HTML content in a new tab for printing/saving as PDF
+    const newWindow = window.open('', '_blank');
     
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = result.filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up
-    URL.revokeObjectURL(url);
+    if (newWindow) {
+      newWindow.document.write(result.html);
+      newWindow.document.close();
+      
+      // Focus the new window
+      newWindow.focus();
+    } else {
+      // Fallback: Create a blob URL and open it
+      const htmlBlob = new Blob([result.html], { type: 'text/html' });
+      const url = URL.createObjectURL(htmlBlob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up after a delay
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
     
   } catch (error) {
-    console.error('Error generating PDF:', error);
+    console.error('Error generating quote:', error);
     throw error;
   }
 };
-
-function base64ToBlob(base64: string, contentType: string): Blob {
-  const byteCharacters = atob(base64);
-  const byteNumbers = new Array(byteCharacters.length);
-  
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
-  }
-  
-  const byteArray = new Uint8Array(byteNumbers);
-  return new Blob([byteArray], { type: contentType });
-}
