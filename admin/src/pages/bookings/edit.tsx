@@ -205,9 +205,9 @@ export const BookingEdit: React.FC = () => {
 
   const userRole = identity?.role;
 
-  // Quote detection helper
+  // Quote detection helper - match server-side logic
   const isQuote = (booking: Booking) => {
-    return booking.service_details?.quote_only || booking.booking_type === 'quote';
+    return booking.quote_only === 'true' || booking.quote_only === true || booking.status === 'quote_requested';
   };
 
   useEffect(() => {

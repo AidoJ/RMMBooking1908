@@ -52,32 +52,14 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Debug: Log the actual booking data to see what fields exist
-    console.log('Booking data:', JSON.stringify(booking, null, 2));
-    
-    // Check if it's a quote - try multiple possible fields
-    const isQuote = booking.service_details?.quote_only || 
-                   booking.booking_type === 'quote' || 
-                   booking.is_quote === true ||
-                   booking.quote_only === true ||
-                   (booking.corporate_contact_name && booking.business_name); // If it has corporate fields, likely a quote
-    
-    console.log('Quote check result:', isQuote);
+    // Check if it's a quote based on actual data structure
+    const isQuote = booking.quote_only === 'true' || booking.quote_only === true || booking.status === 'quote_requested';
     
     if (!isQuote) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ 
-          error: 'PDF generation is only available for quote requests',
-          debug: {
-            booking_type: booking.booking_type,
-            is_quote: booking.is_quote,
-            quote_only: booking.quote_only,
-            service_details: booking.service_details,
-            has_corporate_fields: !!(booking.corporate_contact_name && booking.business_name)
-          }
-        })
+        body: JSON.stringify({ error: 'PDF generation is only available for quote requests' })
       };
     }
 
