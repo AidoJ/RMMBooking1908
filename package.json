@@ -31,7 +31,8 @@
     "dayjs": "^1.11.10",
     "stripe": "^14.25.0",
     "@supabase/supabase-js": "^2.39.3",
-    "twilio": "^4.19.3"
+    "twilio": "^4.19.3",
+    "html-pdf-node": "^1.0.8"
   },
   "devDependencies": {
     "@types/node": "^18.16.2",
