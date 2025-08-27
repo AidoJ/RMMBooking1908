@@ -294,6 +294,69 @@ function generateQuoteHTML(booking) {
           text-align: center;
           color: #007e8c;
         }
+        .quote-response {
+          background: #f8f9fa;
+          border: 2px solid #007e8c;
+          border-radius: 10px;
+          padding: 30px;
+          margin: 40px 0;
+          text-align: center;
+        }
+        .quote-response h2 {
+          color: #007e8c;
+          margin-top: 0;
+          margin-bottom: 10px;
+        }
+        .response-buttons {
+          display: flex;
+          gap: 20px;
+          justify-content: center;
+          margin: 25px 0;
+          flex-wrap: wrap;
+        }
+        .accept-btn, .decline-btn {
+          padding: 15px 30px;
+          font-size: 18px;
+          font-weight: bold;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          min-width: 180px;
+        }
+        .accept-btn {
+          background: #52c41a;
+          color: white;
+        }
+        .accept-btn:hover {
+          background: #389e0d;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(82, 196, 26, 0.3);
+        }
+        .decline-btn {
+          background: #f5222d;
+          color: white;
+        }
+        .decline-btn:hover {
+          background: #cf1322;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(245, 34, 45, 0.3);
+        }
+        .response-note {
+          margin-top: 20px;
+          color: #666;
+        }
+        @media print {
+          .quote-response {
+            display: none !important;
+          }
+        }
+        @media (max-width: 600px) {
+          .response-buttons {
+            flex-direction: column;
+            align-items: center;
+          }
+        }
       </style>
     </head>
     <body>
@@ -434,6 +497,24 @@ function generateQuoteHTML(booking) {
           </div>
         </div>
 
+        <div class="quote-response">
+          <div class="response-header">
+            <h2>Ready to move forward?</h2>
+            <p>Please let us know your decision on this quote:</p>
+          </div>
+          <div class="response-buttons">
+            <button class="accept-btn" onclick="respondToQuote('accept')">
+              ✅ Accept Quote
+            </button>
+            <button class="decline-btn" onclick="respondToQuote('decline')">
+              ❌ Decline Quote
+            </button>
+          </div>
+          <div class="response-note">
+            <p><small>By clicking a button above, you'll be taken to a form to confirm your decision and we'll be notified immediately.</small></p>
+          </div>
+        </div>
+
         <div class="footer">
           <p><strong>Thank you for choosing Rejuvenators Mobile Massage</strong></p>
           <p>📧 info@rejuvenators.com | 📞 1300 302 542</p>
@@ -446,6 +527,42 @@ function generateQuoteHTML(booking) {
           setTimeout(() => {
             document.querySelector('.print-button').textContent = '📄 Open Print Dialog';
           }, 1000);
+        }
+        
+        // Handle quote response
+        function respondToQuote(response) {
+          const quoteId = '${booking.id}';
+          
+          // Simple confirmation dialog
+          const message = response === 'accept' 
+            ? 'Are you ready to accept this quote? We will contact you within 24 hours to finalize the details.'
+            : 'Are you sure you want to decline this quote? You can always contact us directly to discuss alternatives.';
+          
+          if (confirm(message)) {
+            // Create a simple form to submit the response
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/.netlify/functions/quote-response';
+            form.style.display = 'none';
+            
+            // Add form fields
+            const bookingIdField = document.createElement('input');
+            bookingIdField.type = 'hidden';
+            bookingIdField.name = 'bookingId';
+            bookingIdField.value = quoteId;
+            
+            const responseField = document.createElement('input');
+            responseField.type = 'hidden';
+            responseField.name = 'response';
+            responseField.value = response;
+            
+            form.appendChild(bookingIdField);
+            form.appendChild(responseField);
+            
+            // Submit the form
+            document.body.appendChild(form);
+            form.submit();
+          }
         }
       </script>
     </body>
