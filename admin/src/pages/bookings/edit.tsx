@@ -97,6 +97,7 @@ interface Booking {
   duration_per_massage?: number;
   payment_method?: string;
   preferred_time_range?: string;
+  quote_only?: string | boolean;
   
   // Joined data
   customer_name?: string;
