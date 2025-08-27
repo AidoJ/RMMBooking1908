@@ -1,0 +1,383 @@
+const htmlPdf = require('html-pdf-node');
+const { createClient } = require('@supabase/supabase-js');
+
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+exports.handler = async (event, context) => {
+  // Enable CORS
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
+
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    };
+  }
+
+  try {
+    const { bookingId } = JSON.parse(event.body);
+    
+    if (!bookingId) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Booking ID is required' })
+      };
+    }
+
+    // Initialize Supabase client
+    const supabase = createClient(supabaseUrl, supabaseKey);
+    
+    // Fetch booking data
+    const { data: booking, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', bookingId)
+      .single();
+
+    if (error || !booking) {
+      return {
+        statusCode: 404,
+        headers,
+        body: JSON.stringify({ error: 'Booking not found' })
+      };
+    }
+
+    // Check if it's a quote
+    if (!booking.is_quote) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'PDF generation is only available for quote requests' })
+      };
+    }
+
+    // Generate HTML content for PDF
+    const htmlContent = generateQuoteHTML(booking);
+    
+    // PDF options
+    const options = {
+      format: 'A4',
+      margin: { top: '20mm', bottom: '20mm', left: '15mm', right: '15mm' },
+      printBackground: true
+    };
+
+    // Generate PDF
+    const file = { content: htmlContent };
+    const pdfBuffer = await htmlPdf.generatePdf(file, options);
+    
+    // Return PDF as base64
+    return {
+      statusCode: 200,
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        success: true,
+        filename: `Quote-${booking.id.substring(0, 8).toUpperCase()}-${new Date().toLocaleDateString('en-AU').replace(/\//g, '-')}.pdf`,
+        pdf: pdfBuffer.toString('base64')
+      })
+    };
+
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ 
+        error: 'Failed to generate PDF',
+        details: error.message 
+      })
+    };
+  }
+};
+
+function generateQuoteHTML(booking) {
+  const quoteRef = booking.id.substring(0, 8).toUpperCase();
+  const quoteDate = new Date(booking.created_at).toLocaleDateString('en-AU');
+  const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-AU');
+  
+  const eventDate = new Date(booking.booking_time).toLocaleDateString('en-AU', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const totalMinutes = booking.number_of_massages * booking.duration_per_massage;
+  const totalDuration = `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`;
+
+  const formatPaymentMethod = (method) => {
+    const methodMap = {
+      'credit_card': 'Credit Card',
+      'invoice': 'Invoice (Net 30)',
+      'bank_transfer': 'Bank Transfer/EFT'
+    };
+    return methodMap[method] || method;
+  };
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Helvetica', Arial, sans-serif;
+          color: #333;
+          line-height: 1.6;
+          padding: 20px;
+        }
+        .header {
+          border-bottom: 2px solid #007e8c;
+          padding-bottom: 20px;
+          margin-bottom: 30px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .brand h1 {
+          color: #007e8c;
+          font-size: 28px;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        .brand p {
+          color: #007e8c;
+          font-style: italic;
+          font-size: 14px;
+        }
+        .quote-title {
+          color: #333;
+          font-size: 24px;
+          font-weight: bold;
+        }
+        .quote-details {
+          background: #f8f9fa;
+          padding: 15px;
+          border-radius: 5px;
+          margin-bottom: 30px;
+        }
+        .section {
+          margin-bottom: 30px;
+        }
+        .section-header {
+          color: #007e8c;
+          font-size: 18px;
+          font-weight: bold;
+          border-bottom: 1px solid #ddd;
+          padding-bottom: 5px;
+          margin-bottom: 15px;
+        }
+        .detail-row {
+          display: flex;
+          margin-bottom: 8px;
+        }
+        .detail-label {
+          font-weight: bold;
+          width: 150px;
+          min-width: 150px;
+        }
+        .detail-value {
+          flex: 1;
+        }
+        .investment-box {
+          background: #f0f8ff;
+          border: 2px solid #007e8c;
+          border-radius: 10px;
+          padding: 20px;
+          text-align: center;
+          margin: 20px 0;
+        }
+        .investment-box .label {
+          color: #007e8c;
+          font-size: 20px;
+          font-weight: bold;
+          margin-bottom: 10px;
+        }
+        .investment-box .amount {
+          color: #007e8c;
+          font-size: 32px;
+          font-weight: bold;
+        }
+        .terms {
+          background: #f8f9fa;
+          padding: 15px;
+          border-radius: 5px;
+          font-size: 12px;
+        }
+        .terms ul {
+          list-style-type: none;
+          padding-left: 0;
+        }
+        .terms li {
+          margin-bottom: 5px;
+          padding-left: 15px;
+          position: relative;
+        }
+        .terms li:before {
+          content: "•";
+          color: #007e8c;
+          position: absolute;
+          left: 0;
+        }
+        .footer {
+          border-top: 1px solid #ddd;
+          padding-top: 20px;
+          margin-top: 40px;
+          text-align: center;
+          color: #007e8c;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <div class="brand">
+          <h1>REJUVENATORS®</h1>
+          <p>Mobile Massage</p>
+        </div>
+        <div class="quote-title">OFFICIAL QUOTE</div>
+      </div>
+
+      <div class="quote-details">
+        <div class="detail-row">
+          <div class="detail-label">Quote Reference:</div>
+          <div class="detail-value">${quoteRef}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Quote Date:</div>
+          <div class="detail-value">${quoteDate}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Valid Until:</div>
+          <div class="detail-value">${validUntil}</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">Contact Information</div>
+        <div class="detail-row">
+          <div class="detail-label">Contact Name:</div>
+          <div class="detail-value">${booking.corporate_contact_name || 'Not specified'}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Company:</div>
+          <div class="detail-value">${booking.business_name || 'Not specified'}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Email:</div>
+          <div class="detail-value">${booking.corporate_contact_email || 'Not specified'}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Phone:</div>
+          <div class="detail-value">${booking.corporate_contact_phone || 'Not specified'}</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">Event Details</div>
+        <div class="detail-row">
+          <div class="detail-label">Event Date:</div>
+          <div class="detail-value">${eventDate}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Event Address:</div>
+          <div class="detail-value">${booking.address || 'Not specified'}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Event Type:</div>
+          <div class="detail-value">${booking.event_type || 'Corporate Event'}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Expected Attendees:</div>
+          <div class="detail-value">${booking.expected_attendees || 'Not specified'}</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">Massage Requirements</div>
+        <div class="detail-row">
+          <div class="detail-label">Number of Massages:</div>
+          <div class="detail-value">${booking.number_of_massages}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Duration per Massage:</div>
+          <div class="detail-value">${booking.duration_per_massage} minutes</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Total Event Duration:</div>
+          <div class="detail-value">${totalDuration}</div>
+        </div>
+        <div class="detail-row">
+          <div class="detail-label">Preferred Therapists:</div>
+          <div class="detail-value">${booking.preferred_therapists || 'Let us recommend'}</div>
+        </div>
+        ${booking.setup_requirements ? `
+        <div class="detail-row">
+          <div class="detail-label">Setup Requirements:</div>
+          <div class="detail-value">${booking.setup_requirements}</div>
+        </div>
+        ` : ''}
+        ${booking.special_requirements ? `
+        <div class="detail-row">
+          <div class="detail-label">Special Requirements:</div>
+          <div class="detail-value">${booking.special_requirements}</div>
+        </div>
+        ` : ''}
+      </div>
+
+      <div class="section">
+        <div class="section-header">Investment</div>
+        <div class="investment-box">
+          <div class="label">Total Investment</div>
+          <div class="amount">$${(booking.price || 0).toFixed(2)}</div>
+        </div>
+        ${booking.payment_method ? `
+        <div class="detail-row">
+          <div class="detail-label">Payment Method:</div>
+          <div class="detail-value">${formatPaymentMethod(booking.payment_method)}</div>
+        </div>
+        ` : ''}
+        ${booking.po_number ? `
+        <div class="detail-row">
+          <div class="detail-label">PO Number:</div>
+          <div class="detail-value">${booking.po_number}</div>
+        </div>
+        ` : ''}
+      </div>
+
+      <div class="section">
+        <div class="section-header">Terms & Conditions</div>
+        <div class="terms">
+          <ul>
+            <li>This quote is valid for 30 days from the date of issue</li>
+            <li>Prices include GST where applicable</li>
+            <li>Payment is required within 7 days of service completion</li>
+            <li>Cancellation must be made at least 24 hours in advance</li>
+            <li>All therapists are fully qualified and insured</li>
+            <li>Equipment and massage tables will be provided by Rejuvenators</li>
+            <li>A suitable private space must be provided for each treatment</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer">
+        <p><strong>Thank you for choosing Rejuvenators Mobile Massage</strong></p>
+        <p>📧 info@rejuvenators.com | 📞 1300 302 542</p>
+      </div>
+    </body>
+    </html>
+  `;
+}
