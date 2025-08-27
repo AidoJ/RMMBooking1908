@@ -7,7 +7,8 @@ const TEMPLATE_IDS = {
   BOOKING_UPDATE_CUSTOMER: 'template_butcv1',
   BOOKING_UPDATE_THERAPIST: 'template_buttv1', 
   THERAPIST_REASSIGNED_OLD: 'template_brot-v1',
-  THERAPIST_REASSIGNED_NEW: 'template_brnt-v1'
+  THERAPIST_REASSIGNED_NEW: 'template_brnt-v1',
+  CORPORATE_QUOTE: 'template_corporate_quote'
 };
 
 // Declare emailjs as global variable (loaded via CDN)
@@ -51,6 +52,23 @@ export interface BookingData {
   therapist_fee?: number;
   notes?: string;
   room_number?: string;
+  
+  // Quote-specific fields
+  event_type?: string;
+  expected_attendees?: number;
+  number_of_massages?: number;
+  preferred_therapists?: number;
+  corporate_contact_name?: string;
+  corporate_contact_email?: string;
+  corporate_contact_phone?: string;
+  po_number?: string;
+  urgency?: string;
+  setup_requirements?: string;
+  special_requirements?: string;
+  duration_per_massage?: number;
+  payment_method?: string;
+  preferred_time_range?: string;
+  created_at?: string;
 }
 
 export interface TherapistData {
@@ -221,6 +239,102 @@ export const EmailService = {
       return { success: true };
     } catch (error) {
       console.error('❌ Error sending new therapist reassignment email:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  // Send corporate quote to client
+  async sendCorporateQuote(bookingData: BookingData): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      // Generate quote reference ID
+      const quoteReference = `RMM-${bookingData.id.slice(0, 8).toUpperCase()}`;
+      
+      // Calculate quote expiry date (30 days from now)
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 30);
+      
+      // Format event date
+      const eventDate = new Date(bookingData.booking_time).toLocaleDateString('en-AU', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long', 
+        day: 'numeric'
+      });
+
+      // Format event time from preferred_time_range or booking_time
+      const eventTime = bookingData.preferred_time_range || 
+                       new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+      // Calculate total event duration
+      const totalMinutes = (bookingData.number_of_massages || 0) * (bookingData.duration_per_massage || 0);
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      const totalDuration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+
+      // Generate action URLs
+      const baseUrl = window.location.origin;
+      const acceptUrl = `${baseUrl}/.netlify/functions/quote-response?action=accept&id=${bookingData.id}`;
+      const declineUrl = `${baseUrl}/.netlify/functions/quote-response?action=decline&id=${bookingData.id}`;
+      const onlineQuoteUrl = `${baseUrl}/.netlify/functions/generate-quote-pdf?id=${bookingData.id}`;
+
+      const templateParams = {
+        // Contact Information
+        corporate_contact_email: bookingData.corporate_contact_email,
+        corporate_contact_name: bookingData.corporate_contact_name,
+        
+        // Company Details
+        business_name: bookingData.business_name,
+        event_type: bookingData.event_type || 'Corporate Wellness Event',
+        
+        // Quote Information
+        quote_reference: quoteReference,
+        quote_amount: `$${(bookingData.price || 0).toFixed(2)}`,
+        quote_expiry_date: expiryDate.toLocaleDateString('en-AU'),
+        
+        // Event Details
+        event_date: eventDate,
+        event_time: eventTime,
+        event_address: bookingData.address,
+        number_of_massages: bookingData.number_of_massages?.toString() || '1',
+        duration_per_massage: `${bookingData.duration_per_massage || 30} minutes`,
+        expected_attendees: bookingData.expected_attendees?.toString() || '1',
+        total_event_duration: totalDuration,
+        preferred_therapists: bookingData.preferred_therapists?.toString() || 'As recommended',
+        
+        // Requirements
+        special_requirements: bookingData.special_requirements || 'None specified',
+        setup_requirements: bookingData.setup_requirements || 'Standard setup',
+        
+        // Payment Information
+        payment_method: bookingData.payment_method || 'Credit Card',
+        po_number: bookingData.po_number || 'Not provided',
+        
+        // Action URLs
+        accept_url: acceptUrl,
+        decline_url: declineUrl,
+        online_quote_url: onlineQuoteUrl,
+        
+        // System Fields
+        from_name: 'Rejuvenators Mobile Massage',
+        reply_to: 'info@rejuvenators.com'
+      };
+
+      console.log('📧 Sending corporate quote email with params:', templateParams);
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.CORPORATE_QUOTE,
+        templateParams
+      );
+
+      console.log('✅ Corporate quote email sent:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending corporate quote email:', error);
       return { success: false, error: (error as Error).message };
     }
   }

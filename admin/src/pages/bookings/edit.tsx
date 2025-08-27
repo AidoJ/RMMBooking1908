@@ -203,6 +203,8 @@ export const BookingEdit: React.FC = () => {
     sendSMS: false
   });
   const [customDuration, setCustomDuration] = useState(false);
+  const [showSendEmailModal, setShowSendEmailModal] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const userRole = identity?.role;
 
@@ -844,12 +846,26 @@ export const BookingEdit: React.FC = () => {
     }
   };
 
-  // Generate PDF quote
+  // Generate PDF quote and optionally send email
   const handleGeneratePDF = () => {
     if (!booking || !isQuote(booking)) {
       message.error('PDF generation is only available for quote requests');
       return;
     }
+
+    // Check if we have a corporate contact email
+    if (booking.corporate_contact_email && booking.corporate_contact_name) {
+      // Show send email modal
+      setShowSendEmailModal(true);
+    } else {
+      // Just generate PDF without email option
+      generatePDFOnly();
+    }
+  };
+
+  // Generate PDF only (no email)
+  const generatePDFOnly = () => {
+    if (!booking) return;
 
     try {
       const quoteData = {
@@ -879,6 +895,60 @@ export const BookingEdit: React.FC = () => {
     } catch (error) {
       console.error('Error generating PDF:', error);
       message.error('Failed to generate PDF quote. Please try again.');
+    }
+  };
+
+  // Send email with PDF and generate PDF
+  const handleSendQuoteEmail = async () => {
+    if (!booking) return;
+
+    setSendingEmail(true);
+    try {
+      // First generate the PDF
+      generatePDFOnly();
+      
+      // Wait a moment for PDF generation
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Prepare booking data for email
+      const emailBookingData: BookingData = {
+        id: booking.id,
+        booking_id: booking.booking_id,
+        corporate_contact_name: booking.corporate_contact_name,
+        corporate_contact_email: booking.corporate_contact_email,
+        corporate_contact_phone: booking.corporate_contact_phone,
+        business_name: booking.business_name,
+        address: booking.address,
+        booking_time: booking.booking_time,
+        event_type: booking.event_type,
+        expected_attendees: booking.expected_attendees,
+        number_of_massages: booking.number_of_massages,
+        duration_per_massage: booking.duration_per_massage,
+        preferred_therapists: booking.preferred_therapists,
+        urgency: booking.urgency,
+        payment_method: booking.payment_method,
+        po_number: booking.po_number,
+        setup_requirements: booking.setup_requirements,
+        special_requirements: booking.special_requirements,
+        price: booking.price,
+        created_at: booking.created_at,
+        preferred_time_range: booking.preferred_time_range
+      };
+
+      // Send the email
+      const result = await EmailService.sendCorporateQuote(emailBookingData);
+
+      if (result.success) {
+        message.success(`Quote sent successfully to ${booking.corporate_contact_email}!`);
+        setShowSendEmailModal(false);
+      } else {
+        message.error(`Failed to send email: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error sending quote email:', error);
+      message.error('Failed to send quote email. Please try again.');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -1314,18 +1384,18 @@ export const BookingEdit: React.FC = () => {
                               <Text>Generate a professional PDF quote to send to the customer.</Text>
                               <br />
                               <Text type="secondary" style={{ fontSize: '12px' }}>
-                                Includes all event details, pricing breakdown, and terms & conditions.
+                                Includes all event details, pricing breakdown, and terms & conditions. Option to email directly to client with Accept/Decline buttons.
                               </Text>
                             </Col>
                             <Col span={12} style={{ textAlign: 'right' }}>
                               <Button
                                 type="primary"
                                 size="large"
-                                icon={<DollarOutlined />}
+                                icon={<MailOutlined />}
                                 onClick={handleGeneratePDF}
                                 style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                               >
-                                Generate Official Quote PDF
+                                Generate & Send Quote
                               </Button>
                             </Col>
                           </Row>
@@ -1634,6 +1704,68 @@ export const BookingEdit: React.FC = () => {
               </Space>
             </div>
           </Form>
+        </Modal>
+
+        {/* Send Quote Email Modal */}
+        <Modal
+          title="📧 Send Quote to Client"
+          open={showSendEmailModal}
+          onCancel={() => setShowSendEmailModal(false)}
+          width={600}
+          footer={null}
+        >
+          <div style={{ marginBottom: 16 }}>
+            <Alert
+              message="Ready to Send Quote"
+              description={`This will generate a PDF quote and send a professional email to ${booking?.corporate_contact_name} at ${booking?.corporate_contact_email} with interactive Accept/Decline buttons.`}
+              type="info"
+              showIcon
+              style={{ marginBottom: 20 }}
+            />
+            
+            <Title level={5}>📋 Quote Summary:</Title>
+            <Descriptions column={1} size="small" style={{ marginBottom: 20 }}>
+              <Descriptions.Item label="Company">{booking?.business_name}</Descriptions.Item>
+              <Descriptions.Item label="Contact">{booking?.corporate_contact_name}</Descriptions.Item>
+              <Descriptions.Item label="Email">{booking?.corporate_contact_email}</Descriptions.Item>
+              <Descriptions.Item label="Event Type">{booking?.event_type || 'Corporate Wellness'}</Descriptions.Item>
+              <Descriptions.Item label="Expected Attendees">{booking?.expected_attendees}</Descriptions.Item>
+              <Descriptions.Item label="Number of Massages">{booking?.number_of_massages}</Descriptions.Item>
+              <Descriptions.Item label="Duration per Massage">{booking?.duration_per_massage} minutes</Descriptions.Item>
+              <Descriptions.Item label="Total Price">
+                <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
+                  ${booking?.price ? booking.price.toFixed(2) : '0.00'}
+                </Text>
+              </Descriptions.Item>
+            </Descriptions>
+
+            <Alert
+              message="Hybrid Approach"
+              description="The email includes Accept/Decline buttons, PDF attachment, and a link to an interactive online quote. This ensures functionality across all devices and email clients."
+              type="success"
+              showIcon
+              style={{ marginBottom: 20 }}
+            />
+          </div>
+
+          <div style={{ textAlign: 'right' }}>
+            <Space>
+              <Button onClick={() => {
+                setShowSendEmailModal(false);
+                generatePDFOnly();
+              }}>
+                PDF Only
+              </Button>
+              <Button 
+                type="primary" 
+                loading={sendingEmail}
+                onClick={handleSendQuoteEmail}
+                icon={<MailOutlined />}
+              >
+                Send Quote to Client
+              </Button>
+            </Space>
+          </div>
         </Modal>
       </div>
     </RoleGuard>
