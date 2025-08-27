@@ -282,6 +282,10 @@ export const EmailService = {
       const onlineQuoteUrl = `${baseUrl}/.netlify/functions/generate-quote-pdf?id=${bookingData.id}`;
 
       const templateParams = {
+        // Required EmailJS system fields
+        to_email: bookingData.corporate_contact_email,
+        to_name: bookingData.corporate_contact_name,
+        
         // Contact Information
         corporate_contact_email: bookingData.corporate_contact_email,
         corporate_contact_name: bookingData.corporate_contact_name,
