@@ -935,8 +935,8 @@ export const BookingEdit: React.FC = () => {
         preferred_time_range: booking.preferred_time_range
       };
 
-      // Send the email
-      const result = await EmailService.sendCorporateQuote(emailBookingData);
+      // Send the email - using minimal test version to debug
+      const result = await EmailService.sendCorporateQuoteMinimal(emailBookingData);
 
       if (result.success) {
         message.success(`Quote sent successfully to ${booking.corporate_contact_email}!`);

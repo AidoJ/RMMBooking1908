@@ -1,0 +1,63 @@
+// EmailJS Template Configuration for Corporate Quote Email
+// Template ID: template_corporate_quote (create this in EmailJS dashboard)
+
+// Required EmailJS Template Parameters:
+{
+  // Contact Information
+  "corporate_contact_email": "{{corporate_contact_email}}", // Recipient email
+  "corporate_contact_name": "{{corporate_contact_name}}",   // Contact person name
+  
+  // Company Details
+  "business_name": "{{business_name}}",                     // Company name
+  "event_type": "{{event_type}}",                          // Corporate wellness, etc.
+  
+  // Quote Information
+  "quote_reference": "{{quote_reference}}",                // Quote ID (e.g., ABC123)
+  "quote_amount": "{{quote_amount}}",                       // Total price (e.g., $900.00)
+  "quote_expiry_date": "{{quote_expiry_date}}",            // 30 days from creation
+  
+  // Event Details
+  "event_date": "{{event_date}}",                          // Formatted date
+  "event_time": "{{event_time}}",                          // Event time
+  "event_address": "{{event_address}}",                    // Full address
+  "number_of_massages": "{{number_of_massages}}",          // Number of sessions
+  "duration_per_massage": "{{duration_per_massage}}",      // Duration per session
+  "expected_attendees": "{{expected_attendees}}",          // Number of people
+  "total_event_duration": "{{total_event_duration}}",      // e.g., "5h 0m"
+  "preferred_therapists": "{{preferred_therapists}}",      // Number recommended
+  
+  // Requirements
+  "special_requirements": "{{special_requirements}}",      // Special notes
+  "setup_requirements": "{{setup_requirements}}",         // Setup needs
+  
+  // Payment Information
+  "payment_method": "{{payment_method}}",                  // Credit Card, Invoice, etc.
+  "po_number": "{{po_number}}",                           // Optional PO number
+  
+  // Action URLs (generated dynamically)
+  "accept_url": "{{accept_url}}",                         // Accept button link
+  "decline_url": "{{decline_url}}",                       // Decline button link
+  "online_quote_url": "{{online_quote_url}}",             // Interactive quote link
+  
+  // System Fields
+  "from_name": "Rejuvenators Mobile Massage",
+  "reply_to": "info@rejuvenators.com"
+}
+
+// URL Generation Logic for Action Buttons:
+// accept_url:  /.netlify/functions/quote-response?action=accept&id={{booking_id}}
+// decline_url: /.netlify/functions/quote-response?action=decline&id={{booking_id}}
+// online_quote_url: /.netlify/functions/generate-quote-pdf?id={{booking_id}}
+
+// Email Subject Line:
+// "Your Corporate Massage Quote #{{quote_reference}} - {{business_name}}"
+
+// Attachment:
+// PDF file generated from the same quote data (static version for records)
+
+// Notes:
+// 1. Create this template in your EmailJS dashboard with template ID: template_corporate_quote
+// 2. The accept_url and decline_url will trigger the quote-response function
+// 3. The online_quote_url will open the interactive PDF we already built
+// 4. PDF attachment will be generated separately and attached to the email
+// 5. All styling is inline for maximum email client compatibility

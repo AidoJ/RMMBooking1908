@@ -327,7 +327,18 @@ export const EmailService = {
         reply_to: 'info@rejuvenators.com'
       };
 
-      console.log('📧 Sending corporate quote email with params:', templateParams);
+      console.log('📧 DEBUGGING CORPORATE QUOTE EMAIL');
+      console.log('📧 Template ID:', TEMPLATE_IDS.CORPORATE_QUOTE);
+      console.log('📧 Service ID:', EMAILJS_SERVICE_ID);
+      console.log('📧 Raw booking data:', bookingData);
+      console.log('📧 All template parameters being sent:');
+      console.table(templateParams);
+      
+      // Log each parameter individually for easy comparison
+      Object.keys(templateParams).forEach(key => {
+        const value = templateParams[key as keyof typeof templateParams];
+        console.log(`📧 ${key}: "${value}" (type: ${typeof value})`);
+      });
 
       const response = await window.emailjs.send(
         EMAILJS_SERVICE_ID,
@@ -339,6 +350,41 @@ export const EmailService = {
       return { success: true };
     } catch (error) {
       console.error('❌ Error sending corporate quote email:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  // Test function with minimal parameters to isolate the issue
+  async sendCorporateQuoteMinimal(bookingData: BookingData): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      // Minimal template params - only the absolute essentials
+      const minimalParams = {
+        to_email: bookingData.corporate_contact_email,
+        to_name: bookingData.corporate_contact_name,
+        corporate_contact_name: bookingData.corporate_contact_name || 'Contact',
+        business_name: bookingData.business_name || 'Company',
+        quote_reference: `RMM-TEST`,
+        quote_amount: '$100.00',
+        from_name: 'Rejuvenators Mobile Massage'
+      };
+
+      console.log('📧 TESTING WITH MINIMAL PARAMS:');
+      console.table(minimalParams);
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.CORPORATE_QUOTE,
+        minimalParams
+      );
+
+      console.log('✅ Minimal corporate quote email sent:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending minimal corporate quote email:', error);
       return { success: false, error: (error as Error).message };
     }
   }
