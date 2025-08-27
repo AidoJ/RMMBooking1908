@@ -7,5 +7,16 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    rollupOptions: {
+      external: [],
+    },
+  },
+  optimizeDeps: {
+    include: ['jspdf'],
+  },
+  resolve: {
+    alias: {
+      '@': '/src',
+    },
   },
 });
