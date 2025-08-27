@@ -16,14 +16,14 @@ exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   };
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
-  if (event.httpMethod !== 'POST') {
+  if (!['POST', 'GET'].includes(event.httpMethod)) {
     return {
       statusCode: 405,
       headers,
@@ -34,18 +34,26 @@ exports.handler = async (event, context) => {
   try {
     let bookingId, response, customerMessage;
     
-    // Handle both JSON and form data
-    if (event.headers['content-type']?.includes('application/json')) {
-      const parsed = JSON.parse(event.body);
-      bookingId = parsed.bookingId;
-      response = parsed.response;
-      customerMessage = parsed.customerMessage;
+    if (event.httpMethod === 'GET') {
+      // Handle GET requests (URL parameters from email links)
+      const params = event.queryStringParameters || {};
+      bookingId = params.id;
+      response = params.action;
+      customerMessage = params.message || '';
     } else {
-      // Handle form data
-      const params = new URLSearchParams(event.body);
-      bookingId = params.get('bookingId');
-      response = params.get('response');
-      customerMessage = params.get('customerMessage');
+      // Handle POST requests - both JSON and form data
+      if (event.headers['content-type']?.includes('application/json')) {
+        const parsed = JSON.parse(event.body);
+        bookingId = parsed.bookingId;
+        response = parsed.response;
+        customerMessage = parsed.customerMessage;
+      } else {
+        // Handle form data
+        const params = new URLSearchParams(event.body);
+        bookingId = params.get('bookingId');
+        response = params.get('response');
+        customerMessage = params.get('customerMessage');
+      }
     }
     
     if (!bookingId || !response) {
