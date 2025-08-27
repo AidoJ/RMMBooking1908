@@ -52,8 +52,9 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Check if it's a quote
-    if (!booking.is_quote) {
+    // Check if it's a quote (match client-side logic)
+    const isQuote = booking.service_details?.quote_only || booking.booking_type === 'quote';
+    if (!isQuote) {
       return {
         statusCode: 400,
         headers,
