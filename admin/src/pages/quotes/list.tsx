@@ -11,8 +11,8 @@ import {
   TagField,
   EditButton,
   ShowButton,
-  useNavigation,
 } from '@refinedev/antd';
+import { useNavigation } from '@refinedev/core';
 import {
   Table,
   Space,
@@ -62,14 +62,14 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
       // Add quote filter - only show quote requests
       filters.push({
         field: 'quote_only',
-        operator: 'eq',
+        operator: 'eq' as const,
         value: 'true'
       });
       
       if (params.business_name) {
         filters.push({
           field: 'business_name',
-          operator: 'contains',
+          operator: 'contains' as const,
           value: params.business_name,
         });
       }
@@ -77,7 +77,7 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
       if (params.corporate_contact_name) {
         filters.push({
           field: 'corporate_contact_name',
-          operator: 'contains',
+          operator: 'contains' as const,
           value: params.corporate_contact_name,
         });
       }
@@ -85,7 +85,7 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
       if (params.status && params.status.length > 0) {
         filters.push({
           field: 'status',
-          operator: 'in',
+          operator: 'in' as const,
           value: params.status,
         });
       }
@@ -93,12 +93,12 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
       if (params.dateRange && params.dateRange.length === 2) {
         filters.push({
           field: 'created_at',
-          operator: 'gte',
+          operator: 'gte' as const,
           value: params.dateRange[0].startOf('day').toISOString(),
         });
         filters.push({
           field: 'created_at',
-          operator: 'lte',
+          operator: 'lte' as const,
           value: params.dateRange[1].endOf('day').toISOString(),
         });
       }
@@ -283,7 +283,7 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
                 style={{ width: '100%' }}
                 placeholder={['Start Date', 'End Date']}
                 value={dateRange}
-                onChange={setDateRange}
+                onChange={(dates) => setDateRange(dates as [dayjs.Dayjs, dayjs.Dayjs] | null)}
               />
             </Col>
           </Row>
