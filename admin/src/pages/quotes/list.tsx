@@ -56,15 +56,22 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
 
   const { tableProps, searchFormProps, filters, sorters } = useTable({
     resource: 'bookings',
+    filters: {
+      permanent: [
+        {
+          field: 'quote_only',
+          operator: 'eq' as const,
+          value: true  // Try boolean true instead of string
+        },
+        {
+          field: 'business_name',
+          operator: 'nnull' as const,  // Not null - quotes should have business names
+          value: null
+        }
+      ]
+    },
     onSearch: (params: any) => {
       const filters = [];
-      
-      // Add quote filter - only show quote requests
-      filters.push({
-        field: 'quote_only',
-        operator: 'eq' as const,
-        value: 'true'
-      });
       
       if (params.business_name) {
         filters.push({
