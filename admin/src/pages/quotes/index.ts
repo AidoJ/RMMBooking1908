@@ -1,0 +1,1 @@
+export { QuotesList } from './list';

@@ -54,6 +54,9 @@ import CustomerCreate from "./pages/customers/create";
 // Import the system settings component
 import SystemSettings from "./pages/system-settings";
 
+// Import the quotes management component
+import { QuotesList } from "./pages/quotes";
+
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
   const { id } = useParams();
@@ -98,6 +101,14 @@ function App() {
                       canDelete: true,
                       label: "Bookings",
                       icon: "📋",
+                    },
+                  },
+                  {
+                    name: "quotes",
+                    list: "/quotes",
+                    meta: {
+                      label: "Quotes",
+                      icon: "💰",
                     },
                   },
                   {
@@ -219,6 +230,9 @@ function App() {
                       <Route path="edit/:id" element={<BookingEdit />} />
                       <Route path="show/:id" element={<BookingShowWrapper />} />
                     </Route>
+                    
+                    {/* Quote Management */}
+                    <Route path="/quotes" element={<QuotesList />} />
                     
                     {/* Calendar */}
                     <Route path="/calendar" element={<CalendarBookingManagement />} />
