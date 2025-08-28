@@ -636,35 +636,40 @@ export const BookingEdit: React.FC = () => {
         if (customerError) throw customerError;
       }
 
+      // Build update data carefully - only include fields that exist and are valid
       const updateData: any = {
-        therapist_id: values.therapist_id,
-        service_id: values.service_id,
-        booking_time: values.booking_time.format('YYYY-MM-DD HH:mm:ss'),
-        address: values.address,
-        business_name: values.business_name,
-        notes: values.notes,
-        duration_minutes: values.duration_minutes,
-        gender_preference: values.gender_preference,
-        parking: values.parking,
-        room_number: values.room_number,
         updated_at: new Date().toISOString(),
-        
-        // Quote-specific fields
-        event_type: values.event_type,
-        expected_attendees: values.expected_attendees,
-        number_of_massages: values.number_of_massages,
-        preferred_therapists: values.preferred_therapists,
-        corporate_contact_name: values.corporate_contact_name,
-        corporate_contact_email: values.corporate_contact_email,
-        corporate_contact_phone: values.corporate_contact_phone,
-        po_number: values.po_number,
-        urgency: values.urgency,
-        setup_requirements: values.setup_requirements,
-        special_requirements: values.special_requirements,
-        duration_per_massage: values.duration_per_massage,
-        payment_method: values.payment_method,
-        preferred_time_range: values.preferred_time_range,
       };
+
+      // Core booking fields
+      if (values.therapist_id) updateData.therapist_id = values.therapist_id;
+      if (values.service_id) updateData.service_id = values.service_id;
+      if (values.booking_time) updateData.booking_time = values.booking_time.format('YYYY-MM-DD HH:mm:ss');
+      if (values.address !== undefined) updateData.address = values.address;
+      if (values.business_name !== undefined) updateData.business_name = values.business_name;
+      if (values.notes !== undefined) updateData.notes = values.notes;
+      if (values.duration_minutes) updateData.duration_minutes = values.duration_minutes;
+      if (values.gender_preference !== undefined) updateData.gender_preference = values.gender_preference;
+      if (values.parking !== undefined) updateData.parking = values.parking;
+      if (values.room_number !== undefined) updateData.room_number = values.room_number;
+
+      // Quote-specific fields (only if this is a quote)
+      if (isQuote(booking)) {
+        if (values.event_type !== undefined) updateData.event_type = values.event_type;
+        if (values.expected_attendees !== undefined) updateData.expected_attendees = values.expected_attendees;
+        if (values.number_of_massages !== undefined) updateData.number_of_massages = values.number_of_massages;
+        if (values.preferred_therapists !== undefined) updateData.preferred_therapists = values.preferred_therapists;
+        if (values.corporate_contact_name !== undefined) updateData.corporate_contact_name = values.corporate_contact_name;
+        if (values.corporate_contact_email !== undefined) updateData.corporate_contact_email = values.corporate_contact_email;
+        if (values.corporate_contact_phone !== undefined) updateData.corporate_contact_phone = values.corporate_contact_phone;
+        if (values.po_number !== undefined) updateData.po_number = values.po_number;
+        if (values.urgency !== undefined) updateData.urgency = values.urgency;
+        if (values.setup_requirements !== undefined) updateData.setup_requirements = values.setup_requirements;
+        if (values.special_requirements !== undefined) updateData.special_requirements = values.special_requirements;
+        if (values.duration_per_massage !== undefined) updateData.duration_per_massage = values.duration_per_massage;
+        if (values.payment_method !== undefined) updateData.payment_method = values.payment_method;
+        if (values.preferred_time_range !== undefined) updateData.preferred_time_range = values.preferred_time_range;
+      }
 
       // Only super admins can update pricing
       if (userRole === 'super_admin') {
