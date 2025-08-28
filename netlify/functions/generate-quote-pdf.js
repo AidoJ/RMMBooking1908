@@ -76,19 +76,31 @@ exports.handler = async (event, context) => {
     // Generate HTML content for PDF
     const htmlContent = generateQuoteHTML(booking);
     
-    // Return HTML content that can be opened in a new tab for printing/saving as PDF
-    return {
-      statusCode: 200,
-      headers: {
-        ...headers,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        success: true,
-        html: htmlContent,
-        filename: `Quote-${booking.id.substring(0, 8).toUpperCase()}-${new Date().toLocaleDateString('en-AU').replace(/\//g, '-')}.pdf`
-      })
-    };
+    if (event.httpMethod === 'GET') {
+      // For GET requests (email links), return HTML directly
+      return {
+        statusCode: 200,
+        headers: {
+          ...headers,
+          'Content-Type': 'text/html; charset=utf-8'
+        },
+        body: htmlContent
+      };
+    } else {
+      // For POST requests (admin panel), return JSON
+      return {
+        statusCode: 200,
+        headers: {
+          ...headers,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          success: true,
+          html: htmlContent,
+          filename: `Quote-${booking.id.substring(0, 8).toUpperCase()}-${new Date().toLocaleDateString('en-AU').replace(/\//g, '-')}.pdf`
+        })
+      };
+    }
 
   } catch (error) {
     console.error('Error generating quote:', error);
