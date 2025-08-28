@@ -91,16 +91,17 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Update booking status
-    const newStatus = response === 'accept' ? 'quote_accepted' : 'quote_declined';
+    // Update booking status - use valid database enum values
+    const newStatus = response === 'accept' ? 'confirmed' : 'declined';
     const updateData = {
       status: newStatus,
       updated_at: new Date().toISOString()
     };
 
-    if (response === 'accept') {
-      updateData.quote_accepted_at = new Date().toISOString();
-    }
+    // Add a note to indicate this was a quote response
+    const currentNotes = booking.notes || '';
+    const responseNote = `\n[${new Date().toLocaleDateString()}] Quote ${response}ed via email`;
+    updateData.notes = currentNotes + responseNote;
 
     const { error: updateError } = await supabase
       .from('bookings')
