@@ -8,14 +8,14 @@ exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
   };
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
-  if (event.httpMethod !== 'POST') {
+  if (!['GET', 'POST'].includes(event.httpMethod)) {
     return {
       statusCode: 405,
       headers,
@@ -24,7 +24,17 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const { bookingId } = JSON.parse(event.body);
+    let bookingId;
+    
+    if (event.httpMethod === 'GET') {
+      // Handle GET requests (URL parameters from email links)
+      const params = event.queryStringParameters || {};
+      bookingId = params.id;
+    } else {
+      // Handle POST requests (JSON body from admin panel)
+      const { bookingId: postBookingId } = JSON.parse(event.body);
+      bookingId = postBookingId;
+    }
     
     if (!bookingId) {
       return {
