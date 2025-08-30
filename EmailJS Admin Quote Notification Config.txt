@@ -1,0 +1,90 @@
+EmailJS Template Configuration for Admin Quote Notifications
+==========================================================
+
+Template ID: template_admin_quote_notification
+(Create this template in your EmailJS dashboard)
+
+Template Variables (all required):
+===================================
+
+BASIC INFO:
+- {{to_email}} - Admin email (info@rejuvenators.com)
+- {{to_name}} - Admin name (Admin Team)
+- {{from_name}} - Rejuvenators Mobile Massage  
+- {{reply_to}} - info@rejuvenators.com
+
+RESPONSE DATA:
+- {{response_action}} - "Accepted" or "Declined"
+- {{response_action_lower}} - "accepted" or "declined" 
+- {{response_icon}} - "✅" for accepted, "❌" for declined
+- {{response_timestamp}} - When customer responded
+
+QUOTE INFORMATION:
+- {{quote_reference}} - Quote ID (e.g., RMM-ABC123)
+- {{business_name}} - Customer company name
+- {{contact_name}} - Customer contact person
+- {{contact_email}} - Customer email address  
+- {{contact_phone}} - Customer phone number
+- {{event_date}} - Event date formatted
+- {{quote_amount}} - Quote amount (e.g., $900.00)
+
+STYLING VARIABLES (conditional based on accept/decline):
+- {{header_color}} - "#52c41a" for accepted, "#f5222d" for declined
+- {{banner_color}} - "#389e0d" for accepted, "#cf1322" for declined  
+- {{urgency_text}} - Different messages for accept vs decline
+- {{action_required}} - Different action messages
+- {{next_steps_bg}} - Background color for next steps section
+- {{next_steps_border}} - Border color for next steps section
+- {{next_steps_color}} - Text color for next steps section
+- {{next_steps_icon}} - "🎉" for accepted, "💭" for declined
+- {{next_steps_content}} - Different next steps content
+
+EMAIL SUBJECT LINE:
+"Quote {{response_action}}: {{business_name}} - {{quote_reference}}"
+
+EXAMPLE SUBJECTS:
+- "Quote Accepted: ABC Corp - RMM-ABC123"
+- "Quote Declined: XYZ Ltd - RMM-XYZ789"
+
+TEMPLATE SETUP INSTRUCTIONS:
+============================
+
+1. Go to EmailJS Dashboard > Email Templates
+2. Click "Create New Template" 
+3. Set Template ID: template_admin_quote_notification
+4. Paste the HTML content from "EmailJS Admin Quote Notification Template.html"
+5. Configure the "To Email" field to use {{to_email}}
+6. Set Subject: "Quote {{response_action}}: {{business_name}} - {{quote_reference}}"
+7. Test the template with sample data
+8. Save and activate
+
+TESTING DATA:
+=============
+Use this sample data to test the template:
+
+{
+  "to_email": "info@rejuvenators.com",
+  "to_name": "Admin Team",
+  "response_action": "Accepted",
+  "response_action_lower": "accepted", 
+  "response_icon": "✅",
+  "response_timestamp": "30/08/2025 2:30 PM",
+  "quote_reference": "RMM-TEST123",
+  "business_name": "Test Company Ltd",
+  "contact_name": "John Smith",
+  "contact_email": "john@testcompany.com",
+  "contact_phone": "0412 345 678",
+  "event_date": "15 September 2025",
+  "quote_amount": "$1,200.00",
+  "header_color": "#52c41a",
+  "banner_color": "#389e0d",
+  "urgency_text": "🎉 Customer Accepted Quote",
+  "action_required": "Contact Customer to Finalize",
+  "next_steps_bg": "#f6ffed",
+  "next_steps_border": "#b7eb8f", 
+  "next_steps_color": "#389e0d",
+  "next_steps_icon": "🎉",
+  "next_steps_content": "Contact the customer within 24 hours to confirm details, process payment, and assign therapists.",
+  "from_name": "Rejuvenators Mobile Massage",
+  "reply_to": "info@rejuvenators.com"
+}
