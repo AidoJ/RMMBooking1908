@@ -124,19 +124,14 @@ exports.handler = async (event, context) => {
       throw updateError;
     }
 
-    // Send admin notification email
-    console.log('📧 Attempting to send admin notification...');
-    const emailResult = await sendAdminNotification(booking, response, customerMessage);
-    console.log('📧 Admin notification result:', emailResult);
-
-    // Return success response
+    // Return success response with admin notification trigger
     return {
       statusCode: 200,
       headers: {
         ...headers,
         'Content-Type': 'text/html'
       },
-      body: generateResponsePage(booking, response)
+      body: generateResponsePage(booking, response, true)  // Pass flag to trigger admin email
     };
 
   } catch (error) {
@@ -284,7 +279,7 @@ async function sendAdminNotification(booking, response, customerMessage) {
   }
 }
 
-function generateResponsePage(booking, response) {
+function generateResponsePage(booking, response, shouldSendAdminEmail = false) {
   const isAccepted = response === 'accept';
   
   return `
@@ -454,6 +449,96 @@ function generateResponsePage(booking, response) {
           <p>📧 ${EMAIL_CONFIG.businessContactEmail} | 📞 ${EMAIL_CONFIG.businessPhone}</p>
         </div>
       </div>
+      
+      ${shouldSendAdminEmail ? `
+      <!-- EmailJS Client-side Admin Notification -->
+      <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+      <script type="text/javascript">
+        (function(){
+          emailjs.init('qfM_qA664E4JddSMN'); // Your EmailJS public key
+          
+          // Admin notification data
+          const bookingData = ${JSON.stringify(booking)};
+          const response = '${response}';
+          const isAccepted = response === 'accept';
+          
+          // Prepare template variables based on response type
+          const responseAction = isAccepted ? 'Accepted' : 'Declined';
+          const responseActionLower = isAccepted ? 'accepted' : 'declined';
+          const responseIcon = isAccepted ? '✅' : '❌';
+          
+          // Color scheme based on response
+          const headerColor = isAccepted ? '#52c41a' : '#f5222d';
+          const bannerColor = isAccepted ? '#389e0d' : '#cf1322';
+          const nextStepsBg = isAccepted ? '#f6ffed' : '#fff2f0';
+          const nextStepsBorder = isAccepted ? '#b7eb8f' : '#ffccc7';
+          const nextStepsColor = isAccepted ? '#389e0d' : '#cf1322';
+          const nextStepsIcon = isAccepted ? '🎉' : '💭';
+          
+          // Next steps content
+          const urgencyText = isAccepted ? '🎉 Customer Accepted Quote' : '💭 Customer Declined Quote';
+          const actionRequired = isAccepted ? 'Contact Customer to Finalize' : 'Follow Up if Appropriate';
+          const nextStepsContent = isAccepted 
+            ? 'Contact the customer within 24 hours to confirm details, process payment, and assign therapists.'
+            : 'Consider reaching out to understand their concerns or offer alternative solutions if appropriate.';
+          
+          // Generate quote reference and timestamps
+          const quoteReference = 'RMM-' + bookingData.id.substring(0, 8).toUpperCase();
+          const responseTimestamp = new Date().toLocaleDateString('en-AU', {
+            day: 'numeric',
+            month: 'numeric', 
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          });
+          const eventDate = new Date(bookingData.booking_time).toLocaleDateString('en-AU', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric'
+          });
+          
+          // Prepare EmailJS template parameters
+          const templateParams = {
+            to_email: '${EMAIL_CONFIG.adminNotificationEmail}',
+            to_name: 'Admin Team',
+            from_name: 'Rejuvenators Mobile Massage',
+            reply_to: '${EMAIL_CONFIG.businessContactEmail}',
+            response_action: responseAction,
+            response_action_lower: responseActionLower,
+            response_icon: responseIcon,
+            response_timestamp: responseTimestamp,
+            quote_reference: quoteReference,
+            business_name: bookingData.business_name || 'Not specified',
+            contact_name: bookingData.corporate_contact_name || 'Not specified',
+            contact_email: bookingData.corporate_contact_email || 'Not provided',
+            contact_phone: bookingData.corporate_contact_phone || 'Not provided',
+            event_date: eventDate,
+            quote_amount: '$' + (bookingData.price || 0).toFixed(2),
+            header_color: headerColor,
+            banner_color: bannerColor,
+            urgency_text: urgencyText,
+            action_required: actionRequired,
+            next_steps_bg: nextStepsBg,
+            next_steps_border: nextStepsBorder,
+            next_steps_color: nextStepsColor,
+            next_steps_icon: nextStepsIcon,
+            next_steps_content: nextStepsContent
+          };
+          
+          // Send admin notification email
+          console.log('📧 Sending admin notification from client-side...');
+          emailjs.send('service_puww2kb', 'admin_quote_notification', templateParams)
+            .then(function(response) {
+              console.log('✅ Admin notification sent successfully:', response);
+            })
+            .catch(function(error) {
+              console.error('❌ Failed to send admin notification:', error);
+            });
+        })();
+      </script>
+      ` : ''}
     </body>
     </html>
   `;
