@@ -91,6 +91,18 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Check if quote has already been responded to
+    if (booking.status === 'confirmed' || booking.status === 'declined') {
+      return {
+        statusCode: 200,
+        headers: {
+          ...headers,
+          'Content-Type': 'text/html'
+        },
+        body: generateQuoteClosedPage(booking)
+      };
+    }
+
     // Update booking status - use valid database enum values
     const newStatus = response === 'accept' ? 'confirmed' : 'declined';
     const updateData = {
@@ -113,7 +125,9 @@ exports.handler = async (event, context) => {
     }
 
     // Send admin notification email
-    await sendAdminNotification(booking, response, customerMessage);
+    console.log('📧 Attempting to send admin notification...');
+    const emailResult = await sendAdminNotification(booking, response, customerMessage);
+    console.log('📧 Admin notification result:', emailResult);
 
     // Return success response
     return {
@@ -140,10 +154,18 @@ exports.handler = async (event, context) => {
 
 async function sendAdminNotification(booking, response, customerMessage) {
   try {
+    console.log('🔧 Setting up admin notification email...');
+    
     // EmailJS configuration
     const EMAILJS_SERVICE_ID = 'service_puww2kb';
     const EMAILJS_TEMPLATE_ID = 'admin_quote_notification';
     const EMAILJS_PUBLIC_KEY = 'qfM_qA664E4JddSMN';
+    
+    console.log('📋 EmailJS Config:', {
+      serviceId: EMAILJS_SERVICE_ID,
+      templateId: EMAILJS_TEMPLATE_ID,
+      publicKey: EMAILJS_PUBLIC_KEY
+    });
 
     // Prepare template variables based on response type
     const isAccepted = response === 'accept';
@@ -225,6 +247,13 @@ async function sendAdminNotification(booking, response, customerMessage) {
       next_steps_icon: nextStepsIcon,
       next_steps_content: nextStepsContent
     };
+
+    console.log('📝 Template parameters prepared:', {
+      to_email: templateParams.to_email,
+      response_action: templateParams.response_action,
+      business_name: templateParams.business_name,
+      quote_reference: templateParams.quote_reference
+    });
 
     // Send email via EmailJS API
     const emailjsResponse = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
@@ -423,6 +452,163 @@ function generateResponsePage(booking, response) {
         <div class="contact-info">
           <p><strong>Questions or need immediate assistance?</strong></p>
           <p>📧 ${EMAIL_CONFIG.businessContactEmail} | 📞 ${EMAIL_CONFIG.businessPhone}</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+function generateQuoteClosedPage(booking) {
+  const isAccepted = booking.status === 'confirmed';
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Quote Already Responded - ${EMAIL_CONFIG.businessName}</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>
+        * { box-sizing: border-box; }
+        body {
+          font-family: 'Helvetica', Arial, sans-serif;
+          color: #333;
+          line-height: 1.6;
+          margin: 0;
+          padding: 20px;
+          background: #f5f5f5;
+        }
+        .container {
+          max-width: 600px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 10px;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+          overflow: hidden;
+        }
+        .header {
+          background: #007e8c;
+          color: white;
+          padding: 30px;
+          text-align: center;
+        }
+        .header h1 {
+          margin: 0;
+          font-size: 28px;
+          font-weight: bold;
+        }
+        .header p {
+          margin: 5px 0 0 0;
+          font-style: italic;
+          opacity: 0.9;
+        }
+        .content {
+          padding: 40px 30px;
+          text-align: center;
+        }
+        .status {
+          font-size: 32px;
+          margin-bottom: 10px;
+        }
+        .status-text {
+          font-size: 24px;
+          font-weight: bold;
+          margin-bottom: 30px;
+          color: #fa8c16;
+        }
+        .details {
+          background: #f8f9fa;
+          padding: 25px;
+          border-radius: 8px;
+          margin: 30px 0;
+          text-align: left;
+        }
+        .details h3 {
+          margin-top: 0;
+          color: #007e8c;
+        }
+        .detail-row {
+          margin: 10px 0;
+        }
+        .detail-row strong {
+          display: inline-block;
+          min-width: 120px;
+        }
+        .notice {
+          background: #fff7e6;
+          border: 2px solid #ffd666;
+          padding: 25px;
+          border-radius: 8px;
+          margin: 30px 0;
+        }
+        .notice h3 {
+          margin-top: 0;
+          color: #d48806;
+        }
+        .contact-info {
+          background: #007e8c;
+          color: white;
+          padding: 25px;
+          text-align: center;
+          margin-top: 30px;
+        }
+        .contact-info p {
+          margin: 5px 0;
+        }
+        @media (max-width: 600px) {
+          body { padding: 10px; }
+          .content { padding: 30px 20px; }
+          .details, .notice { padding: 20px; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>${EMAIL_CONFIG.businessName.toUpperCase()}</h1>
+          <p>Mobile Massage</p>
+        </div>
+        
+        <div class="content">
+          <div class="status">
+            ⚠️
+          </div>
+          <div class="status-text">
+            Quote Already Responded
+          </div>
+          
+          <div class="details">
+            <h3>Quote Details</h3>
+            <div class="detail-row">
+              <strong>Quote ID:</strong> ${booking.id.substring(0, 8).toUpperCase()}
+            </div>
+            <div class="detail-row">
+              <strong>Company:</strong> ${booking.business_name || 'Not specified'}
+            </div>
+            <div class="detail-row">
+              <strong>Current Status:</strong> ${isAccepted ? '✅ Accepted' : '❌ Declined'}
+            </div>
+            <div class="detail-row">
+              <strong>Amount:</strong> $${booking.price}
+            </div>
+          </div>
+          
+          <div class="notice">
+            <h3>Quote is Closed</h3>
+            <p><strong>This quote has already been ${isAccepted ? 'accepted' : 'declined'}.</strong></p>
+            ${isAccepted ? 
+              '<p>Our team is processing your accepted quote and will contact you shortly with next steps.</p>' :
+              '<p>This quote was previously declined. If you would like to reconsider or discuss alternative options, please contact us directly.</p>'
+            }
+            <p>If you need to make changes or have questions about this quote, please contact us using the information below and reference your quote ID.</p>
+          </div>
+        </div>
+        
+        <div class="contact-info">
+          <p><strong>Need assistance or want to reopen this quote?</strong></p>
+          <p>📧 ${EMAIL_CONFIG.businessContactEmail} | 📞 ${EMAIL_CONFIG.businessPhone}</p>
+          <p>Please reference Quote ID: ${booking.id.substring(0, 8).toUpperCase()}</p>
         </div>
       </div>
     </body>
