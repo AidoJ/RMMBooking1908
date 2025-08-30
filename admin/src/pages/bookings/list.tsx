@@ -80,6 +80,16 @@ interface BookingRecord {
   payment_status: string;
   price: number;
   therapist_fee: number;
+  // New pricing fields
+  discount_amount?: number;
+  gift_card_amount?: number;
+  tax_rate_amount?: number;
+  net_price?: number;
+  discount_code?: string;
+  gift_card_code?: string;
+  service_acknowledgement?: boolean;
+  terms_acceptance?: boolean;
+  // Existing fields
   address?: string;
   business_name?: string;
   notes?: string;
@@ -687,11 +697,58 @@ export const EnhancedBookingList = () => {
         const bAmount = isTherapist(userRole) ? (b.therapist_fee || 0) : (b.price || 0);
         return aAmount - bAmount;
       },
-      render: (amount: number) => (
-        <Text strong style={{ color: '#52c41a' }}>
-          ${amount?.toFixed(2) || '0.00'}
-        </Text>
-      ),
+      render: (amount: number, record: BookingRecord) => {
+        // Show enhanced pricing for admins when discount/gift card was applied  
+        const hasDiscounts = (record.discount_amount && record.discount_amount > 0) || 
+                            (record.gift_card_amount && record.gift_card_amount > 0);
+        
+        if (!isTherapist(userRole) && hasDiscounts && record.net_price) {
+          return (
+            <Tooltip 
+              title={
+                <div>
+                  <div>Subtotal: ${record.price?.toFixed(2)}</div>
+                  {record.discount_amount && record.discount_amount > 0 && (
+                    <div style={{ color: '#52c41a' }}>
+                      Discount ({record.discount_code}): -${record.discount_amount.toFixed(2)}
+                    </div>
+                  )}
+                  {record.gift_card_amount && record.gift_card_amount > 0 && (
+                    <div style={{ color: '#1890ff' }}>
+                      Gift Card ({record.gift_card_code}): -${record.gift_card_amount.toFixed(2)}
+                    </div>
+                  )}
+                  {record.tax_rate_amount && (
+                    <div>GST (10%): ${record.tax_rate_amount.toFixed(2)}</div>
+                  )}
+                  <div style={{ marginTop: '4px', fontWeight: 'bold' }}>
+                    Final Total: ${record.net_price.toFixed(2)}
+                  </div>
+                </div>
+              }
+            >
+              <div>
+                <Text strong style={{ color: '#52c41a' }}>
+                  ${record.net_price.toFixed(2)}
+                </Text>
+                <br />
+                <Text type="secondary" style={{ fontSize: '11px' }}>
+                  {record.discount_amount && record.discount_amount > 0 && '🏷️ '}
+                  {record.gift_card_amount && record.gift_card_amount > 0 && '💳 '}
+                  Discounted
+                </Text>
+              </div>
+            </Tooltip>
+          );
+        }
+        
+        // Standard display for therapists or bookings without discounts
+        return (
+          <Text strong style={{ color: '#52c41a' }}>
+            ${amount?.toFixed(2) || '0.00'}
+          </Text>
+        );
+      },
     },
     // ADMIN-ONLY COLUMN: Show separate "Therapist Fee" column for admins (not therapists)
     ...(canAccess(userRole, 'canViewAllEarnings') && !isTherapist(userRole) ? [{

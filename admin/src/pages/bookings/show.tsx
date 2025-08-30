@@ -60,6 +60,16 @@ interface Booking {
   payment_status: string;
   price: number;
   therapist_fee: number;
+  // New pricing fields
+  discount_amount?: number;
+  gift_card_amount?: number;
+  tax_rate_amount?: number;
+  net_price?: number;
+  discount_code?: string;
+  gift_card_code?: string;
+  service_acknowledgement?: boolean;
+  terms_acceptance?: boolean;
+  // Existing fields
   address: string;
   business_name?: string;
   notes?: string;
@@ -649,9 +659,34 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                 </Descriptions.Item>
                 {!isTherapist(userRole) && !isQuote(booking) && (
                   <Descriptions.Item label="Price">
-                    <Text strong style={{ color: '#52c41a' }}>
-                      ${booking.price ? booking.price.toFixed(2) : '0.00'}
-                    </Text>
+                    {/* Enhanced pricing display for admins */}
+                    {!isTherapist(userRole) && (booking.discount_amount > 0 || booking.gift_card_amount > 0) && booking.net_price ? (
+                      <div>
+                        <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
+                          ${booking.net_price.toFixed(2)}
+                        </Text>
+                        <div style={{ marginTop: '8px', fontSize: '12px' }}>
+                          <div>Subtotal: ${booking.price.toFixed(2)}</div>
+                          {booking.discount_amount > 0 && (
+                            <div style={{ color: '#52c41a' }}>
+                              Discount ({booking.discount_code}): -${booking.discount_amount.toFixed(2)}
+                            </div>
+                          )}
+                          {booking.gift_card_amount > 0 && (
+                            <div style={{ color: '#1890ff' }}>
+                              Gift Card ({booking.gift_card_code}): -${booking.gift_card_amount.toFixed(2)}
+                            </div>
+                          )}
+                          {booking.tax_rate_amount > 0 && (
+                            <div>GST (10%): ${booking.tax_rate_amount.toFixed(2)}</div>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <Text strong style={{ color: '#52c41a' }}>
+                        ${booking.price ? booking.price.toFixed(2) : '0.00'}
+                      </Text>
+                    )}
                   </Descriptions.Item>
                 )}
                 {isQuote(booking) && (

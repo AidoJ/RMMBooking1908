@@ -569,6 +569,11 @@ console.log('Globals:', {
     // Update price display with breakdown
     document.getElementById('priceAmount').textContent = price.toFixed(2);
     document.getElementById('priceBreakdown').innerHTML = breakdown.join('<br>');
+    
+    // Update pricing system with gross price
+    if (window.pricingCalculations) {
+      window.pricingCalculations.setGrossPrice(price);
+    }
   }
 
   // Update price when relevant fields change
@@ -1855,7 +1860,45 @@ async function populateBookingSummary() {
     <p><strong>Notes:</strong> ${notes}</p>
     <p><strong>Your Service fees:</strong> $${price}</p>
     ${priceBreakdown ? `<div style="margin-left: 20px; font-size: 0.9em; color: #666;">${priceBreakdown}</div>` : ''}
+    ${generatePricingSummaryHTML()}
       `;
+}
+
+// Generate pricing summary HTML for booking summary
+function generatePricingSummaryHTML() {
+  const finalPricing = window.pricingState?.finalPricing;
+  const appliedDiscount = window.pricingState?.appliedDiscount;
+  const appliedGiftCard = window.pricingState?.appliedGiftCard;
+  
+  if (!finalPricing || (finalPricing.discountAmount === 0 && finalPricing.giftCardAmount === 0)) {
+    return '';
+  }
+  
+  let html = '<div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-left: 3px solid #007e8c; border-radius: 5px;">';
+  html += '<h4 style="margin: 0 0 10px 0; color: #007e8c;">Final Pricing Breakdown</h4>';
+  
+  html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;">`;
+  html += `<span>Subtotal:</span><span>$${finalPricing.grossPrice.toFixed(2)}</span></div>`;
+  
+  if (finalPricing.discountAmount > 0) {
+    html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #10b981;">`;
+    html += `<span>Discount (${appliedDiscount.code}):</span><span>-$${finalPricing.discountAmount.toFixed(2)}</span></div>`;
+  }
+  
+  if (finalPricing.giftCardAmount > 0) {
+    html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #007e8c;">`;
+    html += `<span>Gift Card (${appliedGiftCard.code}):</span><span>-$${finalPricing.giftCardAmount.toFixed(2)}</span></div>`;
+  }
+  
+  html += `<div style="display: flex; justify-content: space-between; margin-bottom: 10px;">`;
+  html += `<span>GST (10%):</span><span>$${finalPricing.taxAmount.toFixed(2)}</span></div>`;
+  
+  html += `<hr style="border: 1px solid #ddd; margin: 10px 0;">`;
+  html += `<div style="display: flex; justify-content: space-between; font-weight: bold; color: #007e8c; font-size: 1.1em;">`;
+  html += `<span>Total Amount:</span><span>$${finalPricing.netPrice.toFixed(2)}</span></div>`;
+  
+  html += '</div>';
+  return html;
 }
 // Show summary when entering Step 9
 const step9 = document.getElementById('step9');
@@ -2363,6 +2406,42 @@ if (confirmBtn) {
         const therapistRadio = document.querySelector('input[name="therapistId"]:checked');
         const therapistName = therapistRadio?.dataset?.name || 'Available Therapist';
         
+    // Validate acknowledgement checkboxes
+    const serviceAck = document.getElementById('serviceAcknowledgement');
+    const termsAck = document.getElementById('termsAcceptance');
+    
+    if (!serviceAck.checked) {
+      alert('Please acknowledge that you understand this is a strictly non-sexual professional service.');
+      return;
+    }
+    
+    if (!termsAck.checked) {
+      alert('Please read and accept the Terms & Conditions.');
+      return;
+    }
+
+    // Get pricing information
+    const finalPricing = window.pricingState?.finalPricing || null;
+    const appliedDiscount = window.pricingState?.appliedDiscount || null;
+    const appliedGiftCard = window.pricingState?.appliedGiftCard || null;
+    
+    // Calculate final amounts
+    let discountAmount = 0;
+    let giftCardAmount = 0;
+    let taxRateAmount = 0;
+    let netPrice = price;
+    let discountCode = null;
+    let giftCardCode = null;
+    
+    if (finalPricing) {
+      discountAmount = finalPricing.discountAmount || 0;
+      giftCardAmount = finalPricing.giftCardAmount || 0;
+      taxRateAmount = finalPricing.taxAmount || 0;
+      netPrice = finalPricing.netPrice || price;
+      discountCode = appliedDiscount?.code || null;
+      giftCardCode = appliedGiftCard?.code || null;
+    }
+
     // Build payload
     const payload = {
       address: addressInput.value,
@@ -2377,8 +2456,8 @@ if (confirmBtn) {
       booking_time,
       parking,
       therapist_id: therapistId,
-          first_name: customerFirstName,
-          last_name: customerLastName,
+      first_name: customerFirstName,
+      last_name: customerLastName,
       customer_email: customerEmail,
       customer_phone: customerPhone,
       room_number: roomNumber,
@@ -2386,6 +2465,16 @@ if (confirmBtn) {
       notes,
       price,
       therapist_fee,
+      // New pricing fields
+      discount_amount: discountAmount,
+      gift_card_amount: giftCardAmount,
+      tax_rate_amount: taxRateAmount,
+      net_price: netPrice,
+      discount_code: discountCode,
+      gift_card_code: giftCardCode,
+      // Acknowledgement fields
+      service_acknowledgement: true,
+      terms_acceptance: true,
       status: 'requested',
       payment_status: 'pending'
     };
@@ -2405,7 +2494,7 @@ if (confirmBtn) {
         
         // Step 1: Create payment intent for AUTHORIZATION ONLY
         const authorizationData = {
-          amount: price,
+          amount: netPrice, // Use final net price including discounts, gift cards, and GST
           currency: 'aud',
           bookingData: {
             booking_id: bookingIdFormatted,

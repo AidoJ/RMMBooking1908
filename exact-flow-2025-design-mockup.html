@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rejuvenators - Exact Flow 2025 Design</title>
+    <style>
+        /* Complete 2025 Design System */
+        :root {
+            --primary: #007e8c; --primary-50: #f0f9fa; --primary-100: #cceef2; --primary-300: #66cbd8;
+            --primary-600: #006570; --primary-700: #004c54;
+            --secondary: #00d4aa; --accent-warm: #ff6b35; --accent-purple: #8b5cf6;
+            --success: #10b981; --warning: #f59e0b; --error: #ef4444;
+            --white: #ffffff; --gray-25: #fcfcfd; --gray-50: #f8fafc; --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0; --gray-300: #cbd5e1; --gray-500: #64748b; --gray-600: #475569;
+            --gray-700: #334155; --gray-800: #1e293b; --gray-900: #0f172a;
+            --space-2: 0.5rem; --space-3: 0.75rem; --space-4: 1rem; --space-5: 1.25rem;
+            --space-6: 1.5rem; --space-8: 2rem; --space-10: 2.5rem;
+            --text-sm: 0.875rem; --text-base: 1rem; --text-lg: 1.125rem; --text-xl: 1.25rem;
+            --text-2xl: 1.5rem; --text-3xl: 1.875rem;
+            --radius-lg: 12px; --radius-xl: 16px; --radius-2xl: 20px; --radius-3xl: 24px; --radius-full: 9999px;
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+            background: var(--gray-25); color: var(--gray-800); line-height: 1.6; -webkit-font-smoothing: antialiased;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary) 50%, var(--secondary) 100%);
+            color: white; padding: var(--space-6) var(--space-4); text-align: center;
+        }
+
+        .logo { font-size: var(--text-2xl); font-weight: 800; margin-bottom: var(--space-2); }
+        .tagline { font-size: var(--text-base); font-weight: 300; opacity: 0.95; }
+
+        .container { max-width: 480px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+
+        /* Progress Bar - Exact 9 Steps */
+        .progress-container { margin-bottom: var(--space-8); }
+        .progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); }
+        .step-indicator { font-size: var(--text-sm); font-weight: 500; color: var(--gray-500); }
+        .step-count { background: var(--primary-100); color: var(--primary-700); padding: var(--space-2) var(--space-4); border-radius: var(--radius-full); font-weight: 600; font-size: var(--text-sm); }
+        .progress-bar { height: 6px; background: var(--gray-200); border-radius: var(--radius-full); overflow: hidden; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%); border-radius: var(--radius-full); transition: width 0.6s ease; }
+
+        /* Main Card */
+        .main-card {
+            background: white; border-radius: var(--radius-3xl); padding: var(--space-8); box-shadow: var(--shadow-xl);
+            border: 1px solid var(--gray-100); position: relative; margin-bottom: var(--space-6);
+        }
+        .main-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%);
+        }
+
+        /* Step Headers */
+        .step-header { text-align: center; margin-bottom: var(--space-8); }
+        .step-title { font-size: var(--text-2xl); font-weight: 700; color: var(--gray-900); margin-bottom: var(--space-2); }
+        .step-subtitle { font-size: var(--text-base); color: var(--gray-600); max-width: 360px; margin: 0 auto; }
+
+        /* Form Elements */
+        .form-group { margin-bottom: var(--space-5); }
+        .form-label { font-size: var(--text-sm); font-weight: 600; color: var(--gray-700); margin-bottom: var(--space-2); display: block; }
+        .form-input, select, textarea {
+            width: 100%; padding: var(--space-4); border: 2px solid var(--gray-300); border-radius: var(--radius-lg);
+            font-size: var(--text-base); transition: all 0.3s ease; background: var(--gray-50);
+        }
+        .form-input:focus, select:focus, textarea:focus {
+            outline: none; border-color: var(--primary); background: white;
+            box-shadow: 0 0 0 4px rgba(0, 126, 140, 0.1);
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+
+        /* Booking Type Cards */
+        .booking-type-grid { display: grid; gap: var(--space-4); margin-bottom: var(--space-6); }
+        .booking-type-card {
+            background: white; border: 2px solid var(--gray-200); border-radius: var(--radius-2xl);
+            padding: var(--space-5); cursor: pointer; transition: all 0.3s ease; text-align: center;
+        }
+        .booking-type-card:hover { border-color: var(--primary-300); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .booking-type-card.selected { border-color: var(--primary); background: var(--primary-50); box-shadow: var(--shadow-lg); }
+        .booking-type-icon { font-size: var(--text-3xl); margin-bottom: var(--space-3); }
+        .booking-type-title { font-weight: 700; color: var(--gray-900); margin-bottom: var(--space-2); }
+        .booking-type-desc { font-size: var(--text-sm); color: var(--gray-600); }
+
+        /* Service Cards */
+        .service-card {
+            background: white; border: 2px solid var(--gray-200); border-radius: var(--radius-2xl);
+            padding: var(--space-5); cursor: pointer; transition: all 0.3s ease; margin-bottom: var(--space-4);
+        }
+        .service-card:hover { border-color: var(--primary-300); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .service-card.selected { border-color: var(--primary); background: var(--primary-50); box-shadow: var(--shadow-lg); }
+        .service-header { display: flex; align-items: center; margin-bottom: var(--space-3); }
+        .service-image { width: 60px; height: 60px; border-radius: var(--radius-xl); background: var(--primary-100);
+            margin-right: var(--space-4); display: flex; align-items: center; justify-content: center; font-size: var(--text-xl); }
+        .service-info h3 { font-size: var(--text-lg); font-weight: 700; margin-bottom: var(--space-1); }
+        .service-duration { font-size: var(--text-sm); color: var(--gray-500); }
+        .service-price { font-size: var(--text-xl); font-weight: 800; color: var(--primary); margin-top: var(--space-3); }
+
+        /* Therapist Cards */
+        .therapist-card {
+            background: white; border: 2px solid var(--gray-200); border-radius: var(--radius-2xl);
+            padding: var(--space-5); cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; margin-bottom: var(--space-4);
+        }
+        .therapist-card:hover { border-color: var(--accent-purple); transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .therapist-card.selected { border-color: var(--accent-purple); background: linear-gradient(135deg, var(--accent-purple) 0%, var(--primary) 100%); color: white; }
+        .therapist-avatar {
+            width: 70px; height: 70px; border-radius: var(--radius-full); overflow: hidden;
+            margin-right: var(--space-4); border: 3px solid var(--gray-200); flex-shrink: 0;
+        }
+        .therapist-card.selected .therapist-avatar { border-color: rgba(255, 255, 255, 0.5); }
+        .therapist-info h4 { font-weight: 700; margin-bottom: var(--space-1); }
+        .therapist-stats { font-size: var(--text-sm); opacity: 0.9; }
+
+        /* Radio Groups */
+        .radio-group { display: grid; gap: var(--space-3); }
+        .radio-option {
+            background: white; border: 2px solid var(--gray-200); border-radius: var(--radius-lg);
+            padding: var(--space-4); cursor: pointer; transition: all 0.3s ease; position: relative;
+        }
+        .radio-option:hover { border-color: var(--primary-300); }
+        .radio-option.selected { border-color: var(--primary); background: var(--primary-50); }
+
+        /* Time Slots */
+        .time-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: var(--space-3); margin: var(--space-4) 0; }
+        .time-slot {
+            padding: var(--space-4); border: 2px solid var(--gray-200); border-radius: var(--radius-lg);
+            text-align: center; cursor: pointer; transition: all 0.3s ease; background: white; font-weight: 600;
+        }
+        .time-slot:hover { border-color: var(--primary-300); transform: translateY(-1px); }
+        .time-slot.selected { border-color: var(--primary); background: var(--primary); color: white; }
+
+        /* Pricing Display */
+        .pricing-display {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white; padding: var(--space-6); border-radius: var(--radius-2xl); text-align: center; margin: var(--space-6) 0;
+        }
+        .pricing-amount { font-size: var(--text-3xl); font-weight: 800; margin-bottom: var(--space-2); }
+        .pricing-details { opacity: 0.9; }
+
+        /* NEW: Discount Section (Insert between Step 4 & 8) */
+        .discount-section {
+            background: var(--gray-50); border: 2px dashed var(--gray-300); border-radius: var(--radius-xl);
+            padding: var(--space-6); margin: var(--space-6) 0;
+        }
+        .discount-section.active { background: rgba(16, 185, 129, 0.05); border-color: var(--success); }
+        .discount-title { font-size: var(--text-lg); font-weight: 700; color: var(--gray-900); margin-bottom: var(--space-4); }
+        .input-group { display: flex; gap: var(--space-3); margin-bottom: var(--space-3); }
+        .apply-button {
+            background: var(--accent-warm); color: white; border: none; padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-lg); font-weight: 600; cursor: pointer; white-space: nowrap;
+        }
+        .status-success {
+            background: rgba(16, 185, 129, 0.1); color: var(--success); padding: var(--space-3);
+            border-radius: var(--radius-lg); font-size: var(--text-sm); font-weight: 600;
+        }
+
+        /* Buttons */
+        .button-group { display: flex; gap: var(--space-4); margin-top: var(--space-8); }
+        .btn {
+            flex: 1; padding: var(--space-4) var(--space-6); border-radius: var(--radius-xl);
+            font-size: var(--text-base); font-weight: 600; cursor: pointer; transition: all 0.3s ease; border: none;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white; box-shadow: var(--shadow-md);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+        .btn-secondary { background: var(--gray-100); color: var(--gray-700); border: 2px solid var(--gray-200); }
+
+        /* Step Management */
+        .step { display: none; }
+        .step.active { display: block; }
+
+        /* Demo Navigation */
+        .demo-nav {
+            position: fixed; bottom: var(--space-4); right: var(--space-4); background: var(--gray-900);
+            color: white; padding: var(--space-4); border-radius: var(--radius-xl); z-index: 1000; min-width: 220px;
+        }
+        .nav-buttons { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); margin-top: var(--space-3); }
+        .nav-btn {
+            background: var(--primary); color: white; border: none; padding: var(--space-2);
+            border-radius: var(--radius-lg); font-size: 10px; cursor: pointer; transition: all 0.2s ease;
+        }
+        .nav-btn:hover { background: var(--primary-600); }
+        .nav-btn.active { background: var(--secondary); }
+
+        /* Mobile Responsive */
+        @media (max-width: 640px) {
+            .container { padding: var(--space-4) var(--space-3); }
+            .main-card { padding: var(--space-6); }
+            .form-row { grid-template-columns: 1fr; }
+            .time-slots { grid-template-columns: repeat(2, 1fr); }
+            .demo-nav { position: relative; margin-top: var(--space-8); }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">Rejuvenators</div>
+        <div class="tagline">Premium Mobile Massage Therapy</div>
+    </header>
+
+    <div class="container">
+        <!-- Progress Indicator -->
+        <div class="progress-container">
+            <div class="progress-header">
+                <div class="step-indicator">Step <span id="currentStep">1</span> of 9</div>
+                <div class="step-count" id="stepTitle">Address</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 11%;"></div>
+            </div>
+        </div>
+
+        <!-- STEP 1: ADDRESS (Your exact flow) -->
+        <div class="step active" id="step1">
+            <div class="main-card">
+                <div class="step-header">
+                    <h1 class="step-title">📍 Where would you like your massage?</h1>
+                    <p class="step-subtitle">Enter the address where you'd like us to come for your massage</p>
+                </div>
+
+                <!-- Booking Type Selection -->
+                <div class="form-group">
+                    <label class="form-label">Booking Type</label>
+                    <div class="booking-type-grid">
+                        <div class="booking-type-card selected">
+                            <div class="booking-type-icon">🏨</div>
+                            <div class="booking-type-title">Hotel/Accommodation</div>
+                            <div class="booking-type-desc">Perfect for travelers</div>
+                        </div>
+                        <div class="booking-type-card">
+                            <div class="booking-type-icon">🏠</div>
+                            <div class="booking-type-title">In-home</div>
+                            <div class="booking-type-desc">Comfort of your home</div>
+                        </div>
+                        <div class="booking-type-card">
+                            <div class="booking-type-icon">🏢</div>
+                            <div class="booking-type-title">Corporate Event/Office</div>
+                            <div class="booking-type-desc">Workplace wellness</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Business Name (shown for corporate) -->
+                <div class="form-group" style="display: none;">
+                    <label class="form-label">Business Name</label>
+                    <input type="text" class="form-input" placeholder="e.g., Google HQ">
+                </div>
+
+                <!-- Address Input -->
+                <div class="form-group">
+                    <label class="form-label">Full Address</label>
+                    <input type="text" class="form-input" placeholder="Start typing your address..." value="123 Collins Street, Melbourne VIC 3000">
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-primary">Continue →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2: SERVICE (Your exact flow) -->
+        <div class="step" id="step2">
+            <div class="main-card">
+                <div class="step-header">
+                    <h1 class="step-title">💆‍♀️ Choose Your Service</h1>
+                    <p class="step-subtitle">Select the type of massage and how long you'd like it</p>
+                </div>
+
+                <!-- Service Selection -->
+                <div class="form-group">
+                    <label class="form-label">Massage Type</label>
+                    <div style="display: grid; gap: var(--space-4);">
+                        <div class="service-card selected">
+                            <div class="service-header">
+                                <div class="service-image">🧘‍♀️</div>
+                                <div class="service-info">
+                                    <h3>Relaxation Massage</h3>
+                                    <div class="service-duration">Gentle therapeutic massage</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="service-card">
+                            <div class="service-header">
+                                <div class="service-image">💪</div>
+                                <div class="service-info">
+                                    <h3>Deep Tissue Massage</h3>
+                                    <div class="service-duration">Intense muscle therapy</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Duration Selection -->
+                <div class="form-group">
+                    <label class="form-label">Duration & Pricing</label>
+                    <div style="display: grid; gap: var(--space-3);">
+                        <div class="service-card selected">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: 700;">60 minutes</div>
+                                    <div style="font-size: var(--text-sm); color: var(--gray-500);">Standard session</div>
+                                </div>
+                                <div class="service-price">$160</div>
+                            </div>
+                        </div>
+                        <div class="service-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div style="font-weight: 700;">90 minutes</div>
+                                    <div style="font-size: var(--text-sm); color: var(--gray-500);">Extended session</div>
+                                </div>
+                                <div class="service-price">$240</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary">← Back</button>
+                    <button class="btn btn-primary">Continue →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: GENDER (Your exact flow) -->
+        <div class="step" id="step3">
+            <div class="main-card">
+                <div class="step-header">
+                    <h1 class="step-title">🧑‍🤝‍🧑 Preferences</h1>
+                    <p class="step-subtitle">Let us know your therapist gender preference and fallback option</p>
+                </div>
+
+                <!-- Gender Preference -->
+                <div class="form-group">
+                    <label class="form-label">Do you have a therapist gender preference?</label>
+                    <div class="radio-group">
+                        <div class="radio-option selected">
+                            <div style="font-weight: 600;">Don't mind, just want a great massage</div>
+                        </div>
+                        <div class="radio-option">
+                            <div style="font-weight: 600;">Female therapist preferred</div>
+                        </div>
+                        <div class="radio-option">
+                            <div style="font-weight: 600;">Male therapist preferred</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fallback Option -->
+                <div class="form-group">
+                    <label class="form-label">If your selected therapist is not available, would you like us to look for a similar therapist?</label>
+                    <div class="radio-group">
+                        <div class="radio-option selected">
+                            <div style="font-weight: 600;">Yes, happy to accept a similar therapist</div>
+                        </div>
+                        <div class="radio-option">
+                            <div style="font-weight: 600;">No – I will request a different time with the same therapist</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary">← Back</button>
+                    <button class="btn btn-primary">Continue →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 4: DATE/TIME (Your exact flow with pricing) -->
+        <div class="step" id="step4">
+            <div class="main-card">
+                <div class="step-header">
+                    <h1 class="step-title">🗓️ Date & Time</h1>
+                    <p class="step-subtitle">Choose when you'd like your massage</p>
+                </div>
+
+                <!-- Date Selection -->
+                <div class="form-group">
+                    <label class="form-label">📅 Date</label>
+                    <input type="date" class="form-input" value="2025-09-15">
+                </div>
+
+                <!-- Time Selection -->
+                <div class="form-group">
+                    <label class="form-label">🕐 Time</label>
+                    <div class="time-slots">
+                        <div class="time-slot">9:00 AM</div>
+                        <div class="time-slot">10:00 AM</div>
+                        <div class="time-slot selected">11:00 AM</div>
+                        <div class="time-slot">2:00 PM</div>
+                        <div class="time-slot">3:00 PM</div>
+                        <div class="time-slot">4:00 PM</div>
+                    </div>
+                </div>
+
+                <!-- Parking -->
+                <div class="form-group">
+                    <label class="form-label">🅿️ Parking</label>
+                    <select class="form-input">
+                        <option>Free Parking Available</option>
+                        <option>Paid Parking Required</option>
+                        <option>Unknown</option>
+                    </select>
+                </div>
+
+                <!-- PRICING DISPLAY (Your current location) -->
+                <div class="pricing-display">
+                    <div class="pricing-amount">$160.00</div>
+                    <div class="pricing-details">
+                        Relaxation Massage • 60 minutes<br>
+                        Sunday, September 15 at 11:00 AM
+                    </div>
+                </div>
+
+                <!-- NEW: Discount & Gift Card Section (INSERT HERE) -->
+                <div class="discount-section active">
+                    <div class="discount-title">🎁 Apply Discounts & Gift Cards</div>
+                    
+                    <!-- Promo Code -->
+                    <div style="margin-bottom: var(--space-4);">
+                        <label class="form-label">🏷️ Promo Code</label>
+                        <div class="input-group">
+                            <input type="text" class="form-input" placeholder="Enter promo code" value="WELCOME10" style="flex: 1;">
+                            <button class="apply-button">Apply</button>
+                        </div>
+                        <div class="status-success">✅ 10% discount applied - You save $16.00!</div>
+                    </div>
+
+                    <!-- Gift Card -->
+                    <div>
+                        <label class="form-label">💳 Gift Card</label>
+                        <div class="input-group">
+                            <input type="text" class="form-input" placeholder="Enter gift card code" style="flex: 1;">
+                            <button class="apply-button">Apply</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Updated Pricing Breakdown -->
+                <div style="background: var(--gray-50); border-radius: var(--radius-xl); padding: var(--space-6); border: 1px solid var(--gray-200);">
+                    <h3 style="text-align: center; margin-bottom: var(--space-4); color: var(--gray-900); font-weight: 700;">Final Pricing</h3>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-2);">
+                        <span>Subtotal:</span><span>$160.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-2); color: var(--success);">
+                        <span>Discount (WELCOME10):</span><span>-$16.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: var(--space-4);">
+                        <span>GST (10%):</span><span>$14.40</span>
+                    </div>
+                    <hr style="border: 1px solid var(--gray-300);">
+                    <div style="display: flex; justify-content: space-between; font-size: var(--text-lg); font-weight: 700; color: var(--primary); margin-top: var(--space-4);">
+                        <span>Total Amount:</span><span>$158.40</span>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary">← Back</button>
+                    <button class="btn btn-primary">Continue →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 5: THERAPIST (Your exact flow) -->
+        <div class="step" id="step5">
+            <div class="main-card">
+                <div class="step-header">
+                    <h1 class="step-title">👤 Therapist Selection</h1>
+                    <p class="step-subtitle">Select your preferred therapist from our available team</p>
+                </div>
+
+                <div style="display: grid; gap: var(--space-4);">
+                    <div class="therapist-card selected">
+                        <div class="therapist-avatar">
+                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70' viewBox='0 0 70 70'%3E%3Ccircle cx='35' cy='35' r='35' fill='%23e2e8f0'/%3E%3Ctext x='35' y='42' text-anchor='middle' font-size='18' font-weight='600' fill='%23475569'%3ESA%3C/text%3E%3C/svg%3E" alt="Sarah">
+                        </div>
+                        <div class="therapist-info">
+                            <h4>Sarah Anderson</h4>
+                            <div class="therapist-stats">⭐ 4.9 (127 reviews) • 8 years experience</div>
+                        </div>
+                    </div>
+
+                    <div class="therapist-card">
+                        <div class="therapist-avatar">
+                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70' viewBox='0 0 70 70'%3E%3Ccircle cx='35' cy='35' r='35' fill='%23e2e8f0'/%3E%3Ctext x='35' y='42' text-anchor='middle' font-size='18' font-weight='600' fill='%23475569'%3EMJ%3C/text%3E%3C/svg%3E" alt="Mike">
+                        </div>
+                        <div class="therapist-info">
+                            <h4>Mike Johnson</h4>
+                            <div class="therapist-stats">⭐ 4.8 (89 reviews) • 12 years experience</div>
+                        </div>
+                    </div>
+
+                    <div class="therapist-card">
+                        <div class="therapist-avatar">
+                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='70' height='70' viewBox='0 0 70 70'%3E%3Ccircle cx='35' cy='35' r='35' fill='%23e2e8f0'/%3E%3Ctext x='35' y='42' text-anchor='middle' font-size='18' font-weight='600' fill='%23475569'%3ELT%3C/text%3E%3C/svg%3E" alt="Lisa">
+                        </div>
+                        <div class="therapist-info">
+                            <h4>Lisa Thompson</h4>
+                            <div class="therapist-stats">⭐ 4.9 (156 reviews) • 6 years experience</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary">← Back</button>
+                    <button class="btn btn-primary">Continue →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 6: DETAILS (Your exact flow) -->
+        <div class="step" id="step6">
+            <div class="main-card">
+                <div class="step-header">
+                    <h1 class="step-title">👤 Your Details</h1>
+                    <p class="step-subtitle">Please enter your contact details</p>
+                </div>
+
+                <!-- Email (primary identifier) -->
+                <div class="form-group">
+                    <label class="form-label">📧 Email Address *</label>
+                    <input type="email" class="form-input" placeholder="Enter your email address" value="alex.smith@email.com">
+                    <div style="font-size: var(--text-sm); color: var(--success); margin-top: var(--space-2);">✅ Email validated</div>
+                </div>
+
+                <!-- Customer Code -->
+                <div class="form-group">
+                    <label class="form-label">Customer Code (if you have one)</label>
+                    <input type="text" class="form-input" placeholder="e.g., RJM123">
+                </div>
+
+                <!-- Name Fields -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">First Name *</label>
+                        <input type="text" class="form-input" placeholder="First Name" value="Alex">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Last Name *</label>
+                        <input type="text" class="form-input" placeholder="Last Name" value="Smith">
+                    </div>
+                </div>
+
+                <!-- Phone -->
+                <div class="form-group">
+                    <label class="form-label">📱 Phone Number *</label>
+                    <input type="tel" class="form-input" placeholder="Phone Number" value="+61 412 345 678">
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary">← Back</button>
+                    <button class="btn btn-primary">Continue →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 7: ROOM/NOTES (Your exact flow) -->
+        <div class="step" id="step7">
+            <div class="main-card">
+                <div class="step-header">
+                    <h1 class="step-title">🏠 Room Details & Notes</h1>
+                    <p class="step-subtitle">Tell us about the room and any additional information for your therapist</p>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Room Number</label>
+                    <input type="text" class="form-input" placeholder="e.g., Room 101, Apartment 2B" value="Apt 12">
+                    <div style="font-size: var(--text-sm); color: var(--gray-500); margin-top: var(--space-1);">If not applicable write N/A</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Name of person who booked the room</label>
+                    <input type="text" class="form-input" placeholder="Full name of the person who made this booking">
+                    <div style="font-size: var(--text-sm); color: var(--gray-500); margin-top: var(--space-1);">If not applicable write N/A</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Notes (Optional)</label>
+                    <textarea class="form-input" rows="4" placeholder="e.g., Parking instructions, access codes, special requirements, medical conditions, preferred pressure, etc."></textarea>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary">← Back</button>
+                    <button class="btn btn-primary">Continue →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 8: PAYMENT (Your exact flow) -->
+        <div class="step" id="step8">
+            <div class="main-card">
+                <div class="step-header">
+                    <h1 class="step-title">💳 Enter Card Details</h1>
+                    <p class="step-subtitle">Your card will only be charged after a therapist accepts your booking</p>
+                </div>
+
+                <!-- Final Pricing Display -->
+                <div class="pricing-display">
+                    <div class="pricing-amount">$158.40</div>
+                    <div class="pricing-details">
+                        Final amount after discount applied<br>
+                        <small style="opacity: 0.8;">💳 Card authorized now • Charged after confirmation</small>
+                    </div>
+                </div>
+
+                <!-- Service Acknowledgement -->
+                <div style="background: white; border: 2px solid var(--primary-200); border-radius: var(--radius-lg); padding: var(--space-6); margin: var(--space-6) 0;">
+                    <h3 style="color: var(--primary); margin: 0 0 var(--space-4) 0; font-weight: 700; display: flex; align-items: center; gap: var(--space-2);">
+                        ⚠️ Important Service Acknowledgement
+                    </h3>
+                    <p style="color: var(--gray-700); line-height: 1.6; margin: 0 0 var(--space-4) 0; font-size: var(--text-sm);">
+                        Do you accept this is a Strictly Non-Sexual Professional Service and you must not be under the influence of alcohol or drugs? 
+                        Inappropriate behaviour will not be tolerated and our therapists reserve the right to stop a treatment and no refund will be given.
+                    </p>
+                    <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer; font-weight: 600; color: var(--gray-800);">
+                        <input type="checkbox" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        I acknowledge and accept
+                    </label>
+                </div>
+
+                <!-- Terms of Service -->
+                <div style="background: white; border: 2px solid var(--gray-200); border-radius: var(--radius-lg); padding: var(--space-6); margin: var(--space-6) 0;">
+                    <h3 style="color: var(--primary); margin: 0 0 var(--space-4) 0; font-weight: 700; display: flex; align-items: center; gap: var(--space-2);">
+                        📋 Terms of Service
+                    </h3>
+                    <label style="display: flex; align-items: center; gap: var(--space-3); cursor: pointer; font-weight: 600; color: var(--gray-800);">
+                        <input type="checkbox" style="width: 18px; height: 18px; accent-color: var(--primary);">
+                        I have read and accept <a href="https://rejuvenators.com/terms-and-conditions/" target="_blank" style="color: var(--primary); text-decoration: underline; font-weight: 700;">Terms & Conditions</a>
+                    </label>
+                </div>
+
+                <!-- Card Element -->
+                <div class="form-group">
+                    <label class="form-label">💳 Card Details</label>
+                    <div style="background: white; border: 2px solid var(--gray-300); border-radius: var(--radius-lg); padding: var(--space-4);">
+                        <div style="color: var(--gray-500); font-size: var(--text-sm); text-align: center;">
+                            [Stripe payment element embedded here]<br>
+                            🔒 Secure payment processing by Stripe
+                        </div>
+                    </div>
+                </div>
+
+                <div style="background: var(--primary-50); padding: var(--space-4); border-radius: var(--radius-lg); margin: var(--space-6) 0; font-size: var(--text-sm); color: var(--primary-700); text-align: center;">
+                    🔒 Your payment is secure and will only be charged after a therapist accepts your booking
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary">← Back</button>
+                    <button class="btn btn-primary">Proceed to Booking Request →</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 9: SUMMARY (Your exact flow) -->
+        <div class="step" id="step9">
+            <div class="main-card">
+                <div class="step-header">
+                    <h1 class="step-title">📝 Booking Summary</h1>
+                    <p class="step-subtitle">Review your booking details before confirming</p>
+                </div>
+
+                <!-- Complete Booking Summary (matches current platform exactly) -->
+                <div style="background: var(--gray-50); border-radius: var(--radius-xl); padding: var(--space-6); border-left: 3px solid var(--primary); margin-bottom: var(--space-6);">
+                    <h3 style="margin: 0 0 var(--space-5) 0; color: var(--gray-900); font-weight: 700;">Booking Details</h3>
+                    
+                    <div style="display: grid; gap: var(--space-3);">
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Booking ID:</span>
+                            <span style="color: var(--primary); font-weight: 700; font-family: monospace;">RJM2024-0892</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Customer Code:</span>
+                            <span style="color: var(--primary); font-weight: 700; font-family: monospace;">CUST001</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Business Name:</span>
+                            <span>Hilton Hotel Sydney</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Address:</span>
+                            <span style="text-align: right;">488 George Street, Sydney NSW 2000</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Service:</span>
+                            <span>Relaxation Massage</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Duration:</span>
+                            <span>60 minutes</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Gender Preference:</span>
+                            <span>Female</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Date & Time:</span>
+                            <span>2024-09-15 at 11:00 AM</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Parking:</span>
+                            <span>Free Parking Available</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Therapist:</span>
+                            <span>Sarah Anderson</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Name:</span>
+                            <span>John Smith</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Email:</span>
+                            <span>john.smith@example.com</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Phone:</span>
+                            <span>+61 400 123 456</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Room Number:</span>
+                            <span>Room 1205</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Booker Name:</span>
+                            <span>John Smith</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; border-bottom: 1px solid var(--gray-200);">
+                            <span style="font-weight: 600; color: var(--gray-700);">Notes:</span>
+                            <span style="text-align: right; max-width: 60%;">Prefer medium pressure, access via main lobby elevator</span>
+                        </div>
+                        
+                        <!-- Pricing Summary -->
+                        <div style="margin-top: var(--space-4); padding-top: var(--space-4); border-top: 2px solid var(--primary);">
+                            <div style="display: flex; justify-content: space-between; align-items: start; padding: var(--space-2) 0; font-weight: 700; color: var(--primary);">
+                                <span>Your Service Fees:</span>
+                                <span style="font-size: var(--text-lg);">$158.40</span>
+                            </div>
+                            <div style="margin-left: var(--space-4); font-size: var(--text-sm); color: var(--gray-600); line-height: 1.4;">
+                                Subtotal: $160.00<br>
+                                Discount (WELCOME10): -$16.00<br>
+                                GST (10%): $14.40<br>
+                                <strong style="color: var(--primary);">Total: $158.40</strong>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button class="btn btn-secondary">← Back</button>
+                    <button class="btn btn-primary">Confirm and Request Booking →</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Demo Navigation -->
+    <div class="demo-nav">
+        <h3 style="margin-bottom: var(--space-3); font-size: var(--text-sm);">🎨 Navigate Your Exact Flow</h3>
+        <div class="nav-buttons">
+            <button class="nav-btn active" onclick="showStep(1)">1. Address</button>
+            <button class="nav-btn" onclick="showStep(2)">2. Service</button>
+            <button class="nav-btn" onclick="showStep(3)">3. Gender</button>
+            <button class="nav-btn" onclick="showStep(4)">4. Date/Time</button>
+            <button class="nav-btn" onclick="showStep(5)">5. Therapist</button>
+            <button class="nav-btn" onclick="showStep(6)">6. Details</button>
+            <button class="nav-btn" onclick="showStep(7)">7. Room/Notes</button>
+            <button class="nav-btn" onclick="showStep(8)">8. Payment</button>
+            <button class="nav-btn" onclick="showStep(9)">9. Summary</button>
+        </div>
+        <div style="margin-top: var(--space-3); font-size: 10px; opacity: 0.8;">
+            💡 Discount/Gift Cards integrated into Step 4 (after pricing calculated, before payment)
+        </div>
+    </div>
+
+    <script>
+        function showStep(stepNumber) {
+            // Hide all steps
+            document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
+            
+            // Show selected step
+            document.getElementById('step' + stepNumber).classList.add('active');
+            
+            // Update progress
+            document.getElementById('currentStep').textContent = stepNumber;
+            document.getElementById('progressFill').style.width = (stepNumber / 9 * 100) + '%';
+            
+            // Update step title
+            const titles = {
+                1: 'Address', 2: 'Service', 3: 'Gender', 4: 'Date/Time', 5: 'Therapist',
+                6: 'Details', 7: 'Room/Notes', 8: 'Payment', 9: 'Summary'
+            };
+            document.getElementById('stepTitle').textContent = titles[stepNumber];
+            
+            // Update active nav button
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>
