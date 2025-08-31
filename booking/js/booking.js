@@ -593,9 +593,10 @@ console.log('Globals:', {
     document.getElementById('priceAmount').textContent = finalPrice.toFixed(2);
     document.getElementById('priceBreakdown').innerHTML = breakdown.join('<br>');
     
-    // Show discount section
-    if (window.showDiscountSection) {
-      window.showDiscountSection();
+    // Show discount section after price is calculated
+    const discountSection = document.getElementById('discountSection');
+    if (discountSection && price > 0) {
+      discountSection.style.display = 'block';
     }
   }
 
@@ -607,6 +608,40 @@ console.log('Globals:', {
         el.addEventListener('change', calculatePrice);
       }
     });
+    
+    // Add discount button listener - SIMPLE
+    const promoBtn = document.getElementById('applyPromoBtn');
+    if (promoBtn) {
+      promoBtn.addEventListener('click', async function() {
+        const input = document.getElementById('promoCode');
+        const code = input.value.trim().toUpperCase();
+        
+        if (!code) return;
+        
+        try {
+          const { data, error } = await window.supabase
+            .from('discount_codes')
+            .select('*')
+            .eq('code', code)
+            .eq('is_active', true)
+            .single();
+          
+          if (!error && data) {
+            window.appliedDiscount = data;
+            calculatePrice(); // This will now include the discount
+            document.getElementById('promoStatus').innerHTML = '<span style="color: green;">✅ Discount applied!</span>';
+            document.getElementById('promoStatus').style.display = 'block';
+            this.textContent = 'Applied';
+            input.disabled = true;
+          } else {
+            document.getElementById('promoStatus').innerHTML = '<span style="color: red;">Invalid code</span>';
+            document.getElementById('promoStatus').style.display = 'block';
+          }
+        } catch (error) {
+          console.error('Discount error:', error);
+        }
+      });
+    }
     
     // Add quote detection for service selection
     const serviceSelect = document.getElementById('service');
