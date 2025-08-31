@@ -566,13 +566,36 @@ console.log('Globals:', {
       breakdown.push(`Time Uplift (${timeUplift}%): +$${timeUpliftAmount.toFixed(2)}`);
     }
 
-    // Update price display with breakdown
-    document.getElementById('priceAmount').textContent = price.toFixed(2);
+    // Store gross price for discount calculations
+    window.grossPrice = price;
+    
+    // Apply discounts if available
+    let finalPrice = price;
+    let discountAmount = 0;
+    
+    // Check for applied discount
+    if (window.appliedDiscount) {
+      if (window.appliedDiscount.type === 'percentage') {
+        discountAmount = (price * window.appliedDiscount.value) / 100;
+      } else if (window.appliedDiscount.type === 'fixed_amount') {
+        discountAmount = Math.min(window.appliedDiscount.value, price);
+      }
+      finalPrice = price - discountAmount;
+      breakdown.push(`Discount (${window.appliedDiscount.code}): -$${discountAmount.toFixed(2)}`);
+    }
+    
+    // Add GST
+    const gstAmount = finalPrice * 0.10;
+    finalPrice = finalPrice + gstAmount;
+    breakdown.push(`GST (10%): +$${gstAmount.toFixed(2)}`);
+    
+    // Update price display
+    document.getElementById('priceAmount').textContent = finalPrice.toFixed(2);
     document.getElementById('priceBreakdown').innerHTML = breakdown.join('<br>');
     
-    // Update pricing system with gross price
-    if (window.pricingCalculations) {
-      window.pricingCalculations.setGrossPrice(price);
+    // Show discount section
+    if (window.showDiscountSection) {
+      window.showDiscountSection();
     }
   }
 
@@ -2420,27 +2443,13 @@ if (confirmBtn) {
       return;
     }
 
-    // Get pricing information
-    const finalPricing = window.pricingState?.finalPricing || null;
-    const appliedDiscount = window.pricingState?.appliedDiscount || null;
-    const appliedGiftCard = window.pricingState?.appliedGiftCard || null;
+    // Get simple pricing information
+    const discountCode = window.appliedDiscount?.code || null;
+    const giftCardCode = window.appliedGiftCard?.code || null;
     
-    // Calculate final amounts
-    let discountAmount = 0;
-    let giftCardAmount = 0;
-    let taxRateAmount = 0;
-    let netPrice = price;
-    let discountCode = null;
-    let giftCardCode = null;
-    
-    if (finalPricing) {
-      discountAmount = finalPricing.discountAmount || 0;
-      giftCardAmount = finalPricing.giftCardAmount || 0;
-      taxRateAmount = finalPricing.taxAmount || 0;
-      netPrice = finalPricing.netPrice || price;
-      discountCode = appliedDiscount?.code || null;
-      giftCardCode = appliedGiftCard?.code || null;
-    }
+    // Get the final calculated price from the display
+    const finalPrice = parseFloat(document.getElementById('priceAmount').textContent) || price;
+    const netPrice = finalPrice;
 
     // Build payload
     const payload = {
@@ -2465,10 +2474,7 @@ if (confirmBtn) {
       notes,
       price,
       therapist_fee,
-      // New pricing fields
-      discount_amount: discountAmount,
-      gift_card_amount: giftCardAmount,
-      tax_rate_amount: taxRateAmount,
+      // Pricing fields
       net_price: netPrice,
       discount_code: discountCode,
       gift_card_code: giftCardCode,
