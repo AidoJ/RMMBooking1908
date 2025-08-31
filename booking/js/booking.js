@@ -691,8 +691,8 @@ console.log('Globals:', {
     }
   }
   
-  // Remove discount function
-  function removeDiscount() {
+  // Remove discount function - make global
+  window.removeDiscount = function() {
     window.appliedDiscount = null;
     document.getElementById('promoCode').disabled = false;
     document.getElementById('promoCode').value = '';
@@ -701,8 +701,8 @@ console.log('Globals:', {
     calculatePrice();
   }
   
-  // Remove gift card function
-  function removeGiftCard() {
+  // Remove gift card function - make global
+  window.removeGiftCard = function() {
     window.appliedGiftCard = null;
     document.getElementById('giftCard').disabled = false;
     document.getElementById('giftCard').value = '';
