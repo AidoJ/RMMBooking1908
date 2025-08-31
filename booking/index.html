@@ -337,6 +337,27 @@
           <label for="bookerName">Name of person who booked the room (If not applicable, e.g. in-home booking write N/A)</label>
           <input type="text" id="bookerName" placeholder="Full name of the person who made this booking" />
         </div>
+        <!-- Service Acknowledgement Dropdown -->
+        <div class="form-group horizontal">
+          <label for="serviceAcknowledgement">⚠️ Important Service Acknowledgement *</label>
+          <p style="font-size: 14px; color: #666; margin-bottom: 8px;">Do you accept this is a Strictly Non-Sexual Professional Service and you must not be under the influence of alcohol or drugs? Inappropriate behaviour will not be tolerated and our therapists reserve the right to stop a treatment and no refund will be given.</p>
+          <select id="serviceAcknowledgement" required>
+            <option value="">Please select your response...</option>
+            <option value="yes">YES I acknowledge and accept</option>
+            <option value="no">No I don't accept, cancel this booking process</option>
+          </select>
+        </div>
+
+        <!-- Terms & Conditions Dropdown -->
+        <div class="form-group horizontal">
+          <label for="termsAcceptance">📋 Terms & Conditions * <a href="https://rejuvenators.com/terms-and-conditions/" target="_blank" style="color: #007e8c; margin-left: 8px;">📖 View Terms</a></label>
+          <select id="termsAcceptance" required>
+            <option value="">Please select your response...</option>
+            <option value="yes">YES, I have read and accept Terms & Conditions</option>
+            <option value="no">No I don't accept, cancel this booking process</option>
+          </select>
+        </div>
+
         <div class="form-group horizontal">
           <label for="notes">Notes (Optional)</label>
           <textarea id="notes" rows="4" placeholder="e.g., Parking instructions, access codes, special requirements, medical conditions, preferred pressure, etc."></textarea>
@@ -345,35 +366,8 @@
         <button class="btn next" data-next="step8">Continue</button>
       </div>
     </div>
-    <!-- Step 8: Service Acknowledgements -->
+    <!-- Step 8: Payment Card Entry -->
     <div id="step8" class="step">
-      <div class="step-header">
-        <h2>📋 Service Acknowledgements</h2>
-        <p class="step-description">Please read and accept the following terms</p>
-      </div>
-      <div class="step-content">
-        
-        <div class="form-group">
-          <h3>⚠️ Service Agreement</h3>
-          <p>Do you accept this is a Strictly Non-Sexual Professional Service and you must not be under the influence of alcohol or drugs? Inappropriate behaviour will not be tolerated and our therapists reserve the right to stop a treatment and no refund will be given.</p>
-          <label>
-            <input type="checkbox" id="serviceAcknowledgement" required> I acknowledge and accept
-          </label>
-        </div>
-
-        <div class="form-group">
-          <h3>📋 Terms & Conditions</h3>
-          <label>
-            <input type="checkbox" id="termsAcceptance" required> I have read and accept <a href="https://rejuvenators.com/terms-and-conditions/" target="_blank">Terms & Conditions</a>
-          </label>
-        </div>
-
-        <button class="btn prev" data-prev="step7">Back</button>
-        <button class="btn next" data-next="step9">Continue to Payment</button>
-      </div>
-    </div>
-    <!-- Step 9: Payment Card Entry -->
-    <div id="step9" class="step">
       <div class="step-header">
         <h2>💳 Enter Card Details</h2>
         <p class="step-description">Please enter your card details below <br/>(Your card will only be charged after a therapist accepts your booking.)</p>
@@ -383,13 +377,13 @@
           <div id="card-element" class="card-element"></div>
         </div>
         <div class="button-group">
-          <button class="btn prev" data-prev="step8">Back</button>
-          <button class="btn next primary" data-next="step10">Proceed to Booking Request</button>
+          <button class="btn prev" data-prev="step7">Back</button>
+          <button class="btn next primary" data-next="step9">Proceed to Booking Request</button>
         </div>
       </div>
     </div>
-    <!-- Step 10: Booking Summary -->
-    <div id="step10" class="step">
+    <!-- Step 9: Booking Summary -->
+    <div id="step9" class="step">
       <div class="step-header">
         <h2>📝 Booking Summary</h2>
         <p class="step-description">Review your booking details before confirming</p>
@@ -397,13 +391,13 @@
       <div class="step-content">
         <div id="bookingSummaryDetails" class="booking-summary"></div>
         <div class="button-group">
-          <button class="btn prev" data-prev="step9">Back</button>
-          <button class="btn next primary" data-next="step11">Confirm and Request Booking</button>
+          <button class="btn prev" data-prev="step8">Back</button>
+          <button class="btn next primary" data-next="step10">Confirm and Request Booking</button>
         </div>
       </div>
     </div>
-    <!-- Step 11: Confirm Booking Request -->
-    <div id="step11" class="step">
+    <!-- Step 10: Confirm Booking Request -->
+    <div id="step10" class="step">
       <div class="step-header">
         <h2>✅ Booking Request Submitted</h2>
         <p class="step-description">Thank you! Your booking request has been submitted.</p>
@@ -411,7 +405,7 @@
       <div class="step-content">
         <div id="confirmationDetails" class="booking-summary"></div>
         <div class="button-group">
-          <button class="btn prev" data-prev="step10">Back</button>
+          <button class="btn prev" data-prev="step9">Back</button>
         </div>
       </div>
     </div>
