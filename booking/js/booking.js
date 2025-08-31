@@ -1895,17 +1895,17 @@ function mountStripeCardElement() {
   card.mount('#card-element');
 }
 
-// Mount Stripe card when Step 8 is shown
-function observeStep8Mount() {
-  const step8 = document.getElementById('step8');
+// Mount Stripe card when Step 9 is shown
+function observeStep9Mount() {
+  const step9 = document.getElementById('step9');
   const observer = new MutationObserver(() => {
-    if (step8.classList.contains('active') && !document.querySelector('#card-element iframe')) {
+    if (step9.classList.contains('active') && !document.querySelector('#card-element iframe')) {
       mountStripeCardElement();
     }
   });
-  observer.observe(step8, { attributes: true, attributeFilter: ['class'] });
+  observer.observe(step9, { attributes: true, attributeFilter: ['class'] });
 }
-observeStep8Mount();
+observeStep9Mount();
 
 // Populate booking summary in Step 9
 async function populateBookingSummary() {
@@ -2019,25 +2019,25 @@ function generatePricingSummaryHTML() {
   html += '</div>';
   return html;
 }
-// Show summary when entering Step 9
-const step9 = document.getElementById('step9');
-const observer9 = new MutationObserver(() => {
-  if (step9.classList.contains('active')) {
+// Show summary when entering Step 10
+const step10Summary = document.getElementById('step10');
+const observer10Summary = new MutationObserver(() => {
+  if (step10Summary.classList.contains('active')) {
     populateBookingSummary().catch(error => {
       console.error('Error populating booking summary:', error);
     });
   }
 });
-observer9.observe(step9, { attributes: true, attributeFilter: ['class'] });
+observer10Summary.observe(step10Summary, { attributes: true, attributeFilter: ['class'] });
 
-// Handle booking confirmation on Step 10
-const step10 = document.getElementById('step10');
-const observer10 = new MutationObserver(() => {
-  if (step10.classList.contains('active')) {
+// Handle booking confirmation on Step 11
+const step11 = document.getElementById('step11');
+const observer11 = new MutationObserver(() => {
+  if (step11.classList.contains('active')) {
     document.getElementById('confirmationDetails').innerHTML = '<h3>Booking Request Submitted</h3><p>Your booking request has been submitted. You will receive an update by email once a therapist accepts or declines your request.</p>';
   }
 });
-observer10.observe(step10, { attributes: true, attributeFilter: ['class'] });
+observer11.observe(step11, { attributes: true, attributeFilter: ['class'] });
 
 // Helper to generate customer_code
 async function generateCustomerCode(surname) {
@@ -2461,7 +2461,7 @@ function formatPhoneNumber(phone) {
 
 // Booking submission logic with secure payment processing
 document.addEventListener('DOMContentLoaded', function() {
-const confirmBtn = document.querySelector('#step9 .btn.next.primary');
+const confirmBtn = document.querySelector('#step10 .btn.next.primary');
 if (confirmBtn) {
   confirmBtn.addEventListener('click', async function (e) {
     e.preventDefault();
@@ -2711,7 +2711,7 @@ if (confirmBtn) {
     }
     
     // Move to confirmation step
-    showStep('step10');
+    showStep('step11');
         
       } catch (error) {
         console.error('❌ Error in booking submission:', error);

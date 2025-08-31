@@ -345,42 +345,51 @@
         <button class="btn next" data-next="step8">Continue</button>
       </div>
     </div>
-    <!-- Step 8: Payment Card Entry -->
+    <!-- Step 8: Service Acknowledgements -->
     <div id="step8" class="step">
       <div class="step-header">
-        <h2>💳 Enter Card Details</h2>
-        <p class="step-description">Please enter your card details below <br/>(Your card will only be charged after a therapist accepts your booking.)</p>
+        <h2>📋 Service Acknowledgements</h2>
+        <p class="step-description">Please read and accept the following terms</p>
       </div>
-      <div class="step-content" autocomplete="off" name="no-autofill-payment">
+      <div class="step-content">
         
-        <!-- Service Acknowledgement -->
         <div class="form-group">
-          <h3>⚠️ Important Service Acknowledgement</h3>
+          <h3>⚠️ Service Agreement</h3>
           <p>Do you accept this is a Strictly Non-Sexual Professional Service and you must not be under the influence of alcohol or drugs? Inappropriate behaviour will not be tolerated and our therapists reserve the right to stop a treatment and no refund will be given.</p>
           <label>
             <input type="checkbox" id="serviceAcknowledgement" required> I acknowledge and accept
           </label>
         </div>
 
-        <!-- Terms of Service -->  
         <div class="form-group">
-          <h3>📋 Terms of Service</h3>
+          <h3>📋 Terms & Conditions</h3>
           <label>
             <input type="checkbox" id="termsAcceptance" required> I have read and accept <a href="https://rejuvenators.com/terms-and-conditions/" target="_blank">Terms & Conditions</a>
           </label>
         </div>
 
+        <button class="btn prev" data-prev="step7">Back</button>
+        <button class="btn next" data-next="step9">Continue to Payment</button>
+      </div>
+    </div>
+    <!-- Step 9: Payment Card Entry -->
+    <div id="step9" class="step">
+      <div class="step-header">
+        <h2>💳 Enter Card Details</h2>
+        <p class="step-description">Please enter your card details below <br/>(Your card will only be charged after a therapist accepts your booking.)</p>
+      </div>
+      <div class="step-content" autocomplete="off" name="no-autofill-payment">
         <div style="margin-bottom: 18px;">
           <div id="card-element" class="card-element"></div>
         </div>
         <div class="button-group">
-          <button class="btn prev" data-prev="step7">Back</button>
-          <button class="btn next primary" data-next="step9">Proceed to Booking Request</button>
+          <button class="btn prev" data-prev="step8">Back</button>
+          <button class="btn next primary" data-next="step10">Proceed to Booking Request</button>
         </div>
       </div>
     </div>
-    <!-- Step 9: Booking Summary -->
-    <div id="step9" class="step">
+    <!-- Step 10: Booking Summary -->
+    <div id="step10" class="step">
       <div class="step-header">
         <h2>📝 Booking Summary</h2>
         <p class="step-description">Review your booking details before confirming</p>
@@ -388,13 +397,13 @@
       <div class="step-content">
         <div id="bookingSummaryDetails" class="booking-summary"></div>
         <div class="button-group">
-          <button class="btn prev" data-prev="step8">Back</button>
-          <button class="btn next primary" data-next="step10">Confirm and Request Booking</button>
+          <button class="btn prev" data-prev="step9">Back</button>
+          <button class="btn next primary" data-next="step11">Confirm and Request Booking</button>
         </div>
       </div>
     </div>
-    <!-- Step 10: Confirm Booking Request -->
-    <div id="step10" class="step">
+    <!-- Step 11: Confirm Booking Request -->
+    <div id="step11" class="step">
       <div class="step-header">
         <h2>✅ Booking Request Submitted</h2>
         <p class="step-description">Thank you! Your booking request has been submitted.</p>
@@ -402,7 +411,7 @@
       <div class="step-content">
         <div id="confirmationDetails" class="booking-summary"></div>
         <div class="button-group">
-          <button class="btn prev" data-prev="step9">Back</button>
+          <button class="btn prev" data-prev="step10">Back</button>
         </div>
       </div>
     </div>
