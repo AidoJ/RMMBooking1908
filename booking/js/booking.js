@@ -575,19 +575,26 @@ console.log('Globals:', {
     
     // Check for applied discount
     if (window.appliedDiscount) {
-      if (window.appliedDiscount.type === 'percentage') {
-        discountAmount = (price * window.appliedDiscount.value) / 100;
-      } else if (window.appliedDiscount.type === 'fixed_amount') {
-        discountAmount = Math.min(window.appliedDiscount.value, price);
+      if (window.appliedDiscount.discount_type === 'percentage') {
+        discountAmount = (price * window.appliedDiscount.discount_value) / 100;
+      } else if (window.appliedDiscount.discount_type === 'fixed_amount') {
+        discountAmount = Math.min(window.appliedDiscount.discount_value, price);
       }
       finalPrice = price - discountAmount;
       breakdown.push(`Discount (${window.appliedDiscount.code}): -$${discountAmount.toFixed(2)}`);
     }
     
-    // Add GST
-    const gstAmount = finalPrice * 0.10;
-    finalPrice = finalPrice + gstAmount;
-    breakdown.push(`GST (10%): +$${gstAmount.toFixed(2)}`);
+    // Apply gift card if available
+    let giftCardAmount = 0;
+    if (window.appliedGiftCard) {
+      giftCardAmount = Math.min(window.appliedGiftCard.current_balance, finalPrice);
+      finalPrice = finalPrice - giftCardAmount;
+      breakdown.push(`Gift Card (${window.appliedGiftCard.code}): -$${giftCardAmount.toFixed(2)}`);
+    }
+    
+    // Show GST as percentage breakdown only (already included in price)
+    const gstAmount = finalPrice / 11 * 1; // GST component of final price
+    breakdown.push(`GST (10%): $${gstAmount.toFixed(2)}`);
     
     // Update price display
     document.getElementById('priceAmount').textContent = finalPrice.toFixed(2);
@@ -639,6 +646,40 @@ console.log('Globals:', {
           }
         } catch (error) {
           console.error('Discount error:', error);
+        }
+      });
+    }
+    
+    // Add gift card button listener
+    const giftCardBtn = document.getElementById('applyGiftCardBtn');
+    if (giftCardBtn) {
+      giftCardBtn.addEventListener('click', async function() {
+        const input = document.getElementById('giftCard');
+        const code = input.value.trim().toUpperCase();
+        
+        if (!code) return;
+        
+        try {
+          const { data, error } = await window.supabase
+            .from('gift_cards')
+            .select('*')
+            .eq('code', code)
+            .eq('is_active', true)
+            .single();
+          
+          if (!error && data && data.current_balance > 0) {
+            window.appliedGiftCard = data;
+            calculatePrice(); // This will now include the gift card
+            document.getElementById('giftCardStatus').innerHTML = '<span style="color: green;">✅ Gift card applied!</span>';
+            document.getElementById('giftCardStatus').style.display = 'block';
+            this.textContent = 'Applied';
+            input.disabled = true;
+          } else {
+            document.getElementById('giftCardStatus').innerHTML = '<span style="color: red;">Invalid or expired gift card</span>';
+            document.getElementById('giftCardStatus').style.display = 'block';
+          }
+        } catch (error) {
+          console.error('Gift card error:', error);
         }
       });
     }
