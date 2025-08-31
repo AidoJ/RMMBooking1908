@@ -636,7 +636,7 @@ console.log('Globals:', {
           if (!error && data) {
             window.appliedDiscount = data;
             calculatePrice(); // This will now include the discount
-            document.getElementById('promoStatus').innerHTML = '<span style="color: green;">✅ Discount applied!</span>';
+            document.getElementById('promoStatus').innerHTML = '<span style="color: green;">✅ Discount applied! <button type="button" onclick="removeDiscount()" style="margin-left: 8px; padding: 2px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">Remove</button></span>';
             document.getElementById('promoStatus').style.display = 'block';
             this.textContent = 'Applied';
             input.disabled = true;
@@ -670,7 +670,7 @@ console.log('Globals:', {
           if (!error && data && data.current_balance > 0) {
             window.appliedGiftCard = data;
             calculatePrice(); // This will now include the gift card
-            document.getElementById('giftCardStatus').innerHTML = '<span style="color: green;">✅ Gift card applied!</span>';
+            document.getElementById('giftCardStatus').innerHTML = '<span style="color: green;">✅ Gift card applied! <button type="button" onclick="removeGiftCard()" style="margin-left: 8px; padding: 2px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; cursor: pointer;">Remove</button></span>';
             document.getElementById('giftCardStatus').style.display = 'block';
             this.textContent = 'Applied';
             input.disabled = true;
@@ -689,6 +689,26 @@ console.log('Globals:', {
     if (serviceSelect) {
       serviceSelect.addEventListener('change', handleServiceSelection);
     }
+  }
+  
+  // Remove discount function
+  function removeDiscount() {
+    window.appliedDiscount = null;
+    document.getElementById('promoCode').disabled = false;
+    document.getElementById('promoCode').value = '';
+    document.getElementById('applyPromoBtn').textContent = 'Apply';
+    document.getElementById('promoStatus').style.display = 'none';
+    calculatePrice();
+  }
+  
+  // Remove gift card function
+  function removeGiftCard() {
+    window.appliedGiftCard = null;
+    document.getElementById('giftCard').disabled = false;
+    document.getElementById('giftCard').value = '';
+    document.getElementById('applyGiftCardBtn').textContent = 'Apply';
+    document.getElementById('giftCardStatus').style.display = 'none';
+    calculatePrice();
   }
   
   // Handle service selection and detect quote-only services
@@ -2555,8 +2575,8 @@ if (confirmBtn) {
       discount_code: discountCode,
       gift_card_code: giftCardCode,
       // Acknowledgement fields
-      service_acknowledgement: true,
-      terms_acceptance: true,
+      service_acknowledgement: document.getElementById('serviceAcknowledgement').checked,
+      terms_acceptance: document.getElementById('termsAcceptance').checked,
       status: 'requested',
       payment_status: 'pending'
     };
