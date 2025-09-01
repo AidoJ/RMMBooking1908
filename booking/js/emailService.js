@@ -431,9 +431,9 @@ formatPhoneNumber(phone) {
             })
           : 'No expiry date',
         is_for_recipient: sendToRecipient,
-        company_name: 'Rejuvenators',
-        company_phone: '1300 GET RELAX',
-        company_email: 'hello@rejuvenators.com.au',
+        company_name: 'Rejuvenators Mobile Massage',
+        company_phone: '1300 302 542',
+        company_email: 'info@rejuvenators.com',
         booking_url: 'https://rejuvenators.com.au'
       };
       
