@@ -1151,7 +1151,7 @@ console.log('Globals:', {
         po_number: quoteData.po_number || 'Not provided',
         setup_requirements: quoteData.setup_requirements || 'None specified',
         special_requirements: quoteData.special_requirements || 'None specified',
-        quote_reference: quoteRecord ? quoteRecord.id.substring(0, 8).toUpperCase() : 'QR' + Date.now().toString().substring(-6)
+        quote_reference: quoteRecord ? quoteRecord.booking_id : 'QR' + Date.now().toString().substring(-6)
       };
 
       // Send email using EmailJS
@@ -1191,7 +1191,7 @@ console.log('Globals:', {
   // Show quote success
   function showQuoteSuccess(quoteRecord) {
     const quoteEmail = document.getElementById('quoteEmail')?.value || '';
-    const referenceId = quoteRecord && quoteRecord.id ? quoteRecord.id.substring(0, 8) : 'QUOTE-' + Date.now().toString().substring(-6);
+    const referenceId = quoteRecord && quoteRecord.booking_id ? quoteRecord.booking_id : 'QUOTE-' + Date.now().toString().substring(-6);
     
     const successDiv = document.createElement('div');
     successDiv.className = 'quote-success';
@@ -2607,16 +2607,16 @@ if (confirmBtn) {
         const therapistRadio = document.querySelector('input[name="therapistId"]:checked');
         const therapistName = therapistRadio?.dataset?.name || 'Available Therapist';
         
-    // Validate acknowledgement checkboxes
+    // Validate acknowledgement dropdowns
     const serviceAck = document.getElementById('serviceAcknowledgement');
     const termsAck = document.getElementById('termsAcceptance');
     
-    if (!serviceAck.checked) {
+    if (serviceAck.value !== 'yes') {
       alert('Please acknowledge that you understand this is a strictly non-sexual professional service.');
       return;
     }
     
-    if (!termsAck.checked) {
+    if (termsAck.value !== 'yes') {
       alert('Please read and accept the Terms & Conditions.');
       return;
     }
