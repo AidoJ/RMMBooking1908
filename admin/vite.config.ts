@@ -8,4 +8,8 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
   },
+  define: {
+    // Make environment variables available to the client (using existing Netlify env vars)
+    'import.meta.env.STRIPE_PUBLISHABLE_KEY': JSON.stringify(process.env.STRIPE_PUBLISHABLE_KEY),
+  },
 });
