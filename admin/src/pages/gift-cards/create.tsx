@@ -15,8 +15,10 @@ import {
   Divider,
   Alert,
   Spin,
+  Radio,
+  Checkbox,
 } from 'antd';
-import { ArrowLeftOutlined, SaveOutlined, GiftOutlined, CreditCardOutlined, LockOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, SaveOutlined, GiftOutlined, CreditCardOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useNavigation } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
 import { loadStripe } from '@stripe/stripe-js';
@@ -52,6 +54,7 @@ const GiftCardPaymentForm: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
   const { list } = useNavigation();
   const stripe = useStripe();
   const elements = useElements();
@@ -63,6 +66,36 @@ const GiftCardPaymentForm: React.FC = () => {
       result += characters.charAt(Math.floor(Math.random() * characters.length));
     }
     form.setFieldValue('code', result);
+  };
+  
+  // Load EmailJS service
+  const loadEmailService = async () => {
+    return new Promise((resolve, reject) => {
+      if (window.EmailService) {
+        resolve(window.EmailService);
+        return;
+      }
+      
+      // Create script elements for EmailJS
+      const emailjsScript = document.createElement('script');
+      emailjsScript.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js';
+      emailjsScript.onload = () => {
+        // Load email service script
+        const serviceScript = document.createElement('script');
+        serviceScript.src = '/js/emailService.js';
+        serviceScript.onload = () => {
+          if (window.EmailService) {
+            resolve(window.EmailService);
+          } else {
+            reject(new Error('EmailService failed to load'));
+          }
+        };
+        serviceScript.onerror = () => reject(new Error('Failed to load email service script'));
+        document.head.appendChild(serviceScript);
+      };
+      emailjsScript.onerror = () => reject(new Error('Failed to load EmailJS'));
+      document.head.appendChild(emailjsScript);
+    });
   };
 
   const processPayment = async (giftCardData: any): Promise<{ success: boolean; paymentData?: any; error?: string }> => {
@@ -182,6 +215,34 @@ const GiftCardPaymentForm: React.FC = () => {
       if (error) throw error;
 
       message.success('Gift card created and payment processed successfully!');
+      
+      // Send email if requested
+      const shouldSendEmail = values.send_email;
+      const sendToRecipient = values.email_recipient === 'recipient';
+      
+      if (shouldSendEmail) {
+        setEmailSending(true);
+        try {
+          // Load EmailJS script if not already loaded
+          if (!window.EmailService) {
+            await loadEmailService();
+          }
+          
+          const emailResult = await window.EmailService.sendGiftCardEmail(finalGiftCardData, sendToRecipient);
+          
+          if (emailResult.success) {
+            message.success(`Email sent successfully to ${emailResult.sentTo}`);
+          } else {
+            message.warning(`Gift card created but email failed: ${emailResult.error}`);
+          }
+        } catch (error) {
+          console.error('Email sending error:', error);
+          message.warning('Gift card created but email could not be sent');
+        } finally {
+          setEmailSending(false);
+        }
+      }
+      
       list('gift_cards');
     } catch (error) {
       console.error('Error creating gift card:', error);
@@ -226,6 +287,8 @@ const GiftCardPaymentForm: React.FC = () => {
           onFinish={onFinish}
           initialValues={{
             is_active: true,
+            send_email: true,
+            email_recipient: 'purchaser',
           }}
         >
           {/* Gift Card Details */}
@@ -433,22 +496,80 @@ const GiftCardPaymentForm: React.FC = () => {
             />
           </Form.Item>
 
+          <Divider />
+
+          {/* Email Options */}
+          <Title level={4}>
+            <MailOutlined /> Email Delivery Options
+          </Title>
+          
+          <Form.Item
+            name="send_email"
+            valuePropName="checked"
+          >
+            <Checkbox>
+              Send gift card email after creation
+            </Checkbox>
+          </Form.Item>
+
+          <Form.Item
+            shouldUpdate={(prevValues, currentValues) => 
+              prevValues.send_email !== currentValues.send_email
+            }
+          >
+            {({ getFieldValue }) => {
+              const sendEmail = getFieldValue('send_email');
+              
+              if (!sendEmail) return null;
+              
+              return (
+                <>
+                  <Form.Item
+                    label="Send Email To"
+                    name="email_recipient"
+                    rules={[
+                      { required: true, message: 'Please select email recipient' }
+                    ]}
+                  >
+                    <Radio.Group>
+                      <Radio value="purchaser">Card Holder/Purchaser</Radio>
+                      <Radio value="recipient">Recipient (if specified)</Radio>
+                    </Radio.Group>
+                  </Form.Item>
+                  
+                  <Alert
+                    message="Email Delivery Information"
+                    description={
+                      <div>
+                        <p><strong>Card Holder/Purchaser:</strong> Sends to the person who paid for the card. Perfect for gifts where they want to print or forward the email themselves.</p>
+                        <p><strong>Recipient:</strong> Sends directly to the gift recipient (only available if recipient email is provided). Use this for direct delivery surprise gifts.</p>
+                      </div>
+                    }
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                  />
+                </>
+              );
+            }}
+          </Form.Item>
+
           <Form.Item>
             <Space>
               <Button 
                 type="primary" 
                 htmlType="submit"
-                loading={loading}
-                disabled={!stripe || paymentProcessing}
+                loading={loading || emailSending}
+                disabled={!stripe || paymentProcessing || emailSending}
                 icon={<SaveOutlined />}
                 size="large"
               >
-                {paymentProcessing ? 'Processing Payment...' : 'Create Gift Card & Process Payment'}
+                {paymentProcessing ? 'Processing Payment...' : emailSending ? 'Sending Email...' : 'Create Gift Card & Process Payment'}
               </Button>
               <Button 
                 size="large" 
                 onClick={() => list('gift_cards')}
-                disabled={paymentProcessing}
+                disabled={paymentProcessing || emailSending}
               >
                 Cancel
               </Button>

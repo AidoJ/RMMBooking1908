@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Rejuvenators Gift Card</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+            padding: 20px 0;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #007e8c 0%, #00a8b8 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .brand-logo {
+            display: block;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .brand-text {
+            text-align: center;
+        }
+        
+        .brand-name {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+        
+        .brand-tagline {
+            font-size: 14px;
+            font-style: italic;
+            opacity: 0.9;
+        }
+        
+        .header h2 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .gift-icon {
+            font-size: 32px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .gift-card-section {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid #007e8c;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 126, 140, 0.1);
+        }
+        
+        .gift-card-title {
+            color: #007e8c;
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .gift-card-code {
+            background-color: #007e8c;
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            padding: 15px 25px;
+            border-radius: 8px;
+            letter-spacing: 2px;
+            margin: 20px 0;
+            display: inline-block;
+            box-shadow: 0 4px 10px rgba(0, 126, 140, 0.3);
+        }
+        
+        .gift-card-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #007e8c;
+            margin: 20px 0;
+        }
+        
+        .gift-card-details {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+            border-left: 4px solid #007e8c;
+        }
+        
+        .gift-card-details h4 {
+            color: #007e8c;
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .detail-row {
+            display: block;
+            padding: 10px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+            display: inline-block;
+            width: 150px;
+        }
+        
+        .detail-value {
+            color: #333;
+            font-size: 14px;
+            display: inline-block;
+            margin-left: 20px;
+        }
+        
+        .personal-message {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            border: 2px solid #ff9800;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+            position: relative;
+        }
+        
+        .personal-message::before {
+            content: "💝";
+            font-size: 24px;
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: white;
+            padding: 0 10px;
+        }
+        
+        .personal-message h4 {
+            color: #e65100;
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .message-text {
+            color: #e65100;
+            font-size: 16px;
+            font-style: italic;
+            line-height: 1.8;
+        }
+        
+        .how-to-use {
+            background-color: #e8f5e8;
+            border: 2px solid #4caf50;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        
+        .how-to-use h4 {
+            color: #2e7d32;
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .how-to-use ul {
+            color: #2e7d32;
+            font-size: 14px;
+            padding-left: 20px;
+        }
+        
+        .how-to-use li {
+            margin-bottom: 8px;
+        }
+        
+        .cta-section {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #007e8c 0%, #00a8b8 100%);
+            color: white;
+            text-decoration: none;
+            padding: 15px 35px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 16px;
+            box-shadow: 0 4px 15px rgba(0, 126, 140, 0.3);
+            transition: transform 0.2s;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .footer {
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .footer p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .company-name {
+            color: #007e8c;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .contact-info {
+            color: #007e8c;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+        
+        .expiry-notice {
+            background-color: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .expiry-notice p {
+            color: #856404;
+            font-size: 14px;
+            margin: 0;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .content {
+                padding: 20px 15px;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .gift-card-section {
+                padding: 20px;
+            }
+            
+            .gift-card-code {
+                font-size: 18px;
+                padding: 12px 20px;
+            }
+            
+            .gift-card-value {
+                font-size: 28px;
+            }
+            
+            .detail-row {
+                text-align: left;
+            }
+            
+            .detail-label {
+                display: block;
+                width: auto;
+                margin-bottom: 5px;
+            }
+            
+            .detail-value {
+                display: block;
+                margin-left: 0;
+                font-weight: 600;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- EmailJS Recipient Fields - DO NOT CHANGE -->
+    <input type="hidden" name="to_email" value="{{to_email}}" />
+    <input type="hidden" name="to_name" value="{{to_name}}" />
+    <input type="hidden" name="from_name" value="Rejuvenators Mobile Massage" />
+    <input type="hidden" name="reply_to" value="{{company_email}}" />
+    
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="brand-logo">
+                <div class="brand-text">
+                    <div class="brand-name">REJUVENATORS®</div>
+                    <div class="brand-tagline">Mobile Massage</div>
+                </div>
+            </div>
+            <h2>
+                <span class="gift-icon">🎁</span>
+                {{#is_for_recipient}}Your{{/is_for_recipient}}{{^is_for_recipient}}Gift Card{{/is_for_recipient}} Gift Card
+            </h2>
+            <p>{{#is_for_recipient}}You've received a special gift!{{/is_for_recipient}}{{^is_for_recipient}}Your gift card is ready to use{{/is_for_recipient}}</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <!-- Gift Card Display -->
+            <div class="gift-card-section">
+                <div class="gift-card-title">🌟 Massage Gift Card 🌟</div>
+                
+                <div class="gift-card-code">{{gift_card_code}}</div>
+                
+                <div class="gift-card-value">{{gift_card_value}}</div>
+                
+                <p style="color: #666; margin-top: 15px;">
+                    {{#is_for_recipient}}
+                        From: {{purchaser_name}}
+                    {{/is_for_recipient}}
+                    {{^is_for_recipient}}
+                        {{#recipient_name}}For: {{recipient_name}}{{/recipient_name}}
+                        {{^recipient_name}}Ready to gift or use{{/recipient_name}}
+                    {{/is_for_recipient}}
+                </p>
+            </div>
+
+            <!-- Personal Message -->
+            {{#personal_message}}
+            <div class="personal-message">
+                <h4>💝 Personal Message</h4>
+                <div class="message-text">"{{personal_message}}"</div>
+            </div>
+            {{/personal_message}}
+            
+            <!-- Gift Card Details -->
+            <div class="gift-card-details">
+                <h4>Gift Card Information</h4>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Gift Card Code:</span>
+                    <span class="detail-value" style="font-family: monospace; font-weight: 700;">{{gift_card_code}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Value:</span>
+                    <span class="detail-value" style="font-weight: 700; color: #007e8c;">{{gift_card_value}}</span>
+                </div>
+                
+                {{#expires_at}}
+                <div class="detail-row">
+                    <span class="detail-label">Valid Until:</span>
+                    <span class="detail-value">{{expires_at}}</span>
+                </div>
+                {{/expires_at}}
+                
+                {{^expires_at}}
+                <div class="detail-row">
+                    <span class="detail-label">Validity:</span>
+                    <span class="detail-value" style="color: #4caf50; font-weight: 600;">No expiry date</span>
+                </div>
+                {{/expires_at}}
+                
+                <div class="detail-row">
+                    <span class="detail-label">Purchased by:</span>
+                    <span class="detail-value">{{purchaser_name}}</span>
+                </div>
+                
+                {{#recipient_name}}
+                <div class="detail-row">
+                    <span class="detail-label">Gift Recipient:</span>
+                    <span class="detail-value">{{recipient_name}}</span>
+                </div>
+                {{/recipient_name}}
+            </div>
+
+            <!-- Expiry Notice -->
+            {{#expires_at}}
+            <div class="expiry-notice">
+                <p>⏰ Remember: This gift card expires on {{expires_at}}</p>
+            </div>
+            {{/expires_at}}
+            
+            <!-- How to Use -->
+            <div class="how-to-use">
+                <h4>🌿 How to Use Your Gift Card</h4>
+                <ul>
+                    <li><strong>Call us:</strong> Phone {{company_phone}} to book your appointment</li>
+                    <li><strong>Provide your code:</strong> Quote gift card code <strong>{{gift_card_code}}</strong></li>
+                    <li><strong>Choose your service:</strong> Select from our range of massage treatments</li>
+                    <li><strong>Enjoy:</strong> Relax and let our professional therapists take care of you</li>
+                    <li><strong>Partial use:</strong> Any remaining balance stays on your card for next time</li>
+                </ul>
+            </div>
+            
+            <!-- Call to Action -->
+            <div class="cta-section">
+                <a href="{{booking_url}}" class="cta-button">
+                    📅 Book Your Massage Now
+                </a>
+            </div>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <p style="color: #666; font-size: 14px;">
+                    Or call us directly at <strong style="color: #007e8c;">{{company_phone}}</strong>
+                </p>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>
+                {{#is_for_recipient}}
+                    Thank you {{recipient_name}} for choosing <span class="company-name">{{company_name}}</span>.
+                {{/is_for_recipient}}
+                {{^is_for_recipient}}
+                    Thank you for choosing <span class="company-name">{{company_name}}</span>.
+                {{/is_for_recipient}}
+            </p>
+            <p>We can't wait to help you relax and rejuvenate!</p>
+            <div class="contact-info">
+                📧 {{company_email}} | 📞 {{company_phone}}
+            </div>
+            <p style="margin-top: 15px; font-size: 12px; color: #999;">
+                Keep this email safe - you'll need your gift card code to book your appointment.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

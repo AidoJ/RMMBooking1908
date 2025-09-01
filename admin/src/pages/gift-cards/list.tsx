@@ -26,7 +26,10 @@ import {
   GiftOutlined,
   DollarOutlined,
   CalendarOutlined,
-  UserOutlined
+  UserOutlined,
+  CreditCardOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined
 } from '@ant-design/icons';
 import { useNavigation } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
@@ -51,6 +54,16 @@ interface GiftCard {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Payment fields
+  payment_intent_id?: string;
+  stripe_customer_id?: string;
+  payment_method?: string;
+  transaction_fee?: number;
+  payment_date?: string;
+  payment_status?: string;
+  card_holder_name?: string;
+  card_holder_email?: string;
+  card_holder_phone?: string;
 }
 
 const GiftCardsList: React.FC = () => {
@@ -196,6 +209,29 @@ const GiftCardsList: React.FC = () => {
             {dayjs(date).format('DD/MM/YYYY')}
           </Text>
         );
+      },
+    },
+    {
+      title: 'Payment Status',
+      key: 'payment_status',
+      render: (record: GiftCard) => {
+        if (record.payment_status === 'completed') {
+          return (
+            <div>
+              <Tag color="green" icon={<CheckCircleOutlined />}>Paid</Tag>
+              <br />
+              <Text type="secondary" style={{ fontSize: '11px' }}>
+                {record.payment_method || 'Card payment'}
+              </Text>
+            </div>
+          );
+        } else if (record.payment_status === 'failed') {
+          return <Tag color="red" icon={<CloseCircleOutlined />}>Failed</Tag>;
+        } else if (record.payment_status === 'pending') {
+          return <Tag color="orange">Pending</Tag>;
+        } else {
+          return <Tag color="gray">Unknown</Tag>;
+        }
       },
     },
     {

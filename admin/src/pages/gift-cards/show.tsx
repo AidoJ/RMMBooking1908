@@ -24,6 +24,10 @@ import {
   MailOutlined,
   CalendarOutlined,
   DollarOutlined,
+  CreditCardOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  PhoneOutlined,
 } from '@ant-design/icons';
 import { useNavigation } from '@refinedev/core';
 import { useParams } from 'react-router';
@@ -46,6 +50,16 @@ interface GiftCard {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Payment fields
+  payment_intent_id?: string;
+  stripe_customer_id?: string;
+  payment_method?: string;
+  transaction_fee?: number;
+  payment_date?: string;
+  payment_status?: string;
+  card_holder_name?: string;
+  card_holder_email?: string;
+  card_holder_phone?: string;
 }
 
 const GiftCardsShow: React.FC = () => {
@@ -319,6 +333,105 @@ const GiftCardsShow: React.FC = () => {
                     </>
                   )}
                 </div>
+              </Space>
+            </Card>
+
+            <Card title="Payment Information">
+              <Space direction="vertical" style={{ width: '100%' }}>
+                {giftCard.payment_status && (
+                  <>
+                    <div>
+                      <Text strong>Payment Status</Text>
+                      <br />
+                      {giftCard.payment_status === 'completed' && (
+                        <Tag color="green" icon={<CheckCircleOutlined />}>
+                          Payment Completed
+                        </Tag>
+                      )}
+                      {giftCard.payment_status === 'failed' && (
+                        <Tag color="red" icon={<CloseCircleOutlined />}>
+                          Payment Failed
+                        </Tag>
+                      )}
+                      {giftCard.payment_status === 'pending' && (
+                        <Tag color="orange">Payment Pending</Tag>
+                      )}
+                    </div>
+                    <Divider style={{ margin: '12px 0' }} />
+                  </>
+                )}
+                
+                {giftCard.card_holder_name && (
+                  <>
+                    <div>
+                      <Text strong>
+                        <CreditCardOutlined /> Card Holder
+                      </Text>
+                      <br />
+                      <Text>{giftCard.card_holder_name}</Text>
+                      {giftCard.card_holder_email && (
+                        <>
+                          <br />
+                          <Text type="secondary">
+                            <MailOutlined /> {giftCard.card_holder_email}
+                          </Text>
+                        </>
+                      )}
+                      {giftCard.card_holder_phone && (
+                        <>
+                          <br />
+                          <Text type="secondary">
+                            <PhoneOutlined /> {giftCard.card_holder_phone}
+                          </Text>
+                        </>
+                      )}
+                    </div>
+                    <Divider style={{ margin: '12px 0' }} />
+                  </>
+                )}
+                
+                {giftCard.payment_method && (
+                  <>
+                    <div>
+                      <Text type="secondary">Payment Method</Text>
+                      <br />
+                      <Text>{giftCard.payment_method}</Text>
+                    </div>
+                    <Divider style={{ margin: '12px 0' }} />
+                  </>
+                )}
+                
+                {giftCard.payment_date && (
+                  <>
+                    <div>
+                      <Text type="secondary">Payment Date</Text>
+                      <br />
+                      <Text>{dayjs(giftCard.payment_date).format('DD/MM/YYYY HH:mm')}</Text>
+                    </div>
+                    <Divider style={{ margin: '12px 0' }} />
+                  </>
+                )}
+                
+                {giftCard.transaction_fee && (
+                  <>
+                    <div>
+                      <Text type="secondary">Transaction Fee</Text>
+                      <br />
+                      <Text>${giftCard.transaction_fee.toFixed(2)}</Text>
+                    </div>
+                    <Divider style={{ margin: '12px 0' }} />
+                  </>
+                )}
+                
+                {giftCard.payment_intent_id && (
+                  <div>
+                    <Text type="secondary">Payment Intent ID</Text>
+                    <br />
+                    <Text style={{ fontFamily: 'monospace', fontSize: '11px' }}>
+                      {giftCard.payment_intent_id}
+                    </Text>
+                  </div>
+                )}
               </Space>
             </Card>
 

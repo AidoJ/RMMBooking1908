@@ -6,6 +6,7 @@ let EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID = 'template_confirmed'; // Booking Con
 let EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID = 'template_therapist_ok'; // Booking confirmed for therapist
 let EMAILJS_BOOKING_DECLINED_TEMPLATE_ID = 'template_declined'; // Booking declined
 let EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID = 'template_alternate'; // Looking for Alternate Therapist
+let EMAILJS_GIFT_CARD_TEMPLATE_ID = 'template_gift_card'; // Gift card delivery template
 let EMAILJS_PUBLIC_KEY = 'qfM_qA664E4JddSMN';
 
 // Initialize EmailJS when the script loads
@@ -387,6 +388,72 @@ formatPhoneNumber(phone) {
 
     } catch (error) {
       console.error('❌ Error sending booking declined email:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Send Gift Card Email
+  async sendGiftCardEmail(giftCardData, sendToRecipient = false) {
+    console.log('📧 Sending gift card email...', { giftCardData, sendToRecipient });
+    
+    // Ensure EmailJS is initialized
+    if (typeof emailjs === 'undefined') {
+      console.error('❌ EmailJS not loaded');
+      return { success: false, error: 'EmailJS not loaded' };
+    }
+    
+    try {
+      // Determine recipient
+      const recipient = sendToRecipient && giftCardData.recipient_email 
+        ? {
+            email: giftCardData.recipient_email,
+            name: giftCardData.recipient_name || 'Gift Card Recipient'
+          }
+        : {
+            email: giftCardData.purchaser_email || giftCardData.card_holder_email,
+            name: giftCardData.purchaser_name || giftCardData.card_holder_name
+          };
+
+      // Build template parameters
+      const templateParams = {
+        to_email: recipient.email,
+        to_name: recipient.name,
+        gift_card_code: giftCardData.code,
+        gift_card_value: `$${parseFloat(giftCardData.initial_balance).toFixed(2)}`,
+        purchaser_name: giftCardData.purchaser_name || giftCardData.card_holder_name || 'Anonymous',
+        recipient_name: giftCardData.recipient_name || 'You',
+        personal_message: giftCardData.message || 'Enjoy your relaxing massage experience!',
+        expires_at: giftCardData.expires_at 
+          ? new Date(giftCardData.expires_at).toLocaleDateString('en-AU', {
+              day: '2-digit',
+              month: '2-digit', 
+              year: 'numeric'
+            })
+          : 'No expiry date',
+        is_for_recipient: sendToRecipient,
+        company_name: 'Rejuvenators',
+        company_phone: '1300 GET RELAX',
+        company_email: 'hello@rejuvenators.com.au',
+        booking_url: 'https://rejuvenators.com.au'
+      };
+      
+      console.log('📧 Gift card template parameters:', templateParams);
+      
+      const response = await emailjs.send(
+        EMAILJS_SERVICE_ID, 
+        EMAILJS_GIFT_CARD_TEMPLATE_ID, 
+        templateParams
+      );
+      
+      console.log('✅ Gift card email sent successfully:', response);
+      return { 
+        success: true, 
+        message: `Gift card email sent to ${sendToRecipient ? 'recipient' : 'purchaser'}`,
+        sentTo: recipient.email
+      };
+      
+    } catch (error) {
+      console.error('❌ Error sending gift card email:', error);
       return { success: false, error: error.message };
     }
   }
