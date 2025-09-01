@@ -11,6 +11,10 @@ console.log('🚀 Building platforms...');
 
 async function main() {
   try {
+    // Install admin dependencies first
+    console.log('📥 Installing admin dependencies...');
+    await execAsync('npm install', { cwd: path.join(__dirname, 'admin') });
+    
     // Clean and rebuild admin panel
     console.log('🧹 Cleaning admin build...');
     await fs.remove(path.join(__dirname, 'admin', 'dist'));
