@@ -57,6 +57,12 @@ import SystemSettings from "./pages/system-settings";
 // Import the quotes management component
 import { QuotesList } from "./pages/quotes";
 
+// Import the discount codes management component
+import { DiscountCodesList } from "./pages/discount-codes";
+
+// Import the gift cards management component
+import { GiftCardsList } from "./pages/gift-cards";
+
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
   const { id } = useParams();
@@ -109,6 +115,22 @@ function App() {
                     meta: {
                       label: "Quotes",
                       icon: "💰",
+                    },
+                  },
+                  {
+                    name: "discount_codes",
+                    list: "/discount-codes",
+                    meta: {
+                      label: "Discount Codes",
+                      icon: "🏷️",
+                    },
+                  },
+                  {
+                    name: "gift_cards",
+                    list: "/gift-cards",
+                    meta: {
+                      label: "Gift Cards",
+                      icon: "🎁",
                     },
                   },
                   {
@@ -233,6 +255,12 @@ function App() {
                     
                     {/* Quote Management */}
                     <Route path="/quotes" element={<QuotesList />} />
+                    
+                    {/* Discount Codes Management */}
+                    <Route path="/discount-codes" element={<DiscountCodesList />} />
+                    
+                    {/* Gift Cards Management */}
+                    <Route path="/gift-cards" element={<GiftCardsList />} />
                     
                     {/* Calendar */}
                     <Route path="/calendar" element={<CalendarBookingManagement />} />
