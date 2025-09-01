@@ -57,11 +57,11 @@ import SystemSettings from "./pages/system-settings";
 // Import the quotes management component
 import { QuotesList } from "./pages/quotes";
 
-// Import the discount codes management component
-import { DiscountCodesList } from "./pages/discount-codes";
+// Import the discount codes management components
+import { DiscountCodesList, DiscountCodesCreate, DiscountCodesEdit, DiscountCodesShow } from "./pages/discount-codes";
 
-// Import the gift cards management component
-import { GiftCardsList } from "./pages/gift-cards";
+// Import the gift cards management components
+import { GiftCardsList, GiftCardsCreate, GiftCardsEdit, GiftCardsShow } from "./pages/gift-cards";
 
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
@@ -120,7 +120,11 @@ function App() {
                   {
                     name: "discount_codes",
                     list: "/discount-codes",
+                    create: "/discount-codes/create",
+                    edit: "/discount-codes/edit/:id",
+                    show: "/discount-codes/show/:id",
                     meta: {
+                      canDelete: true,
                       label: "Discount Codes",
                       icon: "🏷️",
                     },
@@ -128,7 +132,11 @@ function App() {
                   {
                     name: "gift_cards",
                     list: "/gift-cards",
+                    create: "/gift-cards/create",
+                    edit: "/gift-cards/edit/:id",
+                    show: "/gift-cards/show/:id",
                     meta: {
+                      canDelete: true,
                       label: "Gift Cards",
                       icon: "🎁",
                     },
@@ -257,10 +265,20 @@ function App() {
                     <Route path="/quotes" element={<QuotesList />} />
                     
                     {/* Discount Codes Management */}
-                    <Route path="/discount-codes" element={<DiscountCodesList />} />
+                    <Route path="/discount-codes">
+                      <Route index element={<DiscountCodesList />} />
+                      <Route path="create" element={<DiscountCodesCreate />} />
+                      <Route path="edit/:id" element={<DiscountCodesEdit />} />
+                      <Route path="show/:id" element={<DiscountCodesShow />} />
+                    </Route>
                     
                     {/* Gift Cards Management */}
-                    <Route path="/gift-cards" element={<GiftCardsList />} />
+                    <Route path="/gift-cards">
+                      <Route index element={<GiftCardsList />} />
+                      <Route path="create" element={<GiftCardsCreate />} />
+                      <Route path="edit/:id" element={<GiftCardsEdit />} />
+                      <Route path="show/:id" element={<GiftCardsShow />} />
+                    </Route>
                     
                     {/* Calendar */}
                     <Route path="/calendar" element={<CalendarBookingManagement />} />
