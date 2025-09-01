@@ -935,8 +935,12 @@ console.log('Globals:', {
     submitBtn.textContent = 'Submitting Quote Request...';
     
     try {
+      // Generate quote ID
+      const quoteId = await generateSequentialQuoteId();
+      
       // Collect quote data
       const quoteData = collectQuoteFormData();
+      quoteData.booking_id = quoteId; // Add the generated quote ID
       
       // Submit to database
       const { data, error } = await window.supabase
@@ -2097,7 +2101,7 @@ async function generateSequentialBookingId() {
   try {
     // Get current year and month
     const now = new Date();
-    const year = now.getFullYear();
+    const year = String(now.getFullYear()).slice(-2); // Get last 2 digits of year
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const yearMonth = `${year}${month}`;
     
@@ -2105,7 +2109,7 @@ async function generateSequentialBookingId() {
     const { data: lastBooking, error } = await window.supabase
       .from('bookings')
       .select('booking_id')
-      .ilike('booking_id', `RMM${yearMonth}-%`)
+      .ilike('booking_id', `RB${yearMonth}%`)
       .order('booking_id', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -2113,21 +2117,21 @@ async function generateSequentialBookingId() {
     if (error) {
       console.error('Error fetching last booking ID:', error);
       // Fallback to first booking of the month
-      return `RMM${yearMonth}-0001`;
+      return `RB${yearMonth}001`;
     }
     
     let nextNumber = 1;
     
     if (lastBooking && lastBooking.booking_id) {
       // Extract the number from the last booking ID
-      const match = lastBooking.booking_id.match(/RMM\d{6}-(\d{4})$/);
+      const match = lastBooking.booking_id.match(/RB\d{4}(\d{3})$/);
       if (match) {
         nextNumber = parseInt(match[1], 10) + 1;
       }
     }
     
     // Format the new booking ID
-    const bookingId = `RMM${yearMonth}-${String(nextNumber).padStart(4, '0')}`;
+    const bookingId = `RB${yearMonth}${String(nextNumber).padStart(3, '0')}`;
     console.log('Generated booking ID:', bookingId);
     return bookingId;
     
@@ -2135,9 +2139,59 @@ async function generateSequentialBookingId() {
     console.error('Error generating booking ID:', error);
     // Fallback booking ID
     const now = new Date();
-    const year = now.getFullYear();
+    const year = String(now.getFullYear()).slice(-2);
     const month = String(now.getMonth() + 1).padStart(2, '0');
-    return `RMM${year}${month}-0001`;
+    return `RB${year}${month}001`;
+  }
+}
+
+// Helper to generate sequential quote ID
+async function generateSequentialQuoteId() {
+  try {
+    // Get current year and month
+    const now = new Date();
+    const year = String(now.getFullYear()).slice(-2); // Get last 2 digits of year
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const yearMonth = `${year}${month}`;
+    
+    // Query for the last quote ID in the current month
+    const { data: lastQuote, error } = await window.supabase
+      .from('bookings')
+      .select('booking_id')
+      .eq('quote_only', true)
+      .ilike('booking_id', `RQ${yearMonth}%`)
+      .order('booking_id', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error fetching last quote ID:', error);
+      // Fallback to first quote of the month
+      return `RQ${yearMonth}001`;
+    }
+    
+    let nextNumber = 1;
+    
+    if (lastQuote && lastQuote.booking_id) {
+      // Extract the number from the last quote ID
+      const match = lastQuote.booking_id.match(/RQ\d{4}(\d{3})$/);
+      if (match) {
+        nextNumber = parseInt(match[1], 10) + 1;
+      }
+    }
+    
+    // Format the new quote ID
+    const quoteId = `RQ${yearMonth}${String(nextNumber).padStart(3, '0')}`;
+    console.log('Generated quote ID:', quoteId);
+    return quoteId;
+    
+  } catch (error) {
+    console.error('Error generating quote ID:', error);
+    // Fallback quote ID
+    const now = new Date();
+    const year = String(now.getFullYear()).slice(-2);
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `RQ${year}${month}001`;
   }
 }
 
