@@ -1379,138 +1379,74 @@ export const BookingEdit: React.FC = () => {
                               💰 Pricing
                             </Title>
                             
-                            <Row gutter={24}>
-                              <Col span={8}>
-                                <Form.Item name="price" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>Total Price ($)</span>}>
-                                  <InputNumber 
-                                    min={0} 
-                                    step={0.01} 
-                                    style={{ width: '100%', fontSize: '18px', fontWeight: 'bold' }} 
-                                    placeholder="0.00"
-                                    size="large"
-                                  />
-                                </Form.Item>
-                              </Col>
-                              
-                              <Col span={8}>
-                                <Form.Item name="discount_amount" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>Applied Discount ($)</span>}>
-                                  <InputNumber 
-                                    min={0} 
-                                    step={0.01} 
-                                    style={{ width: '100%', fontSize: '16px' }} 
-                                    placeholder="0.00"
-                                    size="large"
-                                  />
-                                </Form.Item>
-                              </Col>
-                              
-                              <Col span={8}>
-                                <Form.Item name="revised_price_display" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>Revised Price ($)</span>}>
-                                  <InputNumber 
-                                    min={0} 
-                                    step={0.01} 
-                                    style={{ width: '100%', fontSize: '16px', backgroundColor: '#f5f5f5' }} 
-                                    placeholder="0.00"
-                                    size="large"
-                                    disabled
-                                  />
-                                </Form.Item>
-                              </Col>
-                            </Row>
+                            <Form.Item name="price" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>Total Price ($)</span>}>
+                              <InputNumber 
+                                min={0} 
+                                step={0.01} 
+                                style={{ width: '300px', fontSize: '18px', fontWeight: 'bold' }} 
+                                placeholder="0.00"
+                                size="large"
+                                onChange={() => {
+                                  setTimeout(() => {
+                                    const totalPrice = form.getFieldValue('price') || 0;
+                                    const discountAmount = form.getFieldValue('discount_amount') || 0;
+                                    const revisedPrice = totalPrice - discountAmount;
+                                    const gstAmount = revisedPrice / 1.1 * 0.1;
+                                    const netPrice = revisedPrice - gstAmount;
+                                    
+                                    form.setFieldsValue({
+                                      tax_rate_amount: gstAmount,
+                                      net_price: netPrice
+                                    });
+                                  }, 0);
+                                }}
+                              />
+                            </Form.Item>
                             
-                            <Form.Item
-                              shouldUpdate={(prevValues, currentValues) => 
-                                prevValues.price !== currentValues.price || 
-                                prevValues.discount_amount !== currentValues.discount_amount
-                              }
-                            >
-                              {({ getFieldValue }) => {
-                                const totalPrice = getFieldValue('price') || 0;
-                                const discountAmount = getFieldValue('discount_amount') || 0;
-                                const revisedPrice = totalPrice - discountAmount;
-                                const gstAmount = revisedPrice / 1.1 * 0.1;
-                                
-                                return (
-                                  <Row gutter={24} style={{ marginTop: '16px' }}>
-                                    <Col span={24}>
-                                      <div style={{ 
-                                        border: '2px solid #1890ff', 
-                                        borderRadius: '8px', 
-                                        padding: '16px',
-                                        backgroundColor: '#fff'
-                                      }}>
-                                        <Row>
-                                          <Col span={12}>
-                                            <div style={{ 
-                                              border: '1px solid #d9d9d9', 
-                                              padding: '8px 16px',
-                                              backgroundColor: '#f5f5f5',
-                                              fontWeight: 'bold'
-                                            }}>
-                                              Applied Discount
-                                            </div>
-                                          </Col>
-                                          <Col span={6}>
-                                            <div style={{ 
-                                              border: '1px solid #d9d9d9', 
-                                              padding: '8px 16px',
-                                              backgroundColor: '#f5f5f5',
-                                              fontWeight: 'bold'
-                                            }}>
-                                              Revised Price
-                                            </div>
-                                          </Col>
-                                          <Col span={6}>
-                                            <div style={{ 
-                                              border: '1px solid #d9d9d9', 
-                                              padding: '8px 16px',
-                                              backgroundColor: '#f5f5f5',
-                                              fontWeight: 'bold'
-                                            }}>
-                                              GST (10%)
-                                            </div>
-                                          </Col>
-                                        </Row>
-                                        <Row>
-                                          <Col span={12}>
-                                            <div style={{ 
-                                              border: '1px solid #d9d9d9', 
-                                              padding: '8px 16px',
-                                              minHeight: '40px',
-                                              display: 'flex',
-                                              alignItems: 'center'
-                                            }}>
-                                              ${discountAmount.toFixed(2)}
-                                            </div>
-                                          </Col>
-                                          <Col span={6}>
-                                            <div style={{ 
-                                              border: '1px solid #d9d9d9', 
-                                              padding: '8px 16px',
-                                              minHeight: '40px',
-                                              display: 'flex',
-                                              alignItems: 'center'
-                                            }}>
-                                              ${revisedPrice.toFixed(2)}
-                                            </div>
-                                          </Col>
-                                          <Col span={6}>
-                                            <div style={{ 
-                                              border: '1px solid #d9d9d9', 
-                                              padding: '8px 16px',
-                                              minHeight: '40px',
-                                              display: 'flex',
-                                              alignItems: 'center'
-                                            }}>
-                                              ${gstAmount.toFixed(2)}
-                                            </div>
-                                          </Col>
-                                        </Row>
-                                      </div>
-                                    </Col>
-                                  </Row>
-                                );
-                              }}
+                            <Form.Item name="discount_amount" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>Applied Discount ($)</span>}>
+                              <InputNumber 
+                                min={0} 
+                                step={0.01} 
+                                style={{ width: '300px', fontSize: '18px', fontWeight: 'bold' }} 
+                                placeholder="0.00"
+                                size="large"
+                                onChange={() => {
+                                  setTimeout(() => {
+                                    const totalPrice = form.getFieldValue('price') || 0;
+                                    const discountAmount = form.getFieldValue('discount_amount') || 0;
+                                    const revisedPrice = totalPrice - discountAmount;
+                                    const gstAmount = revisedPrice / 1.1 * 0.1;
+                                    const netPrice = revisedPrice - gstAmount;
+                                    
+                                    form.setFieldsValue({
+                                      tax_rate_amount: gstAmount,
+                                      net_price: netPrice
+                                    });
+                                  }, 0);
+                                }}
+                              />
+                            </Form.Item>
+                            
+                            <Form.Item name="tax_rate_amount" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>GST (10%) ($)</span>}>
+                              <InputNumber 
+                                min={0} 
+                                step={0.01} 
+                                style={{ width: '300px', fontSize: '18px', fontWeight: 'bold' }} 
+                                placeholder="0.00"
+                                size="large"
+                                disabled
+                              />
+                            </Form.Item>
+                            
+                            <Form.Item name="net_price" label={<span style={{ fontSize: '18px', fontWeight: 'bold', color: '#52c41a' }}>Net Price ($)</span>}>
+                              <InputNumber 
+                                min={0} 
+                                step={0.01} 
+                                style={{ width: '300px', fontSize: '20px', fontWeight: 'bold', backgroundColor: '#f6ffed', border: '2px solid #52c41a' }} 
+                                placeholder="0.00"
+                                size="large"
+                                disabled
+                              />
                             </Form.Item>
                           </Card>
                         </Col>
