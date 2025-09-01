@@ -231,14 +231,21 @@ const GiftCardsEdit: React.FC = () => {
                 ]}
                 tooltip="You can adjust this to add or remove balance"
               >
-                <InputNumber
-                  style={{ width: '100%' }}
-                  min={0}
-                  max={Form.useWatch('initial_balance', form) || 10000}
-                  precision={2}
-                  placeholder="Enter amount"
-                  addonBefore="$"
-                />
+                <Form.Item shouldUpdate>
+                  {() => {
+                    const initialBalance = form.getFieldValue('initial_balance');
+                    return (
+                      <InputNumber
+                        style={{ width: '100%' }}
+                        min={0}
+                        max={initialBalance || 10000}
+                        precision={2}
+                        placeholder="Enter amount"
+                        addonBefore="$"
+                      />
+                    );
+                  }}
+                </Form.Item>
               </Form.Item>
             </Col>
           </Row>

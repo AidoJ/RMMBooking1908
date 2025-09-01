@@ -232,14 +232,21 @@ const DiscountCodesEdit: React.FC = () => {
                   { type: 'number', min: 0.01, message: 'Value must be greater than 0' }
                 ]}
               >
-                <InputNumber
-                  style={{ width: '100%' }}
-                  min={0.01}
-                  max={Form.useWatch('discount_type', form) === 'percentage' ? 100 : 10000}
-                  precision={2}
-                  placeholder="Enter value"
-                  addonAfter={Form.useWatch('discount_type', form) === 'percentage' ? '%' : '$'}
-                />
+                <Form.Item shouldUpdate>
+                  {() => {
+                    const discountType = form.getFieldValue('discount_type');
+                    return (
+                      <InputNumber
+                        style={{ width: '100%' }}
+                        min={0.01}
+                        max={discountType === 'percentage' ? 100 : 10000}
+                        precision={2}
+                        placeholder="Enter value"
+                        addonAfter={discountType === 'percentage' ? '%' : '$'}
+                      />
+                    );
+                  }}
+                </Form.Item>
               </Form.Item>
             </Col>
             <Col span={8}>
@@ -262,14 +269,21 @@ const DiscountCodesEdit: React.FC = () => {
                 name="maximum_discount_amount"
                 tooltip="Only applies to percentage discounts"
               >
-                <InputNumber
-                  style={{ width: '100%' }}
-                  min={0}
-                  precision={2}
-                  placeholder="No maximum"
-                  addonBefore="$"
-                  disabled={Form.useWatch('discount_type', form) === 'fixed_amount'}
-                />
+                <Form.Item shouldUpdate>
+                  {() => {
+                    const discountType = form.getFieldValue('discount_type');
+                    return (
+                      <InputNumber
+                        style={{ width: '100%' }}
+                        min={0}
+                        precision={2}
+                        placeholder="No maximum"
+                        addonBefore="$"
+                        disabled={discountType === 'fixed_amount'}
+                      />
+                    );
+                  }}
+                </Form.Item>
               </Form.Item>
             </Col>
           </Row>
