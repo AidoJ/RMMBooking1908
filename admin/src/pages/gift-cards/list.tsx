@@ -254,6 +254,20 @@ const GiftCardsList: React.FC = () => {
     },
   ];
 
+  // Calculate statistics
+  const stats = {
+    total: giftCards.length,
+    active: giftCards.filter(card => 
+      card.is_active && 
+      card.current_balance > 0 && 
+      (!card.expires_at || dayjs(card.expires_at).isAfter(dayjs()))
+    ).length,
+    depleted: giftCards.filter(card => card.current_balance <= 0).length,
+    expired: giftCards.filter(card => 
+      card.expires_at && dayjs(card.expires_at).isBefore(dayjs())
+    ).length,
+  };
+
   // Calculate total values
   const totalValue = giftCards.reduce((sum, card) => sum + card.initial_balance, 0);
   const remainingValue = giftCards.reduce((sum, card) => sum + card.current_balance, 0);
