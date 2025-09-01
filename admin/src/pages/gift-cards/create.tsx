@@ -26,7 +26,7 @@ import dayjs from 'dayjs';
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
-// Load Stripe (you'll need to set this in your environment variables)
+// Load Stripe - using environment variable for admin panel
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
 // Card element styling to match Ant Design
