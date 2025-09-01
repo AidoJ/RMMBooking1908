@@ -88,7 +88,7 @@ const DiscountCodesShow: React.FC = () => {
 
       if (error) throw error;
       message.success('Discount code deleted successfully');
-      list('discount-codes');
+      list('discount_codes');
     } catch (error) {
       console.error('Error deleting discount code:', error);
       message.error('Failed to delete discount code');
@@ -108,7 +108,7 @@ const DiscountCodesShow: React.FC = () => {
     return (
       <div style={{ padding: 24, textAlign: 'center' }}>
         <Title level={4}>Discount code not found</Title>
-        <Button onClick={() => list('discount-codes')}>
+        <Button onClick={() => list('discount_codes')}>
           Back to Discount Codes
         </Button>
       </div>
@@ -138,7 +138,7 @@ const DiscountCodesShow: React.FC = () => {
             <Button 
               type="text" 
               icon={<ArrowLeftOutlined />}
-              onClick={() => list('discount-codes')}
+              onClick={() => list('discount_codes')}
             >
               Back to Discount Codes
             </Button>
@@ -152,7 +152,7 @@ const DiscountCodesShow: React.FC = () => {
             <Button 
               type="primary"
               icon={<EditOutlined />}
-              onClick={() => edit('discount-codes', discountCode.id)}
+              onClick={() => edit('discount_codes', discountCode.id)}
             >
               Edit
             </Button>

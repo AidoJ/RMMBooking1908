@@ -197,14 +197,14 @@ const DiscountCodesList: React.FC = () => {
             <Button 
               type="link" 
               icon={<EyeOutlined />}
-              onClick={() => show('discount-codes', record.id)}
+              onClick={() => show('discount_codes', record.id)}
             />
           </Tooltip>
           <Tooltip title="Edit">
             <Button 
               type="link" 
               icon={<EditOutlined />}
-              onClick={() => edit('discount-codes', record.id)}
+              onClick={() => edit('discount_codes', record.id)}
             />
           </Tooltip>
           <Tooltip title={record.is_active ? 'Deactivate' : 'Activate'}>
@@ -254,7 +254,7 @@ const DiscountCodesList: React.FC = () => {
           <Button 
             type="primary" 
             icon={<PlusOutlined />}
-            onClick={() => create('discount-codes')}
+            onClick={() => create('discount_codes')}
           >
             Create New Code
           </Button>

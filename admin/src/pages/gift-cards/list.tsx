@@ -219,14 +219,14 @@ const GiftCardsList: React.FC = () => {
             <Button 
               type="link" 
               icon={<EyeOutlined />}
-              onClick={() => show('gift-cards', record.id)}
+              onClick={() => show('gift_cards', record.id)}
             />
           </Tooltip>
           <Tooltip title="Edit">
             <Button 
               type="link" 
               icon={<EditOutlined />}
-              onClick={() => edit('gift-cards', record.id)}
+              onClick={() => edit('gift_cards', record.id)}
             />
           </Tooltip>
           <Tooltip title={record.is_active ? 'Deactivate' : 'Activate'}>
@@ -282,7 +282,7 @@ const GiftCardsList: React.FC = () => {
           <Button 
             type="primary" 
             icon={<PlusOutlined />}
-            onClick={() => create('gift-cards')}
+            onClick={() => create('gift_cards')}
           >
             Create New Gift Card
           </Button>

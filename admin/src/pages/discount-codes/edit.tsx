@@ -117,7 +117,7 @@ const DiscountCodesEdit: React.FC = () => {
       if (error) throw error;
 
       message.success('Discount code updated successfully');
-      list('discount-codes');
+      list('discount_codes');
     } catch (error) {
       console.error('Error updating discount code:', error);
       message.error('Failed to update discount code');
@@ -139,7 +139,7 @@ const DiscountCodesEdit: React.FC = () => {
     return (
       <div style={{ padding: 24, textAlign: 'center' }}>
         <Title level={4}>Discount code not found</Title>
-        <Button onClick={() => list('discount-codes')}>
+        <Button onClick={() => list('discount_codes')}>
           Back to Discount Codes
         </Button>
       </div>
@@ -154,7 +154,7 @@ const DiscountCodesEdit: React.FC = () => {
             <Button 
               type="text" 
               icon={<ArrowLeftOutlined />}
-              onClick={() => list('discount-codes')}
+              onClick={() => list('discount_codes')}
             >
               Back to Discount Codes
             </Button>
@@ -332,7 +332,7 @@ const DiscountCodesEdit: React.FC = () => {
               >
                 Update Discount Code
               </Button>
-              <Button onClick={() => list('discount-codes')}>
+              <Button onClick={() => list('discount_codes')}>
                 Cancel
               </Button>
             </Space>

@@ -62,7 +62,7 @@ const DiscountCodesCreate: React.FC = () => {
       if (error) throw error;
 
       message.success('Discount code created successfully');
-      list('discount-codes');
+      list('discount_codes');
     } catch (error) {
       console.error('Error creating discount code:', error);
       message.error('Failed to create discount code');
@@ -79,7 +79,7 @@ const DiscountCodesCreate: React.FC = () => {
             <Button 
               type="text" 
               icon={<ArrowLeftOutlined />}
-              onClick={() => list('discount-codes')}
+              onClick={() => list('discount_codes')}
             >
               Back to Discount Codes
             </Button>
@@ -259,7 +259,7 @@ const DiscountCodesCreate: React.FC = () => {
               >
                 Create Discount Code
               </Button>
-              <Button onClick={() => list('discount-codes')}>
+              <Button onClick={() => list('discount_codes')}>
                 Cancel
               </Button>
             </Space>

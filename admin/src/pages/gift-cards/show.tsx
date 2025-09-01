@@ -89,7 +89,7 @@ const GiftCardsShow: React.FC = () => {
 
       if (error) throw error;
       message.success('Gift card deleted successfully');
-      list('gift-cards');
+      list('gift_cards');
     } catch (error) {
       console.error('Error deleting gift card:', error);
       message.error('Failed to delete gift card');
@@ -109,7 +109,7 @@ const GiftCardsShow: React.FC = () => {
     return (
       <div style={{ padding: 24, textAlign: 'center' }}>
         <Title level={4}>Gift card not found</Title>
-        <Button onClick={() => list('gift-cards')}>
+        <Button onClick={() => list('gift_cards')}>
           Back to Gift Cards
         </Button>
       </div>
@@ -138,7 +138,7 @@ const GiftCardsShow: React.FC = () => {
             <Button 
               type="text" 
               icon={<ArrowLeftOutlined />}
-              onClick={() => list('gift-cards')}
+              onClick={() => list('gift_cards')}
             >
               Back to Gift Cards
             </Button>
@@ -152,7 +152,7 @@ const GiftCardsShow: React.FC = () => {
             <Button 
               type="primary"
               icon={<EditOutlined />}
-              onClick={() => edit('gift-cards', giftCard.id)}
+              onClick={() => edit('gift_cards', giftCard.id)}
             >
               Edit
             </Button>

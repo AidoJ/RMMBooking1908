@@ -59,7 +59,7 @@ const GiftCardsCreate: React.FC = () => {
       if (error) throw error;
 
       message.success('Gift card created successfully');
-      list('gift-cards');
+      list('gift_cards');
     } catch (error) {
       console.error('Error creating gift card:', error);
       message.error('Failed to create gift card');
@@ -76,7 +76,7 @@ const GiftCardsCreate: React.FC = () => {
             <Button 
               type="text" 
               icon={<ArrowLeftOutlined />}
-              onClick={() => list('gift-cards')}
+              onClick={() => list('gift_cards')}
             >
               Back to Gift Cards
             </Button>
@@ -244,7 +244,7 @@ const GiftCardsCreate: React.FC = () => {
               >
                 Create Gift Card
               </Button>
-              <Button size="large" onClick={() => list('gift-cards')}>
+              <Button size="large" onClick={() => list('gift_cards')}>
                 Cancel
               </Button>
             </Space>
