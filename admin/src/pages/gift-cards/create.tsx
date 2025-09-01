@@ -26,8 +26,8 @@ import dayjs from 'dayjs';
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
-// Load Stripe - using environment variable for admin panel
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+// Load Stripe - using environment variable only (NO hardcoded keys!)
+const stripePromise = import.meta.env.STRIPE_PUBLISHABLE_KEY ? loadStripe(import.meta.env.STRIPE_PUBLISHABLE_KEY) : null;
 
 // Card element styling to match Ant Design
 const cardElementOptions = {
@@ -465,12 +465,11 @@ const GiftCardsCreate: React.FC = () => {
   const [stripeReady, setStripeReady] = useState(false);
 
   useEffect(() => {
-    // Check if Stripe key is available
-    const stripeKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
-    if (!stripeKey) {
-      message.error('Stripe configuration missing. Please contact administrator.');
-    } else {
+    // Check if Stripe key is available from environment
+    if (import.meta.env.STRIPE_PUBLISHABLE_KEY) {
       setStripeReady(true);
+    } else {
+      message.error('Stripe configuration missing. Please ensure STRIPE_PUBLISHABLE_KEY environment variable is set.');
     }
   }, []);
 
@@ -479,6 +478,18 @@ const GiftCardsCreate: React.FC = () => {
       <div style={{ padding: 24, textAlign: 'center' }}>
         <Spin size="large" />
         <div style={{ marginTop: 16 }}>Loading payment system...</div>
+      </div>
+    );
+  }
+
+  if (!stripePromise) {
+    return (
+      <div style={{ padding: 24, textAlign: 'center' }}>
+        <h3>Payment system unavailable</h3>
+        <p>Stripe configuration is missing. Please contact your administrator.</p>
+        <Button onClick={() => window.location.href = '/admin/gift-cards'}>
+          Back to Gift Cards
+        </Button>
       </div>
     );
   }

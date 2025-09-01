@@ -1905,7 +1905,8 @@ async function toggleTherapistBio(therapistId) {
 
 // STRIPE INTEGRATION
 let stripe, elements, card;
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_51PGxKUKn3GaB6FyY1qeTOeYxWnBMDax8bUZhdP7RggDi1OyUp4BbSJWPhgb7hcvDynNqakuSfpGzwfuVhOsTvXmb001lwoCn7a';
+// SECURITY: This will be replaced by build script with environment variable
+const STRIPE_PUBLISHABLE_KEY = 'PLACEHOLDER_STRIPE_KEY';
 
 function mountStripeCardElement() {
   if (!window.Stripe) {

@@ -58,11 +58,10 @@ fs.writeFileSync(emailServicePath, emailServiceContent);
 const bookingPath = path.join(__dirname, 'js', 'booking.js');
 let bookingContent = fs.readFileSync(bookingPath, 'utf8');
 
-// Replace hardcoded Stripe publishable key with environment variable
-const currentStripeKey = 'pk_test_51PGxKUKn3GaB6FyY1qeTOeYxWnBMDax8bUZhdP7RggDi1OyUp4BbSJWPhgb7hcvDynNqakuSfpGzwfuVhOsTvXmb001lwoCn7a';
+// Replace placeholder with environment variable (SECURITY: Never hardcode keys!)
 bookingContent = bookingContent.replace(
-  new RegExp(`const STRIPE_PUBLISHABLE_KEY = '${currentStripeKey}'`),
-  `const STRIPE_PUBLISHABLE_KEY = '${envVars.STRIPE_PUBLISHABLE_KEY || currentStripeKey}'`
+  /const STRIPE_PUBLISHABLE_KEY = 'PLACEHOLDER_STRIPE_KEY'/g,
+  `const STRIPE_PUBLISHABLE_KEY = '${envVars.STRIPE_PUBLISHABLE_KEY || 'MISSING_STRIPE_KEY'}'`
 );
 
 fs.writeFileSync(bookingPath, bookingContent);
