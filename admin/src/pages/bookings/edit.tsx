@@ -266,13 +266,16 @@ export const BookingEdit: React.FC = () => {
   };
 
   const initializePricing = (bookingData: any) => {
-    const estimate = bookingData.price || 0;
+    // Estimate price is the original price without any discounts applied
+    const originalEstimate = bookingData.discount_amount && bookingData.discount_amount > 0 
+      ? (bookingData.price + bookingData.discount_amount) 
+      : bookingData.price || 0;
     const discount = bookingData.discount_amount || 0;
     
-    setEstimatePrice(estimate);
+    setEstimatePrice(originalEstimate);
     setAppliedDiscount(discount);
     
-    calculatePricing(estimate, discount);
+    calculatePricing(originalEstimate, discount);
   };
 
   const calculatePricing = (estimate: number, discount: number) => {
@@ -1530,7 +1533,7 @@ export const BookingEdit: React.FC = () => {
                             {/* Input Fields */}
                             <Row gutter={16}>
                               <Col span={8}>
-                                <Form.Item name="price" label="Estimate Price ($)" style={{ marginBottom: '8px' }}>
+                                <Form.Item name="estimate_price" label="Estimate Price ($)" style={{ marginBottom: '8px' }}>
                                   <InputNumber 
                                     min={0} 
                                     step={0.01} 
