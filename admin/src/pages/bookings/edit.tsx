@@ -1568,9 +1568,61 @@ export const BookingEdit: React.FC = () => {
                                   <InputNumber 
                                     style={{ width: '100%' }} 
                                     value={gstAmount}
+                                    precision={2}
                                     disabled
                                   />
                                 </Form.Item>
+                              </Col>
+                            </Row>
+
+                            {/* Save Pricing Changes Button */}
+                            <Row>
+                              <Col span={24} style={{ textAlign: 'center', marginTop: '16px' }}>
+                                <Button 
+                                  type="primary" 
+                                  size="large"
+                                  icon={<SaveOutlined />}
+                                  onClick={async () => {
+                                    try {
+                                      setSaving(true);
+                                      const values = form.getFieldsValue();
+                                      
+                                      const updateData = {
+                                        price: finalQuotePrice,
+                                        discount_amount: appliedDiscount,
+                                        tax_rate_amount: gstAmount,
+                                      };
+
+                                      const { error } = await supabaseClient
+                                        .from('bookings')
+                                        .update(updateData)
+                                        .eq('id', id);
+
+                                      if (error) throw error;
+                                      
+                                      // Refresh booking data
+                                      await fetchBookingDetails();
+                                      
+                                      message.success('Pricing updated successfully');
+                                    } catch (error: any) {
+                                      console.error('Error updating pricing:', error);
+                                      message.error('Failed to update pricing');
+                                    } finally {
+                                      setSaving(false);
+                                    }
+                                  }}
+                                  loading={saving}
+                                  style={{ 
+                                    backgroundColor: '#52c41a', 
+                                    borderColor: '#52c41a',
+                                    fontSize: '16px',
+                                    height: '45px',
+                                    paddingLeft: '24px',
+                                    paddingRight: '24px'
+                                  }}
+                                >
+                                  💾 Update Quote Pricing
+                                </Button>
                               </Col>
                             </Row>
                           </Card>
