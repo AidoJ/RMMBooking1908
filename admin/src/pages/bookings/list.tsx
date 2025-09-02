@@ -148,7 +148,7 @@ export const EnhancedBookingList = () => {
     therapist_id: '',
     service_id: '',
     date_range: null,
-    booking_type: ''
+    booking_type: 'bookings'  // Default to bookings only, excluding quotes
   });
   
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);

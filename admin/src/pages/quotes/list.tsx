@@ -28,6 +28,8 @@ import {
   DatePicker,
   Tooltip,
   Badge,
+  Modal,
+  message,
 } from 'antd';
 import {
   EyeOutlined,
@@ -37,10 +39,13 @@ import {
   CalendarOutlined,
   FilterOutlined,
   SearchOutlined,
+  DeleteOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import type { IResourceComponentsProps } from '@refinedev/core';
 import { UserIdentity, canAccess } from '../../utils/roleUtils';
 import { useGetIdentity } from '@refinedev/core';
+import { supabaseClient } from '../../utility';
 import dayjs from 'dayjs';
 
 const { Text, Title } = Typography;
@@ -53,6 +58,8 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
   
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<[dayjs.Dayjs, dayjs.Dayjs] | null>(null);
+  const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const { tableProps, searchFormProps, filters, sorters } = useTable({
     resource: 'bookings',
@@ -120,6 +127,53 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
     ],
     syncWithLocation: true,
   });
+
+  const handleBulkDelete = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('Please select quotes to delete');
+      return;
+    }
+
+    Modal.confirm({
+      title: 'Delete Selected Quotes',
+      icon: <ExclamationCircleOutlined />,
+      content: `Are you sure you want to delete ${selectedRowKeys.length} selected quote(s)? This action cannot be undone.`,
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          setDeleteLoading(true);
+          
+          const { error } = await supabaseClient
+            .from('bookings')
+            .delete()
+            .in('id', selectedRowKeys);
+
+          if (error) throw error;
+
+          message.success(`Successfully deleted ${selectedRowKeys.length} quote(s)`);
+          setSelectedRowKeys([]);
+          
+          // Refresh the table
+          tableProps.dataSource?.length && window.location.reload();
+          
+        } catch (error: any) {
+          console.error('Error deleting quotes:', error);
+          message.error('Failed to delete quotes: ' + error.message);
+        } finally {
+          setDeleteLoading(false);
+        }
+      },
+    });
+  };
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: (newSelectedRowKeys: React.Key[]) => {
+      setSelectedRowKeys(newSelectedRowKeys);
+    },
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -296,9 +350,25 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
           </Row>
         </Card>
 
+        <div style={{ marginBottom: 16 }}>
+          <Space>
+            <Button
+              type="primary"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={handleBulkDelete}
+              disabled={selectedRowKeys.length === 0}
+              loading={deleteLoading}
+            >
+              Delete Selected ({selectedRowKeys.length})
+            </Button>
+          </Space>
+        </div>
+
         <Table
           {...tableProps}
           rowKey="id"
+          rowSelection={rowSelection}
           scroll={{ x: 1200 }}
           size="middle"
         >
@@ -314,18 +384,14 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
           />
           
           <Table.Column
-            dataIndex="corporate_contact_name"
-            title="Contact"
+            dataIndex="booking_id"
+            title="Quote Number"
             render={(value, record: any) => (
-              <div>
-                <div><Text strong>{value}</Text></div>
-                <div>
-                  <Text type="secondary" style={{ fontSize: 12 }}>
-                    {record.corporate_contact_email}
-                  </Text>
-                </div>
-              </div>
+              <Text strong style={{ color: '#52c41a', fontFamily: 'monospace' }}>
+                {value || `#${record.id.substring(0, 8).toUpperCase()}`}
+              </Text>
             )}
+            sorter
           />
 
           <Table.Column
