@@ -116,14 +116,9 @@ exports.handler = async (event, context) => {
 };
 
 function generateQuoteHTML(booking) {
-  // Generate quote reference in RQyymmxxx format
-  const createdDate = new Date(booking.created_at);
-  const year = createdDate.getFullYear().toString().slice(-2);
-  const month = (createdDate.getMonth() + 1).toString().padStart(2, '0');
-  const randomSuffix = booking.id.substring(0, 3).toUpperCase();
-  const quoteRef = `RQ${year}${month}${randomSuffix}`;
-  
-  const quoteDate = createdDate.toLocaleDateString('en-AU');
+  // Use the actual booking_id which contains the proper quote reference
+  const quoteRef = booking.booking_id || booking.id;
+  const quoteDate = new Date(booking.created_at).toLocaleDateString('en-AU');
   const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-AU');
   
   const eventDate = new Date(booking.booking_time).toLocaleDateString('en-AU', {

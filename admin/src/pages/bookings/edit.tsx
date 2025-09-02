@@ -1991,37 +1991,24 @@ export const BookingEdit: React.FC = () => {
               <Descriptions.Item label="Expected Attendees">{booking?.expected_attendees}</Descriptions.Item>
               <Descriptions.Item label="Number of Massages">{booking?.number_of_massages}</Descriptions.Item>
               <Descriptions.Item label="Duration per Massage">{booking?.duration_per_massage} minutes</Descriptions.Item>
-              {booking?.discount_amount && booking.discount_amount > 0 ? (
-                <>
-                  <Descriptions.Item label="Subtotal">
-                    <Text>${((booking.price || 0) + (booking.discount_amount || 0)).toFixed(2)}</Text>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Discount Applied">
-                    <Text style={{ color: '#52c41a' }}>-${booking.discount_amount.toFixed(2)}</Text>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Total (inc. GST)">
-                    <Text strong style={{ fontSize: '16px' }}>${booking.price.toFixed(2)}</Text>
-                  </Descriptions.Item>
-                  {booking?.tax_rate_amount && (
-                    <Descriptions.Item label="GST Component">
-                      <Text style={{ color: '#666', fontSize: '12px' }}>
-                        ${booking.tax_rate_amount.toFixed(2)}
-                      </Text>
-                    </Descriptions.Item>
-                  )}
-                  <Descriptions.Item label="Net Price">
-                    <Text strong style={{ color: '#1890ff', fontSize: '18px' }}>
-                      ${booking.price.toFixed(2)}
-                    </Text>
-                  </Descriptions.Item>
-                </>
-              ) : (
-                <Descriptions.Item label="Total Price">
-                  <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
-                    ${booking?.price ? booking.price.toFixed(2) : '0.00'}
-                  </Text>
-                </Descriptions.Item>
-              )}
+              <Descriptions.Item label="Estimate Price">
+                <Text>${((booking.price || 0) + (booking.discount_amount || 0)).toFixed(2)}</Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Applied Discount">
+                <Text style={{ color: booking?.discount_amount && booking.discount_amount > 0 ? '#52c41a' : '#666' }}>
+                  ${(booking?.discount_amount || 0).toFixed(2)}
+                </Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="GST Component">
+                <Text style={{ color: '#666', fontSize: '12px' }}>
+                  ${(booking?.tax_rate_amount || 0).toFixed(2)}
+                </Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Final Quote Price">
+                <Text strong style={{ color: '#1890ff', fontSize: '18px' }}>
+                  ${(booking?.price || 0).toFixed(2)}
+                </Text>
+              </Descriptions.Item>
             </Descriptions>
 
             <Alert
