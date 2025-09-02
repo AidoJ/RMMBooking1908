@@ -530,16 +530,12 @@ function generateQuoteHTML(booking) {
           ${booking.discount_amount && booking.discount_amount > 0 ? `
           <div class="pricing-breakdown">
             <div class="pricing-row">
-              <div class="pricing-label">Subtotal:</div>
+              <div class="pricing-label">Estimate Price:</div>
               <div class="pricing-value">$${((booking.price || 0) + (booking.discount_amount || 0)).toFixed(2)}</div>
             </div>
             <div class="pricing-row discount">
-              <div class="pricing-label">Discount Applied:</div>
-              <div class="pricing-value">-$${(booking.discount_amount || 0).toFixed(2)}</div>
-            </div>
-            <div class="pricing-row">
-              <div class="pricing-label">Total (inc. GST):</div>
-              <div class="pricing-value">$${(booking.price || 0).toFixed(2)}</div>
+              <div class="pricing-label">Applied Discount:</div>
+              <div class="pricing-value">$${(booking.discount_amount || 0).toFixed(2)}</div>
             </div>
             ${booking.tax_rate_amount ? `
             <div class="pricing-row gst">
@@ -547,10 +543,14 @@ function generateQuoteHTML(booking) {
               <div class="pricing-value">$${(booking.tax_rate_amount || 0).toFixed(2)}</div>
             </div>
             ` : ''}
+            <div class="pricing-row">
+              <div class="pricing-label">Final Quote Price:</div>
+              <div class="pricing-value">$${(booking.price || 0).toFixed(2)}</div>
+            </div>
           </div>
           ` : ''}
           <div class="investment-box">
-            <div class="label">Net Price</div>
+            <div class="label">Final Quote Price</div>
             <div class="amount">$${(booking.price || 0).toFixed(2)}</div>
           </div>
           ${booking.payment_method ? `

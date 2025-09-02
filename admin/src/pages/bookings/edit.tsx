@@ -199,6 +199,10 @@ export const BookingEdit: React.FC = () => {
   const [originalBookingData, setOriginalBookingData] = useState<any>(null);
   const [sendingNotifications, setSendingNotifications] = useState(false);
   const [taxRate, setTaxRate] = useState<number>(10.00); // Default fallback
+  const [estimatePrice, setEstimatePrice] = useState<number>(0);
+  const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
+  const [gstAmount, setGstAmount] = useState<number>(0);
+  const [finalQuotePrice, setFinalQuotePrice] = useState<number>(0);
   const [notificationOptions, setNotificationOptions] = useState({
     notifyCustomer: true,
     notifyTherapist: true,
@@ -259,6 +263,31 @@ export const BookingEdit: React.FC = () => {
     } catch (error) {
       console.warn('Error fetching tax rate from settings, using default:', error);
     }
+  };
+
+  const initializePricing = (bookingData: any) => {
+    const estimate = bookingData.price || 0;
+    const discount = bookingData.discount_amount || 0;
+    
+    setEstimatePrice(estimate);
+    setAppliedDiscount(discount);
+    
+    calculatePricing(estimate, discount);
+  };
+
+  const calculatePricing = (estimate: number, discount: number) => {
+    const finalPrice = Math.max(0, estimate - discount);
+    const taxMultiplier = 1 + (taxRate / 100);
+    const gst = finalPrice - (finalPrice / taxMultiplier);
+    
+    setFinalQuotePrice(finalPrice);
+    setGstAmount(gst);
+    
+    // Update form fields
+    form.setFieldsValue({
+      price: finalPrice,
+      tax_rate_amount: gst
+    });
   };
 
   const fetchBookingDetails = async () => {
@@ -365,7 +394,12 @@ export const BookingEdit: React.FC = () => {
         duration_per_massage: bookingData.duration_per_massage,
         payment_method: bookingData.payment_method,
         preferred_time_range: bookingData.preferred_time_range,
+        discount_amount: bookingData.discount_amount || 0,
+        tax_rate_amount: bookingData.tax_rate_amount || 0,
       });
+
+      // Initialize pricing calculations
+      initializePricing(bookingData);
     } catch (error) {
       console.error('Error fetching booking details:', error);
       message.error('Failed to load booking details');
@@ -1398,67 +1432,147 @@ export const BookingEdit: React.FC = () => {
                               💰 Pricing
                             </Title>
                             
-                            <Form.Item name="price" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>Total Price ($)</span>}>
-                              <InputNumber 
-                                min={0} 
-                                step={0.01} 
-                                style={{ width: '300px', fontSize: '18px', fontWeight: 'bold' }} 
-                                placeholder="0.00"
-                                size="large"
-                                onChange={(value) => {
-                                  // Calculate GST from total price using dynamic tax rate
-                                  const totalPrice = value || 0;
-                                  const taxMultiplier = 1 + (taxRate / 100);
-                                  const gstAmount = totalPrice - (totalPrice / taxMultiplier);
-                                  
-                                  form.setFieldsValue({
-                                    tax_rate_amount: gstAmount
-                                  });
-                                }}
-                              />
-                            </Form.Item>
-                            
-                            <Form.Item name="discount_amount" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>Applied Discount ($)</span>}>
-                              <InputNumber 
-                                min={0} 
-                                step={0.01} 
-                                style={{ width: '300px', fontSize: '18px', fontWeight: 'bold' }} 
-                                placeholder="0.00"
-                                size="large"
-                                onChange={(discountValue) => {
-                                  // Get the current values
-                                  const currentPrice = form.getFieldValue('price') || 0;
-                                  const currentDiscount = form.getFieldValue('discount_amount') || 0;
-                                  const discount = discountValue || 0;
-                                  
-                                  // Calculate original price by adding back current discount
-                                  const originalPrice = currentPrice + currentDiscount;
-                                  
-                                  // Calculate new total price after new discount
-                                  const newTotalPrice = Math.max(0, originalPrice - discount);
-                                  
-                                  // Calculate GST from new total using dynamic tax rate
-                                  const taxMultiplier = 1 + (taxRate / 100);
-                                  const gstAmount = newTotalPrice - (newTotalPrice / taxMultiplier);
-                                  
-                                  form.setFieldsValue({
-                                    price: newTotalPrice,
-                                    tax_rate_amount: gstAmount
-                                  });
-                                }}
-                              />
-                            </Form.Item>
-                            
-                            <Form.Item name="tax_rate_amount" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>GST ({taxRate}%) ($)</span>}>
-                              <InputNumber 
-                                min={0} 
-                                step={0.01} 
-                                style={{ width: '300px', fontSize: '18px', fontWeight: 'bold' }} 
-                                placeholder="0.00"
-                                size="large"
-                                disabled
-                              />
-                            </Form.Item>
+                            {/* Pricing Table Layout */}
+                            <div style={{ 
+                              border: '2px solid #1890ff', 
+                              borderRadius: '8px', 
+                              overflow: 'hidden',
+                              marginBottom: '20px'
+                            }}>
+                              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                <thead>
+                                  <tr style={{ backgroundColor: '#f0f8ff' }}>
+                                    <th style={{ 
+                                      padding: '12px', 
+                                      textAlign: 'center', 
+                                      fontWeight: 'bold', 
+                                      color: '#1890ff',
+                                      border: '1px solid #d9d9d9'
+                                    }}>
+                                      Estimate Price
+                                    </th>
+                                    <th style={{ 
+                                      padding: '12px', 
+                                      textAlign: 'center', 
+                                      fontWeight: 'bold', 
+                                      color: '#1890ff',
+                                      border: '1px solid #d9d9d9'
+                                    }}>
+                                      Applied Discount
+                                    </th>
+                                    <th style={{ 
+                                      padding: '12px', 
+                                      textAlign: 'center', 
+                                      fontWeight: 'bold', 
+                                      color: '#1890ff',
+                                      border: '1px solid #d9d9d9'
+                                    }}>
+                                      GST ({taxRate}%)
+                                    </th>
+                                    <th style={{ 
+                                      padding: '12px', 
+                                      textAlign: 'center', 
+                                      fontWeight: 'bold', 
+                                      color: '#1890ff',
+                                      border: '1px solid #d9d9d9'
+                                    }}>
+                                      Final Quote Price
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <tr>
+                                    <td style={{ 
+                                      padding: '15px', 
+                                      textAlign: 'center', 
+                                      fontSize: '18px', 
+                                      fontWeight: 'bold',
+                                      color: '#1890ff',
+                                      border: '1px solid #d9d9d9'
+                                    }}>
+                                      ${estimatePrice.toFixed(2)}
+                                    </td>
+                                    <td style={{ 
+                                      padding: '15px', 
+                                      textAlign: 'center', 
+                                      fontSize: '18px', 
+                                      fontWeight: 'bold',
+                                      color: '#1890ff',
+                                      border: '1px solid #d9d9d9'
+                                    }}>
+                                      ${appliedDiscount.toFixed(2)}
+                                    </td>
+                                    <td style={{ 
+                                      padding: '15px', 
+                                      textAlign: 'center', 
+                                      fontSize: '18px', 
+                                      fontWeight: 'bold',
+                                      color: '#1890ff',
+                                      border: '1px solid #d9d9d9'
+                                    }}>
+                                      ${gstAmount.toFixed(2)}
+                                    </td>
+                                    <td style={{ 
+                                      padding: '15px', 
+                                      textAlign: 'center', 
+                                      fontSize: '18px', 
+                                      fontWeight: 'bold',
+                                      color: '#1890ff',
+                                      border: '1px solid #d9d9d9'
+                                    }}>
+                                      ${finalQuotePrice.toFixed(2)}
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Input Fields */}
+                            <Row gutter={16}>
+                              <Col span={8}>
+                                <Form.Item name="price" label="Estimate Price ($)" style={{ marginBottom: '8px' }}>
+                                  <InputNumber 
+                                    min={0} 
+                                    step={0.01} 
+                                    style={{ width: '100%' }} 
+                                    placeholder="0.00"
+                                    value={estimatePrice}
+                                    onChange={(value) => {
+                                      const newEstimate = value || 0;
+                                      setEstimatePrice(newEstimate);
+                                      calculatePricing(newEstimate, appliedDiscount);
+                                    }}
+                                  />
+                                </Form.Item>
+                              </Col>
+                              
+                              <Col span={8}>
+                                <Form.Item name="discount_amount" label="Applied Discount ($)" style={{ marginBottom: '8px' }}>
+                                  <InputNumber 
+                                    min={0} 
+                                    step={0.01} 
+                                    style={{ width: '100%' }} 
+                                    placeholder="0.00"
+                                    value={appliedDiscount}
+                                    onChange={(value) => {
+                                      const newDiscount = value || 0;
+                                      setAppliedDiscount(newDiscount);
+                                      calculatePricing(estimatePrice, newDiscount);
+                                    }}
+                                  />
+                                </Form.Item>
+                              </Col>
+
+                              <Col span={8}>
+                                <Form.Item name="tax_rate_amount" label="GST Amount ($)" style={{ marginBottom: '8px' }}>
+                                  <InputNumber 
+                                    style={{ width: '100%' }} 
+                                    value={gstAmount}
+                                    disabled
+                                  />
+                                </Form.Item>
+                              </Col>
+                            </Row>
                           </Card>
                         </Col>
                       )}
