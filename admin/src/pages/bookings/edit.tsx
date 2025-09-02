@@ -37,6 +37,7 @@ import {
   ExclamationCircleOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { useGetIdentity, useNavigation } from '@refinedev/core';
 import { useParams } from 'react-router';
@@ -100,6 +101,10 @@ interface Booking {
   quote_only?: string | boolean;
   discount_amount?: number;
   tax_rate_amount?: number;
+  invoice_number?: string;
+  invoice_date?: string;
+  invoice_sent_at?: string;
+  paid_date?: string;
   
   // Joined data
   customer_name?: string;
@@ -291,6 +296,103 @@ export const BookingEdit: React.FC = () => {
       price: finalPrice,
       tax_rate_amount: gst
     });
+  };
+
+  const generateInvoiceNumber = async (): Promise<string> => {
+    try {
+      const now = new Date();
+      const year = now.getFullYear().toString().slice(-2);
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const prefix = `RI${year}${month}`;
+
+      // Get the highest existing invoice number for this month
+      const { data, error } = await supabaseClient
+        .from('bookings')
+        .select('invoice_number')
+        .like('invoice_number', `${prefix}%`)
+        .order('invoice_number', { ascending: false })
+        .limit(1);
+
+      if (error) throw error;
+
+      let nextSequence = 1;
+      if (data && data.length > 0 && data[0].invoice_number) {
+        const lastNumber = data[0].invoice_number;
+        const lastSequence = parseInt(lastNumber.slice(-3));
+        nextSequence = lastSequence + 1;
+      }
+
+      return `${prefix}${nextSequence.toString().padStart(3, '0')}`;
+    } catch (error) {
+      console.error('Error generating invoice number:', error);
+      throw new Error('Failed to generate invoice number');
+    }
+  };
+
+  const handleConvertToInvoice = async () => {
+    try {
+      setSaving(true);
+      
+      // Generate invoice number
+      const invoiceNumber = await generateInvoiceNumber();
+      const now = new Date().toISOString();
+      
+      // Update booking to invoice status
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update({
+          status: 'invoiced',
+          payment_status: 'pending',
+          invoice_number: invoiceNumber,
+          invoice_date: now,
+          invoice_sent_at: now
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Refresh booking data
+      await fetchBookingDetails();
+      
+      message.success(`Quote converted to invoice ${invoiceNumber} successfully`);
+      
+      // TODO: Send invoice email to client
+      
+    } catch (error: any) {
+      console.error('Error converting to invoice:', error);
+      message.error('Failed to convert to invoice: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleMarkAsPaid = async () => {
+    try {
+      setSaving(true);
+      
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update({
+          payment_status: 'paid',
+          paid_date: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Refresh booking data
+      await fetchBookingDetails();
+      
+      message.success('Invoice marked as paid successfully');
+      
+      // TODO: Send payment confirmation email to client
+      
+    } catch (error: any) {
+      console.error('Error marking as paid:', error);
+      message.error('Failed to mark as paid: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const fetchBookingDetails = async () => {
@@ -1660,6 +1762,96 @@ export const BookingEdit: React.FC = () => {
                           </Row>
                         </Card>
                       </Col>
+
+                      {/* Invoice Management */}
+                      {isQuote(booking) && (
+                        <Col span={24}>
+                          <Card style={{ marginBottom: '16px', borderColor: '#1890ff' }}>
+                            <Title level={4} style={{ marginBottom: '16px', color: '#1890ff' }}>
+                              💼 Invoice Management
+                            </Title>
+                            
+                            {/* Display Quote and Invoice Numbers */}
+                            <Row gutter={[16, 16]} style={{ marginBottom: '16px' }}>
+                              <Col span={12}>
+                                <div>
+                                  <Text strong>Quote Reference: </Text>
+                                  <Text style={{ fontFamily: 'monospace', color: '#52c41a' }}>
+                                    {booking?.booking_id || 'Not assigned'}
+                                  </Text>
+                                </div>
+                              </Col>
+                              <Col span={12}>
+                                <div>
+                                  <Text strong>Invoice Number: </Text>
+                                  <Text style={{ fontFamily: 'monospace', color: '#1890ff' }}>
+                                    {booking?.invoice_number || 'Not generated'}
+                                  </Text>
+                                </div>
+                              </Col>
+                            </Row>
+
+                            {/* Action Buttons */}
+                            <Row gutter={[16, 8]}>
+                              <Col span={24}>
+                                <Space>
+                                  {/* Convert to Invoice Button */}
+                                  {booking?.status === 'quote_accepted' && !booking?.invoice_number && (
+                                    <Button
+                                      type="primary"
+                                      size="large"
+                                      icon={<FileTextOutlined />}
+                                      onClick={handleConvertToInvoice}
+                                      loading={saving}
+                                      style={{ backgroundColor: '#1890ff', borderColor: '#1890ff' }}
+                                    >
+                                      Convert to Invoice
+                                    </Button>
+                                  )}
+
+                                  {/* Mark as Paid Button */}
+                                  {booking?.status === 'invoiced' && booking?.payment_status === 'pending' && (
+                                    <Button
+                                      type="primary"
+                                      size="large"
+                                      icon={<CheckCircleOutlined />}
+                                      onClick={handleMarkAsPaid}
+                                      loading={saving}
+                                      style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
+                                    >
+                                      Mark as Paid
+                                    </Button>
+                                  )}
+
+                                  {/* Status Display */}
+                                  {booking?.payment_status === 'paid' && (
+                                    <Tag color="success" style={{ fontSize: '14px', padding: '4px 8px' }}>
+                                      ✓ Paid {booking.paid_date && `on ${new Date(booking.paid_date).toLocaleDateString()}`}
+                                    </Tag>
+                                  )}
+                                </Space>
+                              </Col>
+                            </Row>
+
+                            {/* Status Information */}
+                            <Row style={{ marginTop: '16px' }}>
+                              <Col span={24}>
+                                <Text type="secondary" style={{ fontSize: '12px' }}>
+                                  {booking?.status === 'quote_accepted' && !booking?.invoice_number && 
+                                    'Quote has been accepted by client. Convert to invoice to proceed with billing.'
+                                  }
+                                  {booking?.status === 'invoiced' && booking?.payment_status === 'pending' && 
+                                    'Invoice has been generated and sent to client. Mark as paid when payment is received.'
+                                  }
+                                  {booking?.payment_status === 'paid' && 
+                                    'Invoice has been paid. Transaction complete.'
+                                  }
+                                </Text>
+                              </Col>
+                            </Row>
+                          </Card>
+                        </Col>
+                      )}
                       
                       {/* Therapist Assignments & Fees */}
                       {therapistAssignments.length > 0 && (
