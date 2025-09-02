@@ -148,7 +148,7 @@ export const EnhancedBookingList = () => {
     therapist_id: '',
     service_id: '',
     date_range: null,
-    booking_type: 'bookings'  // Default to bookings only, excluding quotes
+    booking_type: ''  // Default to empty, but add filter logic to exclude quotes
   });
   
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([]);
@@ -226,9 +226,12 @@ export const EnhancedBookingList = () => {
           // Filter for quote-only services or booking_type = 'quote'
           query = query.or('booking_type.eq.quote,services.quote_only.is.true');
         } else if (filters.booking_type === 'bookings') {
-          // Filter for regular bookings
-          query = query.neq('booking_type', 'quote').is('services.quote_only', false);
+          // Filter for regular bookings - exclude quotes
+          query = query.not('services.quote_only', 'is', true);
         }
+      } else {
+        // Default: exclude quotes from booking list
+        query = query.not('services.quote_only', 'is', true);
       }
 
       // Apply pagination and ordering
