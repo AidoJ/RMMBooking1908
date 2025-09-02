@@ -1796,7 +1796,7 @@ export const BookingEdit: React.FC = () => {
                               <Col span={24}>
                                 <Space>
                                   {/* Convert to Invoice Button */}
-                                  {(booking?.status === 'accepted' || booking?.status === 'quote_accepted') && !booking?.invoice_number && (
+                                  {booking?.status === 'confirmed' && !booking?.invoice_number && (
                                     <Button
                                       type="primary"
                                       size="large"
@@ -1837,7 +1837,7 @@ export const BookingEdit: React.FC = () => {
                             <Row style={{ marginTop: '16px' }}>
                               <Col span={24}>
                                 <Text type="secondary" style={{ fontSize: '12px' }}>
-                                  {(booking?.status === 'accepted' || booking?.status === 'quote_accepted') && !booking?.invoice_number && 
+                                  {booking?.status === 'confirmed' && !booking?.invoice_number && 
                                     'Quote has been accepted by client. Convert to invoice to proceed with billing.'
                                   }
                                   {booking?.status === 'invoiced' && booking?.payment_status === 'pending' && 
