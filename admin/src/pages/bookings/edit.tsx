@@ -337,8 +337,17 @@ export const BookingEdit: React.FC = () => {
       const invoiceNumber = await generateInvoiceNumber();
       const now = new Date().toISOString();
       
+      console.log('Converting to invoice with data:', {
+        status: 'invoiced',
+        payment_status: 'pending',
+        invoice_number: invoiceNumber,
+        invoice_date: now,
+        invoice_sent_at: now,
+        id: id
+      });
+      
       // Update booking to invoice status
-      const { error } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from('bookings')
         .update({
           status: 'invoiced',
@@ -347,9 +356,15 @@ export const BookingEdit: React.FC = () => {
           invoice_date: now,
           invoice_sent_at: now
         })
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error details:', error);
+        throw error;
+      }
+
+      console.log('Update successful:', data);
 
       // Refresh booking data
       await fetchBookingDetails();
@@ -360,7 +375,8 @@ export const BookingEdit: React.FC = () => {
       
     } catch (error: any) {
       console.error('Error converting to invoice:', error);
-      message.error('Failed to convert to invoice: ' + error.message);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      message.error('Failed to convert to invoice: ' + (error.message || 'Unknown error'));
     } finally {
       setSaving(false);
     }
