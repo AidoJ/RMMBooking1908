@@ -98,6 +98,8 @@ interface Booking {
   payment_method?: string;
   preferred_time_range?: string;
   quote_only?: string | boolean;
+  discount_amount?: number;
+  tax_rate_amount?: number;
   
   // Joined data
   customer_name?: string;
@@ -196,6 +198,7 @@ export const BookingEdit: React.FC = () => {
   const [detectedChanges, setDetectedChanges] = useState<string[]>([]);
   const [originalBookingData, setOriginalBookingData] = useState<any>(null);
   const [sendingNotifications, setSendingNotifications] = useState(false);
+  const [taxRate, setTaxRate] = useState<number>(10.00); // Default fallback
   const [notificationOptions, setNotificationOptions] = useState({
     notifyCustomer: true,
     notifyTherapist: true,
@@ -226,10 +229,35 @@ export const BookingEdit: React.FC = () => {
         fetchTherapists(),
         fetchServices(),
         fetchTherapistAssignments(),
+        fetchTaxRate(),
       ]);
     } catch (error) {
       console.error('Error initializing data:', error);
       message.error('Failed to load booking data');
+    }
+  };
+
+  const fetchTaxRate = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'tax_rate_amount')
+        .single();
+
+      if (error) {
+        console.warn('Could not fetch tax rate from settings, using default:', error);
+        return;
+      }
+
+      if (data?.value) {
+        const rate = parseFloat(data.value);
+        if (!isNaN(rate) && rate > 0) {
+          setTaxRate(rate);
+        }
+      }
+    } catch (error) {
+      console.warn('Error fetching tax rate from settings, using default:', error);
     }
   };
 
@@ -677,17 +705,8 @@ export const BookingEdit: React.FC = () => {
         updateData.therapist_fee = values.therapist_fee;
         
         // Handle discount and GST calculations
-        if (values.discount_amount !== undefined) {
-          updateData.discount_amount = values.discount_amount;
-          
-          // Calculate revised price and GST
-          const revisedPrice = (values.price || 0) - (values.discount_amount || 0);
-          const gstAmount = revisedPrice / 1.1 * 0.1;
-          const netPrice = revisedPrice - gstAmount;
-          
-          updateData.tax_rate_amount = gstAmount;
-          updateData.net_price = netPrice;
-        }
+        updateData.discount_amount = values.discount_amount || 0;
+        updateData.tax_rate_amount = values.tax_rate_amount || 0;
       }
 
       const { error } = await supabaseClient
@@ -1386,19 +1405,15 @@ export const BookingEdit: React.FC = () => {
                                 style={{ width: '300px', fontSize: '18px', fontWeight: 'bold' }} 
                                 placeholder="0.00"
                                 size="large"
-                                onChange={() => {
-                                  setTimeout(() => {
-                                    const totalPrice = form.getFieldValue('price') || 0;
-                                    const discountAmount = form.getFieldValue('discount_amount') || 0;
-                                    const revisedPrice = totalPrice - discountAmount;
-                                    const gstAmount = revisedPrice / 1.1 * 0.1;
-                                    const netPrice = revisedPrice - gstAmount;
-                                    
-                                    form.setFieldsValue({
-                                      tax_rate_amount: gstAmount,
-                                      net_price: netPrice
-                                    });
-                                  }, 0);
+                                onChange={(value) => {
+                                  // Calculate GST from total price using dynamic tax rate
+                                  const totalPrice = value || 0;
+                                  const taxMultiplier = 1 + (taxRate / 100);
+                                  const gstAmount = totalPrice - (totalPrice / taxMultiplier);
+                                  
+                                  form.setFieldsValue({
+                                    tax_rate_amount: gstAmount
+                                  });
                                 }}
                               />
                             </Form.Item>
@@ -1410,39 +1425,35 @@ export const BookingEdit: React.FC = () => {
                                 style={{ width: '300px', fontSize: '18px', fontWeight: 'bold' }} 
                                 placeholder="0.00"
                                 size="large"
-                                onChange={() => {
-                                  setTimeout(() => {
-                                    const totalPrice = form.getFieldValue('price') || 0;
-                                    const discountAmount = form.getFieldValue('discount_amount') || 0;
-                                    const revisedPrice = totalPrice - discountAmount;
-                                    const gstAmount = revisedPrice / 1.1 * 0.1;
-                                    const netPrice = revisedPrice - gstAmount;
-                                    
-                                    form.setFieldsValue({
-                                      tax_rate_amount: gstAmount,
-                                      net_price: netPrice
-                                    });
-                                  }, 0);
+                                onChange={(discountValue) => {
+                                  // Get the current values
+                                  const currentPrice = form.getFieldValue('price') || 0;
+                                  const currentDiscount = form.getFieldValue('discount_amount') || 0;
+                                  const discount = discountValue || 0;
+                                  
+                                  // Calculate original price by adding back current discount
+                                  const originalPrice = currentPrice + currentDiscount;
+                                  
+                                  // Calculate new total price after new discount
+                                  const newTotalPrice = Math.max(0, originalPrice - discount);
+                                  
+                                  // Calculate GST from new total using dynamic tax rate
+                                  const taxMultiplier = 1 + (taxRate / 100);
+                                  const gstAmount = newTotalPrice - (newTotalPrice / taxMultiplier);
+                                  
+                                  form.setFieldsValue({
+                                    price: newTotalPrice,
+                                    tax_rate_amount: gstAmount
+                                  });
                                 }}
                               />
                             </Form.Item>
                             
-                            <Form.Item name="tax_rate_amount" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>GST (10%) ($)</span>}>
+                            <Form.Item name="tax_rate_amount" label={<span style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>GST ({taxRate}%) ($)</span>}>
                               <InputNumber 
                                 min={0} 
                                 step={0.01} 
                                 style={{ width: '300px', fontSize: '18px', fontWeight: 'bold' }} 
-                                placeholder="0.00"
-                                size="large"
-                                disabled
-                              />
-                            </Form.Item>
-                            
-                            <Form.Item name="net_price" label={<span style={{ fontSize: '18px', fontWeight: 'bold', color: '#52c41a' }}>Net Price ($)</span>}>
-                              <InputNumber 
-                                min={0} 
-                                step={0.01} 
-                                style={{ width: '300px', fontSize: '20px', fontWeight: 'bold', backgroundColor: '#f6ffed', border: '2px solid #52c41a' }} 
                                 placeholder="0.00"
                                 size="large"
                                 disabled
@@ -1811,11 +1822,37 @@ export const BookingEdit: React.FC = () => {
               <Descriptions.Item label="Expected Attendees">{booking?.expected_attendees}</Descriptions.Item>
               <Descriptions.Item label="Number of Massages">{booking?.number_of_massages}</Descriptions.Item>
               <Descriptions.Item label="Duration per Massage">{booking?.duration_per_massage} minutes</Descriptions.Item>
-              <Descriptions.Item label="Total Price">
-                <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
-                  ${booking?.price ? booking.price.toFixed(2) : '0.00'}
-                </Text>
-              </Descriptions.Item>
+              {booking?.discount_amount && booking.discount_amount > 0 ? (
+                <>
+                  <Descriptions.Item label="Subtotal">
+                    <Text>${((booking.price || 0) + (booking.discount_amount || 0)).toFixed(2)}</Text>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Discount Applied">
+                    <Text style={{ color: '#52c41a' }}>-${booking.discount_amount.toFixed(2)}</Text>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Total (inc. GST)">
+                    <Text strong style={{ fontSize: '16px' }}>${booking.price.toFixed(2)}</Text>
+                  </Descriptions.Item>
+                  {booking?.tax_rate_amount && (
+                    <Descriptions.Item label="GST Component">
+                      <Text style={{ color: '#666', fontSize: '12px' }}>
+                        ${booking.tax_rate_amount.toFixed(2)}
+                      </Text>
+                    </Descriptions.Item>
+                  )}
+                  <Descriptions.Item label="Net Price">
+                    <Text strong style={{ color: '#1890ff', fontSize: '18px' }}>
+                      ${booking.price.toFixed(2)}
+                    </Text>
+                  </Descriptions.Item>
+                </>
+              ) : (
+                <Descriptions.Item label="Total Price">
+                  <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
+                    ${booking?.price ? booking.price.toFixed(2) : '0.00'}
+                  </Text>
+                </Descriptions.Item>
+              )}
             </Descriptions>
 
             <Alert

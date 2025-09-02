@@ -44,13 +44,31 @@ CREATE TABLE public.booking_status_history (
   CONSTRAINT booking_status_history_pkey PRIMARY KEY (id),
   CONSTRAINT booking_status_history_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id)
 );
+CREATE TABLE public.booking_therapist_assignments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  booking_id uuid NOT NULL,
+  therapist_id uuid NOT NULL,
+  status character varying DEFAULT 'assigned'::character varying CHECK (status::text = ANY (ARRAY['assigned'::character varying, 'confirmed'::character varying, 'completed'::character varying, 'declined'::character varying, 'cancelled'::character varying]::text[])),
+  assigned_at timestamp without time zone DEFAULT now(),
+  confirmed_at timestamp without time zone,
+  notes text,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  therapist_fee numeric,
+  hourly_rate numeric,
+  hours_worked numeric,
+  rate_type character varying DEFAULT 'daytime'::character varying,
+  CONSTRAINT booking_therapist_assignments_pkey PRIMARY KEY (id),
+  CONSTRAINT booking_therapist_assignments_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id),
+  CONSTRAINT booking_therapist_assignments_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id)
+);
 CREATE TABLE public.bookings (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   customer_id uuid,
   therapist_id uuid,
   alternate_therapist_id uuid,
   booking_time timestamp without time zone NOT NULL,
-  status character varying NOT NULL CHECK (status::text = ANY (ARRAY['requested'::character varying::text, 'confirmed'::character varying::text, 'completed'::character varying::text, 'cancelled'::character varying::text, 'declined'::character varying::text, 'timeout_reassigned'::character varying::text, 'seeking_alternate'::character varying::text])),
+  status character varying NOT NULL CHECK (status::text = ANY (ARRAY['requested'::character varying, 'confirmed'::character varying, 'completed'::character varying, 'cancelled'::character varying, 'declined'::character varying, 'timeout_reassigned'::character varying, 'seeking_alternate'::character varying, 'quote_requested'::character varying, 'quote_sent'::character varying, 'quote_accepted'::character varying, 'quote_expired'::character varying]::text[])),
   payment_status character varying NOT NULL CHECK (payment_status::text = ANY (ARRAY['pending'::character varying, 'paid'::character varying, 'refunded'::character varying, 'failed'::character varying, 'authorized'::character varying, 'captured'::character varying, 'cancelled'::character varying]::text[])),
   price numeric,
   therapist_fee numeric,
@@ -80,12 +98,41 @@ CREATE TABLE public.bookings (
   payment_intent_id text,
   completed_at timestamp with time zone,
   completed_by text,
+  quote_only boolean DEFAULT false,
+  quote_amount numeric,
+  quote_valid_until date,
+  quote_sent_at timestamp with time zone,
+  quote_accepted_at timestamp with time zone,
+  number_of_massages integer,
+  duration_per_massage integer,
+  preferred_therapists integer,
+  company_name character varying,
+  event_type character varying,
+  po_number character varying,
+  billing_address text,
+  corporate_contact_name character varying,
+  corporate_contact_email character varying,
+  corporate_contact_phone character varying,
+  payment_method character varying DEFAULT 'card'::character varying CHECK (payment_method::text = ANY (ARRAY['card'::character varying, 'invoice'::character varying, 'bank_transfer'::character varying]::text[])),
+  urgency character varying DEFAULT 'flexible'::character varying CHECK (urgency::text = ANY (ARRAY['flexible'::character varying, 'within_week'::character varying, 'within_3_days'::character varying, 'urgent_24h'::character varying]::text[])),
+  special_requirements text,
+  setup_requirements text,
+  expected_attendees integer,
+  preferred_time_range text,
+  discount_amount numeric DEFAULT 0,
+  tax_rate_amount numeric DEFAULT 0,
+  net_price numeric,
+  discount_code character varying,
+  gift_card_code character varying,
+  gift_card_amount numeric DEFAULT 0,
+  service_acknowledgement boolean NOT NULL DEFAULT true,
+  terms_acceptance boolean NOT NULL DEFAULT true,
   CONSTRAINT bookings_pkey PRIMARY KEY (id),
   CONSTRAINT bookings_alternate_therapist_id_fkey FOREIGN KEY (alternate_therapist_id) REFERENCES public.therapist_profiles(id),
-  CONSTRAINT bookings_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id),
-  CONSTRAINT fk_responding_therapist FOREIGN KEY (responding_therapist_id) REFERENCES public.therapist_profiles(id),
+  CONSTRAINT bookings_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id),
   CONSTRAINT bookings_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id),
-  CONSTRAINT bookings_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id)
+  CONSTRAINT bookings_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id),
+  CONSTRAINT fk_responding_therapist FOREIGN KEY (responding_therapist_id) REFERENCES public.therapist_profiles(id)
 );
 CREATE TABLE public.customers (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -100,6 +147,36 @@ CREATE TABLE public.customers (
   is_guest boolean DEFAULT false,
   CONSTRAINT customers_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.discount_code_usage (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  discount_code_id uuid NOT NULL,
+  booking_id uuid NOT NULL,
+  customer_email character varying,
+  discount_applied numeric NOT NULL,
+  used_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT discount_code_usage_pkey PRIMARY KEY (id),
+  CONSTRAINT discount_code_usage_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id),
+  CONSTRAINT discount_code_usage_discount_code_id_fkey FOREIGN KEY (discount_code_id) REFERENCES public.discount_codes(id)
+);
+CREATE TABLE public.discount_codes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  code character varying NOT NULL UNIQUE,
+  description text,
+  discount_type character varying NOT NULL CHECK (discount_type::text = ANY (ARRAY['fixed_amount'::character varying, 'percentage'::character varying]::text[])),
+  discount_value numeric NOT NULL,
+  minimum_order_amount numeric DEFAULT 0,
+  maximum_discount_amount numeric,
+  usage_limit integer,
+  usage_count integer DEFAULT 0,
+  valid_from timestamp without time zone DEFAULT now(),
+  valid_until timestamp without time zone,
+  is_active boolean DEFAULT true,
+  created_by uuid,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT discount_codes_pkey PRIMARY KEY (id),
+  CONSTRAINT discount_codes_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.admin_users(id)
+);
 CREATE TABLE public.duration_pricing (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   duration_minutes integer NOT NULL UNIQUE,
@@ -108,6 +185,47 @@ CREATE TABLE public.duration_pricing (
   sort_order integer DEFAULT 0,
   created_at timestamp without time zone DEFAULT now(),
   CONSTRAINT duration_pricing_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.gift_card_transactions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  gift_card_id uuid NOT NULL,
+  booking_id uuid,
+  transaction_type character varying NOT NULL CHECK (transaction_type::text = ANY (ARRAY['purchase'::character varying, 'redemption'::character varying, 'refund'::character varying, 'expiry'::character varying]::text[])),
+  amount numeric NOT NULL,
+  balance_before numeric NOT NULL,
+  balance_after numeric NOT NULL,
+  notes text,
+  created_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT gift_card_transactions_pkey PRIMARY KEY (id),
+  CONSTRAINT gift_card_transactions_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id),
+  CONSTRAINT gift_card_transactions_gift_card_id_fkey FOREIGN KEY (gift_card_id) REFERENCES public.gift_cards(id)
+);
+CREATE TABLE public.gift_cards (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  code character varying NOT NULL UNIQUE,
+  initial_balance numeric NOT NULL,
+  current_balance numeric NOT NULL,
+  purchaser_name character varying,
+  purchaser_email character varying,
+  recipient_name character varying,
+  recipient_email character varying,
+  message text,
+  expires_at timestamp without time zone,
+  is_active boolean DEFAULT true,
+  created_by uuid,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  payment_status character varying DEFAULT 'pending'::character varying CHECK (payment_status::text = ANY (ARRAY['pending'::character varying, 'completed'::character varying, 'failed'::character varying]::text[])),
+  payment_intent_id character varying,
+  stripe_customer_id character varying,
+  payment_method character varying,
+  transaction_fee numeric,
+  payment_date timestamp without time zone,
+  card_holder_name character varying,
+  card_holder_email character varying,
+  card_holder_phone character varying,
+  CONSTRAINT gift_cards_pkey PRIMARY KEY (id),
+  CONSTRAINT gift_cards_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.admin_users(id)
 );
 CREATE TABLE public.notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -170,6 +288,12 @@ CREATE TABLE public.services (
   popularity_score integer DEFAULT 0,
   total_bookings integer DEFAULT 0,
   average_rating numeric DEFAULT 0.0,
+  quote_only boolean DEFAULT false,
+  min_massages integer DEFAULT 1,
+  max_massages integer DEFAULT 50,
+  requires_quote_above integer,
+  quote_description text,
+  base_quote_price numeric,
   CONSTRAINT services_pkey PRIMARY KEY (id),
   CONSTRAINT services_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.admin_users(id)
 );
@@ -178,6 +302,11 @@ CREATE TABLE public.system_settings (
   key character varying NOT NULL UNIQUE,
   value text,
   updated_at timestamp without time zone DEFAULT now(),
+  data_type character varying,
+  category character varying,
+  description text,
+  is_sensitive boolean DEFAULT false,
+  created_at timestamp without time zone DEFAULT now(),
   CONSTRAINT system_settings_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.therapist_availability (

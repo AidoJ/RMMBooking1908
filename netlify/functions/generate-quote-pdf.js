@@ -288,6 +288,47 @@ function generateQuoteHTML(booking) {
           font-size: 32px;
           font-weight: bold;
         }
+        .pricing-breakdown {
+          background: #f9f9f9;
+          border: 1px solid #d9d9d9;
+          border-radius: 8px;
+          padding: 15px;
+          margin: 15px 0;
+        }
+        .pricing-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 0;
+          border-bottom: 1px solid #e8e8e8;
+        }
+        .pricing-row:last-child {
+          border-bottom: none;
+        }
+        .pricing-row.discount .pricing-label {
+          color: #52c41a;
+          font-weight: bold;
+        }
+        .pricing-row.discount .pricing-value {
+          color: #52c41a;
+          font-weight: bold;
+        }
+        .pricing-row.gst .pricing-label {
+          color: #666;
+          font-size: 12px;
+        }
+        .pricing-row.gst .pricing-value {
+          color: #666;
+          font-size: 12px;
+        }
+        .pricing-label {
+          font-weight: 500;
+          color: #333;
+        }
+        .pricing-value {
+          font-weight: bold;
+          color: #333;
+        }
         .terms {
           background: #f8f9fa;
           padding: 15px;
@@ -486,8 +527,30 @@ function generateQuoteHTML(booking) {
 
         <div class="section">
           <div class="section-header">Investment</div>
+          ${booking.discount_amount && booking.discount_amount > 0 ? `
+          <div class="pricing-breakdown">
+            <div class="pricing-row">
+              <div class="pricing-label">Subtotal:</div>
+              <div class="pricing-value">$${((booking.price || 0) + (booking.discount_amount || 0)).toFixed(2)}</div>
+            </div>
+            <div class="pricing-row discount">
+              <div class="pricing-label">Discount Applied:</div>
+              <div class="pricing-value">-$${(booking.discount_amount || 0).toFixed(2)}</div>
+            </div>
+            <div class="pricing-row">
+              <div class="pricing-label">Total (inc. GST):</div>
+              <div class="pricing-value">$${(booking.price || 0).toFixed(2)}</div>
+            </div>
+            ${booking.tax_rate_amount ? `
+            <div class="pricing-row gst">
+              <div class="pricing-label">GST Component:</div>
+              <div class="pricing-value">$${(booking.tax_rate_amount || 0).toFixed(2)}</div>
+            </div>
+            ` : ''}
+          </div>
+          ` : ''}
           <div class="investment-box">
-            <div class="label">Total Investment</div>
+            <div class="label">Net Price</div>
             <div class="amount">$${(booking.price || 0).toFixed(2)}</div>
           </div>
           ${booking.payment_method ? `
