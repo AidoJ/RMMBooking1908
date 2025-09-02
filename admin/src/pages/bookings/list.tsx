@@ -223,15 +223,15 @@ export const EnhancedBookingList = () => {
 
       if (filters.booking_type && filters.booking_type !== 'all') {
         if (filters.booking_type === 'quotes') {
-          // Filter for quote-only services or booking_type = 'quote'
-          query = query.or('booking_type.eq.quote,services.quote_only.is.true');
+          // Filter for quotes - booking_id contains 'RQ'
+          query = query.like('booking_id', 'RQ%');
         } else if (filters.booking_type === 'bookings') {
-          // Filter for regular bookings - exclude quotes
-          query = query.not('services.quote_only', 'is', true);
+          // Filter for bookings - exclude RQ booking IDs
+          query = query.not('booking_id', 'like', 'RQ%');
         }
       } else {
-        // Default: exclude quotes from booking list
-        query = query.not('services.quote_only', 'is', true);
+        // Default: exclude quotes (booking_id starting with RQ)
+        query = query.not('booking_id', 'like', 'RQ%');
       }
 
       // Apply pagination and ordering
