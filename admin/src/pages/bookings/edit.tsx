@@ -338,7 +338,6 @@ export const BookingEdit: React.FC = () => {
       const now = new Date().toISOString();
       
       console.log('Converting to invoice with data:', {
-        status: 'invoiced',
         payment_status: 'pending',
         invoice_number: invoiceNumber,
         invoice_date: now,
@@ -346,11 +345,10 @@ export const BookingEdit: React.FC = () => {
         id: id
       });
       
-      // Update booking to invoice status
+      // Update booking with invoice details (keep existing status)
       const { data, error } = await supabaseClient
         .from('bookings')
         .update({
-          status: 'invoiced',
           payment_status: 'pending',
           invoice_number: invoiceNumber,
           invoice_date: now,
@@ -1826,7 +1824,7 @@ export const BookingEdit: React.FC = () => {
                                   )}
 
                                   {/* Mark as Paid Button */}
-                                  {booking?.status === 'invoiced' && booking?.payment_status === 'pending' && (
+                                  {booking?.invoice_number && booking?.payment_status === 'pending' && (
                                     <Button
                                       type="primary"
                                       size="large"
@@ -1856,7 +1854,7 @@ export const BookingEdit: React.FC = () => {
                                   {booking?.status === 'confirmed' && !booking?.invoice_number && 
                                     'Quote has been accepted by client. Convert to invoice to proceed with billing.'
                                   }
-                                  {booking?.status === 'invoiced' && booking?.payment_status === 'pending' && 
+                                  {booking?.invoice_number && booking?.payment_status === 'pending' && 
                                     'Invoice has been generated and sent to client. Mark as paid when payment is received.'
                                   }
                                   {booking?.payment_status === 'paid' && 
