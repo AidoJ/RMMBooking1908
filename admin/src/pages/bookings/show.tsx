@@ -337,8 +337,22 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
   };
 
   const handleCompleteJob = async () => {
-    if (!booking || (!booking.payment_intent_id && booking.payment_status !== 'authorized')) {
-      message.error('Cannot complete job: No payment authorization found');
+    if (!booking) {
+      message.error('Cannot complete job: No booking data found');
+      return;
+    }
+
+    // Check if job can be completed based on booking type
+    const isQuoteBooking = isQuote(booking);
+    const canComplete = booking.payment_status === 'authorized' || 
+                       (isQuoteBooking && booking.status === 'invoiced');
+
+    if (!canComplete) {
+      if (isQuoteBooking) {
+        message.error('Cannot complete quote job: Must be invoiced first');
+      } else {
+        message.error('Cannot complete job: No payment authorization found');
+      }
       return;
     }
 

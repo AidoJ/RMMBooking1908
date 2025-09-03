@@ -329,8 +329,17 @@ export const EnhancedBookingList = () => {
 
   // Job completion with payment capture
   const handleCompleteJob = async (booking: BookingRecord) => {
-    if (!booking.payment_intent_id) {
-      message.error('No payment authorization found for this booking');
+    // Check if job can be completed based on booking type
+    const isQuote = booking.booking_type === 'quote';
+    const canComplete = booking.payment_status === 'authorized' || 
+                       (isQuote && booking.status === 'invoiced');
+
+    if (!canComplete) {
+      if (isQuote) {
+        message.error('Cannot complete quote job: Must be invoiced first');
+      } else {
+        message.error('Cannot complete job: No payment authorization found');
+      }
       return;
     }
 
