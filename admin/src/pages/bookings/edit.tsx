@@ -1169,6 +1169,19 @@ export const BookingEdit: React.FC = () => {
     if (!bookingData) return;
 
     try {
+      // Fetch system settings for business and bank details
+      const { data: settings, error: settingsError } = await supabaseClient
+        .from('system_settings')
+        .select('*')
+        .in('key', ['business_name', 'business_address', 'business_abn', 'bank_account_name', 'bank_account_bsb', 'bank_account_no']);
+
+      let systemSettings: { [key: string]: string } = {};
+      if (settings && !settingsError) {
+        settings.forEach((setting: any) => {
+          systemSettings[setting.key] = setting.value;
+        });
+      }
+
       // Prepare booking data for invoice email - similar to quote but with invoice fields
       const emailBookingData: BookingData = {
         id: bookingData.id,
@@ -1198,8 +1211,8 @@ export const BookingEdit: React.FC = () => {
         preferred_time_range: bookingData.preferred_time_range
       };
 
-      // Send the invoice email (will need to add this to EmailService)
-      const result = await EmailService.sendInvoiceEmail(emailBookingData);
+      // Send the invoice email with system settings
+      const result = await EmailService.sendInvoiceEmail(emailBookingData, systemSettings);
 
       if (!result.success) {
         throw new Error(result.error || 'Failed to send invoice email');
@@ -1240,6 +1253,25 @@ export const BookingEdit: React.FC = () => {
     } catch (error: any) {
       console.error('Error sending invoice email:', error);
       message.error('Failed to send invoice email: ' + (error.message || 'Unknown error'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResendInvoiceEmail = async () => {
+    if (!booking || !booking.invoice_number) return;
+
+    try {
+      setSaving(true);
+
+      // Send invoice email (no need to update invoice_sent_at timestamp for resends)
+      await sendInvoiceEmail(booking);
+
+      message.success(`Invoice ${booking.invoice_number} resent to ${booking.corporate_contact_email} successfully!`);
+
+    } catch (error: any) {
+      console.error('Error resending invoice email:', error);
+      message.error('Failed to resend invoice email: ' + (error.message || 'Unknown error'));
     } finally {
       setSaving(false);
     }
@@ -1951,6 +1983,20 @@ export const BookingEdit: React.FC = () => {
                                       style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
                                     >
                                       Send Invoice to Client
+                                    </Button>
+                                  )}
+
+                                  {/* Resend Invoice Email Button */}
+                                  {booking?.invoice_number && booking?.invoice_sent_at && (
+                                    <Button
+                                      type="default"
+                                      size="large"
+                                      icon={<MailOutlined />}
+                                      onClick={() => handleResendInvoiceEmail()}
+                                      loading={saving}
+                                      style={{ backgroundColor: '#fff2e8', borderColor: '#ff7a00', color: '#ff7a00' }}
+                                    >
+                                      Resend Invoice
                                     </Button>
                                   )}
 

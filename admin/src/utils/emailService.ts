@@ -397,23 +397,10 @@ export const EmailService = {
   },
 
   // Send invoice email to client
-  async sendInvoiceEmail(bookingData: BookingData): Promise<{success: boolean, error?: string}> {
+  async sendInvoiceEmail(bookingData: BookingData, systemSettings: { [key: string]: string } = {}): Promise<{success: boolean, error?: string}> {
     try {
       if (!window.emailjs) {
         throw new Error('EmailJS not loaded');
-      }
-
-      // Fetch system settings for business and bank details
-      const { data: settings, error: settingsError } = await (window as any).supabaseClient
-        .from('system_settings')
-        .select('*')
-        .in('key', ['business_name', 'business_address', 'business_abn', 'bank_account_name', 'bank_account_bsb', 'bank_account_no']);
-
-      let systemSettings: { [key: string]: string } = {};
-      if (settings && !settingsError) {
-        settings.forEach((setting: any) => {
-          systemSettings[setting.key] = setting.value;
-        });
       }
 
       // Format invoice date
