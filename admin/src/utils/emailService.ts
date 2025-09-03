@@ -8,7 +8,8 @@ const TEMPLATE_IDS = {
   BOOKING_UPDATE_THERAPIST: 'template_buttv1', 
   THERAPIST_REASSIGNED_OLD: 'template_brot-v1',
   THERAPIST_REASSIGNED_NEW: 'template_brnt-v1',
-  CORPORATE_QUOTE: 'template_corporate_quote'
+  CORPORATE_QUOTE: 'template_corporate_quote',
+  INVOICE: 'template_invoice'
 };
 
 // Declare emailjs as global variable (loaded via CDN)
@@ -69,6 +70,12 @@ export interface BookingData {
   payment_method?: string;
   preferred_time_range?: string;
   created_at?: string;
+  
+  // Invoice-specific fields
+  invoice_number?: string;
+  invoice_date?: string;
+  discount_amount?: number;
+  tax_rate_amount?: number;
 }
 
 export interface TherapistData {
@@ -385,6 +392,84 @@ export const EmailService = {
       return { success: true };
     } catch (error) {
       console.error('❌ Error sending minimal corporate quote email:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  // Send invoice email to client
+  async sendInvoiceEmail(bookingData: BookingData): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      // Format invoice date
+      const invoiceDate = bookingData.invoice_date 
+        ? new Date(bookingData.invoice_date).toLocaleDateString('en-AU')
+        : new Date().toLocaleDateString('en-AU');
+
+      // Format payment due date (30 days from invoice date)
+      const dueDateObj = new Date(bookingData.invoice_date || Date.now());
+      dueDateObj.setDate(dueDateObj.getDate() + 30);
+      const paymentDueDate = dueDateObj.toLocaleDateString('en-AU');
+
+      // Format event date
+      const eventDate = new Date(bookingData.booking_time).toLocaleDateString('en-AU', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long', 
+        day: 'numeric'
+      });
+
+      // Format event time
+      const eventTime = bookingData.preferred_time_range || 
+                       new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+      // Calculate pricing breakdown
+      const subtotal = ((bookingData.price || 0) + (bookingData.discount_amount || 0));
+      const discountAmount = bookingData.discount_amount || 0;
+      const gstAmount = bookingData.tax_rate_amount || 0;
+      const totalAmount = bookingData.price || 0;
+
+      const templateParams = {
+        to_email: bookingData.corporate_contact_email,
+        to_name: bookingData.corporate_contact_name,
+        corporate_contact_name: bookingData.corporate_contact_name || 'Contact',
+        business_name: bookingData.business_name || 'Company',
+        invoice_number: bookingData.invoice_number,
+        quote_reference: bookingData.booking_id,
+        invoice_date: invoiceDate,
+        payment_due_date: paymentDueDate,
+        event_date: eventDate,
+        event_time: eventTime,
+        event_address: bookingData.address || 'Not specified',
+        expected_attendees: bookingData.expected_attendees?.toString() || 'Not specified',
+        number_of_massages: bookingData.number_of_massages?.toString() || '0',
+        duration_per_massage: `${bookingData.duration_per_massage || 0} minutes`,
+        event_type: bookingData.event_type || 'Corporate Event',
+        subtotal: `$${subtotal.toFixed(2)}`,
+        discount_amount: discountAmount > 0 ? `-$${discountAmount.toFixed(2)}` : '$0.00',
+        gst_amount: `$${gstAmount.toFixed(2)}`,
+        total_amount: `$${totalAmount.toFixed(2)}`,
+        payment_method: bookingData.payment_method || 'Bank Transfer',
+        payment_terms: 'Net 30 Days',
+        po_number: bookingData.po_number || 'Not provided',
+        from_name: 'Rejuvenators Mobile Massage'
+      };
+
+      console.log('📧 Sending invoice email with params:', templateParams);
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.INVOICE,
+        templateParams
+      );
+
+      console.log('✅ Invoice email sent:', response);
+      return { success: true };
+
+    } catch (error) {
+      console.error('❌ Error sending invoice email:', error);
       return { success: false, error: (error as Error).message };
     }
   }

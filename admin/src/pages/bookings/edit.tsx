@@ -364,12 +364,19 @@ export const BookingEdit: React.FC = () => {
 
       console.log('Update successful:', data);
 
+      const updatedBooking = data[0];
+
+      // Send invoice email to client
+      try {
+        await sendInvoiceEmail(updatedBooking);
+        message.success(`Invoice ${invoiceNumber} created and sent to client successfully!`);
+      } catch (emailError: any) {
+        console.error('Email send error:', emailError);
+        message.warning(`Invoice ${invoiceNumber} created but email failed to send: ${emailError.message}`);
+      }
+
       // Refresh booking data
       await fetchBookingDetails();
-      
-      message.success(`Quote converted to invoice ${invoiceNumber} successfully`);
-      
-      // TODO: Send invoice email to client
       
     } catch (error: any) {
       console.error('Error converting to invoice:', error);
@@ -1088,6 +1095,22 @@ export const BookingEdit: React.FC = () => {
     }
   };
 
+  // Generate Invoice PDF
+  const generateInvoicePDF = () => {
+    if (!booking || !booking.invoice_number) return;
+
+    try {
+      // Open invoice PDF in new window for download
+      const baseUrl = window.location.origin;
+      const invoicePdfUrl = `${baseUrl}/.netlify/functions/generate-invoice-pdf?id=${booking.id}`;
+      window.open(invoicePdfUrl, '_blank');
+      message.success('Invoice PDF opened successfully!');
+    } catch (error) {
+      console.error('Error generating invoice PDF:', error);
+      message.error('Failed to generate invoice PDF. Please try again.');
+    }
+  };
+
   // Send email with PDF and generate PDF
   const handleSendQuoteEmail = async () => {
     if (!booking) return;
@@ -1139,6 +1162,51 @@ export const BookingEdit: React.FC = () => {
       message.error('Failed to send quote email. Please try again.');
     } finally {
       setSendingEmail(false);
+    }
+  };
+
+  const sendInvoiceEmail = async (bookingData: Booking) => {
+    if (!bookingData) return;
+
+    try {
+      // Prepare booking data for invoice email - similar to quote but with invoice fields
+      const emailBookingData: BookingData = {
+        id: bookingData.id,
+        booking_id: bookingData.booking_id,
+        invoice_number: bookingData.invoice_number,
+        invoice_date: bookingData.invoice_date,
+        corporate_contact_name: bookingData.corporate_contact_name,
+        corporate_contact_email: bookingData.corporate_contact_email,
+        corporate_contact_phone: bookingData.corporate_contact_phone,
+        business_name: bookingData.business_name,
+        address: bookingData.address,
+        booking_time: bookingData.booking_time,
+        event_type: bookingData.event_type,
+        expected_attendees: bookingData.expected_attendees,
+        number_of_massages: bookingData.number_of_massages,
+        duration_per_massage: bookingData.duration_per_massage,
+        preferred_therapists: bookingData.preferred_therapists,
+        urgency: bookingData.urgency,
+        payment_method: bookingData.payment_method,
+        po_number: bookingData.po_number,
+        setup_requirements: bookingData.setup_requirements,
+        special_requirements: bookingData.special_requirements,
+        price: bookingData.price,
+        discount_amount: bookingData.discount_amount,
+        tax_rate_amount: bookingData.tax_rate_amount,
+        created_at: bookingData.created_at,
+        preferred_time_range: bookingData.preferred_time_range
+      };
+
+      // Send the invoice email (will need to add this to EmailService)
+      const result = await EmailService.sendInvoiceEmail(emailBookingData);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to send invoice email');
+      }
+    } catch (error: any) {
+      console.error('Error sending invoice email:', error);
+      throw error;
     }
   };
 
@@ -1834,6 +1902,19 @@ export const BookingEdit: React.FC = () => {
                                       style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
                                     >
                                       Mark as Paid
+                                    </Button>
+                                  )}
+
+                                  {/* Download Invoice PDF Button */}
+                                  {booking?.invoice_number && (
+                                    <Button
+                                      type="default"
+                                      size="large"
+                                      icon={<FileTextOutlined />}
+                                      onClick={generateInvoicePDF}
+                                      style={{ backgroundColor: '#f0f0f0', borderColor: '#d9d9d9' }}
+                                    >
+                                      Download Invoice PDF
                                     </Button>
                                   )}
 
