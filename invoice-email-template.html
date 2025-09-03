@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice - {{invoice_number}}</title>
+    <style type="text/css">
+        /* Basic reset for email clients */
+        body, table, td, p, a, li, blockquote {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+        }
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+        }
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+        /* Client-specific styles */
+        .ReadMsgBody { width: 100%; }
+        .ExternalClass { width: 100%; }
+        .ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div {
+            line-height: 100%;
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #f8feff; font-family: Arial, sans-serif;">
+    
+    <!-- Email Container -->
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f8feff; padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <!-- Main Email Table -->
+                <table cellpadding="0" cellspacing="0" border="0" width="650" style="max-width: 650px; background-color: #ffffff; border: 1px solid #e0f2f4;">
+                    
+                    <!-- Header -->
+                    <tr>
+                        <td style="background-color: #007e8c; color: #ffffff; padding: 30px; text-align: center;">
+                            <div style="font-size: 32px; margin-bottom: 12px;">🧾</div>
+                            <h1 style="margin: 0 0 8px 0; font-size: 26px; font-weight: bold; color: #ffffff;">Invoice</h1>
+                            <p style="margin: 0; font-size: 16px; color: #ffffff; opacity: 0.95;">Invoice Number: {{invoice_number}}</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 30px;">
+                            
+                            <!-- Greeting -->
+                            <h2 style="color: #007e8c; font-size: 22px; margin: 0 0 10px 0; font-weight: bold;">Hello {{corporate_contact_name}}!</h2>
+                            <p style="font-size: 16px; color: #4a6166; line-height: 1.5; margin: 0 0 25px 0;">Thank you for accepting our quote. Please find your invoice below with payment details.</p>
+                            
+                            <!-- Company Banner -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #007e8c; margin: 20px 0;">
+                                <tr>
+                                    <td style="padding: 20px; text-align: center; color: #ffffff;">
+                                        <div style="font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;">{{event_type}}</div>
+                                        <div style="font-size: 24px; font-weight: bold; margin-bottom: 8px;">{{business_name}}</div>
+                                        <div style="font-size: 12px; opacity: 0.9; margin-bottom: 4px;">{{business_address}}</div>
+                                        <div style="font-size: 12px; opacity: 0.9;">ABN: {{business_abn}}</div>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Invoice Summary -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f0f8ff; border: 2px solid #007e8c; margin: 20px 0;">
+                                <tr>
+                                    <td style="padding: 25px; text-align: center;">
+                                        <h3 style="color: #007e8c; font-size: 18px; margin: 0 0 15px 0; font-weight: bold;">💰 Total Amount Due</h3>
+                                        <div style="font-size: 36px; font-weight: bold; color: #007e8c; margin-bottom: 8px;">{{total_amount}}</div>
+                                        <div style="font-size: 14px; color: #666;">Payment Due: {{payment_due_date}}</div>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Invoice Details -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f8feff; border: 1px solid #e0f2f4; border-left: 4px solid #007e8c; margin: 20px 0;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <h3 style="color: #007e8c; font-size: 18px; margin: 0 0 15px 0; font-weight: bold;">📋 Invoice Details</h3>
+                                        
+                                        <!-- Invoice Info Table -->
+                                        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0f2f4; font-weight: bold; color: #4a6166; font-size: 14px; width: 140px;">Invoice Number:</td>
+                                                <td style="padding: 8px 0 8px 20px; border-bottom: 1px solid #e0f2f4; color: #1a2e33; font-size: 14px; font-weight: 500;">{{invoice_number}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0f2f4; font-weight: bold; color: #4a6166; font-size: 14px;">Quote Reference:</td>
+                                                <td style="padding: 8px 0 8px 20px; border-bottom: 1px solid #e0f2f4; color: #1a2e33; font-size: 14px; font-weight: 500;">{{quote_reference}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0f2f4; font-weight: bold; color: #4a6166; font-size: 14px;">Invoice Date:</td>
+                                                <td style="padding: 8px 0 8px 20px; border-bottom: 1px solid #e0f2f4; color: #1a2e33; font-size: 14px; font-weight: 500;">{{invoice_date}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0f2f4; font-weight: bold; color: #4a6166; font-size: 14px;">Service Date:</td>
+                                                <td style="padding: 8px 0 8px 20px; border-bottom: 1px solid #e0f2f4; color: #1a2e33; font-size: 14px; font-weight: 500;">{{event_date}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; font-weight: bold; color: #4a6166; font-size: 14px;">Payment Terms:</td>
+                                                <td style="padding: 8px 0 8px 20px; color: #1a2e33; font-size: 14px; font-weight: 500;">{{payment_terms}}</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Service Details -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f8feff; border: 1px solid #e0f2f4; border-left: 4px solid #007e8c; margin: 20px 0;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <h3 style="color: #007e8c; font-size: 18px; margin: 0 0 15px 0; font-weight: bold;">📅 Service Details</h3>
+                                        
+                                        <!-- Service Details Table -->
+                                        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0f2f4; font-weight: bold; color: #4a6166; font-size: 14px; width: 140px;">Location:</td>
+                                                <td style="padding: 8px 0 8px 20px; border-bottom: 1px solid #e0f2f4; color: #1a2e33; font-size: 14px; font-weight: 500;">{{event_address}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0f2f4; font-weight: bold; color: #4a6166; font-size: 14px;">Event Time:</td>
+                                                <td style="padding: 8px 0 8px 20px; border-bottom: 1px solid #e0f2f4; color: #1a2e33; font-size: 14px; font-weight: 500;">{{event_time}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0f2f4; font-weight: bold; color: #4a6166; font-size: 14px;">Expected Attendees:</td>
+                                                <td style="padding: 8px 0 8px 20px; border-bottom: 1px solid #e0f2f4; color: #1a2e33; font-size: 14px; font-weight: 500;">{{expected_attendees}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #e0f2f4; font-weight: bold; color: #4a6166; font-size: 14px;">Number of Massages:</td>
+                                                <td style="padding: 8px 0 8px 20px; border-bottom: 1px solid #e0f2f4; color: #1a2e33; font-size: 14px; font-weight: 500;">{{number_of_massages}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; font-weight: bold; color: #4a6166; font-size: 14px;">Duration per Massage:</td>
+                                                <td style="padding: 8px 0 8px 20px; color: #1a2e33; font-size: 14px; font-weight: 500;">{{duration_per_massage}}</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Pricing Breakdown -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fff3cd; border: 1px solid #ffc107; margin: 20px 0;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <h4 style="color: #856404; font-size: 16px; margin: 0 0 15px 0; font-weight: bold;">💲 Pricing Breakdown</h4>
+                                        
+                                        <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #ffc107; font-weight: bold; color: #856404; font-size: 14px;">Subtotal:</td>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #ffc107; color: #856404; font-size: 14px; text-align: right;">{{subtotal}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #ffc107; font-weight: bold; color: #856404; font-size: 14px;">Discount:</td>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #ffc107; color: #856404; font-size: 14px; text-align: right;">{{discount_amount}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #ffc107; font-weight: bold; color: #856404; font-size: 14px;">GST (10%):</td>
+                                                <td style="padding: 8px 0; border-bottom: 1px solid #ffc107; color: #856404; font-size: 14px; text-align: right;">{{gst_amount}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 12px 0; font-weight: bold; color: #856404; font-size: 16px; border-top: 2px solid #856404;">Total Amount:</td>
+                                                <td style="padding: 12px 0; font-weight: bold; color: #856404; font-size: 16px; text-align: right; border-top: 2px solid #856404;">{{total_amount}}</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Payment Information -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #e8f5e8; border: 1px solid #4caf50; margin: 20px 0;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <h4 style="color: #2e7d32; font-size: 16px; margin: 0 0 12px 0; font-weight: bold;">🏦 Payment Details</h4>
+                                        <p style="margin: 8px 0; font-size: 14px; color: #2e7d32; font-weight: 500;"><strong style="display: inline-block; width: 120px;">Account Name:</strong> {{bank_account_name}}</p>
+                                        <p style="margin: 8px 0; font-size: 14px; color: #2e7d32; font-weight: 500;"><strong style="display: inline-block; width: 120px;">BSB:</strong> {{bank_account_bsb}}</p>
+                                        <p style="margin: 8px 0; font-size: 14px; color: #2e7d32; font-weight: 500;"><strong style="display: inline-block; width: 120px;">Account Number:</strong> {{bank_account_no}}</p>
+                                        <p style="margin: 8px 0; font-size: 14px; color: #2e7d32; font-weight: 500;"><strong style="display: inline-block; width: 120px;">Reference:</strong> {{invoice_number}}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Payment Instructions -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f0f8ff; border: 1px solid #007e8c; margin: 30px 0;">
+                                <tr>
+                                    <td style="padding: 30px; text-align: center;">
+                                        <h3 style="color: #007e8c; margin: 0 0 20px 0; font-size: 20px; font-weight: bold;">💳 Payment Instructions</h3>
+                                        
+                                        <p style="font-size: 14px; color: #4a6166; line-height: 1.6; margin: 0 0 15px 0; text-align: left;">
+                                            Please transfer the payment to the bank account details above using your invoice number <strong>{{invoice_number}}</strong> as the reference.
+                                        </p>
+                                        
+                                        <p style="font-size: 14px; color: #4a6166; line-height: 1.6; margin: 0; text-align: left;">
+                                            <strong>Payment Due:</strong> {{payment_due_date}}<br>
+                                            <strong>Payment Method:</strong> {{payment_method}}<br>
+                                            <strong>PO Number:</strong> {{po_number}}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Contact Information -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f0f8ff; border: 1px solid #007e8c; margin: 20px 0;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <h4 style="color: #007e8c; font-size: 16px; margin: 0 0 12px 0; font-weight: bold;">📞 Questions? Contact Us</h4>
+                                        <p style="margin: 4px 0; font-size: 14px; color: #007e8c; font-weight: 500;">📧 Email: info@rejuvenators.com</p>
+                                        <p style="margin: 4px 0; font-size: 14px; color: #007e8c; font-weight: 500;">📱 Phone: 1300 302 542</p>
+                                        <p style="margin: 4px 0; font-size: 14px; color: #007e8c; font-weight: 500;">🌐 Web: www.rejuvenators.com</p>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8feff; padding: 25px; text-align: center; border-top: 1px solid #e0f2f4;">
+                            <p style="color: #4a6166; font-size: 14px; margin: 0 0 8px 0;">Thank you for your business with <span style="color: #007e8c; font-weight: bold;">{{from_name}}</span></p>
+                            <p style="color: #4a6166; font-size: 12px; margin: 0;">Please remit payment by {{payment_due_date}} to avoid any service delays.</p>
+                            <div style="color: #007e8c; font-weight: bold; margin-top: 15px; font-size: 14px;">
+                                Invoice Number: {{invoice_number}}
+                            </div>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
