@@ -257,8 +257,8 @@ export const EmailService = {
         throw new Error('EmailJS not loaded');
       }
 
-      // Generate quote reference ID
-      const quoteReference = `RMM-${bookingData.id.slice(0, 8).toUpperCase()}`;
+      // Use the actual quote reference from booking_id field (RQ format)
+      const quoteReference = bookingData.booking_id || `RQ${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}001`;
       
       // Calculate quote expiry date (30 days from now)
       const expiryDate = new Date();
@@ -403,6 +403,19 @@ export const EmailService = {
         throw new Error('EmailJS not loaded');
       }
 
+      // Fetch system settings for business and bank details
+      const { data: settings, error: settingsError } = await (window as any).supabaseClient
+        .from('system_settings')
+        .select('*')
+        .in('key', ['business_name', 'business_address', 'business_abn', 'bank_account_name', 'bank_account_bsb', 'bank_account_no']);
+
+      let systemSettings: { [key: string]: string } = {};
+      if (settings && !settingsError) {
+        settings.forEach((setting: any) => {
+          systemSettings[setting.key] = setting.value;
+        });
+      }
+
       // Format invoice date
       const invoiceDate = bookingData.invoice_date 
         ? new Date(bookingData.invoice_date).toLocaleDateString('en-AU')
@@ -431,6 +444,10 @@ export const EmailService = {
       const gstAmount = bookingData.tax_rate_amount || 0;
       const totalAmount = bookingData.price || 0;
 
+      // Create invoice PDF download URL
+      const baseUrl = window.location.origin;
+      const invoicePdfUrl = `${baseUrl}/.netlify/functions/generate-invoice-pdf?id=${bookingData.id}`;
+
       const templateParams = {
         to_email: bookingData.corporate_contact_email,
         to_name: bookingData.corporate_contact_name,
@@ -454,7 +471,17 @@ export const EmailService = {
         payment_method: bookingData.payment_method || 'Bank Transfer',
         payment_terms: 'Net 30 Days',
         po_number: bookingData.po_number || 'Not provided',
-        from_name: 'Rejuvenators Mobile Massage'
+        from_name: 'Rejuvenators Mobile Massage',
+        // System settings for business details
+        rejuvenators_business_name: systemSettings.business_name || 'Rejuvenators Mobile Massage',
+        business_address: systemSettings.business_address || '',
+        business_abn: systemSettings.business_abn || '',
+        // Bank account details (always show regardless of payment method)
+        bank_account_name: systemSettings.bank_account_name || '',
+        bank_account_bsb: systemSettings.bank_account_bsb || '',
+        bank_account_no: systemSettings.bank_account_no || '',
+        // PDF download link
+        invoice_pdf_url: invoicePdfUrl
       };
 
       console.log('📧 Sending invoice email with params:', templateParams);
