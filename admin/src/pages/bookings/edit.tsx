@@ -1210,6 +1210,41 @@ export const BookingEdit: React.FC = () => {
     }
   };
 
+  const handleSendInvoiceEmail = async () => {
+    if (!booking || !booking.invoice_number) return;
+
+    try {
+      setSaving(true);
+
+      // Send invoice email
+      await sendInvoiceEmail(booking);
+
+      // Update invoice_sent_at timestamp
+      const now = new Date().toISOString();
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update({
+          invoice_sent_at: now
+        })
+        .eq('id', booking.id);
+
+      if (error) {
+        throw error;
+      }
+
+      message.success(`Invoice ${booking.invoice_number} sent to ${booking.corporate_contact_email} successfully!`);
+      
+      // Refresh booking data to hide the send button
+      await fetchBookingDetails();
+
+    } catch (error: any) {
+      console.error('Error sending invoice email:', error);
+      message.error('Failed to send invoice email: ' + (error.message || 'Unknown error'));
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (!booking) {
     return (
       <div style={{ padding: 24 }}>
@@ -1905,6 +1940,20 @@ export const BookingEdit: React.FC = () => {
                                     </Button>
                                   )}
 
+                                  {/* Send Invoice Email Button */}
+                                  {booking?.invoice_number && !booking?.invoice_sent_at && (
+                                    <Button
+                                      type="primary"
+                                      size="large"
+                                      icon={<MailOutlined />}
+                                      onClick={() => handleSendInvoiceEmail()}
+                                      loading={saving}
+                                      style={{ backgroundColor: '#722ed1', borderColor: '#722ed1' }}
+                                    >
+                                      Send Invoice to Client
+                                    </Button>
+                                  )}
+
                                   {/* Download Invoice PDF Button */}
                                   {booking?.invoice_number && (
                                     <Button
@@ -1919,6 +1968,12 @@ export const BookingEdit: React.FC = () => {
                                   )}
 
                                   {/* Status Display */}
+                                  {booking?.invoice_sent_at && (
+                                    <Tag color="blue" style={{ fontSize: '14px', padding: '4px 8px' }}>
+                                      ✉️ Invoice sent {new Date(booking.invoice_sent_at).toLocaleDateString()}
+                                    </Tag>
+                                  )}
+
                                   {booking?.payment_status === 'paid' && (
                                     <Tag color="success" style={{ fontSize: '14px', padding: '4px 8px' }}>
                                       ✓ Paid {booking.paid_date && `on ${new Date(booking.paid_date).toLocaleDateString()}`}
