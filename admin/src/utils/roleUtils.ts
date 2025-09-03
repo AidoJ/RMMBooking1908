@@ -6,6 +6,7 @@ export interface UserIdentity {
   last_name?: string;
   role?: 'super_admin' | 'admin' | 'therapist' | 'customer';
   name?: string;
+  therapist_id?: string;
 }
 
 export type UserRole = 'super_admin' | 'admin' | 'therapist' | 'customer';

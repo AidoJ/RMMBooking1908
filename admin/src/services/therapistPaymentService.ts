@@ -373,10 +373,12 @@ export class TherapistPaymentService {
    */
   static async getTherapistPaymentHistory(
     therapistId: string,
+    startDate?: Date,
+    endDate?: Date,
     limit: number = 10
   ): Promise<WeeklyPaymentData[]> {
     try {
-      const { data, error } = await supabaseClient
+      let query = supabaseClient
         .from('therapist_payments')
         .select(`
           *,
@@ -385,7 +387,17 @@ export class TherapistPaymentService {
             last_name
           )
         `)
-        .eq('therapist_id', therapistId)
+        .eq('therapist_id', therapistId);
+
+      if (startDate) {
+        query = query.gte('week_start_date', startDate.toISOString().split('T')[0]);
+      }
+
+      if (endDate) {
+        query = query.lte('week_end_date', endDate.toISOString().split('T')[0]);
+      }
+
+      const { data, error } = await query
         .order('week_start_date', { ascending: false })
         .limit(limit);
 
