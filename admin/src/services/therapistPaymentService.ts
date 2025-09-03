@@ -295,7 +295,7 @@ export class TherapistPaymentService {
         `)
         .eq('week_start_date', weekStart.toISOString().split('T')[0])
         .eq('week_end_date', weekEnd.toISOString().split('T')[0])
-        .order('therapist_profiles.first_name');
+        .order('created_at');
 
       if (error) {
         console.error('Error fetching weekly payment data:', error);
@@ -398,7 +398,7 @@ export class TherapistPaymentService {
       }
 
       const { data, error } = await query
-        .order('week_start_date', { ascending: false })
+        .order('created_at', { ascending: false })
         .limit(limit);
 
       if (error) {
