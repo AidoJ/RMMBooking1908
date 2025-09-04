@@ -66,8 +66,8 @@ export class TherapistPaymentService {
   }
 
   /**
-   * Fetch all completed therapist assignments for a given week
-   * that haven't been linked to a payment record yet
+   * Fetch all therapist fees from BOTH bookings table (RB) and assignments table (RQ)
+   * for a given week that haven't been linked to a payment record yet
    */
   static async getCompletedAssignmentsForWeek(
     weekStart: Date, 
@@ -75,7 +75,53 @@ export class TherapistPaymentService {
     therapistId?: string
   ): Promise<TherapistAssignment[]> {
     try {
-      let query = supabaseClient
+      const assignments: TherapistAssignment[] = [];
+
+      // 1. GET RB FEES FROM BOOKINGS TABLE (Regular bookings)
+      let bookingsQuery = supabaseClient
+        .from('bookings')
+        .select(`
+          id,
+          booking_id,
+          therapist_id,
+          status,
+          therapist_fee,
+          booking_time,
+          completed_at
+        `)
+        .eq('status', 'completed')
+        .not('therapist_fee', 'is', null)
+        .gte('booking_time', weekStart.toISOString())
+        .lte('booking_time', weekEnd.toISOString());
+
+      if (therapistId) {
+        bookingsQuery = bookingsQuery.eq('therapist_id', therapistId);
+      }
+
+      const { data: bookingsData, error: bookingsError } = await bookingsQuery;
+
+      if (bookingsError) {
+        console.error('Error fetching completed bookings:', bookingsError);
+        throw bookingsError;
+      }
+
+      // Convert bookings to assignment format
+      (bookingsData || []).forEach(booking => {
+        assignments.push({
+          id: `booking_${booking.id}`, // Unique ID for bookings
+          booking_id: booking.booking_id,
+          therapist_id: booking.therapist_id,
+          status: 'completed',
+          therapist_fee: booking.therapist_fee || 0,
+          hours_worked: 0, // Not tracked for regular bookings
+          confirmed_at: booking.completed_at,
+          booking_time: booking.booking_time,
+          weekly_payment_id: undefined
+        });
+      });
+
+      // 2. GET RQ FEES FROM ASSIGNMENTS TABLE (Quote work)
+      let assignmentsQuery = supabaseClient
         .from('booking_therapist_assignments')
         .select(`
           id,
@@ -88,36 +134,45 @@ export class TherapistPaymentService {
           weekly_payment_id,
           bookings!inner(
             booking_time,
-            status
+            status,
+            quote_only
           )
         `)
         .eq('status', 'completed')
         .is('weekly_payment_id', null) // Only get assignments not yet linked to payments
         .gte('bookings.booking_time', weekStart.toISOString())
-        .lte('bookings.booking_time', weekEnd.toISOString());
+        .lte('bookings.booking_time', weekEnd.toISOString())
+        .eq('bookings.quote_only', true); // Only quote work
 
       if (therapistId) {
-        query = query.eq('therapist_id', therapistId);
+        assignmentsQuery = assignmentsQuery.eq('therapist_id', therapistId);
       }
 
-      const { data, error } = await query;
+      const { data: assignmentsData, error: assignmentsError } = await assignmentsQuery;
 
-      if (error) {
-        console.error('Error fetching completed assignments:', error);
-        throw error;
+      if (assignmentsError) {
+        console.error('Error fetching completed assignments:', assignmentsError);
+        throw assignmentsError;
       }
 
-      return (data || []).map(assignment => ({
-        id: assignment.id,
-        booking_id: assignment.booking_id,
-        therapist_id: assignment.therapist_id,
-        status: assignment.status,
-        therapist_fee: assignment.therapist_fee || 0,
-        hours_worked: assignment.hours_worked || 0,
-        confirmed_at: assignment.confirmed_at,
-        booking_time: (assignment.bookings as any).booking_time,
-        weekly_payment_id: assignment.weekly_payment_id
-      }));
+      // Add quote assignments to the list
+      (assignmentsData || []).forEach(assignment => {
+        assignments.push({
+          id: assignment.id,
+          booking_id: assignment.booking_id,
+          therapist_id: assignment.therapist_id,
+          status: assignment.status,
+          therapist_fee: assignment.therapist_fee || 0,
+          hours_worked: assignment.hours_worked || 0,
+          confirmed_at: assignment.confirmed_at,
+          booking_time: (assignment.bookings as any).booking_time,
+          weekly_payment_id: assignment.weekly_payment_id
+        });
+      });
+
+      console.log(`📊 Found ${bookingsData?.length || 0} completed bookings (RB) and ${assignmentsData?.length || 0} completed assignments (RQ) for week`);
+      
+      return assignments;
 
     } catch (error) {
       console.error('Error in getCompletedAssignmentsForWeek:', error);

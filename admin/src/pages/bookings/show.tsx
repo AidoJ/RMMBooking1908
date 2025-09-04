@@ -345,11 +345,11 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
     // Check if job can be completed based on booking type
     const isQuoteBooking = isQuote(booking);
     const canComplete = booking.payment_status === 'authorized' || 
-                       (isQuoteBooking && booking.status === 'invoiced');
+                       (isQuoteBooking && (booking.status === 'invoiced' || booking.payment_status === 'paid'));
 
     if (!canComplete) {
       if (isQuoteBooking) {
-        message.error('Cannot complete quote job: Must be invoiced first');
+        message.error('Cannot complete quote job: Must be invoiced or paid first');
       } else {
         message.error('Cannot complete job: No payment authorization found');
       }

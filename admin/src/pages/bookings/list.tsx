@@ -332,11 +332,11 @@ export const EnhancedBookingList = () => {
     // Check if job can be completed based on booking type
     const isQuote = booking.booking_type === 'quote';
     const canComplete = booking.payment_status === 'authorized' || 
-                       (isQuote && booking.status === 'invoiced');
+                       (isQuote && (booking.status === 'invoiced' || booking.payment_status === 'paid'));
 
     if (!canComplete) {
       if (isQuote) {
-        message.error('Cannot complete quote job: Must be invoiced first');
+        message.error('Cannot complete quote job: Must be invoiced or paid first');
       } else {
         message.error('Cannot complete job: No payment authorization found');
       }
