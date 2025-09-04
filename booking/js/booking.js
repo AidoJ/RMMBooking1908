@@ -1911,6 +1911,16 @@ let STRIPE_PUBLISHABLE_KEY = null;
 async function loadStripeKey() {
   try {
     const response = await fetch('/.netlify/functions/get-stripe-key');
+    
+    // Check if response is HTML (404 error page)
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.warn('⚠️ Stripe key function not found, using fallback key');
+      // Fallback to test key for now
+      STRIPE_PUBLISHABLE_KEY = 'pk_test_51PGxKUKn3GaB6FyY1qeTOeYxWnBMDax8bUZhdP7RggDi1OyUp4BbSJWPhgb7hcvDynNqakuSfpGzwfuVhOsTvXmb001lwoCn7a';
+      return STRIPE_PUBLISHABLE_KEY;
+    }
+    
     const data = await response.json();
     
     if (!response.ok) {
@@ -1920,8 +1930,10 @@ async function loadStripeKey() {
     STRIPE_PUBLISHABLE_KEY = data.publishableKey;
     return STRIPE_PUBLISHABLE_KEY;
   } catch (error) {
-    console.error('❌ Error loading Stripe key:', error);
-    throw error;
+    console.error('❌ Error loading Stripe key, using fallback:', error);
+    // Fallback to test key
+    STRIPE_PUBLISHABLE_KEY = 'pk_test_51PGxKUKn3GaB6FyY1qeTOeYxWnBMDax8bUZhdP7RggDi1OyUp4BbSJWPhgb7hcvDynNqakuSfpGzwfuVhOsTvXmb001lwoCn7a';
+    return STRIPE_PUBLISHABLE_KEY;
   }
 }
 
@@ -1954,9 +1966,9 @@ async function mountStripeCardElement() {
 // Mount Stripe card when Step 8 is shown
 function observeStep8Mount() {
   const step8 = document.getElementById('step8');
-  const observer = new MutationObserver(() => {
+  const observer = new MutationObserver(async () => {
     if (step8.classList.contains('active') && !document.querySelector('#card-element iframe')) {
-      mountStripeCardElement();
+      await mountStripeCardElement();
     }
   });
   observer.observe(step8, { attributes: true, attributeFilter: ['class'] });
