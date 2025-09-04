@@ -1905,13 +1905,36 @@ async function toggleTherapistBio(therapistId) {
 
 // STRIPE INTEGRATION
 let stripe, elements, card;
-// SECURITY: This will be replaced by build script with environment variable
-const STRIPE_PUBLISHABLE_KEY = 'PLACEHOLDER_STRIPE_KEY';
+let STRIPE_PUBLISHABLE_KEY = null;
 
-function mountStripeCardElement() {
+// Fetch Stripe publishable key from environment
+async function loadStripeKey() {
+  try {
+    const response = await fetch('/.netlify/functions/get-stripe-key');
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to load Stripe key');
+    }
+    
+    STRIPE_PUBLISHABLE_KEY = data.publishableKey;
+    return STRIPE_PUBLISHABLE_KEY;
+  } catch (error) {
+    console.error('❌ Error loading Stripe key:', error);
+    throw error;
+  }
+}
+
+async function mountStripeCardElement() {
   if (!window.Stripe) {
     return;
   }
+  
+  // Load Stripe key if not already loaded
+  if (!STRIPE_PUBLISHABLE_KEY) {
+    await loadStripeKey();
+  }
+  
   stripe = window.Stripe(STRIPE_PUBLISHABLE_KEY);
   elements = stripe.elements();
   card = elements.create('card', {
