@@ -345,10 +345,11 @@ export const BookingEdit: React.FC = () => {
         id: id
       });
       
-      // Update booking with invoice details (keep existing status)
+      // Update booking with invoice details and set status to authorized
       const { data, error } = await supabaseClient
         .from('bookings')
         .update({
+          status: 'authorized',
           payment_status: 'pending',
           invoice_number: invoiceNumber,
           invoice_date: now,
@@ -394,6 +395,7 @@ export const BookingEdit: React.FC = () => {
       const { error } = await supabaseClient
         .from('bookings')
         .update({
+          status: 'authorized',
           payment_status: 'paid',
           paid_date: new Date().toISOString()
         })
