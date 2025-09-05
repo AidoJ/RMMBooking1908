@@ -152,6 +152,10 @@ export const CalendarBookingManagement: React.FC = () => {
       const startOfWeek = currentDate.startOf('week');
       const endOfWeek = currentDate.endOf('week');
       
+      // Use date format instead of full ISO string to avoid timezone issues
+      const startDate = startOfWeek.format('YYYY-MM-DD');
+      const endDate = endOfWeek.format('YYYY-MM-DD');
+      
       let query = supabaseClient
         .from('bookings')
         .select(`
@@ -160,8 +164,8 @@ export const CalendarBookingManagement: React.FC = () => {
           customers(first_name, last_name, phone),
           services(name)
         `)
-        .gte('booking_time', startOfWeek.toISOString())
-        .lte('booking_time', endOfWeek.toISOString());
+        .gte('booking_time', startDate)
+        .lte('booking_time', endDate + 'T23:59:59.999Z');
 
       // Filter by therapist if selected
       if (selectedTherapistId !== 'all') {
