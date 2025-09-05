@@ -12,7 +12,7 @@
   "event_type": "{{event_type}}",                          // Corporate wellness, etc.
   
   // Quote Information
-  "quote_reference": "{{quote_reference}}",                // Quote ID (e.g., ABC123)
+  "quote_reference": "{{quote_reference}}",                // Quote ID (e.g., RQ25090001)
   "quote_amount": "{{quote_amount}}",                       // Total price (e.g., $900.00)
   "quote_expiry_date": "{{quote_expiry_date}}",            // 30 days from creation
   
@@ -50,7 +50,7 @@
 // online_quote_url: /.netlify/functions/generate-quote-pdf?id={{booking_id}}
 
 // Email Subject Line:
-// "Your Corporate Massage Quote #{{quote_reference}} - {{business_name}}"
+// "Your Corporate Massage Quote {{quote_reference}} - {{business_name}}"
 
 // Attachment:
 // PDF file generated from the same quote data (static version for records)

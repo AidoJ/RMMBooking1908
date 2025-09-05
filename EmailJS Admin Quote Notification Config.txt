@@ -20,7 +20,7 @@ RESPONSE DATA:
 - {{response_timestamp}} - When customer responded
 
 QUOTE INFORMATION:
-- {{quote_reference}} - Quote ID (e.g., RMM-ABC123)
+- {{quote_reference}} - Quote ID (e.g., RQ25090001)
 - {{business_name}} - Customer company name
 - {{contact_name}} - Customer contact person
 - {{contact_email}} - Customer email address  
@@ -43,8 +43,8 @@ EMAIL SUBJECT LINE:
 "Quote {{response_action}}: {{business_name}} - {{quote_reference}}"
 
 EXAMPLE SUBJECTS:
-- "Quote Accepted: ABC Corp - RMM-ABC123"
-- "Quote Declined: XYZ Ltd - RMM-XYZ789"
+- "Quote Accepted: ABC Corp - RQ25090001"
+- "Quote Declined: XYZ Ltd - RQ25090002"
 
 TEMPLATE SETUP INSTRUCTIONS:
 ============================
@@ -69,7 +69,7 @@ Use this sample data to test the template:
   "response_action_lower": "accepted", 
   "response_icon": "✅",
   "response_timestamp": "30/08/2025 2:30 PM",
-  "quote_reference": "RMM-TEST123",
+  "quote_reference": "RQ25080001",
   "business_name": "Test Company Ltd",
   "contact_name": "John Smith",
   "contact_email": "john@testcompany.com",

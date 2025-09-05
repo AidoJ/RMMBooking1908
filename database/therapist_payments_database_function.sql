@@ -49,7 +49,7 @@ BEGIN
     WITH weekly_data AS (
         -- Get RB fees from bookings table (simple approach)
         SELECT 
-            b.therapist_id,
+            tp.user_id as therapist_id,
             tp.first_name || ' ' || tp.last_name as therapist_name,
             date_trunc('week', b.booking_time::date)::date + 1 as week_start_calc,
             (date_trunc('week', b.booking_time::date)::date + 1) + 6 as week_end_calc,

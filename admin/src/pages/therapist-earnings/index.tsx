@@ -27,6 +27,7 @@ import { useGetIdentity } from '@refinedev/core';
 import { UserIdentity } from '../../utils/roleUtils';
 import { RoleGuard } from '../../components/RoleGuard';
 import { TherapistPaymentService, WeeklyPaymentData } from '../../services/therapistPaymentService';
+import { supabaseClient } from '../../utility';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -51,29 +52,27 @@ export const TherapistEarnings: React.FC = () => {
   }, [identity?.id, currentWeek]);
 
   const loadPaymentData = async () => {
-    console.log('🔍 DEBUG - Identity object:', identity);
-    console.log('🔍 DEBUG - User ID (should match therapist_id):', identity?.id);
-    
-    if (!identity?.id) {
-      console.log('❌ No user ID found in identity');
-      return;
-    }
+    if (!identity?.id) return;
     
     try {
       setLoading(true);
+      
+      // Get therapist profile ID (same as calendar)
+      const { data: profileData } = await supabaseClient
+        .from('therapist_profiles')
+        .select('id')
+        .eq('user_id', identity.id)
+        .single();
+
+      if (!profileData) return;
+
       const data = await TherapistPaymentService.getWeeklyPaymentData(
         currentWeek.start,
         currentWeek.end
       );
       
-      console.log('🔍 DEBUG - Payment data received:', data);
-      console.log('🔍 DEBUG - Available therapist IDs in payment data:', data.map(p => p.therapist_id));
-      console.log('🔍 DEBUG - Looking for therapist_id:', identity.id);
-      
-      // Find this therapist's payment data for the current week
-      const myPayment = data.find(p => p.therapist_id === identity.id);
-      console.log('🔍 DEBUG - Found my payment:', myPayment);
-      
+      // Find payment data using therapist profile id
+      const myPayment = data.find(p => p.therapist_id === profileData.id);
       setCurrentWeekData(myPayment || null);
     } catch (error: any) {
       console.error('Error loading payment data:', error);
@@ -87,13 +86,22 @@ export const TherapistEarnings: React.FC = () => {
     if (!identity?.id) return;
     
     try {
+      // Get therapist profile ID (same as calendar)
+      const { data: profileData } = await supabaseClient
+        .from('therapist_profiles')
+        .select('id')
+        .eq('user_id', identity.id)
+        .single();
+
+      if (!profileData) return;
+
       // Load last 12 weeks of payment history
       const endDate = new Date();
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - (12 * 7)); // 12 weeks ago
       
       const history = await TherapistPaymentService.getTherapistPaymentHistory(
-        identity.id,
+        profileData.id,
         startDate,
         endDate
       );

@@ -9,7 +9,8 @@ const TEMPLATE_IDS = {
   THERAPIST_REASSIGNED_OLD: 'template_brot-v1',
   THERAPIST_REASSIGNED_NEW: 'template_brnt-v1',
   CORPORATE_QUOTE: 'template_corporate_quote',
-  INVOICE: 'template_invoice'
+  INVOICE: 'template_invoice',
+  PAYMENT_CONFIRMATION: 'template_payment_confirmation'
 };
 
 // Declare emailjs as global variable (loaded via CDN)
@@ -484,6 +485,92 @@ export const EmailService = {
 
     } catch (error) {
       console.error('❌ Error sending invoice email:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  // Send payment confirmation email to customer
+  async sendPaymentConfirmation(bookingData: BookingData, paymentDetails: {
+    payment_method: string;
+    payment_amount: number;
+    payment_reference: string;
+    payment_date: string;
+  }): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      // Determine booking type and reference format
+      const isQuote = bookingData.booking_id?.startsWith('RQ') || false;
+      const bookingReference = bookingData.booking_id || bookingData.id;
+      
+      // Format event date and time
+      const eventDate = new Date(bookingData.booking_time).toLocaleDateString('en-AU', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long', 
+        day: 'numeric'
+      });
+      const eventTime = new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+      const templateParams = {
+        to_email: bookingData.customer_email || bookingData.corporate_contact_email,
+        to_name: bookingData.customer_name || bookingData.corporate_contact_name,
+        
+        // Payment details
+        payment_status: 'Payment Confirmed',
+        payment_method: paymentDetails.payment_method,
+        payment_amount: `$${paymentDetails.payment_amount.toFixed(2)}`,
+        payment_date: paymentDetails.payment_date,
+        payment_reference: paymentDetails.payment_reference,
+        
+        // Booking details  
+        booking_reference: bookingReference,
+        booking_type: isQuote ? 'Corporate Quote' : 'Booking',
+        service_type: bookingData.service_name || bookingData.event_type || 'Mobile Massage Service',
+        event_date: eventDate,
+        event_time: eventTime,
+        event_address: bookingData.address || 'Address TBD',
+        business_name: bookingData.business_name || 'Private Client',
+        customer_name: bookingData.customer_name || bookingData.corporate_contact_name,
+        
+        // Service details
+        number_of_massages: (bookingData.number_of_massages || 1).toString(),
+        duration_per_massage: `${bookingData.duration_per_massage || bookingData.duration_minutes || 60} minutes`,
+        expected_attendees: (bookingData.expected_attendees || 1).toString(),
+        therapist_name: bookingData.therapist_name || 'To be assigned',
+        
+        // Payment breakdown
+        subtotal: `$${((bookingData.price || 0) + (bookingData.discount_amount || 0)).toFixed(2)}`,
+        discount_amount: bookingData.discount_amount ? `-$${bookingData.discount_amount.toFixed(2)}` : '$0.00',
+        gst_amount: `$${(bookingData.tax_rate_amount || 0).toFixed(2)}`,
+        total_amount: `$${(bookingData.price || 0).toFixed(2)}`,
+        
+        // Next steps
+        completion_status: isQuote ? 'Payment Received' : 'Booking Confirmed', 
+        next_steps_message: isQuote 
+          ? 'We will contact you within 24 hours to confirm final details and assign therapists for your corporate event.'
+          : 'Your therapist will contact you 24 hours before your appointment to confirm details.',
+        contact_info: '1300 302 542 or info@rejuvenators.com',
+        
+        from_name: 'Rejuvenators Mobile Massage',
+        reply_to: 'info@rejuvenators.com'
+      };
+
+      console.log('📧 Sending payment confirmation email with params:', templateParams);
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.PAYMENT_CONFIRMATION,
+        templateParams
+      );
+
+      console.log('✅ Payment confirmation email sent:', response);
+      return { success: true };
+
+    } catch (error) {
+      console.error('❌ Error sending payment confirmation email:', error);
       return { success: false, error: (error as Error).message };
     }
   }
