@@ -294,121 +294,51 @@ export class TherapistPaymentService {
     try {
       const jobs: JobBreakdownData[] = [];
 
-      // Get RB (booking) records
-      let bookingQuery = supabaseClient
+      // Get RB (booking) records - simplified
+      const { data: bookings } = await supabaseClient
         .from('bookings')
-        .select(`
-          id,
-          booking_id,
-          booking_time,
-          status,
-          therapist_fee,
-          customers(first_name, last_name),
-          services(name),
-          therapist_payments!weekly_payment_id(payment_status, paid_amount, payment_date, invoice_number)
-        `)
+        .select('id, booking_id, booking_time, status, therapist_fee')
         .eq('therapist_id', therapistId)
-        .gt('therapist_fee', 0);
+        .gt('therapist_fee', 0)
+        .order('booking_time', { ascending: false });
 
-      if (startDate) {
-        bookingQuery = bookingQuery.gte('booking_time', startDate.toISOString().split('T')[0]);
-      }
-      if (endDate) {
-        bookingQuery = bookingQuery.lte('booking_time', endDate.toISOString().split('T')[0]);
-      }
-
-      const { data: bookings, error: bookingError } = await bookingQuery
-        .order('booking_time', { ascending: false })
-        .limit(limit / 2);
-
-      if (bookingError) throw bookingError;
-
-      // Transform booking data
       if (bookings) {
-        jobs.push(...bookings.map(booking => {
-          const customer = Array.isArray(booking.customers) ? booking.customers[0] : booking.customers;
-          const service = Array.isArray(booking.services) ? booking.services[0] : booking.services;
-          const payment = Array.isArray(booking.therapist_payments) ? booking.therapist_payments[0] : booking.therapist_payments;
-          
-          return {
-            id: booking.id,
-            job_number: booking.booking_id || `RB${booking.id.slice(-6)}`,
-            job_type: 'booking' as const,
-            booking_time: booking.booking_time,
-            customer_name: customer ? 
-              `${customer.first_name} ${customer.last_name}` : 'Unknown',
-            service_name: service?.name || 'Unknown Service',
-            status: booking.status,
-            therapist_fee: booking.therapist_fee,
-            payment_status: payment?.payment_status || 'pending',
-            paid_amount: payment?.paid_amount,
-            payment_date: payment?.payment_date,
-            invoice_number: payment?.invoice_number
-          };
-        }));
+        jobs.push(...bookings.map(booking => ({
+          id: booking.id,
+          job_number: booking.booking_id || `RB${booking.id.slice(-6)}`,
+          job_type: 'booking' as const,
+          booking_time: booking.booking_time,
+          customer_name: 'Customer',
+          service_name: 'Service',
+          status: booking.status,
+          therapist_fee: booking.therapist_fee,
+          payment_status: 'pending' as const,
+        })));
       }
 
-      // Get RQ (assignment) records
-      let assignmentQuery = supabaseClient
+      // Get RQ (assignment) records - simplified  
+      const { data: assignments } = await supabaseClient
         .from('booking_therapist_assignments')
-        .select(`
-          id,
-          booking_id,
-          status,
-          therapist_fee,
-          hours_worked,
-          confirmed_at,
-          bookings!inner(
-            booking_time,
-            customers(first_name, last_name),
-            services(name)
-          ),
-          therapist_payments!weekly_payment_id(payment_status, paid_amount, payment_date, invoice_number)
-        `)
+        .select('id, booking_id, status, therapist_fee, hours_worked, confirmed_at')
         .eq('therapist_id', therapistId)
-        .gt('therapist_fee', 0);
+        .gt('therapist_fee', 0)
+        .order('confirmed_at', { ascending: false });
 
-      if (startDate || endDate) {
-        // Need to join with bookings to filter by date
-        assignmentQuery = assignmentQuery
-          .gte('bookings.booking_time', startDate?.toISOString().split('T')[0] || '1900-01-01')
-          .lte('bookings.booking_time', endDate?.toISOString().split('T')[0] || '2099-12-31');
-      }
-
-      const { data: assignments, error: assignmentError } = await assignmentQuery
-        .order('confirmed_at', { ascending: false })
-        .limit(limit / 2);
-
-      if (assignmentError) throw assignmentError;
-
-      // Transform assignment data
       if (assignments) {
-        jobs.push(...assignments.map(assignment => {
-          const booking = Array.isArray(assignment.bookings) ? assignment.bookings[0] : assignment.bookings;
-          const customer = booking && Array.isArray(booking.customers) ? booking.customers[0] : booking?.customers;
-          const service = booking && Array.isArray(booking.services) ? booking.services[0] : booking?.services;
-          const payment = Array.isArray(assignment.therapist_payments) ? assignment.therapist_payments[0] : assignment.therapist_payments;
-          
-          return {
-            id: assignment.id,
-            job_number: `RQ${assignment.booking_id.slice(-6)}`,
-            job_type: 'assignment' as const,
-            booking_time: booking?.booking_time || assignment.confirmed_at,
-            customer_name: customer ? 
-              `${customer.first_name} ${customer.last_name}` : 'Unknown',
-            service_name: service?.name || 'Unknown Service',
-            status: assignment.status,
-            therapist_fee: assignment.therapist_fee,
-            hours_worked: assignment.hours_worked,
-            payment_status: payment?.payment_status || 'pending',
-            paid_amount: payment?.paid_amount,
-            payment_date: payment?.payment_date,
-            invoice_number: payment?.invoice_number
-          };
-        }));
+        jobs.push(...assignments.map(assignment => ({
+          id: assignment.id,
+          job_number: `RQ${assignment.booking_id.slice(-6)}`,
+          job_type: 'assignment' as const,
+          booking_time: assignment.confirmed_at,
+          customer_name: 'Customer',
+          service_name: 'Service',
+          status: assignment.status,
+          therapist_fee: assignment.therapist_fee,
+          hours_worked: assignment.hours_worked,
+          payment_status: 'pending' as const,
+        })));
       }
 
-      // Sort by booking time (most recent first)
       return jobs.sort((a, b) => 
         new Date(b.booking_time).getTime() - new Date(a.booking_time).getTime()
       );
