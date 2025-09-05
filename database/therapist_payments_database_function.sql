@@ -47,12 +47,12 @@ BEGIN
     -- Create a temporary table to hold our aggregated data
     CREATE TEMP TABLE temp_weekly_aggregation AS
     WITH weekly_data AS (
-        -- Get RB fees from completed bookings (regular bookings)
+        -- Get RB fees from bookings table (simple approach)
         SELECT 
             b.therapist_id,
             tp.first_name || ' ' || tp.last_name as therapist_name,
-            date_trunc('week', b.completed_at::date)::date + 1 as week_start_calc,
-            (date_trunc('week', b.completed_at::date)::date + 1) + 6 as week_end_calc,
+            date_trunc('week', b.booking_time::date)::date + 1 as week_start_calc,
+            (date_trunc('week', b.booking_time::date)::date + 1) + 6 as week_end_calc,
             b.therapist_fee,
             b.id as source_booking_id,
             NULL::uuid as source_assignment_id,
@@ -61,21 +61,20 @@ BEGIN
             'booking' as source_type
         FROM bookings b
         JOIN therapist_profiles tp ON b.therapist_id = tp.id
-        WHERE b.status = 'completed' 
-            AND b.therapist_fee > 0
-            AND b.completed_at IS NOT NULL
-            AND b.completed_at::date BETWEEN start_date AND end_date
-            AND b.weekly_payment_id IS NULL -- Only unlinked fees
+        WHERE b.therapist_fee > 0
             AND b.therapist_id IS NOT NULL
+            AND DATE(b.booking_time) >= start_date 
+            AND DATE(b.booking_time) <= end_date
+            AND b.weekly_payment_id IS NULL -- Only unlinked fees
         
         UNION ALL
         
-        -- Get RQ fees from completed assignments (quote work)
+        -- Get RQ fees from assignments table (simple approach)
         SELECT 
             bta.therapist_id,
             tp.first_name || ' ' || tp.last_name as therapist_name,
-            date_trunc('week', bta.confirmed_at::date)::date + 1 as week_start_calc,
-            (date_trunc('week', bta.confirmed_at::date)::date + 1) + 6 as week_end_calc,
+            date_trunc('week', b.booking_time::date)::date + 1 as week_start_calc,
+            (date_trunc('week', b.booking_time::date)::date + 1) + 6 as week_end_calc,
             bta.therapist_fee,
             bta.booking_id as source_booking_id,
             bta.id as source_assignment_id,
@@ -85,13 +84,11 @@ BEGIN
         FROM booking_therapist_assignments bta
         JOIN bookings b ON bta.booking_id = b.id
         JOIN therapist_profiles tp ON bta.therapist_id = tp.id
-        WHERE bta.status = 'completed' 
-            AND bta.therapist_fee > 0
-            AND b.quote_only = true -- Only quote work
-            AND bta.confirmed_at IS NOT NULL
-            AND bta.confirmed_at::date BETWEEN start_date AND end_date
-            AND bta.weekly_payment_id IS NULL -- Only unlinked fees
+        WHERE bta.therapist_fee > 0
             AND bta.therapist_id IS NOT NULL
+            AND DATE(b.booking_time) >= start_date 
+            AND DATE(b.booking_time) <= end_date
+            AND bta.weekly_payment_id IS NULL -- Only unlinked fees
     )
     -- Aggregate by therapist and week
     SELECT 

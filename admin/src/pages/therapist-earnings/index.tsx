@@ -51,7 +51,14 @@ export const TherapistEarnings: React.FC = () => {
   }, [identity?.therapist_id, currentWeek]);
 
   const loadPaymentData = async () => {
-    if (!identity?.therapist_id) return;
+    console.log('🔍 DEBUG - Identity object:', identity);
+    console.log('🔍 DEBUG - Therapist ID:', identity?.therapist_id);
+    console.log('🔍 DEBUG - User ID:', identity?.id);
+    
+    if (!identity?.therapist_id) {
+      console.log('❌ No therapist_id found in identity');
+      return;
+    }
     
     try {
       setLoading(true);
@@ -60,8 +67,13 @@ export const TherapistEarnings: React.FC = () => {
         currentWeek.end
       );
       
+      console.log('🔍 DEBUG - Payment data received:', data);
+      console.log('🔍 DEBUG - Looking for therapist_id:', identity.therapist_id);
+      
       // Find this therapist's payment data for the current week
       const myPayment = data.find(p => p.therapist_id === identity.therapist_id);
+      console.log('🔍 DEBUG - Found my payment:', myPayment);
+      
       setCurrentWeekData(myPayment || null);
     } catch (error: any) {
       console.error('Error loading payment data:', error);
