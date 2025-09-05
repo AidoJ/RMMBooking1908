@@ -859,8 +859,8 @@ export const EnhancedBookingList = () => {
         </div>
       )}
 
-      {/* Show access denied only if explicitly not allowed AND not super_admin */}
-      {!canAccess(userRole, 'canViewAllBookings') && userRole !== 'super_admin' ? (
+      {/* Show access denied only if user can't view any bookings */}
+      {!canAccess(userRole, 'canViewAllBookings') && !canAccess(userRole, 'canViewOwnBookings') && userRole !== 'super_admin' ? (
         <div style={{ padding: 24, textAlign: 'center' }}>
           <Title level={3}>Access Denied</Title>
           <Text>You don't have permission to access this page.</Text>
