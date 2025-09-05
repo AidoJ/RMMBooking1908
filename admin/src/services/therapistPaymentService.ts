@@ -294,49 +294,78 @@ export class TherapistPaymentService {
     try {
       const jobs: JobBreakdownData[] = [];
 
-      // Get RB (booking) records - simplified
+      // Get RB (booking) records with payment info
       const { data: bookings } = await supabaseClient
         .from('bookings')
-        .select('id, booking_id, booking_time, status, therapist_fee')
+        .select(`
+          id, 
+          booking_id, 
+          booking_time, 
+          status, 
+          therapist_fee,
+          weekly_payment_id,
+          therapist_payments!weekly_payment_id(payment_status, paid_amount, payment_date, invoice_number)
+        `)
         .eq('therapist_id', therapistId)
         .gt('therapist_fee', 0)
         .order('booking_time', { ascending: false });
 
       if (bookings) {
-        jobs.push(...bookings.map(booking => ({
-          id: booking.id,
-          job_number: booking.booking_id || `RB${booking.id.slice(-6)}`,
-          job_type: 'booking' as const,
-          booking_time: booking.booking_time,
-          customer_name: 'Customer',
-          service_name: 'Service',
-          status: booking.status,
-          therapist_fee: booking.therapist_fee,
-          payment_status: 'pending' as const,
-        })));
+        jobs.push(...bookings.map(booking => {
+          const payment = booking.therapist_payments;
+          return {
+            id: booking.id,
+            job_number: booking.booking_id || `RB${booking.id.slice(-6)}`,
+            job_type: 'booking' as const,
+            booking_time: booking.booking_time,
+            customer_name: 'Customer',
+            service_name: 'Service',
+            status: booking.status,
+            therapist_fee: booking.therapist_fee,
+            payment_status: payment?.payment_status || 'pending',
+            paid_amount: payment?.paid_amount,
+            payment_date: payment?.payment_date,
+            invoice_number: payment?.invoice_number,
+          };
+        }));
       }
 
-      // Get RQ (assignment) records - simplified  
+      // Get RQ (assignment) records with payment info  
       const { data: assignments } = await supabaseClient
         .from('booking_therapist_assignments')
-        .select('id, booking_id, status, therapist_fee, hours_worked, confirmed_at')
+        .select(`
+          id, 
+          booking_id, 
+          status, 
+          therapist_fee, 
+          hours_worked, 
+          confirmed_at,
+          weekly_payment_id,
+          therapist_payments!weekly_payment_id(payment_status, paid_amount, payment_date, invoice_number)
+        `)
         .eq('therapist_id', therapistId)
         .gt('therapist_fee', 0)
         .order('confirmed_at', { ascending: false });
 
       if (assignments) {
-        jobs.push(...assignments.map(assignment => ({
-          id: assignment.id,
-          job_number: `RQ${assignment.booking_id.slice(-6)}`,
-          job_type: 'assignment' as const,
-          booking_time: assignment.confirmed_at,
-          customer_name: 'Customer',
-          service_name: 'Service',
-          status: assignment.status,
-          therapist_fee: assignment.therapist_fee,
-          hours_worked: assignment.hours_worked,
-          payment_status: 'pending' as const,
-        })));
+        jobs.push(...assignments.map(assignment => {
+          const payment = assignment.therapist_payments;
+          return {
+            id: assignment.id,
+            job_number: `RQ${assignment.booking_id.slice(-6)}`,
+            job_type: 'assignment' as const,
+            booking_time: assignment.confirmed_at,
+            customer_name: 'Customer',
+            service_name: 'Service',
+            status: assignment.status,
+            therapist_fee: assignment.therapist_fee,
+            hours_worked: assignment.hours_worked,
+            payment_status: payment?.payment_status || 'pending',
+            paid_amount: payment?.paid_amount,
+            payment_date: payment?.payment_date,
+            invoice_number: payment?.invoice_number,
+          };
+        }));
       }
 
       return jobs.sort((a, b) => 
