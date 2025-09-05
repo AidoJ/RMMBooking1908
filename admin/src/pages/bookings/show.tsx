@@ -394,6 +394,22 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
 
         if (bookingError) throw bookingError;
 
+        // Update any related therapist assignments to completed status
+        const { error: assignmentError } = await supabaseClient
+          .from('booking_therapist_assignments')
+          .update({
+            status: 'completed',
+            confirmed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('booking_id', booking.id)
+          .in('status', ['assigned', 'confirmed']); // Only update pending assignments
+
+        if (assignmentError) {
+          console.warn('Warning: Failed to update assignment status:', assignmentError);
+          // Don't fail the entire operation if assignment update fails
+        }
+
         // Add to status history
         const { error: historyError } = await supabaseClient
           .from('booking_status_history')

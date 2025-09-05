@@ -105,7 +105,18 @@ exports.handler = async (event, context) => {
       throw new Error('Database update failed after payment capture');
     }
 
-    // Step 4: Add to booking status history
+    // Step 4: Update any related therapist assignments to completed status
+    await supabase
+      .from('booking_therapist_assignments')
+      .update({
+        status: 'completed',
+        confirmed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .eq('booking_id', booking.id)
+      .in('status', ['assigned', 'confirmed']); // Only update pending assignments
+
+    // Step 5: Add to booking status history
     await supabase
       .from('booking_status_history')
       .insert({

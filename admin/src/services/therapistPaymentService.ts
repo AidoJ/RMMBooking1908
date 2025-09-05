@@ -65,215 +65,11 @@ export class TherapistPaymentService {
     return this.getWeekBounds(new Date(dateString));
   }
 
-  /**
-   * Fetch all therapist fees from BOTH bookings table (RB) and assignments table (RQ)
-   * for a given week that haven't been linked to a payment record yet
-   */
-  static async getCompletedAssignmentsForWeek(
-    weekStart: Date, 
-    weekEnd: Date, 
-    therapistId?: string
-  ): Promise<TherapistAssignment[]> {
-    try {
-      const assignments: TherapistAssignment[] = [];
-
-      // 1. GET RB FEES FROM BOOKINGS TABLE (Regular bookings)
-      let bookingsQuery = supabaseClient
-        .from('bookings')
-        .select(`
-          id,
-          booking_id,
-          therapist_id,
-          status,
-          therapist_fee,
-          booking_time,
-          completed_at
-        `)
-        .eq('status', 'completed')
-        .not('therapist_fee', 'is', null)
-        .gte('booking_time', weekStart.toISOString())
-        .lte('booking_time', weekEnd.toISOString());
-
-      if (therapistId) {
-        bookingsQuery = bookingsQuery.eq('therapist_id', therapistId);
-      }
-
-      const { data: bookingsData, error: bookingsError } = await bookingsQuery;
-
-      if (bookingsError) {
-        console.error('Error fetching completed bookings:', bookingsError);
-        throw bookingsError;
-      }
-
-      // Convert bookings to assignment format
-      (bookingsData || []).forEach(booking => {
-        assignments.push({
-          id: `booking_${booking.id}`, // Unique ID for bookings
-          booking_id: booking.booking_id,
-          therapist_id: booking.therapist_id,
-          status: 'completed',
-          therapist_fee: booking.therapist_fee || 0,
-          hours_worked: 0, // Not tracked for regular bookings
-          confirmed_at: booking.completed_at,
-          booking_time: booking.booking_time,
-          weekly_payment_id: undefined
-        });
-      });
-
-      // 2. GET RQ FEES FROM ASSIGNMENTS TABLE (Quote work)
-      let assignmentsQuery = supabaseClient
-        .from('booking_therapist_assignments')
-        .select(`
-          id,
-          booking_id,
-          therapist_id,
-          status,
-          therapist_fee,
-          hours_worked,
-          confirmed_at,
-          weekly_payment_id,
-          bookings!inner(
-            booking_time,
-            status,
-            quote_only
-          )
-        `)
-        .eq('status', 'completed')
-        .is('weekly_payment_id', null) // Only get assignments not yet linked to payments
-        .gte('bookings.booking_time', weekStart.toISOString())
-        .lte('bookings.booking_time', weekEnd.toISOString())
-        .eq('bookings.quote_only', true); // Only quote work
-
-      if (therapistId) {
-        assignmentsQuery = assignmentsQuery.eq('therapist_id', therapistId);
-      }
-
-      const { data: assignmentsData, error: assignmentsError } = await assignmentsQuery;
-
-      if (assignmentsError) {
-        console.error('Error fetching completed assignments:', assignmentsError);
-        throw assignmentsError;
-      }
-
-      // Add quote assignments to the list
-      (assignmentsData || []).forEach(assignment => {
-        assignments.push({
-          id: assignment.id,
-          booking_id: assignment.booking_id,
-          therapist_id: assignment.therapist_id,
-          status: assignment.status,
-          therapist_fee: assignment.therapist_fee || 0,
-          hours_worked: assignment.hours_worked || 0,
-          confirmed_at: assignment.confirmed_at,
-          booking_time: (assignment.bookings as any).booking_time,
-          weekly_payment_id: assignment.weekly_payment_id
-        });
-      });
-
-      console.log(`📊 Found ${bookingsData?.length || 0} completed bookings (RB) and ${assignmentsData?.length || 0} completed assignments (RQ) for week`);
-      
-      return assignments;
-
-    } catch (error) {
-      console.error('Error in getCompletedAssignmentsForWeek:', error);
-      throw error;
-    }
-  }
+  // Note: Complex payment generation methods have been replaced by database functions
+  // See: generate_weekly_payments_for_date_range() in therapist_payments_database_function.sql
 
   /**
-   * Calculate weekly payment totals for a therapist
-   */
-  static calculateWeeklyTotals(assignments: TherapistAssignment[]): {
-    total_assignments: number;
-    total_hours: number;
-    total_fee: number;
-  } {
-    return {
-      total_assignments: assignments.length,
-      total_hours: assignments.reduce((sum, assignment) => sum + (assignment.hours_worked || 0), 0),
-      total_fee: assignments.reduce((sum, assignment) => sum + (assignment.therapist_fee || 0), 0)
-    };
-  }
-
-  /**
-   * Generate weekly payment record for a single therapist
-   */
-  static async generateWeeklyPaymentForTherapist(
-    therapistId: string,
-    weekStart: Date,
-    weekEnd: Date
-  ): Promise<string | null> {
-    try {
-      // Get completed assignments for this therapist and week
-      const assignments = await this.getCompletedAssignmentsForWeek(weekStart, weekEnd, therapistId);
-
-      if (assignments.length === 0) {
-        console.log(`No completed assignments found for therapist ${therapistId} in week ${weekStart.toISOString().split('T')[0]}`);
-        return null;
-      }
-
-      // Calculate totals
-      const totals = this.calculateWeeklyTotals(assignments);
-
-      // Check if payment record already exists
-      const { data: existingPayment } = await supabaseClient
-        .from('therapist_payments')
-        .select('id')
-        .eq('therapist_id', therapistId)
-        .eq('week_start_date', weekStart.toISOString().split('T')[0])
-        .eq('week_end_date', weekEnd.toISOString().split('T')[0])
-        .single();
-
-      if (existingPayment) {
-        console.log(`Payment record already exists for therapist ${therapistId} for week ${weekStart.toISOString().split('T')[0]}`);
-        return existingPayment.id;
-      }
-
-      // Create weekly payment record
-      const { data: paymentRecord, error: paymentError } = await supabaseClient
-        .from('therapist_payments')
-        .insert({
-          therapist_id: therapistId,
-          week_start_date: weekStart.toISOString().split('T')[0],
-          week_end_date: weekEnd.toISOString().split('T')[0],
-          total_assignments: totals.total_assignments,
-          total_hours: totals.total_hours,
-          total_fee: totals.total_fee,
-          payment_status: 'pending'
-        })
-        .select('id')
-        .single();
-
-      if (paymentError) {
-        console.error('Error creating payment record:', paymentError);
-        throw paymentError;
-      }
-
-      const paymentId = paymentRecord.id;
-
-      // Link all assignments to this payment record
-      const assignmentIds = assignments.map(a => a.id);
-      const { error: linkError } = await supabaseClient
-        .from('booking_therapist_assignments')
-        .update({ weekly_payment_id: paymentId })
-        .in('id', assignmentIds);
-
-      if (linkError) {
-        console.error('Error linking assignments to payment:', linkError);
-        throw linkError;
-      }
-
-      console.log(`Created payment record ${paymentId} for therapist ${therapistId} with ${assignments.length} assignments`);
-      return paymentId;
-
-    } catch (error) {
-      console.error('Error generating weekly payment for therapist:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Generate weekly payments for all therapists with completed assignments
+   * Generate weekly payments for all therapists using database function
    */
   static async generateWeeklyPaymentsForAllTherapists(
     weekStart?: Date,
@@ -283,46 +79,33 @@ export class TherapistPaymentService {
       // Use current week if no dates provided
       const week = weekStart && weekEnd ? { start: weekStart, end: weekEnd } : this.getCurrentWeek();
       
-      // Get all therapists who have completed assignments in this week
-      const assignments = await this.getCompletedAssignmentsForWeek(week.start, week.end);
+      console.log(`📊 Generating weekly payments using database function for week ${week.start.toISOString().split('T')[0]} to ${week.end.toISOString().split('T')[0]}`);
       
-      // Group assignments by therapist
-      const therapistAssignments = assignments.reduce((acc, assignment) => {
-        if (!acc[assignment.therapist_id]) {
-          acc[assignment.therapist_id] = [];
-        }
-        acc[assignment.therapist_id].push(assignment);
-        return acc;
-      }, {} as Record<string, TherapistAssignment[]>);
+      // Call the database function to do the heavy lifting
+      const { data, error } = await supabaseClient
+        .rpc('generate_weekly_payments_for_date_range', {
+          start_date: week.start.toISOString().split('T')[0],
+          end_date: week.end.toISOString().split('T')[0]
+        });
 
-      const paymentIds: string[] = [];
-      const errors: string[] = [];
-
-      // Generate payment record for each therapist
-      for (const therapistId of Object.keys(therapistAssignments)) {
-        try {
-          const paymentId = await this.generateWeeklyPaymentForTherapist(
-            therapistId,
-            week.start,
-            week.end
-          );
-          
-          if (paymentId) {
-            paymentIds.push(paymentId);
-          }
-        } catch (error: any) {
-          errors.push(`Therapist ${therapistId}: ${error.message}`);
-        }
+      if (error) {
+        console.error('Database function error:', error);
+        throw error;
       }
 
+      const paymentIds = (data || []).map((row: any) => row.payment_id);
+      const therapistNames = (data || []).map((row: any) => row.therapist_name);
+      
+      console.log(`✅ Generated ${paymentIds.length} payment records for therapists: ${therapistNames.join(', ')}`);
+      
       return {
-        success: errors.length === 0,
+        success: true,
         paymentIds,
-        errors
+        errors: []
       };
 
     } catch (error: any) {
-      console.error('Error generating weekly payments for all therapists:', error);
+      console.error('Error calling database payment generation:', error);
       return {
         success: false,
         paymentIds: [],
