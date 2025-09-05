@@ -67,6 +67,7 @@ export const TherapistEarnings: React.FC = () => {
       );
       
       console.log('🔍 DEBUG - Payment data received:', data);
+      console.log('🔍 DEBUG - Available therapist IDs in payment data:', data.map(p => p.therapist_id));
       console.log('🔍 DEBUG - Looking for therapist_id:', identity.id);
       
       // Find this therapist's payment data for the current week
