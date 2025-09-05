@@ -43,6 +43,85 @@ import {
 } from '@ant-design/icons';
 import { useGetIdentity, useNavigation, useShow } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
+import { TherapistPaymentService } from '../../services/therapistPaymentService';
+
+// Helper function to create or update payment records when jobs are completed
+const createOrUpdatePaymentRecord = async (booking: any) => {
+  if (!booking.therapist_id || !booking.therapist_fee || booking.therapist_fee <= 0) {
+    return; // Skip if no therapist or no fee
+  }
+
+  try {
+    // Get week bounds for this booking
+    const bookingDate = new Date(booking.booking_time);
+    const weekBounds = TherapistPaymentService.getWeekBounds(bookingDate);
+    
+    // Check if payment record already exists for this therapist and week
+    const { data: existingPayment, error: searchError } = await supabaseClient
+      .from('therapist_payments')
+      .select('id, total_assignments, total_hours, total_fee')
+      .eq('therapist_id', booking.therapist_id)
+      .eq('week_start_date', weekBounds.start.toISOString().split('T')[0])
+      .eq('week_end_date', weekBounds.end.toISOString().split('T')[0])
+      .single();
+
+    if (searchError && searchError.code !== 'PGRST116') { // PGRST116 = no rows found
+      throw searchError;
+    }
+
+    let paymentRecordId;
+
+    if (existingPayment) {
+      // Update existing payment record
+      const { data: updatedPayment, error: updateError } = await supabaseClient
+        .from('therapist_payments')
+        .update({
+          total_assignments: existingPayment.total_assignments + 1,
+          total_hours: existingPayment.total_hours, // Hours handled by assignments
+          total_fee: existingPayment.total_fee + booking.therapist_fee,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existingPayment.id)
+        .select('id')
+        .single();
+
+      if (updateError) throw updateError;
+      paymentRecordId = updatedPayment.id;
+    } else {
+      // Create new payment record
+      const { data: newPayment, error: createError } = await supabaseClient
+        .from('therapist_payments')
+        .insert({
+          therapist_id: booking.therapist_id,
+          week_start_date: weekBounds.start.toISOString().split('T')[0],
+          week_end_date: weekBounds.end.toISOString().split('T')[0],
+          total_assignments: 1,
+          total_hours: 0, // Will be updated by assignment completion
+          total_fee: booking.therapist_fee,
+          payment_status: 'pending',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('id')
+        .single();
+
+      if (createError) throw createError;
+      paymentRecordId = newPayment.id;
+    }
+
+    // Link the booking to the payment record
+    await supabaseClient
+      .from('bookings')
+      .update({ weekly_payment_id: paymentRecordId })
+      .eq('id', booking.id);
+
+    console.log(`✅ Payment record ${existingPayment ? 'updated' : 'created'} for booking ${booking.booking_id}`);
+
+  } catch (error) {
+    console.error('Error creating/updating payment record:', error);
+    // Don't fail the job completion if payment record creation fails
+  }
+};
 import { UserIdentity, canAccess, isTherapist, isAdmin } from '../../utils/roleUtils';
 import { RoleGuard } from '../../components/RoleGuard';
 import dayjs, { Dayjs } from 'dayjs';
@@ -409,6 +488,9 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
           console.warn('Warning: Failed to update assignment status:', assignmentError);
           // Don't fail the entire operation if assignment update fails
         }
+
+        // Create or update payment record
+        await createOrUpdatePaymentRecord(booking);
 
         // Add to status history
         const { error: historyError } = await supabaseClient
