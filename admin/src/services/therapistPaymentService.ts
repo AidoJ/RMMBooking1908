@@ -312,7 +312,7 @@ export class TherapistPaymentService {
 
       if (bookings) {
         jobs.push(...bookings.map(booking => {
-          const payment = booking.therapist_payments;
+          const payment = Array.isArray(booking.therapist_payments) ? booking.therapist_payments[0] : booking.therapist_payments;
           return {
             id: booking.id,
             job_number: booking.booking_id || `RB${booking.id.slice(-6)}`,
@@ -349,7 +349,7 @@ export class TherapistPaymentService {
 
       if (assignments) {
         jobs.push(...assignments.map(assignment => {
-          const payment = assignment.therapist_payments;
+          const payment = Array.isArray(assignment.therapist_payments) ? assignment.therapist_payments[0] : assignment.therapist_payments;
           return {
             id: assignment.id,
             job_number: `RQ${assignment.booking_id.slice(-6)}`,
