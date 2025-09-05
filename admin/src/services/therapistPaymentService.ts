@@ -19,6 +19,22 @@ export interface WeeklyPaymentData {
   notes?: string;
 }
 
+export interface JobBreakdownData {
+  id: string;
+  job_number: string; // RB123456 or RQ123456
+  job_type: 'booking' | 'assignment';
+  booking_time: string;
+  customer_name: string;
+  service_name: string;
+  status: string;
+  therapist_fee: number;
+  hours_worked?: number;
+  payment_status: 'pending' | 'paid';
+  paid_amount?: number;
+  payment_date?: string;
+  invoice_number?: string;
+}
+
 export interface TherapistAssignment {
   id: string;
   booking_id: string;
@@ -262,6 +278,130 @@ export class TherapistPaymentService {
 
     } catch (error) {
       console.error('Error in getTherapistPaymentHistory:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get detailed job breakdown for a therapist (individual RB/RQ records)
+   */
+  static async getTherapistJobBreakdown(
+    therapistId: string,
+    startDate?: Date,
+    endDate?: Date,
+    limit: number = 50
+  ): Promise<JobBreakdownData[]> {
+    try {
+      const jobs: JobBreakdownData[] = [];
+
+      // Get RB (booking) records
+      let bookingQuery = supabaseClient
+        .from('bookings')
+        .select(`
+          id,
+          booking_id,
+          booking_time,
+          status,
+          therapist_fee,
+          customers(first_name, last_name),
+          services(name),
+          therapist_payments!weekly_payment_id(payment_status, paid_amount, payment_date, invoice_number)
+        `)
+        .eq('therapist_id', therapistId)
+        .gt('therapist_fee', 0);
+
+      if (startDate) {
+        bookingQuery = bookingQuery.gte('booking_time', startDate.toISOString().split('T')[0]);
+      }
+      if (endDate) {
+        bookingQuery = bookingQuery.lte('booking_time', endDate.toISOString().split('T')[0]);
+      }
+
+      const { data: bookings, error: bookingError } = await bookingQuery
+        .order('booking_time', { ascending: false })
+        .limit(limit / 2);
+
+      if (bookingError) throw bookingError;
+
+      // Transform booking data
+      if (bookings) {
+        jobs.push(...bookings.map(booking => ({
+          id: booking.id,
+          job_number: booking.booking_id || `RB${booking.id.slice(-6)}`,
+          job_type: 'booking' as const,
+          booking_time: booking.booking_time,
+          customer_name: booking.customers ? 
+            `${booking.customers.first_name} ${booking.customers.last_name}` : 'Unknown',
+          service_name: booking.services?.name || 'Unknown Service',
+          status: booking.status,
+          therapist_fee: booking.therapist_fee,
+          payment_status: booking.therapist_payments?.payment_status || 'pending',
+          paid_amount: booking.therapist_payments?.paid_amount,
+          payment_date: booking.therapist_payments?.payment_date,
+          invoice_number: booking.therapist_payments?.invoice_number
+        })));
+      }
+
+      // Get RQ (assignment) records
+      let assignmentQuery = supabaseClient
+        .from('booking_therapist_assignments')
+        .select(`
+          id,
+          booking_id,
+          status,
+          therapist_fee,
+          hours_worked,
+          confirmed_at,
+          bookings!inner(
+            booking_time,
+            customers(first_name, last_name),
+            services(name)
+          ),
+          therapist_payments!weekly_payment_id(payment_status, paid_amount, payment_date, invoice_number)
+        `)
+        .eq('therapist_id', therapistId)
+        .gt('therapist_fee', 0);
+
+      if (startDate || endDate) {
+        // Need to join with bookings to filter by date
+        assignmentQuery = assignmentQuery
+          .gte('bookings.booking_time', startDate?.toISOString().split('T')[0] || '1900-01-01')
+          .lte('bookings.booking_time', endDate?.toISOString().split('T')[0] || '2099-12-31');
+      }
+
+      const { data: assignments, error: assignmentError } = await assignmentQuery
+        .order('confirmed_at', { ascending: false })
+        .limit(limit / 2);
+
+      if (assignmentError) throw assignmentError;
+
+      // Transform assignment data
+      if (assignments) {
+        jobs.push(...assignments.map(assignment => ({
+          id: assignment.id,
+          job_number: `RQ${assignment.booking_id.slice(-6)}`,
+          job_type: 'assignment' as const,
+          booking_time: assignment.bookings.booking_time,
+          customer_name: assignment.bookings.customers ? 
+            `${assignment.bookings.customers.first_name} ${assignment.bookings.customers.last_name}` : 'Unknown',
+          service_name: assignment.bookings.services?.name || 'Unknown Service',
+          status: assignment.status,
+          therapist_fee: assignment.therapist_fee,
+          hours_worked: assignment.hours_worked,
+          payment_status: assignment.therapist_payments?.payment_status || 'pending',
+          paid_amount: assignment.therapist_payments?.paid_amount,
+          payment_date: assignment.therapist_payments?.payment_date,
+          invoice_number: assignment.therapist_payments?.invoice_number
+        })));
+      }
+
+      // Sort by booking time (most recent first)
+      return jobs.sort((a, b) => 
+        new Date(b.booking_time).getTime() - new Date(a.booking_time).getTime()
+      );
+
+    } catch (error) {
+      console.error('Error in getTherapistJobBreakdown:', error);
       throw error;
     }
   }

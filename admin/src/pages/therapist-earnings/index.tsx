@@ -26,7 +26,7 @@ import {
 import { useGetIdentity } from '@refinedev/core';
 import { UserIdentity } from '../../utils/roleUtils';
 import { RoleGuard } from '../../components/RoleGuard';
-import { TherapistPaymentService, WeeklyPaymentData } from '../../services/therapistPaymentService';
+import { TherapistPaymentService, WeeklyPaymentData, JobBreakdownData } from '../../services/therapistPaymentService';
 import { supabaseClient } from '../../utility';
 import dayjs from 'dayjs';
 
@@ -42,12 +42,14 @@ export const TherapistEarnings: React.FC = () => {
   );
   const [paymentHistory, setPaymentHistory] = useState<WeeklyPaymentData[]>([]);
   const [currentWeekData, setCurrentWeekData] = useState<WeeklyPaymentData | null>(null);
+  const [jobBreakdown, setJobBreakdown] = useState<JobBreakdownData[]>([]);
 
   // Load payment data when component mounts or week changes
   useEffect(() => {
     if (identity?.id) {
       loadPaymentData();
       loadPaymentHistory();
+      loadJobBreakdown();
     }
   }, [identity?.id, currentWeek]);
 
@@ -109,6 +111,37 @@ export const TherapistEarnings: React.FC = () => {
     } catch (error: any) {
       console.error('Error loading payment history:', error);
       message.error('Failed to load payment history: ' + error.message);
+    }
+  };
+
+  const loadJobBreakdown = async () => {
+    if (!identity?.id) return;
+    
+    try {
+      // Get therapist profile ID (same as calendar)
+      const { data: profileData } = await supabaseClient
+        .from('therapist_profiles')
+        .select('id')
+        .eq('user_id', identity.id)
+        .single();
+
+      if (!profileData) return;
+
+      // Load last 30 days of job breakdown
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 30); // Last 30 days
+      
+      const jobs = await TherapistPaymentService.getTherapistJobBreakdown(
+        profileData.id,
+        startDate,
+        endDate,
+        50
+      );
+      setJobBreakdown(jobs);
+    } catch (error: any) {
+      console.error('Error loading job breakdown:', error);
+      message.error('Failed to load job breakdown: ' + error.message);
     }
   };
 
@@ -211,6 +244,107 @@ export const TherapistEarnings: React.FC = () => {
           {record.paid_amount && record.paid_amount !== record.total_fee && (
             <div style={{ marginTop: 4, fontSize: '12px', color: '#666' }}>
               Paid: ${record.paid_amount.toFixed(2)}
+            </div>
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  const jobBreakdownColumns = [
+    {
+      title: 'Job Number',
+      dataIndex: 'job_number',
+      key: 'job_number',
+      render: (jobNumber: string, record: JobBreakdownData) => (
+        <div>
+          <Text strong>{jobNumber}</Text>
+          <br />
+          <Tag color={record.job_type === 'booking' ? 'blue' : 'green'}>
+            {record.job_type === 'booking' ? 'RB' : 'RQ'}
+          </Tag>
+        </div>
+      ),
+    },
+    {
+      title: 'Date',
+      dataIndex: 'booking_time',
+      key: 'booking_time',
+      render: (date: string) => (
+        <Text>{dayjs(date).format('MMM DD, YYYY')}</Text>
+      ),
+    },
+    {
+      title: 'Customer',
+      dataIndex: 'customer_name',
+      key: 'customer_name',
+      render: (name: string) => <Text>{name}</Text>,
+    },
+    {
+      title: 'Service',
+      dataIndex: 'service_name',
+      key: 'service_name',
+      render: (service: string) => <Text>{service}</Text>,
+    },
+    {
+      title: 'Hours',
+      dataIndex: 'hours_worked',
+      key: 'hours_worked',
+      align: 'center' as const,
+      render: (hours: number) => (
+        <Text>{hours ? hours.toFixed(1) : '-'}</Text>
+      ),
+    },
+    {
+      title: 'Fee',
+      dataIndex: 'therapist_fee',
+      key: 'therapist_fee',
+      align: 'right' as const,
+      render: (fee: number) => (
+        <Text strong style={{ color: '#52c41a', fontSize: '14px' }}>
+          ${fee.toFixed(2)}
+        </Text>
+      ),
+    },
+    {
+      title: 'Status',
+      dataIndex: 'status',
+      key: 'status',
+      align: 'center' as const,
+      render: (status: string) => {
+        const color = status === 'completed' ? 'success' : 
+                     status === 'confirmed' ? 'processing' : 'default';
+        return <Tag color={color}>{status}</Tag>;
+      },
+    },
+    {
+      title: 'Payment Status',
+      key: 'payment_info',
+      align: 'center' as const,
+      render: (_: any, record: JobBreakdownData) => (
+        <div>
+          {record.payment_status === 'paid' ? (
+            <Tag color="success" icon={<CheckCircleOutlined />}>
+              Paid
+            </Tag>
+          ) : (
+            <Tag color="orange" icon={<ClockCircleOutlined />}>
+              Pending
+            </Tag>
+          )}
+          {record.invoice_number && (
+            <div style={{ marginTop: 4, fontSize: '12px', color: '#666' }}>
+              Inv: {record.invoice_number}
+            </div>
+          )}
+          {record.paid_amount && (
+            <div style={{ marginTop: 2, fontSize: '12px', color: '#52c41a' }}>
+              ${record.paid_amount.toFixed(2)}
+            </div>
+          )}
+          {record.payment_date && (
+            <div style={{ marginTop: 2, fontSize: '12px', color: '#666' }}>
+              {dayjs(record.payment_date).format('MMM DD')}
             </div>
           )}
         </div>
@@ -417,6 +551,36 @@ export const TherapistEarnings: React.FC = () => {
                 showQuickJumper: true
               }}
               size="middle"
+            />
+          )}
+        </Card>
+
+        {/* Job Breakdown Table */}
+        <Card style={{ marginTop: '24px' }}>
+          <Title level={4} style={{ marginBottom: '16px' }}>
+            📋 Recent Jobs (Last 30 Days)
+          </Title>
+          
+          {jobBreakdown.length === 0 ? (
+            <Alert
+              message="No Recent Jobs"
+              description="No completed jobs found in the last 30 days."
+              type="info"
+              showIcon
+            />
+          ) : (
+            <Table
+              columns={jobBreakdownColumns}
+              dataSource={jobBreakdown}
+              rowKey={(record) => `${record.job_type}-${record.id}`}
+              pagination={{ 
+                pageSize: 20,
+                showSizeChanger: true,
+                showQuickJumper: true,
+                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} jobs`
+              }}
+              size="middle"
+              scroll={{ x: 1000 }}
             />
           )}
         </Card>
