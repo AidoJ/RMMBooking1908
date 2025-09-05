@@ -44,19 +44,18 @@ export const TherapistEarnings: React.FC = () => {
 
   // Load payment data when component mounts or week changes
   useEffect(() => {
-    if (identity?.therapist_id) {
+    if (identity?.id) {
       loadPaymentData();
       loadPaymentHistory();
     }
-  }, [identity?.therapist_id, currentWeek]);
+  }, [identity?.id, currentWeek]);
 
   const loadPaymentData = async () => {
     console.log('🔍 DEBUG - Identity object:', identity);
-    console.log('🔍 DEBUG - Therapist ID:', identity?.therapist_id);
-    console.log('🔍 DEBUG - User ID:', identity?.id);
+    console.log('🔍 DEBUG - User ID (should match therapist_id):', identity?.id);
     
-    if (!identity?.therapist_id) {
-      console.log('❌ No therapist_id found in identity');
+    if (!identity?.id) {
+      console.log('❌ No user ID found in identity');
       return;
     }
     
@@ -68,10 +67,10 @@ export const TherapistEarnings: React.FC = () => {
       );
       
       console.log('🔍 DEBUG - Payment data received:', data);
-      console.log('🔍 DEBUG - Looking for therapist_id:', identity.therapist_id);
+      console.log('🔍 DEBUG - Looking for therapist_id:', identity.id);
       
       // Find this therapist's payment data for the current week
-      const myPayment = data.find(p => p.therapist_id === identity.therapist_id);
+      const myPayment = data.find(p => p.therapist_id === identity.id);
       console.log('🔍 DEBUG - Found my payment:', myPayment);
       
       setCurrentWeekData(myPayment || null);
@@ -84,7 +83,7 @@ export const TherapistEarnings: React.FC = () => {
   };
 
   const loadPaymentHistory = async () => {
-    if (!identity?.therapist_id) return;
+    if (!identity?.id) return;
     
     try {
       // Load last 12 weeks of payment history
@@ -93,7 +92,7 @@ export const TherapistEarnings: React.FC = () => {
       startDate.setDate(startDate.getDate() - (12 * 7)); // 12 weeks ago
       
       const history = await TherapistPaymentService.getTherapistPaymentHistory(
-        identity.therapist_id,
+        identity.id,
         startDate,
         endDate
       );
