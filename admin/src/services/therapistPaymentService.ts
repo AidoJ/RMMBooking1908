@@ -325,21 +325,27 @@ export class TherapistPaymentService {
 
       // Transform booking data
       if (bookings) {
-        jobs.push(...bookings.map(booking => ({
-          id: booking.id,
-          job_number: booking.booking_id || `RB${booking.id.slice(-6)}`,
-          job_type: 'booking' as const,
-          booking_time: booking.booking_time,
-          customer_name: booking.customers ? 
-            `${booking.customers.first_name} ${booking.customers.last_name}` : 'Unknown',
-          service_name: booking.services?.name || 'Unknown Service',
-          status: booking.status,
-          therapist_fee: booking.therapist_fee,
-          payment_status: booking.therapist_payments?.payment_status || 'pending',
-          paid_amount: booking.therapist_payments?.paid_amount,
-          payment_date: booking.therapist_payments?.payment_date,
-          invoice_number: booking.therapist_payments?.invoice_number
-        })));
+        jobs.push(...bookings.map(booking => {
+          const customer = Array.isArray(booking.customers) ? booking.customers[0] : booking.customers;
+          const service = Array.isArray(booking.services) ? booking.services[0] : booking.services;
+          const payment = Array.isArray(booking.therapist_payments) ? booking.therapist_payments[0] : booking.therapist_payments;
+          
+          return {
+            id: booking.id,
+            job_number: booking.booking_id || `RB${booking.id.slice(-6)}`,
+            job_type: 'booking' as const,
+            booking_time: booking.booking_time,
+            customer_name: customer ? 
+              `${customer.first_name} ${customer.last_name}` : 'Unknown',
+            service_name: service?.name || 'Unknown Service',
+            status: booking.status,
+            therapist_fee: booking.therapist_fee,
+            payment_status: payment?.payment_status || 'pending',
+            paid_amount: payment?.paid_amount,
+            payment_date: payment?.payment_date,
+            invoice_number: payment?.invoice_number
+          };
+        }));
       }
 
       // Get RQ (assignment) records
@@ -377,22 +383,29 @@ export class TherapistPaymentService {
 
       // Transform assignment data
       if (assignments) {
-        jobs.push(...assignments.map(assignment => ({
-          id: assignment.id,
-          job_number: `RQ${assignment.booking_id.slice(-6)}`,
-          job_type: 'assignment' as const,
-          booking_time: assignment.bookings.booking_time,
-          customer_name: assignment.bookings.customers ? 
-            `${assignment.bookings.customers.first_name} ${assignment.bookings.customers.last_name}` : 'Unknown',
-          service_name: assignment.bookings.services?.name || 'Unknown Service',
-          status: assignment.status,
-          therapist_fee: assignment.therapist_fee,
-          hours_worked: assignment.hours_worked,
-          payment_status: assignment.therapist_payments?.payment_status || 'pending',
-          paid_amount: assignment.therapist_payments?.paid_amount,
-          payment_date: assignment.therapist_payments?.payment_date,
-          invoice_number: assignment.therapist_payments?.invoice_number
-        })));
+        jobs.push(...assignments.map(assignment => {
+          const booking = Array.isArray(assignment.bookings) ? assignment.bookings[0] : assignment.bookings;
+          const customer = booking && Array.isArray(booking.customers) ? booking.customers[0] : booking?.customers;
+          const service = booking && Array.isArray(booking.services) ? booking.services[0] : booking?.services;
+          const payment = Array.isArray(assignment.therapist_payments) ? assignment.therapist_payments[0] : assignment.therapist_payments;
+          
+          return {
+            id: assignment.id,
+            job_number: `RQ${assignment.booking_id.slice(-6)}`,
+            job_type: 'assignment' as const,
+            booking_time: booking?.booking_time || assignment.confirmed_at,
+            customer_name: customer ? 
+              `${customer.first_name} ${customer.last_name}` : 'Unknown',
+            service_name: service?.name || 'Unknown Service',
+            status: assignment.status,
+            therapist_fee: assignment.therapist_fee,
+            hours_worked: assignment.hours_worked,
+            payment_status: payment?.payment_status || 'pending',
+            paid_amount: payment?.paid_amount,
+            payment_date: payment?.payment_date,
+            invoice_number: payment?.invoice_number
+          };
+        }));
       }
 
       // Sort by booking time (most recent first)
