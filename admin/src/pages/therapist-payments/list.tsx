@@ -206,6 +206,19 @@ export const TherapistPaymentsList: React.FC = () => {
 
   const columns = [
     {
+      title: 'Job Numbers',
+      key: 'job_numbers',
+      render: (_: any, record: WeeklyPaymentData) => {
+        const jobs = jobBreakdownData[record.therapist_id] || [];
+        const jobNumbers = jobs.map(job => job.job_number).join(', ');
+        return (
+          <Text style={{ fontFamily: 'monospace', fontSize: '12px' }}>
+            {jobNumbers || 'No jobs'}
+          </Text>
+        );
+      },
+    },
+    {
       title: 'Therapist',
       dataIndex: 'therapist_name',
       key: 'therapist_name',
@@ -467,28 +480,6 @@ export const TherapistPaymentsList: React.FC = () => {
               loading={loading}
               pagination={false}
               size="middle"
-              expandable={{
-                expandedRowRender: (record) => {
-                  const jobs = jobBreakdownData[record.therapist_id] || [];
-                  return (
-                    <div style={{ margin: '16px 0' }}>
-                      <Text strong>Job Breakdown:</Text>
-                      <div style={{ marginTop: 8 }}>
-                        {jobs.map((job, index) => (
-                          <Tag
-                            key={index}
-                            color={job.payment_status === 'paid' ? 'green' : 'orange'}
-                            style={{ margin: '2px' }}
-                          >
-                            {job.job_number} - ${job.therapist_fee.toFixed(2)}
-                          </Tag>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                },
-                rowExpandable: (record) => (jobBreakdownData[record.therapist_id]?.length || 0) > 0,
-              }}
             />
           )}
         </Card>

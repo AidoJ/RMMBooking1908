@@ -44,6 +44,7 @@ import {
 } from '@ant-design/icons';
 import type { IResourceComponentsProps } from '@refinedev/core';
 import { UserIdentity, canAccess } from '../../utils/roleUtils';
+import { RoleGuard } from '../../components/RoleGuard';
 import { useGetIdentity } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
 import dayjs from 'dayjs';
@@ -217,7 +218,8 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
   const acceptedValue = quotes.filter(q => q.status === 'confirmed').reduce((sum, q) => sum + (q.price || 0), 0);
 
   return (
-    <div style={{ padding: '24px' }}>
+    <RoleGuard requiredRole="admin">
+      <div style={{ padding: '24px' }}>
       {/* Statistics Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col span={6}>
@@ -519,6 +521,7 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
           />
         </Table>
       </List>
-    </div>
+      </div>
+    </RoleGuard>
   );
 };

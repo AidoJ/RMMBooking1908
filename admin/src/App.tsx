@@ -23,7 +23,6 @@ import { App as AntdApp } from "antd";
 import { BrowserRouter, Outlet, Route, Routes, useParams } from "react-router";
 import authProvider from "./authProvider";
 import { Header } from "./components/header";
-import { CustomSider } from "./components/CustomSider";
 import { ColorModeContextProvider } from "./contexts/color-mode";
 import { UserIdentity, UserRole, isTherapist, isAdmin } from "./utils/roleUtils";
 import { supabaseClient } from "./utility";
@@ -79,10 +78,25 @@ const BookingShowWrapper = () => {
 
 // Service components are now imported above
 
+// Import RoleGuard for inline components
+import { RoleGuard } from './components/RoleGuard';
+
 // Super Admin only pages
-const UserManagement = () => <div style={{padding: 24}}><h1>User Management</h1><p>Manage admin users and therapist accounts</p></div>;
-const ActivityLogs = () => <div style={{padding: 24}}><h1>Activity Logs</h1><p>System activity monitoring will go here</p></div>;
-const Reports = () => <div style={{padding: 24}}><h1>Business Reports</h1><p>Analytics and business reports will go here</p></div>;
+const UserManagement = () => (
+  <RoleGuard requiredRole="admin">
+    <div style={{padding: 24}}><h1>User Management</h1><p>Manage admin users and therapist accounts</p></div>
+  </RoleGuard>
+);
+const ActivityLogs = () => (
+  <RoleGuard requiredRole="admin">
+    <div style={{padding: 24}}><h1>Activity Logs</h1><p>System activity monitoring will go here</p></div>
+  </RoleGuard>
+);
+const Reports = () => (
+  <RoleGuard requiredRole="admin">
+    <div style={{padding: 24}}><h1>Business Reports</h1><p>Analytics and business reports will go here</p></div>
+  </RoleGuard>
+);
 
 
 const AppContent: React.FC = () => {
@@ -262,7 +276,7 @@ const AppContent: React.FC = () => {
             >
               <ThemedLayoutV2
                 Header={() => <Header sticky />}
-                Sider={(props) => <CustomSider {...props} fixed />}
+                Sider={(props) => <ThemedSiderV2 {...props} fixed />}
               >
                 <Outlet />
               </ThemedLayoutV2>
@@ -321,7 +335,7 @@ const AppContent: React.FC = () => {
             <Authenticated key="authenticated-catch-all">
               <ThemedLayoutV2
                 Header={() => <Header sticky />}
-                Sider={(props) => <CustomSider {...props} fixed />}
+                Sider={(props) => <ThemedSiderV2 {...props} fixed />}
               >
                 <Outlet />
               </ThemedLayoutV2>
