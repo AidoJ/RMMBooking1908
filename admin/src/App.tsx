@@ -23,6 +23,7 @@ import { App as AntdApp } from "antd";
 import { BrowserRouter, Outlet, Route, Routes, useParams } from "react-router";
 import authProvider from "./authProvider";
 import { Header } from "./components/header";
+import { RoleGuard } from './components/RoleGuard';
 import { ColorModeContextProvider } from "./contexts/color-mode";
 import { UserIdentity, UserRole, isTherapist, isAdmin } from "./utils/roleUtils";
 import { supabaseClient } from "./utility";
@@ -78,8 +79,6 @@ const BookingShowWrapper = () => {
 
 // Service components are now imported above
 
-// Import RoleGuard for inline components
-import { RoleGuard } from './components/RoleGuard';
 
 // Super Admin only pages
 const UserManagement = () => (

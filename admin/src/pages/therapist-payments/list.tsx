@@ -207,16 +207,11 @@ export const TherapistPaymentsList: React.FC = () => {
   const columns = [
     {
       title: 'Job Numbers',
-      key: 'job_numbers',
-      render: (_: any, record: WeeklyPaymentData) => {
-        const jobs = jobBreakdownData[record.therapist_id] || [];
-        const jobNumbers = jobs.map(job => job.job_number).join(', ');
-        return (
-          <Text style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-            {jobNumbers || 'No jobs'}
-          </Text>
-        );
-      },
+      dataIndex: 'job_number',
+      key: 'job_number',
+      render: (jobNumber: string) => (
+        <Text strong style={{ fontFamily: 'monospace' }}>{jobNumber}</Text>
+      ),
     },
     {
       title: 'Therapist',
@@ -228,26 +223,23 @@ export const TherapistPaymentsList: React.FC = () => {
     },
     {
       title: 'Jobs',
-      dataIndex: 'total_assignments',
-      key: 'total_assignments',
-      align: 'center' as const,
-      render: (count: number) => (
-        <Text strong>{count}</Text>
+      render: () => (
+        <Text strong>1</Text>
       ),
     },
     {
       title: 'Hours',
-      dataIndex: 'total_hours',
-      key: 'total_hours',
+      dataIndex: 'hours_worked',
+      key: 'hours_worked',
       align: 'center' as const,
       render: (hours: number) => (
-        <Text>{hours.toFixed(1)}</Text>
+        <Text>{hours ? hours.toFixed(1) : '-'}</Text>
       ),
     },
     {
       title: 'Total Fee',
-      dataIndex: 'total_fee',
-      key: 'total_fee',
+      dataIndex: 'therapist_fee',
+      key: 'therapist_fee',
       align: 'right' as const,
       render: (fee: number) => (
         <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
@@ -260,7 +252,7 @@ export const TherapistPaymentsList: React.FC = () => {
       dataIndex: 'payment_status',
       key: 'payment_status',
       align: 'center' as const,
-      render: (status: string, record: WeeklyPaymentData) => (
+      render: (status: string, record: any) => (
         <div>
           {status === 'paid' ? (
             <Tag color="success" icon={<CheckCircleOutlined />}>
@@ -283,14 +275,18 @@ export const TherapistPaymentsList: React.FC = () => {
       title: 'Action',
       key: 'action',
       align: 'center' as const,
-      render: (_: any, record: WeeklyPaymentData) => (
+      render: (_: any, record: any) => (
         <Space>
           {record.payment_status === 'pending' && (
             <Button
               type="primary"
               size="small"
               icon={<CheckCircleOutlined />}
-              onClick={() => handleMarkAsPaid(record)}
+              onClick={() => {
+                // Find the payment record for this therapist
+                const payment = paymentData.find(p => p.therapist_id === record.therapist_id);
+                if (payment) handleMarkAsPaid(payment);
+              }}
               style={{ backgroundColor: '#52c41a', borderColor: '#52c41a' }}
             >
               Mark as Paid
@@ -368,18 +364,6 @@ export const TherapistPaymentsList: React.FC = () => {
                   Refresh
                 </Button>
               </Space>
-            </Col>
-            <Col>
-              <Button
-                type="primary"
-                icon={<PlusOutlined />}
-                onClick={generateWeeklyPayments}
-                loading={generating}
-                disabled={loading}
-                size="large"
-              >
-                Generate Weekly Payments
-              </Button>
             </Col>
           </Row>
         </Card>
@@ -475,8 +459,14 @@ export const TherapistPaymentsList: React.FC = () => {
           ) : (
             <Table
               columns={columns}
-              dataSource={paymentData}
-              rowKey={(record) => `${record.therapist_id}-${record.week_start_date}`}
+              dataSource={Object.entries(jobBreakdownData).flatMap(([therapistId, jobs]) =>
+                jobs.map(job => ({
+                  ...job,
+                  therapist_id: therapistId,
+                  therapist_name: paymentData.find(p => p.therapist_id === therapistId)?.therapist_name || 'Unknown'
+                }))
+              )}
+              rowKey={(record) => record.id}
               loading={loading}
               pagination={false}
               size="middle"
