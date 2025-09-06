@@ -24,7 +24,7 @@ import { BrowserRouter, Outlet, Route, Routes, useParams } from "react-router";
 import authProvider from "./authProvider";
 import { Header } from "./components/header";
 import { ColorModeContextProvider } from "./contexts/color-mode";
-import { UserIdentity, isTherapist, isAdmin } from "./utils/roleUtils";
+import { UserIdentity, UserRole, isTherapist, isAdmin } from "./utils/roleUtils";
 import { supabaseClient } from "./utility";
 
 // Import the booking management components
@@ -84,7 +84,7 @@ const ActivityLogs = () => <div style={{padding: 24}}><h1>Activity Logs</h1><p>S
 const Reports = () => <div style={{padding: 24}}><h1>Business Reports</h1><p>Analytics and business reports will go here</p></div>;
 
 // Helper function to get role-based resources
-const getRoleBasedResources = (userRole?: string) => {
+const getRoleBasedResources = (userRole?: UserRole) => {
   const isTherapistUser = isTherapist(userRole);
   const isAdminUser = isAdmin(userRole);
   
@@ -262,7 +262,7 @@ const getRoleBasedResources = (userRole?: string) => {
 
 const AppContent: React.FC = () => {
   const { data: identity } = useGetIdentity<UserIdentity>();
-  const resources = getRoleBasedResources(identity?.role);
+  const resources = getRoleBasedResources(identity?.role as UserRole);
 
   return (
     <Refine
@@ -377,7 +377,5 @@ function App() {
     </BrowserRouter>
   );
 }
-
-export default App;
 
 export default App;
