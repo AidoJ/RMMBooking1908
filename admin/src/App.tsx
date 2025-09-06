@@ -1,5 +1,5 @@
 import { Dashboard } from "./pages/dashboard";
-import { Authenticated, Refine } from "@refinedev/core";
+import { Authenticated, Refine, useGetIdentity } from "@refinedev/core";
 import { DevtoolsPanel, DevtoolsProvider } from "@refinedev/devtools";
 import { RefineKbar, RefineKbarProvider } from "@refinedev/kbar";
 
@@ -24,6 +24,7 @@ import { BrowserRouter, Outlet, Route, Routes, useParams } from "react-router";
 import authProvider from "./authProvider";
 import { Header } from "./components/header";
 import { ColorModeContextProvider } from "./contexts/color-mode";
+import { UserIdentity, isTherapist, isAdmin } from "./utils/roleUtils";
 import { supabaseClient } from "./utility";
 
 // Import the booking management components
@@ -82,6 +83,284 @@ const UserManagement = () => <div style={{padding: 24}}><h1>User Management</h1>
 const ActivityLogs = () => <div style={{padding: 24}}><h1>Activity Logs</h1><p>System activity monitoring will go here</p></div>;
 const Reports = () => <div style={{padding: 24}}><h1>Business Reports</h1><p>Analytics and business reports will go here</p></div>;
 
+// Helper function to get role-based resources
+const getRoleBasedResources = (userRole?: string) => {
+  const isTherapistUser = isTherapist(userRole);
+  const isAdminUser = isAdmin(userRole);
+  
+  const baseResources = [
+    {
+      name: "dashboard",
+      list: "/",
+      meta: {
+        label: "Dashboard",
+        icon: "🏠",
+      },
+    },
+    {
+      name: "bookings",
+      list: "/bookings",
+      show: "/bookings/show/:id",
+      edit: "/bookings/edit/:id",
+      meta: {
+        canDelete: true,
+        label: "Bookings",
+        icon: "📋",
+      },
+    },
+    {
+      name: "calendar",
+      list: "/calendar",
+      meta: {
+        label: "Calendar",
+        icon: "📅",
+      },
+    },
+  ];
+
+  const therapistResources = [
+    {
+      name: "my-profile",
+      list: "/my-profile",
+      meta: {
+        label: "My Profile",
+        icon: "👤",
+      },
+    },
+    {
+      name: "my-earnings",
+      list: "/my-earnings",
+      meta: {
+        label: "My Earnings",
+        icon: "💰",
+      },
+    },
+  ];
+
+  const adminResources = [
+    {
+      name: "quotes",
+      list: "/quotes",
+      meta: {
+        label: "Quotes",
+        icon: "💰",
+      },
+    },
+    {
+      name: "discount_codes",
+      list: "/discount-codes",
+      create: "/discount-codes/create",
+      edit: "/discount-codes/edit/:id",
+      show: "/discount-codes/show/:id",
+      meta: {
+        canDelete: true,
+        label: "Discount Codes",
+        icon: "🏷️",
+      },
+    },
+    {
+      name: "gift_cards",
+      list: "/gift-cards",
+      create: "/gift-cards/create",
+      edit: "/gift-cards/edit/:id",
+      show: "/gift-cards/show/:id",
+      meta: {
+        canDelete: true,
+        label: "Gift Cards",
+        icon: "🎁",
+      },
+    },
+    {
+      name: "therapist_payments",
+      list: "/therapist-payments",
+      meta: {
+        label: "Therapist Payments",
+        icon: "💰",
+      },
+    },
+    {
+      name: "therapist_profiles",
+      list: "/therapists",
+      show: "/therapists/show/:id",
+      edit: "/therapists/edit/:id",
+      create: "/therapists/create",
+      meta: {
+        canDelete: true,
+        label: "Therapists",
+        icon: "👨‍⚕️",
+      },
+    },
+    {
+      name: "customers",
+      list: "/customers",
+      create: "/customers/create",
+      show: "/customers/show/:id",
+      edit: "/customers/edit/:id",
+      meta: {
+        canDelete: true,
+        label: "Customers",
+        icon: "👥",
+      },
+    },
+    {
+      name: "services",
+      list: "/services",
+      show: "/services/show/:id",
+      edit: "/services/edit/:id",
+      create: "/services/create",
+      meta: {
+        canDelete: true,
+        label: "Services",
+        icon: "💆‍♀️",
+      },
+    },
+    {
+      name: "reports",
+      list: "/reports",
+      meta: {
+        label: "Reports",
+        icon: "📊",
+      },
+    },
+    {
+      name: "system-settings",
+      list: "/system-settings",
+      meta: {
+        label: "System Settings",
+        icon: "⚙️",
+      },
+    },
+    {
+      name: "user-management",
+      list: "/user-management",
+      meta: {
+        label: "User Management",
+        icon: "👤",
+      },
+    },
+    {
+      name: "activity-logs",
+      list: "/activity-logs",
+      meta: {
+        label: "Activity Logs",
+        icon: "📝",
+      },
+    },
+  ];
+
+  if (isTherapistUser) {
+    return [...baseResources, ...therapistResources];
+  }
+  
+  if (isAdminUser || userRole === 'super_admin') {
+    return [...baseResources, ...adminResources];
+  }
+  
+  // Default fallback
+  return baseResources;
+};
+
+const AppContent: React.FC = () => {
+  const { data: identity } = useGetIdentity<UserIdentity>();
+  const resources = getRoleBasedResources(identity?.role);
+
+  return (
+    <Refine
+      dataProvider={dataProvider(supabaseClient)}
+      liveProvider={liveProvider(supabaseClient)}
+      authProvider={authProvider}
+      routerProvider={routerBindings}
+      notificationProvider={useNotificationProvider}
+      resources={resources}
+      options={{
+        syncWithLocation: true,
+        warnWhenUnsavedChanges: true,
+        useNewQueryKeys: true,
+        projectId: "rejuvenators-platform",
+      }}
+    >
+      <Routes>
+        <Route
+          element={
+            <Authenticated
+              key="authenticated-inner"
+              fallback={<CatchAllNavigate to="/login" />}
+            >
+              <ThemedLayoutV2
+                Header={() => <Header sticky />}
+                Sider={(props) => <ThemedSiderV2 {...props} fixed />}
+              >
+                <Outlet />
+              </ThemedLayoutV2>
+            </Authenticated>
+          }
+        >
+          <Route
+            index
+            element={<NavigateToResource resource="dashboard" />}
+          />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/bookings" element={<EnhancedBookingList />} />
+          <Route path="/bookings/show/:id" element={<BookingShowWrapper />} />
+          <Route path="/bookings/edit/:id" element={<BookingEdit />} />
+          <Route path="/calendar" element={<CalendarBookingManagement />} />
+          <Route path="/quotes" element={<QuotesList />} />
+          <Route path="/discount-codes" element={<DiscountCodesList />} />
+          <Route path="/discount-codes/create" element={<DiscountCodesCreate />} />
+          <Route path="/discount-codes/edit/:id" element={<DiscountCodesEdit />} />
+          <Route path="/discount-codes/show/:id" element={<DiscountCodesShow />} />
+          <Route path="/gift-cards" element={<GiftCardsList />} />
+          <Route path="/gift-cards/create" element={<GiftCardsCreate />} />
+          <Route path="/gift-cards/edit/:id" element={<GiftCardsEdit />} />
+          <Route path="/gift-cards/show/:id" element={<GiftCardsShow />} />
+          <Route path="/therapist-payments" element={<TherapistPaymentsList />} />
+          <Route path="/therapists" element={<TherapistList />} />
+          <Route path="/therapists/show/:id" element={<TherapistShow />} />
+          <Route path="/therapists/edit/:id" element={<TherapistEdit />} />
+          <Route path="/therapists/create" element={<TherapistCreate />} />
+          <Route path="/my-profile" element={<TherapistProfileManagement />} />
+          <Route path="/my-earnings" element={<TherapistEarnings />} />
+          <Route path="/customers" element={<CustomerList />} />
+          <Route path="/customers/show/:id" element={<CustomerShow />} />
+          <Route path="/customers/edit/:id" element={<CustomerEdit />} />
+          <Route path="/customers/create" element={<CustomerCreate />} />
+          <Route path="/services" element={<ServiceList />} />
+          <Route path="/services/show/:id" element={<ServiceShow />} />
+          <Route path="/services/edit/:id" element={<ServiceEdit />} />
+          <Route path="/services/create" element={<ServiceCreate />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/system-settings" element={<SystemSettings />} />
+          <Route path="/user-management" element={<UserManagement />} />
+          <Route path="/activity-logs" element={<ActivityLogs />} />
+        </Route>
+        <Route
+          element={
+            <Authenticated key="authenticated-outer" fallback={<Outlet />}>
+              <NavigateToResource />
+            </Authenticated>
+          }
+        >
+          <Route path="/login" element={<AuthPage type="login" />} />
+        </Route>
+        <Route
+          element={
+            <Authenticated key="authenticated-catch-all">
+              <ThemedLayoutV2
+                Header={() => <Header sticky />}
+                Sider={(props) => <ThemedSiderV2 {...props} fixed />}
+              >
+                <Outlet />
+              </ThemedLayoutV2>
+            </Authenticated>
+          }
+        >
+          <Route path="*" element={<ErrorComponent />} />
+        </Route>
+      </Routes>
+    </Refine>
+  );
+};
+
 function App() {
   return (
     <BrowserRouter basename="/admin">
@@ -89,303 +368,7 @@ function App() {
         <ColorModeContextProvider>
           <AntdApp>
             <DevtoolsProvider>
-              <Refine
-                dataProvider={dataProvider(supabaseClient)}
-                liveProvider={liveProvider(supabaseClient)}
-                authProvider={authProvider}
-                routerProvider={routerBindings}
-                notificationProvider={useNotificationProvider}
-                resources={[
-                  {
-                    name: "dashboard",
-                    list: "/",
-                    meta: {
-                      label: "Dashboard",
-                      icon: "🏠",
-                    },
-                  },
-                  {
-                    name: "bookings",
-                    list: "/bookings",
-                    show: "/bookings/show/:id",
-                    edit: "/bookings/edit/:id",
-                    meta: {
-                      canDelete: true,
-                      label: "Bookings",
-                      icon: "📋",
-                    },
-                  },
-                  {
-                    name: "quotes",
-                    list: "/quotes",
-                    meta: {
-                      label: "Quotes",
-                      icon: "💰",
-                    },
-                  },
-                  {
-                    name: "discount_codes",
-                    list: "/discount-codes",
-                    create: "/discount-codes/create",
-                    edit: "/discount-codes/edit/:id",
-                    show: "/discount-codes/show/:id",
-                    meta: {
-                      canDelete: true,
-                      label: "Discount Codes",
-                      icon: "🏷️",
-                    },
-                  },
-                  {
-                    name: "gift_cards",
-                    list: "/gift-cards",
-                    create: "/gift-cards/create",
-                    edit: "/gift-cards/edit/:id",
-                    show: "/gift-cards/show/:id",
-                    meta: {
-                      canDelete: true,
-                      label: "Gift Cards",
-                      icon: "🎁",
-                    },
-                  },
-                  {
-                    name: "therapist_payments",
-                    list: "/therapist-payments",
-                    meta: {
-                      label: "Therapist Payments",
-                      icon: "💰",
-                    },
-                  },
-                  {
-                    name: "calendar",
-                    list: "/calendar",
-                    meta: {
-                      label: "Calendar",
-                      icon: "📅",
-                    },
-                  },
-                  {
-                    name: "therapist_profiles",
-                    list: "/therapists",
-                    show: "/therapists/show/:id",
-                    edit: "/therapists/edit/:id",
-                    create: "/therapists/create",
-                    meta: {
-                      canDelete: true,
-                      label: "Therapists",
-                      icon: "👨‍⚕️",
-                    },
-                  },
-                  // Therapist-only profile management resource
-                  {
-                    name: "my-profile",
-                    list: "/my-profile",
-                    meta: {
-                      label: "My Profile",
-                      icon: "👤",
-                    },
-                  },
-                  // Therapist-only earnings portal
-                  {
-                    name: "my-earnings",
-                    list: "/my-earnings",
-                    meta: {
-                      label: "My Earnings",
-                      icon: "💰",
-                    },
-                  },
-                  {
-                    name: "customers",
-                    list: "/customers",
-                    create: "/customers/create",
-                    show: "/customers/show/:id",
-                    edit: "/customers/edit/:id",
-                    meta: {
-                      canDelete: true,
-                      label: "Customers",
-                      icon: "👥",
-                    },
-                  },
-                  {
-                    name: "services",
-                    list: "/services",
-                    show: "/services/show/:id",
-                    edit: "/services/edit/:id",
-                    create: "/services/create",
-                    meta: {
-                      canDelete: true,
-                      label: "Services",
-                      icon: "💆‍♀️",
-                    },
-                  },
-                  {
-                    name: "reports",
-                    list: "/reports",
-                    meta: {
-                      label: "Reports",
-                      icon: "📊",
-                    },
-                  },
-                  {
-                    name: "system-settings",
-                    list: "/system-settings",
-                    meta: {
-                      label: "System Settings",
-                      icon: "⚙️",
-                    },
-                  },
-                  {
-                    name: "user-management",
-                    list: "/user-management",
-                    meta: {
-                      label: "User Management",
-                      icon: "👤",
-                    },
-                  },
-                  {
-                    name: "activity-logs",
-                    list: "/activity-logs",
-                    meta: {
-                      label: "Activity Logs",
-                      icon: "📝",
-                    },
-                  },
-                ]}
-                options={{
-                  syncWithLocation: true,
-                  warnWhenUnsavedChanges: true,
-                  useNewQueryKeys: true,
-                  projectId: "KzRnmo-KKZ8aE-7jCGlj",
-                }}
-              >
-                <Routes>
-                  <Route
-                    element={
-                      <Authenticated
-                        key="authenticated-inner"
-                        fallback={<CatchAllNavigate to="/login" />}
-                      >
-                        <ThemedLayoutV2
-                          Header={Header}
-                          Sider={(props) => <ThemedSiderV2 {...props} fixed />}
-                        >
-                          <Outlet />
-                        </ThemedLayoutV2>
-                      </Authenticated>
-                    }
-                  >
-                    {/* Dashboard */}
-                    <Route index element={<Dashboard />} />
-                    
-                    {/* Booking Management */}
-                    <Route path="/bookings">
-                      <Route index element={<EnhancedBookingList />} />
-                      <Route path="calendar" element={<CalendarBookingManagement />} />
-                      <Route path="edit/:id" element={<BookingEdit />} />
-                      <Route path="show/:id" element={<BookingShowWrapper />} />
-                    </Route>
-                    
-                    {/* Quote Management */}
-                    <Route path="/quotes" element={<QuotesList />} />
-                    
-                    {/* Discount Codes Management */}
-                    <Route path="/discount-codes">
-                      <Route index element={<DiscountCodesList />} />
-                      <Route path="create" element={<DiscountCodesCreate />} />
-                      <Route path="edit/:id" element={<DiscountCodesEdit />} />
-                      <Route path="show/:id" element={<DiscountCodesShow />} />
-                    </Route>
-                    
-                    {/* Gift Cards Management */}
-                    <Route path="/gift-cards">
-                      <Route index element={<GiftCardsList />} />
-                      <Route path="create" element={<GiftCardsCreate />} />
-                      <Route path="edit/:id" element={<GiftCardsEdit />} />
-                      <Route path="show/:id" element={<GiftCardsShow />} />
-                    </Route>
-                    
-                    {/* Therapist Payments Management */}
-                    <Route path="/therapist-payments" element={<TherapistPaymentsList />} />
-                    
-                    {/* Calendar */}
-                    <Route path="/calendar" element={<CalendarBookingManagement />} />
-                    
-                    {/* Therapist Management (Admin) */}
-                    <Route path="/therapists">
-                      <Route index element={<TherapistList />} />
-                      <Route path="create" element={<TherapistCreate />} />
-                      <Route path="edit/:id" element={<TherapistEdit />} />
-                      <Route path="show/:id" element={<TherapistShow />} />
-                    </Route>
-                    
-                    {/* Therapist Profile Management (Therapist-only) */}
-                    <Route path="/my-profile" element={<TherapistProfileManagement />} />
-                    
-                    {/* Therapist Earnings (Therapist-only) */}
-                    <Route path="/my-earnings" element={<TherapistEarnings />} />
-                    
-                    {/* Customer Management */}
-                    <Route path="/customers">
-                      <Route index element={<CustomerList />} />
-                      <Route path="create" element={<CustomerCreate />} />
-                      <Route path="edit/:id" element={<CustomerEdit />} />
-                      <Route path="show/:id" element={<CustomerShow />} />
-                    </Route>
-                    
-                    {/* Service Management */}
-                    <Route path="/services">
-                      <Route index element={<ServiceList />} />
-                      <Route path="create" element={<ServiceCreate />} />
-                      <Route path="edit/:id" element={<ServiceEdit />} />
-                      <Route path="show/:id" element={<ServiceShow />} />
-                    </Route>
-                    
-                    {/* Reports */}
-                    <Route path="/reports" element={<Reports />} />
-                    
-                    {/* System Settings (Super Admin Only) */}
-                    <Route path="/system-settings" element={<SystemSettings />} />
-                    
-                    {/* User Management (Super Admin Only) */}
-                    <Route path="/user-management" element={<UserManagement />} />
-                    
-                    {/* Activity Logs (Super Admin Only) */}
-                    <Route path="/activity-logs" element={<ActivityLogs />} />
-                    
-                    <Route path="*" element={<ErrorComponent />} />
-                  </Route>
-                  
-                  <Route
-                    element={
-                      <Authenticated
-                        key="authenticated-outer"
-                        fallback={<Outlet />}
-                      >
-                        <NavigateToResource />
-                      </Authenticated>
-                    }
-                  >
-                    <Route
-                      path="/login"
-                      element={
-                        <AuthPage
-                          type="login"
-                          title="Rejuvenators Admin Panel"
-                          formProps={{
-                            initialValues: {
-                              email: "admin@rejuvenators.com",
-                              password: "admin123",
-                            },
-                          }}
-                        />
-                      }
-                    />
-                  </Route>
-                </Routes>
-
-                <RefineKbar />
-                <UnsavedChangesNotifier />
-                <DocumentTitleHandler />
-              </Refine>
+              <AppContent />
               <DevtoolsPanel />
             </DevtoolsProvider>
           </AntdApp>
@@ -394,5 +377,7 @@ function App() {
     </BrowserRouter>
   );
 }
+
+export default App;
 
 export default App;
