@@ -23,6 +23,7 @@ import { App as AntdApp } from "antd";
 import { BrowserRouter, Outlet, Route, Routes, useParams } from "react-router";
 import authProvider from "./authProvider";
 import { Header } from "./components/header";
+import { CustomSider } from "./components/CustomSider";
 import { ColorModeContextProvider } from "./contexts/color-mode";
 import { UserIdentity, UserRole, isTherapist, isAdmin } from "./utils/roleUtils";
 import { supabaseClient } from "./utility";
@@ -83,187 +84,8 @@ const UserManagement = () => <div style={{padding: 24}}><h1>User Management</h1>
 const ActivityLogs = () => <div style={{padding: 24}}><h1>Activity Logs</h1><p>System activity monitoring will go here</p></div>;
 const Reports = () => <div style={{padding: 24}}><h1>Business Reports</h1><p>Analytics and business reports will go here</p></div>;
 
-// Helper function to get role-based resources
-const getRoleBasedResources = (userRole?: UserRole) => {
-  const isTherapistUser = isTherapist(userRole);
-  const isAdminUser = isAdmin(userRole);
-  
-  const baseResources = [
-    {
-      name: "dashboard",
-      list: "/",
-      meta: {
-        label: "Dashboard",
-        icon: "🏠",
-      },
-    },
-    {
-      name: "bookings",
-      list: "/bookings",
-      show: "/bookings/show/:id",
-      edit: "/bookings/edit/:id",
-      meta: {
-        canDelete: true,
-        label: "Bookings",
-        icon: "📋",
-      },
-    },
-    {
-      name: "calendar",
-      list: "/calendar",
-      meta: {
-        label: "Calendar",
-        icon: "📅",
-      },
-    },
-  ];
-
-  const therapistResources = [
-    {
-      name: "my-profile",
-      list: "/my-profile",
-      meta: {
-        label: "My Profile",
-        icon: "👤",
-      },
-    },
-    {
-      name: "my-earnings",
-      list: "/my-earnings",
-      meta: {
-        label: "My Earnings",
-        icon: "💰",
-      },
-    },
-  ];
-
-  const adminResources = [
-    {
-      name: "quotes",
-      list: "/quotes",
-      meta: {
-        label: "Quotes",
-        icon: "💰",
-      },
-    },
-    {
-      name: "discount_codes",
-      list: "/discount-codes",
-      create: "/discount-codes/create",
-      edit: "/discount-codes/edit/:id",
-      show: "/discount-codes/show/:id",
-      meta: {
-        canDelete: true,
-        label: "Discount Codes",
-        icon: "🏷️",
-      },
-    },
-    {
-      name: "gift_cards",
-      list: "/gift-cards",
-      create: "/gift-cards/create",
-      edit: "/gift-cards/edit/:id",
-      show: "/gift-cards/show/:id",
-      meta: {
-        canDelete: true,
-        label: "Gift Cards",
-        icon: "🎁",
-      },
-    },
-    {
-      name: "therapist_payments",
-      list: "/therapist-payments",
-      meta: {
-        label: "Therapist Payments",
-        icon: "💰",
-      },
-    },
-    {
-      name: "therapist_profiles",
-      list: "/therapists",
-      show: "/therapists/show/:id",
-      edit: "/therapists/edit/:id",
-      create: "/therapists/create",
-      meta: {
-        canDelete: true,
-        label: "Therapists",
-        icon: "👨‍⚕️",
-      },
-    },
-    {
-      name: "customers",
-      list: "/customers",
-      create: "/customers/create",
-      show: "/customers/show/:id",
-      edit: "/customers/edit/:id",
-      meta: {
-        canDelete: true,
-        label: "Customers",
-        icon: "👥",
-      },
-    },
-    {
-      name: "services",
-      list: "/services",
-      show: "/services/show/:id",
-      edit: "/services/edit/:id",
-      create: "/services/create",
-      meta: {
-        canDelete: true,
-        label: "Services",
-        icon: "💆‍♀️",
-      },
-    },
-    {
-      name: "reports",
-      list: "/reports",
-      meta: {
-        label: "Reports",
-        icon: "📊",
-      },
-    },
-    {
-      name: "system-settings",
-      list: "/system-settings",
-      meta: {
-        label: "System Settings",
-        icon: "⚙️",
-      },
-    },
-    {
-      name: "user-management",
-      list: "/user-management",
-      meta: {
-        label: "User Management",
-        icon: "👤",
-      },
-    },
-    {
-      name: "activity-logs",
-      list: "/activity-logs",
-      meta: {
-        label: "Activity Logs",
-        icon: "📝",
-      },
-    },
-  ];
-
-  if (isTherapistUser) {
-    return [...baseResources, ...therapistResources];
-  }
-  
-  if (isAdminUser || userRole === 'super_admin') {
-    return [...baseResources, ...adminResources];
-  }
-  
-  // Default fallback
-  return baseResources;
-};
 
 const AppContent: React.FC = () => {
-  const { data: identity } = useGetIdentity<UserIdentity>();
-  const resources = getRoleBasedResources(identity?.role as UserRole);
-
   return (
     <Refine
       dataProvider={dataProvider(supabaseClient)}
@@ -271,7 +93,159 @@ const AppContent: React.FC = () => {
       authProvider={authProvider}
       routerProvider={routerBindings}
       notificationProvider={useNotificationProvider}
-      resources={resources}
+      resources={[
+        {
+          name: "dashboard",
+          list: "/",
+          meta: {
+            label: "Dashboard",
+            icon: "🏠",
+          },
+        },
+        {
+          name: "bookings",
+          list: "/bookings",
+          show: "/bookings/show/:id",
+          edit: "/bookings/edit/:id",
+          meta: {
+            canDelete: true,
+            label: "Bookings",
+            icon: "📋",
+          },
+        },
+        {
+          name: "calendar",
+          list: "/calendar",
+          meta: {
+            label: "Calendar",
+            icon: "📅",
+          },
+        },
+        {
+          name: "quotes",
+          list: "/quotes",
+          meta: {
+            label: "Quotes",
+            icon: "💰",
+          },
+        },
+        {
+          name: "discount_codes",
+          list: "/discount-codes",
+          create: "/discount-codes/create",
+          edit: "/discount-codes/edit/:id",
+          show: "/discount-codes/show/:id",
+          meta: {
+            canDelete: true,
+            label: "Discount Codes",
+            icon: "🏷️",
+          },
+        },
+        {
+          name: "gift_cards",
+          list: "/gift-cards",
+          create: "/gift-cards/create",
+          edit: "/gift-cards/edit/:id",
+          show: "/gift-cards/show/:id",
+          meta: {
+            canDelete: true,
+            label: "Gift Cards",
+            icon: "🎁",
+          },
+        },
+        {
+          name: "therapist_payments",
+          list: "/therapist-payments",
+          meta: {
+            label: "Therapist Payments",
+            icon: "💰",
+          },
+        },
+        {
+          name: "therapist_profiles",
+          list: "/therapists",
+          show: "/therapists/show/:id",
+          edit: "/therapists/edit/:id",
+          create: "/therapists/create",
+          meta: {
+            canDelete: true,
+            label: "Therapists",
+            icon: "👨‍⚕️",
+          },
+        },
+        {
+          name: "my-profile",
+          list: "/my-profile",
+          meta: {
+            label: "My Profile",
+            icon: "👤",
+          },
+        },
+        {
+          name: "my-earnings",
+          list: "/my-earnings",
+          meta: {
+            label: "My Earnings",
+            icon: "💰",
+          },
+        },
+        {
+          name: "customers",
+          list: "/customers",
+          create: "/customers/create",
+          show: "/customers/show/:id",
+          edit: "/customers/edit/:id",
+          meta: {
+            canDelete: true,
+            label: "Customers",
+            icon: "👥",
+          },
+        },
+        {
+          name: "services",
+          list: "/services",
+          show: "/services/show/:id",
+          edit: "/services/edit/:id",
+          create: "/services/create",
+          meta: {
+            canDelete: true,
+            label: "Services",
+            icon: "💆‍♀️",
+          },
+        },
+        {
+          name: "reports",
+          list: "/reports",
+          meta: {
+            label: "Reports",
+            icon: "📊",
+          },
+        },
+        {
+          name: "system-settings",
+          list: "/system-settings",
+          meta: {
+            label: "System Settings",
+            icon: "⚙️",
+          },
+        },
+        {
+          name: "user-management",
+          list: "/user-management",
+          meta: {
+            label: "User Management",
+            icon: "👤",
+          },
+        },
+        {
+          name: "activity-logs",
+          list: "/activity-logs",
+          meta: {
+            label: "Activity Logs",
+            icon: "📝",
+          },
+        },
+      ]}
       options={{
         syncWithLocation: true,
         warnWhenUnsavedChanges: true,
@@ -288,7 +262,7 @@ const AppContent: React.FC = () => {
             >
               <ThemedLayoutV2
                 Header={() => <Header sticky />}
-                Sider={(props) => <ThemedSiderV2 {...props} fixed />}
+                Sider={(props) => <CustomSider {...props} fixed />}
               >
                 <Outlet />
               </ThemedLayoutV2>
@@ -347,7 +321,7 @@ const AppContent: React.FC = () => {
             <Authenticated key="authenticated-catch-all">
               <ThemedLayoutV2
                 Header={() => <Header sticky />}
-                Sider={(props) => <ThemedSiderV2 {...props} fixed />}
+                Sider={(props) => <CustomSider {...props} fixed />}
               >
                 <Outlet />
               </ThemedLayoutV2>

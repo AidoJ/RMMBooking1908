@@ -31,7 +31,7 @@ import {
 import { useGetIdentity } from '@refinedev/core';
 import { UserIdentity, canAccess } from '../../utils/roleUtils';
 import { RoleGuard } from '../../components/RoleGuard';
-import { TherapistPaymentService, WeeklyPaymentData } from '../../services/therapistPaymentService';
+import { TherapistPaymentService, WeeklyPaymentData, JobBreakdownData } from '../../services/therapistPaymentService';
 import dayjs, { Dayjs } from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 
@@ -49,6 +49,7 @@ export const TherapistPaymentsList: React.FC = () => {
     TherapistPaymentService.getCurrentWeek()
   );
   const [paymentData, setPaymentData] = useState<WeeklyPaymentData[]>([]);
+  const [jobBreakdownData, setJobBreakdownData] = useState<Record<string, JobBreakdownData[]>>({});
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<WeeklyPaymentData | null>(null);
   const [form] = Form.useForm();
@@ -66,6 +67,24 @@ export const TherapistPaymentsList: React.FC = () => {
         currentWeek.end
       );
       setPaymentData(data);
+
+      // Load job breakdown for each therapist
+      const breakdownPromises = data.map(async (payment) => {
+        const jobs = await TherapistPaymentService.getTherapistJobBreakdown(
+          payment.therapist_id,
+          currentWeek.start,
+          currentWeek.end,
+          100
+        );
+        return { therapistId: payment.therapist_id, jobs };
+      });
+
+      const breakdownResults = await Promise.all(breakdownPromises);
+      const breakdownMap: Record<string, JobBreakdownData[]> = {};
+      breakdownResults.forEach(({ therapistId, jobs }) => {
+        breakdownMap[therapistId] = jobs;
+      });
+      setJobBreakdownData(breakdownMap);
     } catch (error: any) {
       console.error('Error loading payment data:', error);
       message.error('Failed to load payment data: ' + error.message);
@@ -448,6 +467,28 @@ export const TherapistPaymentsList: React.FC = () => {
               loading={loading}
               pagination={false}
               size="middle"
+              expandable={{
+                expandedRowRender: (record) => {
+                  const jobs = jobBreakdownData[record.therapist_id] || [];
+                  return (
+                    <div style={{ margin: '16px 0' }}>
+                      <Text strong>Job Breakdown:</Text>
+                      <div style={{ marginTop: 8 }}>
+                        {jobs.map((job, index) => (
+                          <Tag
+                            key={index}
+                            color={job.payment_status === 'paid' ? 'green' : 'orange'}
+                            style={{ margin: '2px' }}
+                          >
+                            {job.job_number} - ${job.therapist_fee.toFixed(2)}
+                          </Tag>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                },
+                rowExpandable: (record) => (jobBreakdownData[record.therapist_id]?.length || 0) > 0,
+              }}
             />
           )}
         </Card>
