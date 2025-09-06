@@ -19,6 +19,7 @@ import { ArrowLeftOutlined, SaveOutlined, PercentageOutlined, DollarOutlined } f
 import { useNavigation } from '@refinedev/core';
 import { useParams } from 'react-router';
 import { supabaseClient } from '../../utility';
+import { RoleGuard } from '../../components/RoleGuard';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -147,7 +148,8 @@ const DiscountCodesEdit: React.FC = () => {
   }
 
   return (
-    <div>
+    <RoleGuard requiredRole="admin">
+      <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
         <Col>
           <Space>
@@ -353,7 +355,8 @@ const DiscountCodesEdit: React.FC = () => {
           </Form.Item>
         </Form>
       </Card>
-    </div>
+      </div>
+    </RoleGuard>
   );
 };
 

@@ -28,6 +28,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigation } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
+import { RoleGuard } from '../../components/RoleGuard';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -245,7 +246,8 @@ const DiscountCodesList: React.FC = () => {
   };
 
   return (
-    <div>
+    <RoleGuard requiredRole="admin">
+      <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
         <Col>
           <Title level={2}>Discount Codes</Title>
@@ -351,7 +353,8 @@ const DiscountCodesList: React.FC = () => {
           }}
         />
       </Card>
-    </div>
+      </div>
+    </RoleGuard>
   );
 };
 

@@ -21,6 +21,7 @@ import {
 import { ArrowLeftOutlined, SaveOutlined, GiftOutlined, CreditCardOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useNavigation } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
+import { RoleGuard } from '../../components/RoleGuard';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import dayjs from 'dayjs';
@@ -254,7 +255,8 @@ const GiftCardPaymentForm: React.FC = () => {
   };
 
   return (
-    <div>
+    <RoleGuard requiredRole="admin">
+      <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
         <Col>
           <Space>
@@ -577,7 +579,8 @@ const GiftCardPaymentForm: React.FC = () => {
           </Form.Item>
         </Form>
       </Card>
-    </div>
+      </div>
+    </RoleGuard>
   );
 };
 

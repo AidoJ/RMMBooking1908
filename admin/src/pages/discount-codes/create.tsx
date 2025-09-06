@@ -17,6 +17,7 @@ import {
 import { ArrowLeftOutlined, SaveOutlined, PercentageOutlined, DollarOutlined } from '@ant-design/icons';
 import { useNavigation } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
+import { RoleGuard } from '../../components/RoleGuard';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -72,7 +73,8 @@ const DiscountCodesCreate: React.FC = () => {
   };
 
   return (
-    <div>
+    <RoleGuard requiredRole="admin">
+      <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
         <Col>
           <Space>
@@ -266,7 +268,8 @@ const DiscountCodesCreate: React.FC = () => {
           </Form.Item>
         </Form>
       </Card>
-    </div>
+      </div>
+    </RoleGuard>
   );
 };
 

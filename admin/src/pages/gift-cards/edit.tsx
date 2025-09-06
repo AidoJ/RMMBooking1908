@@ -20,6 +20,7 @@ import { ArrowLeftOutlined, SaveOutlined, GiftOutlined, InfoCircleOutlined } fro
 import { useNavigation } from '@refinedev/core';
 import { useParams } from 'react-router';
 import { supabaseClient } from '../../utility';
+import { RoleGuard } from '../../components/RoleGuard';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -146,7 +147,8 @@ const GiftCardsEdit: React.FC = () => {
   const balanceUsed = giftCard.initial_balance - giftCard.current_balance;
 
   return (
-    <div>
+    <RoleGuard requiredRole="admin">
+      <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
         <Col>
           <Space>
@@ -357,7 +359,8 @@ const GiftCardsEdit: React.FC = () => {
           </Form.Item>
         </Form>
       </Card>
-    </div>
+      </div>
+    </RoleGuard>
   );
 };
 

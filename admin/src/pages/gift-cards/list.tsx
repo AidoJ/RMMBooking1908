@@ -33,6 +33,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigation } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
+import { RoleGuard } from '../../components/RoleGuard';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
@@ -309,7 +310,8 @@ const GiftCardsList: React.FC = () => {
   const remainingValue = giftCards.reduce((sum, card) => sum + card.current_balance, 0);
 
   return (
-    <div>
+    <RoleGuard requiredRole="admin">
+      <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: 16 }}>
         <Col>
           <Title level={2}>Gift Cards</Title>
@@ -419,7 +421,8 @@ const GiftCardsList: React.FC = () => {
           }}
         />
       </Card>
-    </div>
+      </div>
+    </RoleGuard>
   );
 };
 

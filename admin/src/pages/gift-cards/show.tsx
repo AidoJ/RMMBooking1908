@@ -32,6 +32,7 @@ import {
 import { useNavigation } from '@refinedev/core';
 import { useParams } from 'react-router';
 import { supabaseClient } from '../../utility';
+import { RoleGuard } from '../../components/RoleGuard';
 import dayjs from 'dayjs';
 
 const { Title, Text, Paragraph } = Typography;
@@ -145,7 +146,8 @@ const GiftCardsShow: React.FC = () => {
   const status = getStatus();
 
   return (
-    <div>
+    <RoleGuard requiredRole="admin">
+      <div>
       <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
         <Col>
           <Space>
@@ -453,7 +455,8 @@ const GiftCardsShow: React.FC = () => {
           </Space>
         </Col>
       </Row>
-    </div>
+      </div>
+    </RoleGuard>
   );
 };
 
