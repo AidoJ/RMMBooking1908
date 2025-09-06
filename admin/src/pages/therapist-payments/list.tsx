@@ -68,7 +68,7 @@ export const TherapistPaymentsList: React.FC = () => {
       );
       setPaymentData(data);
 
-      // Load job breakdown for each therapist
+      // Load job breakdown for each therapist within the selected week only
       const breakdownPromises = data.map(async (payment) => {
         const jobs = await TherapistPaymentService.getTherapistJobBreakdown(
           payment.therapist_id,
@@ -76,7 +76,12 @@ export const TherapistPaymentsList: React.FC = () => {
           currentWeek.end,
           100
         );
-        return { therapistId: payment.therapist_id, jobs };
+        // Filter jobs to only include those within the selected week
+        const weekFiltered = jobs.filter(job => {
+          const jobDate = new Date(job.booking_time);
+          return jobDate >= currentWeek.start && jobDate <= currentWeek.end;
+        });
+        return { therapistId: payment.therapist_id, jobs: weekFiltered };
       });
 
       const breakdownResults = await Promise.all(breakdownPromises);
