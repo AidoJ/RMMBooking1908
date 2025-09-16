@@ -134,11 +134,11 @@ class QuoteFormManager {
     if (this.eventStructure === 'multi_day') {
       const totalSessions = parseInt(document.getElementById('totalSessions')?.value) || 0;
       const numberOfDays = this.multiDayDates.length || 1;
-      const sessionsPerDay = Math.ceil(totalSessions / numberOfDays);
+      const averageSessionsPerDay = Math.round((totalSessions / numberOfDays) * 100) / 100; // Round to 2 decimal places
 
       const sessionsPerDayField = document.getElementById('sessionsPerDay');
       if (sessionsPerDayField) {
-        sessionsPerDayField.value = sessionsPerDay;
+        sessionsPerDayField.value = averageSessionsPerDay;
         sessionsPerDayField.readOnly = true;
       }
     }
@@ -425,15 +425,20 @@ class QuoteFormManager {
     try {
       // Check if any event dates fall on weekend
       const eventDates = this.getEventDates();
+      console.log('Event dates for weekend check:', eventDates);
       let maxMultiplier = 1.0; // Default no uplift
 
       for (const dateStr of eventDates) {
+        if (!dateStr) continue; // Skip empty dates
+
         const date = new Date(dateStr);
         const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+        console.log(`Date: ${dateStr}, Day of week: ${dayOfWeek}`);
 
         if (dayOfWeek === 0 || dayOfWeek === 6) {
           // Weekend date - get uplift from time_pricing_rules table
           const dayType = dayOfWeek === 0 ? 'sunday' : 'saturday';
+          console.log(`Weekend date detected: ${dateStr} is ${dayType}`);
 
           const { data: pricingRule, error } = await window.supabase
             .from('time_pricing_rules')
@@ -452,6 +457,7 @@ class QuoteFormManager {
         }
       }
 
+      console.log(`Final weekend multiplier: ${maxMultiplier}`);
       return maxMultiplier;
     } catch (error) {
       console.error('Error getting weekend multiplier:', error);
@@ -464,15 +470,19 @@ class QuoteFormManager {
 
     if (this.eventStructure === 'single_day') {
       const singleDate = document.getElementById('singleEventDate')?.value;
+      console.log('Single day date:', singleDate);
       if (singleDate) dates.push(singleDate);
     } else {
       // Multi-day: get all date inputs
       const dateInputs = document.querySelectorAll('.event-date');
-      dateInputs.forEach(input => {
+      console.log('Multi-day date inputs found:', dateInputs.length);
+      dateInputs.forEach((input, index) => {
+        console.log(`Date input ${index}:`, input.value);
         if (input.value) dates.push(input.value);
       });
     }
 
+    console.log('All collected dates:', dates);
     return dates;
   }
 
