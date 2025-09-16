@@ -58,9 +58,11 @@ CREATE TABLE public.booking_therapist_assignments (
   hourly_rate numeric,
   hours_worked numeric,
   rate_type character varying DEFAULT 'daytime'::character varying,
+  weekly_payment_id uuid,
   CONSTRAINT booking_therapist_assignments_pkey PRIMARY KEY (id),
   CONSTRAINT booking_therapist_assignments_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id),
-  CONSTRAINT booking_therapist_assignments_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id)
+  CONSTRAINT booking_therapist_assignments_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id),
+  CONSTRAINT booking_therapist_assignments_weekly_payment_id_fkey FOREIGN KEY (weekly_payment_id) REFERENCES public.therapist_payments(id)
 );
 CREATE TABLE public.bookings (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -127,12 +129,20 @@ CREATE TABLE public.bookings (
   gift_card_amount numeric DEFAULT 0,
   service_acknowledgement boolean NOT NULL DEFAULT true,
   terms_acceptance boolean NOT NULL DEFAULT true,
+  invoice_number text,
+  invoice_date timestamp without time zone,
+  invoice_sent_at timestamp without time zone,
+  paid_date timestamp without time zone,
+  weekly_payment_id uuid,
+  original_quote_id character varying,
+  is_split_booking boolean DEFAULT false,
   CONSTRAINT bookings_pkey PRIMARY KEY (id),
-  CONSTRAINT bookings_alternate_therapist_id_fkey FOREIGN KEY (alternate_therapist_id) REFERENCES public.therapist_profiles(id),
-  CONSTRAINT bookings_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id),
+  CONSTRAINT fk_responding_therapist FOREIGN KEY (responding_therapist_id) REFERENCES public.therapist_profiles(id),
   CONSTRAINT bookings_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id),
+  CONSTRAINT bookings_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id),
+  CONSTRAINT bookings_alternate_therapist_id_fkey FOREIGN KEY (alternate_therapist_id) REFERENCES public.therapist_profiles(id),
   CONSTRAINT bookings_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id),
-  CONSTRAINT fk_responding_therapist FOREIGN KEY (responding_therapist_id) REFERENCES public.therapist_profiles(id)
+  CONSTRAINT bookings_weekly_payment_id_fkey FOREIGN KEY (weekly_payment_id) REFERENCES public.therapist_payments(id)
 );
 CREATE TABLE public.customers (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -155,8 +165,8 @@ CREATE TABLE public.discount_code_usage (
   discount_applied numeric NOT NULL,
   used_at timestamp without time zone DEFAULT now(),
   CONSTRAINT discount_code_usage_pkey PRIMARY KEY (id),
-  CONSTRAINT discount_code_usage_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id),
-  CONSTRAINT discount_code_usage_discount_code_id_fkey FOREIGN KEY (discount_code_id) REFERENCES public.discount_codes(id)
+  CONSTRAINT discount_code_usage_discount_code_id_fkey FOREIGN KEY (discount_code_id) REFERENCES public.discount_codes(id),
+  CONSTRAINT discount_code_usage_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id)
 );
 CREATE TABLE public.discount_codes (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -318,6 +328,25 @@ CREATE TABLE public.therapist_availability (
   CONSTRAINT therapist_availability_pkey PRIMARY KEY (id),
   CONSTRAINT therapist_availability_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id)
 );
+CREATE TABLE public.therapist_payments (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  therapist_id uuid NOT NULL,
+  week_start_date date NOT NULL,
+  week_end_date date NOT NULL,
+  total_assignments integer DEFAULT 0,
+  total_hours numeric DEFAULT 0,
+  total_fee numeric DEFAULT 0,
+  payment_status character varying DEFAULT 'pending'::character varying CHECK (payment_status::text = ANY (ARRAY['pending'::character varying, 'paid'::character varying]::text[])),
+  paid_amount numeric CHECK (paid_amount IS NULL OR paid_amount >= 0::numeric),
+  payment_date date,
+  invoice_number character varying,
+  payment_reference character varying,
+  notes text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT therapist_payments_pkey PRIMARY KEY (id),
+  CONSTRAINT therapist_payments_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id)
+);
 CREATE TABLE public.therapist_profiles (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid,
@@ -348,8 +377,8 @@ CREATE TABLE public.therapist_services (
   service_id uuid,
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   CONSTRAINT therapist_services_pkey PRIMARY KEY (id),
-  CONSTRAINT therapist_services_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id),
-  CONSTRAINT therapist_services_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id)
+  CONSTRAINT therapist_services_therapist_id_fkey FOREIGN KEY (therapist_id) REFERENCES public.therapist_profiles(id),
+  CONSTRAINT therapist_services_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id)
 );
 CREATE TABLE public.therapist_time_off (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
