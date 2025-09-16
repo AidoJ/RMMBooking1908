@@ -440,17 +440,46 @@ class QuoteFormManager {
           const dayType = dayOfWeek === 0 ? 'sunday' : 'saturday';
           console.log(`Weekend date detected: ${dateStr} is ${dayType}`);
 
-          const { data: pricingRule, error } = await window.supabase
+          // Try different possible column names in time_pricing_rules
+          let { data: pricingRule, error } = await window.supabase
             .from('time_pricing_rules')
-            .select('multiplier')
+            .select('*')
             .eq('day_type', dayType)
             .single();
 
+          // If day_type doesn't work, try other common field names
+          if (error) {
+            console.log('Trying alternative field names...');
+            ({ data: pricingRule, error } = await window.supabase
+              .from('time_pricing_rules')
+              .select('*')
+              .eq('day', dayType)
+              .single());
+          }
+
+          if (error) {
+            ({ data: pricingRule, error } = await window.supabase
+              .from('time_pricing_rules')
+              .select('*')
+              .eq('day_name', dayType)
+              .single());
+          }
+
           if (!error && pricingRule) {
-            console.log(`Found ${dayType} multiplier:`, pricingRule.multiplier);
-            maxMultiplier = Math.max(maxMultiplier, pricingRule.multiplier);
+            console.log(`Found ${dayType} pricing rule:`, pricingRule);
+
+            // Try different multiplier field names
+            const multiplier = pricingRule.multiplier || pricingRule.rate_multiplier || pricingRule.factor || pricingRule.uplift;
+
+            if (multiplier) {
+              console.log(`Using ${dayType} multiplier: ${multiplier}`);
+              maxMultiplier = Math.max(maxMultiplier, multiplier);
+            } else {
+              console.warn(`No multiplier field found in pricing rule for ${dayType}`);
+            }
           } else {
             console.error(`Error fetching ${dayType} pricing rule:`, error);
+            console.log('Full error object:', error);
             // No fallback - if we can't get the data, don't apply any uplift
             console.warn('Unable to fetch weekend pricing rule - no uplift applied');
           }
