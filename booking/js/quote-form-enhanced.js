@@ -131,16 +131,25 @@ class QuoteFormManager {
   }
 
   calculateSessionsPerDay() {
+    console.log('calculateSessionsPerDay called, eventStructure:', this.eventStructure);
+
     if (this.eventStructure === 'multi_day') {
       const totalSessions = parseInt(document.getElementById('totalSessions')?.value) || 0;
       const numberOfDays = this.multiDayDates.length || 1;
       const averageSessionsPerDay = Math.round((totalSessions / numberOfDays) * 100) / 100; // Round to 2 decimal places
 
+      console.log(`Sessions calculation: ${totalSessions} sessions ÷ ${numberOfDays} days = ${averageSessionsPerDay}`);
+
       const sessionsPerDayField = document.getElementById('sessionsPerDay');
       if (sessionsPerDayField) {
+        console.log('Setting sessionsPerDay field to:', averageSessionsPerDay);
         sessionsPerDayField.value = averageSessionsPerDay;
         sessionsPerDayField.readOnly = true;
+      } else {
+        console.error('sessionsPerDay field not found!');
       }
+    } else {
+      console.log('Not multi-day event, skipping sessions per day calculation');
     }
   }
 
