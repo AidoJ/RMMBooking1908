@@ -154,16 +154,9 @@ class QuoteFormManager {
     document.getElementById('estimateDuration').textContent = sessionDuration ? `${sessionDuration} min` : '-';
     document.getElementById('estimateTherapists').textContent = therapistsNeeded || '-';
 
-    // Calculate price estimate (simplified - will be refined server-side)
+    // Calculate price estimate using proper business rules
     if (totalSessions && sessionDuration) {
-      const baseRate = 160; // Base hourly rate from system settings
-      const totalHours = (totalSessions * sessionDuration) / 60;
-      const baseCost = totalHours * baseRate;
-
-      const lowEstimate = Math.round(baseCost * 0.8);
-      const highEstimate = Math.round(baseCost * 1.2);
-
-      document.getElementById('estimateRange').textContent = `$${lowEstimate} - $${highEstimate}`;
+      this.calculateAccurateEstimate(totalSessions, sessionDuration);
     } else {
       document.getElementById('estimateRange').textContent = 'Enter details above';
     }
@@ -362,10 +355,138 @@ class QuoteFormManager {
     return data;
   }
 
+  async calculateAccurateEstimate(totalSessions, sessionDuration) {
+    try {
+      // 1. Check minimum 2 hours requirement
+      const totalMinutes = totalSessions * sessionDuration;
+      if (totalMinutes < 120) {
+        document.getElementById('estimateRange').innerHTML =
+          '<span style="color: #dc3545; font-weight: bold;">⚠️ Quote request must be at least 120 minutes to proceed</span>';
+        return;
+      }
+
+      // 2. Get base rate from selected service
+      const serviceBaseRate = await this.getServiceBaseRate();
+      if (!serviceBaseRate) {
+        document.getElementById('estimateRange').textContent = 'Select a service to see estimate';
+        return;
+      }
+
+      // 3. Calculate total hours
+      const totalHours = totalMinutes / 60;
+      let baseCost = totalHours * serviceBaseRate;
+
+      // 4. Apply weekend uplifts for dates
+      const weekendMultiplier = await this.getWeekendMultiplier();
+      baseCost *= weekendMultiplier;
+
+      // 5. Apply urgency premium if needed
+      const urgencyMultiplier = this.getUrgencyMultiplier();
+      baseCost *= urgencyMultiplier;
+
+      // 6. Create variance of 0.90 to 1.10
+      const lowEstimate = Math.round(baseCost * 0.90);
+      const highEstimate = Math.round(baseCost * 1.10);
+
+      document.getElementById('estimateRange').textContent = `$${lowEstimate} - $${highEstimate}`;
+
+    } catch (error) {
+      console.error('Error calculating estimate:', error);
+      document.getElementById('estimateRange').textContent = 'Unable to calculate estimate';
+    }
+  }
+
+  async getServiceBaseRate() {
+    // Get the base rate from the selected service
+    if (!this.selectedService?.id) {
+      return null;
+    }
+
+    try {
+      const { data: service, error } = await window.supabase
+        .from('services')
+        .select('service_base_price')
+        .eq('id', this.selectedService.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching service rate:', error);
+        return 160; // Fallback rate
+      }
+
+      return service.service_base_price || 160;
+    } catch (error) {
+      console.error('Error getting service base rate:', error);
+      return 160; // Fallback rate
+    }
+  }
+
+  async getWeekendMultiplier() {
+    try {
+      // Check if any event dates fall on weekend
+      const eventDates = this.getEventDates();
+      let maxMultiplier = 1.0; // Default no uplift
+
+      for (const dateStr of eventDates) {
+        const date = new Date(dateStr);
+        const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          // Weekend date - get uplift from time_pricing_rules
+          const { data: pricingRule, error } = await window.supabase
+            .from('time_pricing_rules')
+            .select('multiplier')
+            .eq('day_type', dayOfWeek === 0 ? 'sunday' : 'saturday')
+            .single();
+
+          if (!error && pricingRule) {
+            maxMultiplier = Math.max(maxMultiplier, pricingRule.multiplier);
+          } else {
+            // Fallback weekend rates if no data found
+            maxMultiplier = Math.max(maxMultiplier, 1.2); // 20% weekend uplift
+          }
+        }
+      }
+
+      return maxMultiplier;
+    } catch (error) {
+      console.error('Error getting weekend multiplier:', error);
+      return 1.0; // No uplift on error
+    }
+  }
+
+  getEventDates() {
+    const dates = [];
+
+    if (this.eventStructure === 'single_day') {
+      const singleDate = document.getElementById('singleEventDate')?.value;
+      if (singleDate) dates.push(singleDate);
+    } else {
+      // Multi-day: get all date inputs
+      const dateInputs = document.querySelectorAll('.event-date');
+      dateInputs.forEach(input => {
+        if (input.value) dates.push(input.value);
+      });
+    }
+
+    return dates;
+  }
+
+  getUrgencyMultiplier() {
+    const urgency = document.getElementById('urgency')?.value;
+
+    // Apply 10% premium for urgent requests (less than 3 days)
+    if (urgency === 'within_3_days' || urgency === 'urgent_24h') {
+      return 1.10; // 10% uplift
+    }
+
+    return 1.0; // No urgency premium
+  }
+
   calculateTotalAmount() {
     const totalSessions = parseInt(document.getElementById('totalSessions')?.value) || 0;
     const sessionDuration = parseInt(document.getElementById('sessionDuration')?.value) || 0;
-    const hourlyRate = 160; // Base rate
+    const hourlyRate = 160; // Base rate for database storage
 
     if (totalSessions <= 0 || sessionDuration <= 0) {
       return 0.00;
