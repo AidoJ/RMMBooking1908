@@ -1,0 +1,282 @@
+<!-- ENHANCED QUOTE FORM - Beautiful Mobile-First Design -->
+<!-- This replaces the existing quote form with clean architecture integration -->
+
+<div id="quoteStep" class="step">
+  <div class="step-header">
+    <h2>✨ Request Your Custom Quote</h2>
+    <p class="step-description">Tell us about your event and we'll create the perfect massage experience</p>
+  </div>
+
+  <div class="step-content">
+    <!-- Service Confirmation Banner -->
+    <div class="quote-service-banner">
+      <div id="selectedServiceInfo" class="service-highlight">
+        <div class="service-icon">💆‍♀️</div>
+        <div class="service-details">
+          <h4 id="serviceTitle">Corporate Wellness Package</h4>
+          <p id="serviceDescription">Professional therapeutic massage for your team</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Structure Selection -->
+    <div class="form-section event-structure-section">
+      <h3>📅 Event Planning</h3>
+      <div class="event-type-selector">
+        <label class="event-type-card active" data-type="single_day">
+          <input type="radio" name="eventStructure" value="single_day" checked>
+          <div class="card-icon">📅</div>
+          <div class="card-content">
+            <h4>Single Day Event</h4>
+            <p>One day massage session</p>
+          </div>
+          <div class="card-check">✓</div>
+        </label>
+
+        <label class="event-type-card" data-type="multi_day">
+          <input type="radio" name="eventStructure" value="multi_day">
+          <div class="card-icon">🗓️</div>
+          <div class="card-content">
+            <h4>Multi-Day Event</h4>
+            <p>Spread across multiple days</p>
+          </div>
+          <div class="card-check">✓</div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Single Day Event Fields -->
+    <div id="singleDayFields" class="form-section">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="singleEventDate">📅 Event Date *</label>
+          <input type="date" id="singleEventDate" required />
+        </div>
+        <div class="form-group">
+          <label for="singleStartTime">🕐 Start Time *</label>
+          <input type="time" id="singleStartTime" required />
+        </div>
+      </div>
+    </div>
+
+    <!-- Multi-Day Event Fields -->
+    <div id="multiDayFields" class="form-section" style="display: none;">
+      <div class="form-group">
+        <label for="numberOfDays">📊 Number of Event Days *</label>
+        <input type="number" id="numberOfDays" min="2" max="30" placeholder="e.g., 3" />
+      </div>
+
+      <div id="multiDayDates" class="multi-day-container">
+        <!-- Dynamic date fields will be added here -->
+      </div>
+
+      <button type="button" id="addEventDate" class="btn-secondary">+ Add Event Date</button>
+    </div>
+
+    <!-- Contact Information -->
+    <div class="form-section">
+      <h3>👤 Contact Information</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="contactName">Full Name *</label>
+          <input type="text" id="contactName" placeholder="Your full name" required />
+        </div>
+        <div class="form-group">
+          <label for="companyName">Company Name</label>
+          <input type="text" id="companyName" placeholder="Your company" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="contactEmail">Email Address *</label>
+          <input type="email" id="contactEmail" placeholder="your@email.com" required />
+        </div>
+        <div class="form-group">
+          <label for="contactPhone">Phone Number *</label>
+          <input type="tel" id="contactPhone" placeholder="+61 XXX XXX XXX" required />
+        </div>
+      </div>
+    </div>
+
+    <!-- Event Details -->
+    <div class="form-section">
+      <h3>🎯 Event Details</h3>
+
+      <div class="form-group">
+        <label for="eventLocation">📍 Event Location *</label>
+        <input id="eventLocation" autocomplete="off" placeholder="Start typing the event address..." required />
+        <div id="event-address-status" class="status-message"></div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="eventName">Event Name</label>
+          <input type="text" id="eventName" placeholder="e.g., Annual Wellness Day" />
+        </div>
+        <div class="form-group">
+          <label for="eventType">Event Type</label>
+          <select id="eventType">
+            <option value="">Select event type...</option>
+            <option value="corporate_wellness">Corporate Wellness Day</option>
+            <option value="team_building">Team Building Event</option>
+            <option value="conference">Conference/Retreat</option>
+            <option value="employee_appreciation">Employee Appreciation</option>
+            <option value="product_launch">Product Launch</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="expectedAttendees">👥 Expected Attendees</label>
+        <input type="number" id="expectedAttendees" placeholder="Number of people attending" min="1" />
+      </div>
+    </div>
+
+    <!-- Massage Specifications -->
+    <div class="form-section">
+      <h3>💆‍♀️ Massage Specifications</h3>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="totalSessions">🎯 Total Sessions *</label>
+          <input type="number" id="totalSessions" placeholder="Total number of sessions" min="1" max="100" required />
+          <small class="field-hint">How many massage sessions in total</small>
+        </div>
+        <div class="form-group">
+          <label for="sessionDuration">⏱️ Session Duration *</label>
+          <select id="sessionDuration" required>
+            <option value="">Select duration...</option>
+            <option value="10">10 minutes</option>
+            <option value="15">15 minutes</option>
+            <option value="20">20 minutes</option>
+            <option value="30">30 minutes</option>
+            <option value="45">45 minutes</option>
+            <option value="60">60 minutes</option>
+            <option value="90">90 minutes</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row" id="multiDaySessionsRow" style="display: none;">
+        <div class="form-group">
+          <label for="sessionsPerDay">📊 Sessions per Day</label>
+          <input type="number" id="sessionsPerDay" placeholder="Sessions each day" min="1" />
+          <small class="field-hint">Will be calculated automatically</small>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="therapistsNeeded">👥 Therapists Needed</label>
+        <select id="therapistsNeeded">
+          <option value="">Let us recommend...</option>
+          <option value="1">1 Therapist</option>
+          <option value="2">2 Therapists</option>
+          <option value="3">3 Therapists</option>
+          <option value="4">4 Therapists</option>
+          <option value="5">5+ Therapists</option>
+        </select>
+        <small class="field-hint">We'll optimize based on your needs</small>
+      </div>
+    </div>
+
+    <!-- Business Requirements -->
+    <div class="form-section">
+      <h3>💼 Business Requirements</h3>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="paymentMethod">💳 Preferred Payment Method *</label>
+          <select id="paymentMethod" required>
+            <option value="invoice">Invoice (Net 30)</option>
+            <option value="card">Credit Card</option>
+            <option value="bank_transfer">Bank Transfer/EFT</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="urgency">⚡ Timeline *</label>
+          <select id="urgency" required>
+            <option value="flexible">Flexible timing</option>
+            <option value="within_week">Within 1 week</option>
+            <option value="within_3_days">Within 3 days</option>
+            <option value="urgent_24h">Urgent (24 hours)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="poNumber">📋 PO Number (if applicable)</label>
+        <input type="text" id="poNumber" placeholder="Purchase order number" />
+      </div>
+    </div>
+
+    <!-- Requirements & Notes -->
+    <div class="form-section">
+      <h3>📝 Special Requirements</h3>
+
+      <div class="form-group">
+        <label for="setupRequirements">🏗️ Setup Requirements</label>
+        <textarea id="setupRequirements" rows="3" placeholder="e.g., Changing rooms needed, tables provided, music preferences, privacy requirements..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="specialRequirements">✨ Additional Notes</label>
+        <textarea id="specialRequirements" rows="3" placeholder="Any special requests, accessibility needs, dietary restrictions for therapists, etc."></textarea>
+      </div>
+    </div>
+
+    <!-- Price Estimate -->
+    <div id="priceEstimate" class="price-estimate-section">
+      <div class="estimate-card">
+        <h3>💰 Investment Estimate</h3>
+        <div class="estimate-breakdown">
+          <div class="estimate-row">
+            <span>Sessions:</span>
+            <span id="estimateSessions">-</span>
+          </div>
+          <div class="estimate-row">
+            <span>Duration:</span>
+            <span id="estimateDuration">-</span>
+          </div>
+          <div class="estimate-row">
+            <span>Therapists:</span>
+            <span id="estimateTherapists">-</span>
+          </div>
+          <div class="estimate-total">
+            <span>Estimated Range:</span>
+            <span id="estimateRange">$XXX - $XXX</span>
+          </div>
+        </div>
+        <p class="estimate-disclaimer">
+          *Final pricing will be confirmed in your detailed quote
+        </p>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="form-actions">
+      <button type="button" class="btn-back" onclick="resetToServiceSelection()">
+        ← Change Service
+      </button>
+      <button type="button" id="submitQuoteRequest" class="btn-primary">
+        Request Quote 🚀
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div id="quoteSuccessModal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <div class="success-animation">🎉</div>
+    <h3>Quote Request Submitted!</h3>
+    <p>We've received your quote request and will get back to you within 24 hours with a detailed proposal.</p>
+    <div class="quote-reference">
+      <strong>Reference: <span id="quoteReferenceNumber"></span></strong>
+    </div>
+    <button class="btn-primary" onclick="window.location.reload()">
+      Create Another Quote
+    </button>
+  </div>
+</div>

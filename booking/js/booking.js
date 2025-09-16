@@ -754,8 +754,15 @@ console.log('Globals:', {
     }
   }
   
-  // Show the quote form for quote-only services
+  // Show the enhanced quote form for quote-only services
   function showQuoteForm(serviceOption) {
+    // Use the new enhanced quote form
+    if (typeof showEnhancedQuoteForm === 'function') {
+      showEnhancedQuoteForm(serviceOption);
+      return;
+    }
+
+    // Fallback to old quote form if enhanced not available
     window.bookingMode = 'quote';
     
     // Populate service info
