@@ -432,18 +432,22 @@ class QuoteFormManager {
         const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
 
         if (dayOfWeek === 0 || dayOfWeek === 6) {
-          // Weekend date - get uplift from time_pricing_rules
+          // Weekend date - get uplift from time_pricing_rules table
+          const dayType = dayOfWeek === 0 ? 'sunday' : 'saturday';
+
           const { data: pricingRule, error } = await window.supabase
             .from('time_pricing_rules')
             .select('multiplier')
-            .eq('day_type', dayOfWeek === 0 ? 'sunday' : 'saturday')
+            .eq('day_type', dayType)
             .single();
 
           if (!error && pricingRule) {
+            console.log(`Found ${dayType} multiplier:`, pricingRule.multiplier);
             maxMultiplier = Math.max(maxMultiplier, pricingRule.multiplier);
           } else {
-            // Fallback weekend rates if no data found
-            maxMultiplier = Math.max(maxMultiplier, 1.2); // 20% weekend uplift
+            console.error(`Error fetching ${dayType} pricing rule:`, error);
+            // No fallback - if we can't get the data, don't apply any uplift
+            console.warn('Unable to fetch weekend pricing rule - no uplift applied');
           }
         }
       }
