@@ -295,6 +295,7 @@ class QuoteFormManager {
   }
 
   collectQuoteData(quoteId) {
+    const locationInput = document.getElementById('eventLocation');
     const data = {
       id: quoteId,
       event_structure: this.eventStructure,
@@ -307,29 +308,39 @@ class QuoteFormManager {
 
       // Event details
       event_name: document.getElementById('eventName').value.trim() || null,
-      event_location: document.getElementById('eventLocation').value.trim(),
+      event_location: locationInput.value.trim(),
       event_type: document.getElementById('eventType').value || null,
       company_name: document.getElementById('companyName').value.trim() || null,
 
-      // Session specifications
-      total_sessions: parseInt(document.getElementById('totalSessions').value),
-      session_duration_minutes: parseInt(document.getElementById('sessionDuration').value),
+      // Location coordinates
+      latitude: parseFloat(locationInput.dataset.lat) || null,
+      longitude: parseFloat(locationInput.dataset.lng) || null,
+
+      // Session specifications (ensure all required fields)
+      total_sessions: parseInt(document.getElementById('totalSessions').value) || 0,
+      session_duration_minutes: parseInt(document.getElementById('sessionDuration').value) || 0,
       therapists_needed: parseInt(document.getElementById('therapistsNeeded').value) || 1,
       expected_attendees: parseInt(document.getElementById('expectedAttendees').value) || null,
 
       // Business requirements
-      payment_method: document.getElementById('paymentMethod').value,
-      urgency: document.getElementById('urgency').value,
+      payment_method: document.getElementById('paymentMethod').value || 'invoice',
+      urgency: document.getElementById('urgency').value || 'flexible',
       po_number: document.getElementById('poNumber').value.trim() || null,
 
       // Requirements
       setup_requirements: document.getElementById('setupRequirements').value.trim() || null,
       special_requirements: document.getElementById('specialRequirements').value.trim() || null,
 
-      // Pricing (estimated)
-      hourly_rate: 160.00, // From system settings
+      // Financial fields (all required NOT NULL fields)
+      hourly_rate: 160.00,
       total_amount: this.calculateTotalAmount(),
       total_therapist_fees: this.calculateTherapistFees(),
+      discount_amount: 0.00,
+      tax_rate_amount: 0.00,
+      final_amount: this.calculateTotalAmount(), // Will be calculated properly later
+
+      // Status fields
+      payment_status: 'pending',
 
       // Service reference
       service_id: this.selectedService?.id || null
@@ -353,16 +364,27 @@ class QuoteFormManager {
     const sessionDuration = parseInt(document.getElementById('sessionDuration')?.value) || 0;
     const hourlyRate = 160; // Base rate
 
+    if (totalSessions <= 0 || sessionDuration <= 0) {
+      return 0.00;
+    }
+
     const totalHours = (totalSessions * sessionDuration) / 60;
-    return Math.round(totalHours * hourlyRate * 100) / 100;
+    const amount = totalHours * hourlyRate;
+    return Math.round(amount * 100) / 100; // Ensure 2 decimal places
   }
 
   calculateTherapistFees() {
+    const totalAmount = this.calculateTotalAmount();
+    if (totalAmount <= 0) {
+      return 0.00;
+    }
     // Simplified calculation - 56% of total amount
-    return Math.round(this.calculateTotalAmount() * 0.56 * 100) / 100;
+    return Math.round(totalAmount * 0.56 * 100) / 100;
   }
 
   async saveQuoteToDatabase(quoteData) {
+    console.log('Attempting to save quote data:', quoteData);
+
     const { data, error } = await window.supabase
       .from('quotes')
       .insert(quoteData)
@@ -370,10 +392,12 @@ class QuoteFormManager {
       .single();
 
     if (error) {
-      console.error('Database error:', error);
-      throw new Error('Failed to save quote request');
+      console.error('Database error details:', error);
+      console.error('Quote data that failed:', quoteData);
+      throw new Error(`Failed to save quote request: ${error.message || error.hint || 'Unknown database error'}`);
     }
 
+    console.log('Quote saved successfully:', data);
     return data;
   }
 
