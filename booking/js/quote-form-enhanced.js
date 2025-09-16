@@ -423,75 +423,105 @@ class QuoteFormManager {
 
   async getWeekendMultiplier() {
     try {
-      // Check if any event dates fall on weekend
       const eventDates = this.getEventDates();
       console.log('Event dates for weekend check:', eventDates);
-      let maxMultiplier = 1.0; // Default no uplift
 
-      for (const dateStr of eventDates) {
-        if (!dateStr) continue; // Skip empty dates
-
-        const date = new Date(dateStr);
-        const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
-        console.log(`Date: ${dateStr}, Day of week: ${dayOfWeek}`);
-
-        if (dayOfWeek === 0 || dayOfWeek === 6) {
-          // Weekend date - get uplift from time_pricing_rules table
-          const dayType = dayOfWeek === 0 ? 'sunday' : 'saturday';
-          console.log(`Weekend date detected: ${dateStr} is ${dayType}`);
-
-          // Try different possible column names in time_pricing_rules
-          let { data: pricingRule, error } = await window.supabase
-            .from('time_pricing_rules')
-            .select('*')
-            .eq('day_type', dayType)
-            .single();
-
-          // If day_type doesn't work, try other common field names
-          if (error) {
-            console.log('Trying alternative field names...');
-            ({ data: pricingRule, error } = await window.supabase
-              .from('time_pricing_rules')
-              .select('*')
-              .eq('day', dayType)
-              .single());
-          }
-
-          if (error) {
-            ({ data: pricingRule, error } = await window.supabase
-              .from('time_pricing_rules')
-              .select('*')
-              .eq('day_name', dayType)
-              .single());
-          }
-
-          if (!error && pricingRule) {
-            console.log(`Found ${dayType} pricing rule:`, pricingRule);
-
-            // Try different multiplier field names
-            const multiplier = pricingRule.multiplier || pricingRule.rate_multiplier || pricingRule.factor || pricingRule.uplift;
-
-            if (multiplier) {
-              console.log(`Using ${dayType} multiplier: ${multiplier}`);
-              maxMultiplier = Math.max(maxMultiplier, multiplier);
-            } else {
-              console.warn(`No multiplier field found in pricing rule for ${dayType}`);
-            }
-          } else {
-            console.error(`Error fetching ${dayType} pricing rule:`, error);
-            console.log('Full error object:', error);
-            // No fallback - if we can't get the data, don't apply any uplift
-            console.warn('Unable to fetch weekend pricing rule - no uplift applied');
-          }
-        }
+      if (eventDates.length === 0) {
+        return 1.0; // No dates, no uplift
       }
 
-      console.log(`Final weekend multiplier: ${maxMultiplier}`);
-      return maxMultiplier;
+      // For multi-day events, we need to pro-rate the pricing
+      if (this.eventStructure === 'multi_day' && eventDates.length > 1) {
+        return await this.getMultiDayWeekendMultiplier(eventDates);
+      } else {
+        // Single day - apply full weekend uplift if weekend
+        return await this.getSingleDayWeekendMultiplier(eventDates[0]);
+      }
     } catch (error) {
       console.error('Error getting weekend multiplier:', error);
-      return 1.0; // No uplift on error
+      return 1.0;
     }
+  }
+
+  async getSingleDayWeekendMultiplier(dateStr) {
+    if (!dateStr) return 1.0;
+
+    const date = new Date(dateStr);
+    const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+    console.log(`Single day: ${dateStr}, Day of week: ${dayOfWeek}`);
+
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      // Weekend date - get normal hours uplift (08:00-18:00)
+      const { data: pricingRule, error } = await window.supabase
+        .from('time_pricing_rules')
+        .select('uplift_percentage')
+        .eq('day_of_week', dayOfWeek.toString())
+        .eq('start_time', '08:00:00')
+        .eq('end_time', '18:00:00')
+        .eq('is_active', true)
+        .single();
+
+      if (!error && pricingRule) {
+        const upliftPercent = parseFloat(pricingRule.uplift_percentage);
+        const multiplier = 1 + (upliftPercent / 100); // Convert 25.00 to 1.25
+        console.log(`Weekend uplift: ${upliftPercent}% = ${multiplier}x multiplier`);
+        return multiplier;
+      } else {
+        console.error('Error fetching weekend pricing rule:', error);
+        return 1.0;
+      }
+    }
+
+    return 1.0; // Weekday, no uplift
+  }
+
+  async getMultiDayWeekendMultiplier(eventDates) {
+    console.log('Calculating pro-rated multi-day weekend multiplier');
+
+    let totalMultiplier = 0;
+    const totalDays = eventDates.length;
+
+    for (const dateStr of eventDates) {
+      if (!dateStr) {
+        totalMultiplier += 1.0; // Empty date = weekday rate
+        continue;
+      }
+
+      const date = new Date(dateStr);
+      const dayOfWeek = date.getDay();
+      console.log(`Multi-day date: ${dateStr}, Day of week: ${dayOfWeek}`);
+
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        // Weekend date - get normal hours uplift
+        const { data: pricingRule, error } = await window.supabase
+          .from('time_pricing_rules')
+          .select('uplift_percentage')
+          .eq('day_of_week', dayOfWeek.toString())
+          .eq('start_time', '08:00:00')
+          .eq('end_time', '18:00:00')
+          .eq('is_active', true)
+          .single();
+
+        if (!error && pricingRule) {
+          const upliftPercent = parseFloat(pricingRule.uplift_percentage);
+          const dayMultiplier = 1 + (upliftPercent / 100);
+          totalMultiplier += dayMultiplier;
+          console.log(`Weekend day: ${upliftPercent}% uplift = ${dayMultiplier}x`);
+        } else {
+          totalMultiplier += 1.0; // Fallback to no uplift
+          console.error(`Error fetching weekend pricing for ${dateStr}:`, error);
+        }
+      } else {
+        totalMultiplier += 1.0; // Weekday, no uplift
+        console.log(`Weekday: no uplift = 1.0x`);
+      }
+    }
+
+    // Calculate average multiplier across all days
+    const averageMultiplier = totalMultiplier / totalDays;
+    console.log(`Multi-day average multiplier: ${averageMultiplier} (${totalMultiplier} total / ${totalDays} days)`);
+
+    return averageMultiplier;
   }
 
   getEventDates() {
