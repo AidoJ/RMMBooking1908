@@ -223,6 +223,9 @@ class QuoteFormManager {
         await this.saveQuoteDates(quoteId);
       }
 
+      // Send confirmation email
+      await this.sendQuoteConfirmationEmail(quoteData);
+
       // Show success
       this.showSuccessModal(quoteId);
 
@@ -453,6 +456,109 @@ class QuoteFormManager {
     }
 
     return `Q-${yearMonth}-${nextNumber.toString().padStart(3, '0')}`;
+  }
+
+  async sendQuoteConfirmationEmail(quoteData) {
+    try {
+      console.log('📧 Sending quote confirmation email...');
+
+      // Prepare email data matching the enhanced template
+      const emailData = {
+        to_email: quoteData.customer_email,
+        to_name: quoteData.customer_name,
+        customer_name: quoteData.customer_name,
+        customer_email: quoteData.customer_email,
+        customer_phone: quoteData.customer_phone,
+        company_name: quoteData.company_name || 'Not provided',
+
+        // Quote reference
+        quote_id: quoteData.id,
+
+        // Event structure and details
+        event_structure: quoteData.event_structure,
+        event_structure_display: quoteData.event_structure === 'single_day' ? 'Single Day Event' : 'Multi-Day Event',
+        event_name: quoteData.event_name || 'Corporate Wellness Event',
+        event_type: quoteData.event_type || 'Not specified',
+        event_location: quoteData.event_location,
+        expected_attendees: quoteData.expected_attendees || 'Not specified',
+
+        // Event dates (formatted based on structure)
+        event_dates: this.formatEventDates(quoteData),
+
+        // Session specifications
+        total_sessions: quoteData.total_sessions,
+        session_duration_minutes: quoteData.session_duration_minutes,
+        sessions_per_day: quoteData.sessions_per_day,
+        therapists_needed: quoteData.therapists_needed,
+
+        // Business requirements
+        payment_method: this.formatPaymentMethod(quoteData.payment_method),
+        urgency: this.formatUrgency(quoteData.urgency),
+        po_number: quoteData.po_number || 'Not provided',
+
+        // Special requirements
+        setup_requirements: quoteData.setup_requirements || 'None specified',
+        special_requirements: quoteData.special_requirements || 'None specified',
+
+        // Price estimate
+        estimated_price_range: this.formatPriceRange(quoteData.total_amount)
+      };
+
+      console.log('📧 Quote email template data:', emailData);
+
+      // Send email using EmailJS (assuming EmailService is available)
+      if (window.EmailService && typeof window.EmailService.sendQuoteConfirmationEmail === 'function') {
+        const result = await window.EmailService.sendQuoteConfirmationEmail(emailData);
+        console.log('✅ Quote confirmation email sent:', result);
+      } else {
+        console.log('⚠️ EmailService not available, skipping email');
+      }
+
+    } catch (error) {
+      console.error('❌ Error sending quote confirmation email:', error);
+      // Don't throw error - email failure shouldn't stop quote submission
+    }
+  }
+
+  formatEventDates(quoteData) {
+    if (quoteData.event_structure === 'single_day') {
+      const date = quoteData.single_event_date;
+      const time = quoteData.single_start_time;
+      return `${date} at ${time}`;
+    } else {
+      // For multi-day, we'd need to fetch from quote_dates table
+      // For now, show the number of days
+      const days = quoteData.number_of_event_days || 'multiple';
+      return `${days} day event (dates to be confirmed)`;
+    }
+  }
+
+  formatPaymentMethod(method) {
+    const methods = {
+      'invoice': 'Invoice (Net 30)',
+      'card': 'Credit Card',
+      'bank_transfer': 'Bank Transfer/EFT'
+    };
+    return methods[method] || method;
+  }
+
+  formatUrgency(urgency) {
+    const urgencies = {
+      'flexible': 'Flexible timing',
+      'within_week': 'Within 1 week',
+      'within_3_days': 'Within 3 days',
+      'urgent_24h': 'Urgent (24 hours)'
+    };
+    return urgencies[urgency] || urgency;
+  }
+
+  formatPriceRange(totalAmount) {
+    if (!totalAmount || totalAmount <= 0) {
+      return 'To be calculated';
+    }
+    const lowEstimate = Math.round(totalAmount * 0.8);
+    const highEstimate = Math.round(totalAmount * 1.2);
+    return `$${lowEstimate} - $${highEstimate}`;
   }
 
   showSuccessModal(quoteId) {

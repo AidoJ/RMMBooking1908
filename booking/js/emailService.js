@@ -7,6 +7,7 @@ let EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID = 'template_therapist_ok'; // Bookin
 let EMAILJS_BOOKING_DECLINED_TEMPLATE_ID = 'template_declined'; // Booking declined
 let EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID = 'template_alternate'; // Looking for Alternate Therapist
 let EMAILJS_GIFT_CARD_TEMPLATE_ID = 'template_gift_card'; // Gift card delivery template
+let EMAILJS_QUOTE_CONFIRMATION_TEMPLATE_ID = 'template_quote_request'; // Enhanced quote confirmation template
 let EMAILJS_PUBLIC_KEY = 'qfM_qA664E4JddSMN';
 
 // Initialize EmailJS when the script loads
@@ -395,16 +396,16 @@ formatPhoneNumber(phone) {
   // Send Gift Card Email
   async sendGiftCardEmail(giftCardData, sendToRecipient = false) {
     console.log('📧 Sending gift card email...', { giftCardData, sendToRecipient });
-    
+
     // Ensure EmailJS is initialized
     if (typeof emailjs === 'undefined') {
       console.error('❌ EmailJS not loaded');
       return { success: false, error: 'EmailJS not loaded' };
     }
-    
+
     try {
       // Determine recipient
-      const recipient = sendToRecipient && giftCardData.recipient_email 
+      const recipient = sendToRecipient && giftCardData.recipient_email
         ? {
             email: giftCardData.recipient_email,
             name: giftCardData.recipient_name || 'Gift Card Recipient'
@@ -423,10 +424,10 @@ formatPhoneNumber(phone) {
         purchaser_name: giftCardData.purchaser_name || giftCardData.card_holder_name || 'Anonymous',
         recipient_name: giftCardData.recipient_name || 'You',
         personal_message: giftCardData.message || 'Enjoy your relaxing massage experience!',
-        expires_at: giftCardData.expires_at 
+        expires_at: giftCardData.expires_at
           ? new Date(giftCardData.expires_at).toLocaleDateString('en-AU', {
               day: '2-digit',
-              month: '2-digit', 
+              month: '2-digit',
               year: 'numeric'
             })
           : 'No expiry date',
@@ -436,24 +437,99 @@ formatPhoneNumber(phone) {
         company_email: 'info@rejuvenators.com',
         booking_url: 'https://rejuvenators.com.au'
       };
-      
+
       console.log('📧 Gift card template parameters:', templateParams);
-      
+
       const response = await emailjs.send(
-        EMAILJS_SERVICE_ID, 
-        EMAILJS_GIFT_CARD_TEMPLATE_ID, 
+        EMAILJS_SERVICE_ID,
+        EMAILJS_GIFT_CARD_TEMPLATE_ID,
         templateParams
       );
-      
+
       console.log('✅ Gift card email sent successfully:', response);
-      return { 
-        success: true, 
+      return {
+        success: true,
         message: `Gift card email sent to ${sendToRecipient ? 'recipient' : 'purchaser'}`,
         sentTo: recipient.email
       };
-      
+
     } catch (error) {
       console.error('❌ Error sending gift card email:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Send Quote Confirmation Email (Enhanced)
+  async sendQuoteConfirmationEmail(quoteData) {
+    console.log('📧 Sending enhanced quote confirmation email...', quoteData);
+
+    // Ensure EmailJS is initialized
+    if (typeof emailjs === 'undefined') {
+      console.error('❌ EmailJS not loaded');
+      return { success: false, error: 'EmailJS not loaded' };
+    }
+
+    try {
+      // Prepare template parameters for enhanced quote email
+      const templateParams = {
+        // Recipient info
+        to_email: quoteData.to_email,
+        to_name: quoteData.to_name,
+
+        // Customer details
+        customer_name: quoteData.customer_name,
+        customer_email: quoteData.customer_email,
+        customer_phone: quoteData.customer_phone,
+        company_name: quoteData.company_name,
+
+        // Quote reference
+        quote_id: quoteData.quote_id,
+
+        // Event structure and details
+        event_structure: quoteData.event_structure,
+        event_structure_display: quoteData.event_structure_display,
+        event_name: quoteData.event_name,
+        event_type: quoteData.event_type,
+        event_location: quoteData.event_location,
+        event_dates: quoteData.event_dates,
+        expected_attendees: quoteData.expected_attendees,
+
+        // Session specifications
+        total_sessions: quoteData.total_sessions,
+        session_duration_minutes: quoteData.session_duration_minutes,
+        sessions_per_day: quoteData.sessions_per_day,
+        therapists_needed: quoteData.therapists_needed,
+
+        // Business requirements
+        payment_method: quoteData.payment_method,
+        urgency: quoteData.urgency,
+        po_number: quoteData.po_number,
+
+        // Special requirements
+        setup_requirements: quoteData.setup_requirements,
+        special_requirements: quoteData.special_requirements,
+
+        // Price estimate
+        estimated_price_range: quoteData.estimated_price_range
+      };
+
+      console.log('📧 Enhanced quote template parameters:', templateParams);
+
+      const response = await emailjs.send(
+        EMAILJS_SERVICE_ID,
+        EMAILJS_QUOTE_CONFIRMATION_TEMPLATE_ID,
+        templateParams
+      );
+
+      console.log('✅ Enhanced quote confirmation email sent successfully:', response);
+      return {
+        success: true,
+        message: 'Quote confirmation email sent successfully',
+        sentTo: quoteData.to_email
+      };
+
+    } catch (error) {
+      console.error('❌ Error sending enhanced quote confirmation email:', error);
       return { success: false, error: error.message };
     }
   }
