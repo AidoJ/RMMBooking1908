@@ -135,10 +135,14 @@ class QuoteFormManager {
 
     if (this.eventStructure === 'multi_day') {
       const totalSessions = parseInt(document.getElementById('totalSessions')?.value) || 0;
-      const numberOfDays = this.multiDayDates.length || 1;
+
+      // Count actual date input fields instead of relying on multiDayDates array
+      const dateInputs = document.querySelectorAll('.event-date');
+      const numberOfDays = Math.max(dateInputs.length, 1); // At least 1 day
+
       const averageSessionsPerDay = Math.round((totalSessions / numberOfDays) * 100) / 100; // Round to 2 decimal places
 
-      console.log(`Sessions calculation: ${totalSessions} sessions ÷ ${numberOfDays} days = ${averageSessionsPerDay}`);
+      console.log(`Sessions calculation: ${totalSessions} sessions ÷ ${numberOfDays} days (${dateInputs.length} date inputs) = ${averageSessionsPerDay}`);
 
       const sessionsPerDayField = document.getElementById('sessionsPerDay');
       if (sessionsPerDayField) {
