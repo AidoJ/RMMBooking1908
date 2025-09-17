@@ -1,13 +1,13 @@
 import React from 'react';
 import {
   Show,
-  useShow,
   DateField,
   EmailField,
   NumberField,
   TagField,
   TextField,
 } from '@refinedev/antd';
+import { useShow } from '@refinedev/core';
 import {
   Card,
   Typography,
