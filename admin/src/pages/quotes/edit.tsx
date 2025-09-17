@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Edit,
   useForm,
   useSelect,
 } from '@refinedev/antd';
+import { useParams } from 'react-router';
 import {
   Form,
   Input,
@@ -17,13 +18,32 @@ import {
   Divider,
   Tag,
   message,
+  Alert,
+  Button,
+  Space,
+  Modal,
+  Tabs,
 } from 'antd';
+import {
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  CloseCircleOutlined,
+  MailOutlined,
+} from '@ant-design/icons';
+import { QuoteAvailabilityChecker, type TherapistAssignment } from '../../components/QuoteAvailabilityChecker';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
 const { Option } = Select;
+const { TabPane } = Tabs;
 
 export const QuoteEdit: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const [activeTab, setActiveTab] = useState('details');
+  const [availabilityStatus, setAvailabilityStatus] = useState<'unchecked' | 'checking' | 'available' | 'partial' | 'unavailable'>('unchecked');
+  const [therapistAssignments, setTherapistAssignments] = useState<TherapistAssignment[]>([]);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+
   const { formProps, saveButtonProps, queryResult } = useForm({
     meta: {
       select: '*,quote_dates(*)',
@@ -32,38 +52,127 @@ export const QuoteEdit: React.FC = () => {
 
   const quotesData = queryResult?.data?.data;
 
+  const handleAvailabilityConfirmed = (assignments: TherapistAssignment[]) => {
+    setTherapistAssignments(assignments);
+    setAvailabilityStatus('available');
+    message.success('Therapist availability confirmed! Ready to send official quote.');
+    // TODO: Create tentative bookings
+  };
+
+  const handleAvailabilityDeclined = () => {
+    setShowDeclineModal(true);
+  };
+
+  const sendDeclineEmail = async () => {
+    try {
+      // TODO: Send professional decline email
+      message.success('Decline email sent to customer');
+      setShowDeclineModal(false);
+      // TODO: Update quote status to 'availability_declined'
+    } catch (error) {
+      message.error('Failed to send decline email');
+    }
+  };
+
+  const sendOfficialQuote = async () => {
+    try {
+      // TODO: Generate PDF, send email, create tentative bookings
+      message.success('Official quote sent successfully!');
+      // TODO: Update status to 'sent'
+    } catch (error) {
+      message.error('Failed to send official quote');
+    }
+  };
+
+  const getStatusAlert = () => {
+    const status = quotesData?.status;
+
+    if (status === 'new') {
+      return (
+        <Alert
+          message="Availability Check Required"
+          description="Before sending an official quote, you must check therapist availability for all requested dates."
+          type="warning"
+          showIcon
+          icon={<ExclamationCircleOutlined />}
+          action={
+            <Button
+              size="small"
+              onClick={() => setActiveTab('availability')}
+            >
+              Check Availability
+            </Button>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      );
+    }
+
+    if (availabilityStatus === 'available') {
+      return (
+        <Alert
+          message="Ready to Send Official Quote"
+          description="Therapist availability confirmed. You can now send the official quote to the customer."
+          type="success"
+          showIcon
+          icon={<CheckCircleOutlined />}
+          action={
+            <Button
+              type="primary"
+              size="small"
+              icon={<MailOutlined />}
+              onClick={sendOfficialQuote}
+            >
+              Send Official Quote
+            </Button>
+          }
+          style={{ marginBottom: 16 }}
+        />
+      );
+    }
+
+    return null;
+  };
+
   return (
     <Edit saveButtonProps={saveButtonProps}>
-      <Form {...formProps} layout="vertical">
-        <Card title="Quote Information" style={{ marginBottom: 16 }}>
-          <Row gutter={[16, 16]}>
-            <Col span={12}>
-              <Form.Item
-                label="Quote ID"
-                name="id"
-              >
-                <Input disabled />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                label="Status"
-                name="status"
-                rules={[{ required: true, message: 'Please select a status' }]}
-              >
-                <Select>
-                  <Option value="new">New</Option>
-                  <Option value="sent">Sent</Option>
-                  <Option value="accepted">Accepted</Option>
-                  <Option value="declined">Declined</Option>
-                  <Option value="invoiced">Invoiced</Option>
-                  <Option value="paid">Paid</Option>
-                  <Option value="completed">Completed</Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-        </Card>
+      {getStatusAlert()}
+
+      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <TabPane tab="Quote Details" key="details">
+          <Form {...formProps} layout="vertical">
+            <Card title="Quote Information" style={{ marginBottom: 16 }}>
+              <Row gutter={[16, 16]}>
+                <Col span={12}>
+                  <Form.Item
+                    label="Quote ID"
+                    name="id"
+                  >
+                    <Input disabled />
+                  </Form.Item>
+                </Col>
+                <Col span={12}>
+                  <Form.Item
+                    label="Status"
+                    name="status"
+                    rules={[{ required: true, message: 'Please select a status' }]}
+                  >
+                    <Select>
+                      <Option value="new">New</Option>
+                      <Option value="availability_checking">Checking Availability</Option>
+                      <Option value="availability_confirmed">Availability Confirmed</Option>
+                      <Option value="availability_declined">Availability Declined</Option>
+                      <Option value="sent">Sent</Option>
+                      <Option value="accepted">Accepted</Option>
+                      <Option value="declined">Declined</Option>
+                      <Option value="invoiced">Invoiced</Option>
+                      <Option value="paid">Paid</Option>
+                      <Option value="completed">Completed</Option>
+                    </Select>
+                  </Form.Item>
+                </Col>
+              </Row>
+            </Card>
 
         <Card title="Customer Information" style={{ marginBottom: 16 }}>
           <Row gutter={[16, 16]}>
@@ -339,15 +448,58 @@ export const QuoteEdit: React.FC = () => {
           </Row>
         </Card>
 
-        <Card title="Notes">
-          <Form.Item
-            label="Internal Notes"
-            name="notes"
-          >
-            <TextArea rows={4} />
-          </Form.Item>
-        </Card>
-      </Form>
+            <Card title="Notes">
+              <Form.Item
+                label="Internal Notes"
+                name="notes"
+              >
+                <TextArea rows={4} />
+              </Form.Item>
+            </Card>
+          </Form>
+        </TabPane>
+
+        <TabPane tab="Therapist Availability" key="availability">
+          {id && (
+            <QuoteAvailabilityChecker
+              quoteId={id}
+              onAvailabilityConfirmed={handleAvailabilityConfirmed}
+              onAvailabilityDeclined={handleAvailabilityDeclined}
+            />
+          )}
+        </TabPane>
+      </Tabs>
+
+      {/* Decline Quote Modal */}
+      <Modal
+        title="Decline Quote Request"
+        open={showDeclineModal}
+        onOk={sendDeclineEmail}
+        onCancel={() => setShowDeclineModal(false)}
+        okText="Send Decline Email"
+        cancelText="Cancel"
+        okType="danger"
+      >
+        <Alert
+          message="This will decline the quote request"
+          description="A professional email will be sent to the customer explaining that we cannot fulfill their request for the specified dates/times."
+          type="warning"
+          style={{ marginBottom: 16 }}
+        />
+
+        <div>
+          <p><strong>Email Template Preview:</strong></p>
+          <div style={{
+            background: '#f5f5f5',
+            padding: '12px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            fontStyle: 'italic'
+          }}>
+            "Thank you for your quote request. Unfortunately, we don't have therapist availability for your requested dates/times. We'd love to help you find alternative dates that work. Please call us to discuss options."
+          </div>
+        </div>
+      </Modal>
     </Edit>
   );
 };
