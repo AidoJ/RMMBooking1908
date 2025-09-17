@@ -71,7 +71,7 @@ export const QuoteEdit: React.FC = () => {
   const onValuesChange = (changedValues: any, allValues: any) => {
     // Trigger calculations for pricing fields
     if (changedValues.session_duration_minutes || changedValues.total_sessions ||
-        changedValues.total_amount || changedValues.discount_amount) {
+        changedValues.hourly_rate || changedValues.total_amount || changedValues.discount_amount) {
       setTimeout(() => {
         calculateFields();
       }, 0);
@@ -90,20 +90,34 @@ export const QuoteEdit: React.FC = () => {
 
     const sessionDuration = values.session_duration_minutes as number;
     const totalSessions = values.total_sessions as number;
-    const totalAmount = values.total_amount as number;
+    const hourlyRate = values.hourly_rate as number;
     const discountAmount = (values.discount_amount as number) || 0;
 
     // Calculate duration_minutes
     if (sessionDuration && totalSessions) {
       const durationMinutes = sessionDuration * totalSessions;
       form?.setFieldValue('duration_minutes', durationMinutes);
-    }
 
-    // Calculate pricing with GST
-    if (totalAmount !== undefined) {
-      const subtotal = totalAmount - discountAmount;
-      const gstAmount = subtotal / 11; // GST = subtotal / 1.1 * 0.1 = subtotal / 11
-      const finalAmount = subtotal;
+      // Auto-calculate Total Amount based on duration and hourly rate
+      if (hourlyRate) {
+        const totalHours = durationMinutes / 60;
+        const totalAmount = totalHours * hourlyRate;
+        form?.setFieldValue('total_amount', parseFloat(totalAmount.toFixed(2)));
+
+        // Calculate final amount and GST
+        const finalAmount = totalAmount - discountAmount;
+        const gstAmount = finalAmount / 11; // GST = final_amount / 1.1 * 0.1 = final_amount / 11
+
+        form?.setFieldsValue({
+          gst_amount: parseFloat(gstAmount.toFixed(2)),
+          final_amount: parseFloat(finalAmount.toFixed(2))
+        });
+      }
+    } else if (values.total_amount !== undefined) {
+      // Fallback: if total_amount is manually entered, calculate GST and final amount
+      const totalAmount = values.total_amount as number;
+      const finalAmount = totalAmount - discountAmount;
+      const gstAmount = finalAmount / 11;
 
       form?.setFieldsValue({
         gst_amount: parseFloat(gstAmount.toFixed(2)),

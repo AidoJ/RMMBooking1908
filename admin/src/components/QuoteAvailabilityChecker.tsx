@@ -129,7 +129,7 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
 
     const newAssignments = [...assignments];
     const existingIndex = newAssignments.findIndex(
-      a => a.date === date && a.start_time === startTime
+      a => a.date === date && a.start_time === startTime && a.therapist_id === therapist.therapist_id
     );
 
     const assignment: TherapistAssignment = {
@@ -177,7 +177,7 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
 
     const newAssignments = [...assignments];
     const existingIndex = newAssignments.findIndex(
-      a => a.date === date && a.start_time === day.start_time
+      a => a.date === date && a.start_time === day.start_time && a.therapist_id === therapist.therapist_id
     );
 
     if (existingIndex >= 0) {
