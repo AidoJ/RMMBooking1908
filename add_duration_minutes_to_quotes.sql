@@ -4,8 +4,13 @@
 ALTER TABLE quotes
 ADD COLUMN duration_minutes INTEGER;
 
--- Add comment explaining the field
+-- Add gst_amount field to replace tax_rate_amount
+ALTER TABLE quotes
+ADD COLUMN gst_amount DECIMAL(10,2);
+
+-- Add comments explaining the fields
 COMMENT ON COLUMN quotes.duration_minutes IS 'Total duration in minutes (session_duration_minutes * total_sessions) used for booking creation and therapist fee calculations';
+COMMENT ON COLUMN quotes.gst_amount IS 'GST amount (10%) auto-calculated from final amount';
 
 -- Update existing records to calculate duration_minutes
 UPDATE quotes

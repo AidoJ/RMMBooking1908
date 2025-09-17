@@ -67,6 +67,24 @@ export const QuoteEdit: React.FC = () => {
     }
   }, [quotesData]);
 
+  // Handle form value changes
+  const onValuesChange = (changedValues: any, allValues: any) => {
+    // Trigger calculations for pricing fields
+    if (changedValues.session_duration_minutes || changedValues.total_sessions ||
+        changedValues.total_amount || changedValues.discount_amount) {
+      setTimeout(() => {
+        calculateFields();
+      }, 0);
+    }
+
+    // Check for session changes that affect availability
+    if (changedValues.session_duration_minutes || changedValues.total_sessions) {
+      setTimeout(() => {
+        checkSessionDetailsChanged();
+      }, 0);
+    }
+  };
+
   // Auto-calculate duration_minutes and pricing fields
   const calculateFields = () => {
     const values = form?.getFieldsValue() as any;
@@ -217,7 +235,7 @@ export const QuoteEdit: React.FC = () => {
 
       <Tabs activeKey={activeTab} onChange={setActiveTab}>
         <TabPane tab="Quote Details" key="details">
-          <Form {...formProps} layout="vertical">
+          <Form {...formProps} layout="vertical" onValuesChange={onValuesChange}>
             <Card title="Quote Information" style={{ marginBottom: 16 }}>
               <Row gutter={[16, 16]}>
                 <Col span={12}>
@@ -376,12 +394,6 @@ export const QuoteEdit: React.FC = () => {
                 <InputNumber
                   min={1}
                   style={{ width: '100%' }}
-                  onChange={() => {
-                    setTimeout(() => {
-                      calculateFields();
-                      checkSessionDetailsChanged();
-                    }, 0);
-                  }}
                 />
               </Form.Item>
             </Col>
@@ -394,12 +406,6 @@ export const QuoteEdit: React.FC = () => {
                 <InputNumber
                   min={1}
                   style={{ width: '100%' }}
-                  onChange={() => {
-                    setTimeout(() => {
-                      calculateFields();
-                      checkSessionDetailsChanged();
-                    }, 0);
-                  }}
                 />
               </Form.Item>
             </Col>
@@ -454,11 +460,6 @@ export const QuoteEdit: React.FC = () => {
                   precision={2}
                   style={{ width: '100%' }}
                   formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  onChange={() => {
-                    setTimeout(() => {
-                      calculateFields();
-                    }, 0);
-                  }}
                 />
               </Form.Item>
             </Col>
@@ -488,11 +489,6 @@ export const QuoteEdit: React.FC = () => {
                   precision={2}
                   style={{ width: '100%' }}
                   formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  onChange={() => {
-                    setTimeout(() => {
-                      calculateFields();
-                    }, 0);
-                  }}
                 />
               </Form.Item>
             </Col>
@@ -558,10 +554,7 @@ export const QuoteEdit: React.FC = () => {
                     const code = e.target.value;
                     if (code) {
                       // TODO: Validate discount code against database
-                      // For now, just trigger calculation
-                      setTimeout(() => {
-                        calculateFields();
-                      }, 0);
+                      message.info('Discount code validation not implemented yet');
                     }
                   }}
                 />
