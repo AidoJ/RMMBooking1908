@@ -83,25 +83,8 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
       const result = await checkQuoteAvailability(quoteId);
       setAvailability(result);
 
-      // Initialize assignments for available slots
-      const initialAssignments: TherapistAssignment[] = [];
-      result.days.forEach(day => {
-        if (day.can_fulfill) {
-          const availableTherapists = day.available_therapists.filter(t => t.is_available);
-          for (let i = 0; i < day.therapists_required && i < availableTherapists.length; i++) {
-            const therapist = availableTherapists[i];
-            initialAssignments.push({
-              date: day.date,
-              start_time: day.start_time,
-              therapist_id: therapist.therapist_id,
-              therapist_name: therapist.therapist_name,
-              hourly_rate: therapist.hourly_rate,
-              is_override: false,
-            });
-          }
-        }
-      });
-      setAssignments(initialAssignments);
+      // Don't auto-assign therapists - let admin manually select them
+      setAssignments([]);
     } catch (error) {
       console.error('Error checking availability:', error);
       message.error('Failed to check therapist availability');
@@ -425,24 +408,68 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
       {/* Current Assignments */}
       {assignments.length > 0 && (
         <Card title="Current Assignments" style={{ marginBottom: 16 }}>
-          {assignments.map((assignment, index) => (
-            <div key={index} style={{ marginBottom: 8 }}>
-              <Space>
-                <CalendarOutlined />
-                <Text>{dayjs(assignment.date).format('MMM DD')}</Text>
-                <ClockCircleOutlined />
-                <Text>{assignment.start_time}</Text>
-                <UserOutlined />
-                <Text strong>{assignment.therapist_name}</Text>
-                <Text type="secondary">${assignment.hourly_rate}/hr</Text>
-                {assignment.is_override && (
-                  <Tag color="orange" icon={<WarningOutlined />}>
-                    Override
-                  </Tag>
-                )}
-              </Space>
-            </div>
-          ))}
+          {assignments.map((assignment, index) => {
+            // Calculate hours and total fee for this assignment
+            const sessionDuration = availability?.days.find(d => d.date === assignment.date)?.sessions_count || 0;
+            const durationMinutes = sessionDuration * (availability?.days[0]?.sessions_count ?
+              (availability.days.find(d => d.date === assignment.date)?.sessions_count || 0) : 0);
+            const hours = durationMinutes / 60;
+            const totalFee = hours * assignment.hourly_rate;
+
+            return (
+              <div key={index} style={{ marginBottom: 12, padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
+                <Row gutter={[16, 8]}>
+                  <Col span={12}>
+                    <Space>
+                      <CalendarOutlined />
+                      <Text strong>{dayjs(assignment.date).format('MMM DD')}</Text>
+                      <ClockCircleOutlined />
+                      <Text>{assignment.start_time}</Text>
+                    </Space>
+                  </Col>
+                  <Col span={12}>
+                    <Space>
+                      <UserOutlined />
+                      <Text strong>{assignment.therapist_name}</Text>
+                      {assignment.is_override && (
+                        <Tag color="orange" icon={<WarningOutlined />}>
+                          Override
+                        </Tag>
+                      )}
+                    </Space>
+                  </Col>
+                  <Col span={12}>
+                    <Text type="secondary">
+                      Duration: <Text strong>{hours.toFixed(1)} hours</Text>
+                    </Text>
+                  </Col>
+                  <Col span={12}>
+                    <Text type="secondary">
+                      Rate: <Text strong>${assignment.hourly_rate}/hr</Text> = <Text strong style={{ color: '#52c41a' }}>${totalFee.toFixed(2)}</Text>
+                    </Text>
+                  </Col>
+                </Row>
+              </div>
+            );
+          })}
+
+          {/* Assignment Summary */}
+          <Divider />
+          <Row>
+            <Col span={12}>
+              <Text strong>Total Assignments: {assignments.length}</Text>
+            </Col>
+            <Col span={12} style={{ textAlign: 'right' }}>
+              <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
+                Total Therapist Fees: ${assignments.reduce((total, assignment) => {
+                  const sessionDuration = availability?.days.find(d => d.date === assignment.date)?.sessions_count || 0;
+                  const durationMinutes = sessionDuration * 60; // Assuming 60 min sessions
+                  const hours = durationMinutes / 60;
+                  return total + (hours * assignment.hourly_rate);
+                }, 0).toFixed(2)}
+              </Text>
+            </Col>
+          </Row>
         </Card>
       )}
 

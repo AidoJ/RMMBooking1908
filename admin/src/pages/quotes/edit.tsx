@@ -117,13 +117,23 @@ export const QuoteEdit: React.FC = () => {
   // Check if session details changed (affects availability)
   const checkSessionDetailsChanged = () => {
     const currentValues = form?.getFieldsValue() as any;
-    if (!currentValues) return;
+    if (!currentValues || !originalSessionData.session_duration_minutes) return;
 
     const sessionChanged =
       (currentValues.session_duration_minutes as number) !== originalSessionData.session_duration_minutes ||
       (currentValues.total_sessions as number) !== originalSessionData.total_sessions;
 
-    if (sessionChanged && availabilityStatus !== 'unchecked') {
+    console.log('Checking session changes:', {
+      current: {
+        duration: currentValues.session_duration_minutes,
+        sessions: currentValues.total_sessions
+      },
+      original: originalSessionData,
+      sessionChanged,
+      availabilityStatus
+    });
+
+    if (sessionChanged && (availabilityStatus === 'available' || availabilityStatus === 'partial')) {
       setAvailabilityStatus('unchecked');
       setTherapistAssignments([]);
       message.warning('Session details changed - please re-check therapist availability');
