@@ -4,7 +4,6 @@ import {
   useTable,
   getDefaultSortOrder,
   FilterDropdown,
-  useSelect,
   EmailField,
   DateField,
   NumberField,
@@ -30,6 +29,7 @@ import {
   Badge,
   Modal,
   message,
+  Divider,
 } from 'antd';
 import {
   EyeOutlined,
@@ -41,6 +41,13 @@ import {
   SearchOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined,
+  FileTextOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+  SendOutlined,
+  FileProtectOutlined,
+  CreditCardOutlined,
 } from '@ant-design/icons';
 import type { IResourceComponentsProps } from '@refinedev/core';
 import { UserIdentity, canAccess } from '../../utils/roleUtils';
@@ -62,40 +69,29 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   const { tableProps, searchFormProps, filters, sorters } = useTable({
-    resource: 'bookings',
-    filters: {
-      permanent: [
-        {
-          field: 'quote_only',
-          operator: 'eq' as const,
-          value: true  // Try boolean true instead of string
-        },
-        {
-          field: 'business_name',
-          operator: 'nnull' as const,  // Not null - quotes should have business names
-          value: null
-        }
-      ]
+    resource: 'quotes',
+    meta: {
+      select: '*,quote_dates(*)',  // Include related quote_dates for multi-day events
     },
     onSearch: (params: any) => {
       const filters = [];
-      
-      if (params.business_name) {
+
+      if (params.company_name) {
         filters.push({
-          field: 'business_name',
+          field: 'company_name',
           operator: 'contains' as const,
-          value: params.business_name,
+          value: params.company_name,
         });
       }
-      
-      if (params.corporate_contact_name) {
+
+      if (params.customer_name) {
         filters.push({
-          field: 'corporate_contact_name',
+          field: 'customer_name',
           operator: 'contains' as const,
-          value: params.corporate_contact_name,
+          value: params.customer_name,
         });
       }
-      
+
       if (params.status && params.status.length > 0) {
         filters.push({
           field: 'status',
@@ -103,7 +99,7 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
           value: params.status,
         });
       }
-      
+
       if (params.dateRange && params.dateRange.length === 2) {
         filters.push({
           field: 'created_at',
@@ -116,7 +112,7 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
           value: params.dateRange[1].endOf('day').toISOString(),
         });
       }
-      
+
       return filters;
     },
     initialSorter: [
@@ -144,9 +140,9 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
       onOk: async () => {
         try {
           setDeleteLoading(true);
-          
+
           const { error } = await supabaseClient
-            .from('bookings')
+            .from('quotes')
             .delete()
             .in('id', selectedRowKeys);
 
@@ -154,10 +150,10 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
 
           message.success(`Successfully deleted ${selectedRowKeys.length} quote(s)`);
           setSelectedRowKeys([]);
-          
+
           // Refresh the table
           tableProps.dataSource?.length && window.location.reload();
-          
+
         } catch (error: any) {
           console.error('Error deleting quotes:', error);
           message.error('Failed to delete quotes: ' + error.message);
@@ -175,52 +171,88 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
     },
   };
 
+  // Quote status functions based on PDF requirements: New → Sent → Accepted/Declined → Invoiced → Paid → Completed
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'requested':
-      case 'quote_requested':
-        return 'orange';
-      case 'confirmed':
-        return 'green';
+      case 'new':
+        return 'default';
+      case 'sent':
+        return 'processing';
+      case 'accepted':
+        return 'success';
       case 'declined':
-        return 'red';
-      case 'cancelled':
-        return 'red';
+        return 'error';
+      case 'invoiced':
+        return 'warning';
+      case 'paid':
+        return 'success';
+      case 'completed':
+        return 'green';
       default:
-        return 'blue';
+        return 'default';
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'requested':
-      case 'quote_requested':
-        return 'Pending';
-      case 'confirmed':
+      case 'new':
+        return 'New';
+      case 'sent':
+        return 'Sent';
+      case 'accepted':
         return 'Accepted';
       case 'declined':
         return 'Declined';
-      case 'cancelled':
-        return 'Cancelled';
+      case 'invoiced':
+        return 'Invoiced';
+      case 'paid':
+        return 'Paid';
+      case 'completed':
+        return 'Completed';
       default:
         return status?.charAt(0).toUpperCase() + status?.slice(1);
     }
   };
 
-  // Calculate statistics
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'new':
+        return <FileTextOutlined />;
+      case 'sent':
+        return <SendOutlined />;
+      case 'accepted':
+        return <CheckCircleOutlined />;
+      case 'declined':
+        return <CloseCircleOutlined />;
+      case 'invoiced':
+        return <FileProtectOutlined />;
+      case 'paid':
+        return <CreditCardOutlined />;
+      case 'completed':
+        return <CheckCircleOutlined />;
+      default:
+        return <ClockCircleOutlined />;
+    }
+  };
+
+  // Calculate statistics based on PDF status flow
   const quotes = tableProps.dataSource || [];
   const totalQuotes = quotes.length;
-  const pendingQuotes = quotes.filter(q => ['requested', 'quote_requested'].includes(q.status)).length;
-  const acceptedQuotes = quotes.filter(q => q.status === 'confirmed').length;
+  const newQuotes = quotes.filter(q => q.status === 'new').length;
+  const sentQuotes = quotes.filter(q => q.status === 'sent').length;
+  const acceptedQuotes = quotes.filter(q => q.status === 'accepted').length;
   const declinedQuotes = quotes.filter(q => q.status === 'declined').length;
-  const totalValue = quotes.reduce((sum, q) => sum + (q.price || 0), 0);
-  const acceptedValue = quotes.filter(q => q.status === 'confirmed').reduce((sum, q) => sum + (q.price || 0), 0);
+  const invoicedQuotes = quotes.filter(q => q.status === 'invoiced').length;
+  const paidQuotes = quotes.filter(q => q.status === 'paid').length;
+  const completedQuotes = quotes.filter(q => q.status === 'completed').length;
+  const totalValue = quotes.reduce((sum, q) => sum + (q.final_amount || q.total_amount || 0), 0);
+  const acceptedValue = quotes.filter(q => ['accepted', 'invoiced', 'paid', 'completed'].includes(q.status)).reduce((sum, q) => sum + (q.final_amount || q.total_amount || 0), 0);
 
   return (
     <div style={{ padding: '24px' }}>
-      {/* Statistics Cards */}
+      {/* Statistics Cards - Based on PDF Status Flow */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col span={6}>
+        <Col span={4}>
           <Card>
             <Statistic
               title="Total Quotes"
@@ -229,40 +261,60 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={4}>
           <Card>
             <Statistic
-              title="Pending"
-              value={pendingQuotes}
-              prefix={<Badge status="processing" />}
-              valueStyle={{ color: '#fa8c16' }}
+              title="New"
+              value={newQuotes}
+              prefix={<FileTextOutlined style={{ color: '#d9d9d9' }} />}
+              valueStyle={{ color: '#8c8c8c' }}
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={4}>
+          <Card>
+            <Statistic
+              title="Sent"
+              value={sentQuotes}
+              prefix={<SendOutlined style={{ color: '#1890ff' }} />}
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Card>
+        </Col>
+        <Col span={4}>
           <Card>
             <Statistic
               title="Accepted"
               value={acceptedQuotes}
-              prefix={<Badge status="success" />}
+              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
               valueStyle={{ color: '#52c41a' }}
             />
           </Card>
         </Col>
-        <Col span={6}>
+        <Col span={4}>
           <Card>
             <Statistic
-              title="Declined"
-              value={declinedQuotes}
-              prefix={<Badge status="error" />}
-              valueStyle={{ color: '#ff4d4f' }}
+              title="Paid"
+              value={paidQuotes}
+              prefix={<CreditCardOutlined style={{ color: '#722ed1' }} />}
+              valueStyle={{ color: '#722ed1' }}
+            />
+          </Card>
+        </Col>
+        <Col span={4}>
+          <Card>
+            <Statistic
+              title="Completed"
+              value={completedQuotes}
+              prefix={<CheckCircleOutlined style={{ color: '#389e0d' }} />}
+              valueStyle={{ color: '#389e0d' }}
             />
           </Card>
         </Col>
       </Row>
 
       <Row gutter={[16, 0]} style={{ marginBottom: 24 }}>
-        <Col span={12}>
+        <Col span={8}>
           <Card>
             <Statistic
               title="Total Quote Value"
@@ -273,7 +325,7 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
             />
           </Card>
         </Col>
-        <Col span={12}>
+        <Col span={8}>
           <Card>
             <Statistic
               title="Accepted Quote Value"
@@ -281,6 +333,16 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
               precision={2}
               prefix="$"
               valueStyle={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+        <Col span={8}>
+          <Card>
+            <Statistic
+              title="Declined"
+              value={declinedQuotes}
+              prefix={<CloseCircleOutlined style={{ color: '#ff4d4f' }} />}
+              valueStyle={{ color: '#ff4d4f' }}
             />
           </Card>
         </Col>
@@ -333,10 +395,13 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
                 value={statusFilter}
                 onChange={setStatusFilter}
               >
-                <Option value="requested">Pending</Option>
-                <Option value="confirmed">Accepted</Option>
+                <Option value="new">New</Option>
+                <Option value="sent">Sent</Option>
+                <Option value="accepted">Accepted</Option>
                 <Option value="declined">Declined</Option>
-                <Option value="cancelled">Cancelled</Option>
+                <Option value="invoiced">Invoiced</Option>
+                <Option value="paid">Paid</Option>
+                <Option value="completed">Completed</Option>
               </Select>
             </Col>
             <Col span={6}>
@@ -373,8 +438,8 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
           size="middle"
         >
           <Table.Column
-            dataIndex="business_name"
-            title="Company"
+            dataIndex="company_name"
+            title="Business Name"
             render={(value) => (
               <Text strong style={{ color: '#1890ff' }}>
                 {value || 'Not specified'}
@@ -384,21 +449,30 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
           />
           
           <Table.Column
-            dataIndex="booking_id"
+            dataIndex="id"
             title="Quote Number"
-            render={(value, record: any) => (
+            render={(value) => (
               <Text strong style={{ color: '#52c41a', fontFamily: 'monospace' }}>
-                {value || `#${record.id.substring(0, 8).toUpperCase()}`}
+                {value || 'N/A'}
               </Text>
             )}
             sorter
           />
 
           <Table.Column
-            dataIndex="event_type"
+            dataIndex="event_structure"
             title="Event Type"
-            render={(value) => (
-              <Tag color="blue">{value || 'Corporate Event'}</Tag>
+            render={(value, record: any) => (
+              <div>
+                <Tag color={value === 'single_day' ? 'blue' : 'purple'}>
+                  {value === 'single_day' ? 'Single Day' : 'Multi-Day'}
+                </Tag>
+                {value === 'multi_day' && record.number_of_event_days && (
+                  <div><Text type="secondary" style={{ fontSize: 11 }}>
+                    {record.number_of_event_days} days
+                  </Text></div>
+                )}
+              </div>
             )}
           />
 
@@ -410,7 +484,7 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
                 <div><Text strong>{value || 'N/A'}</Text></div>
                 <div>
                   <Text type="secondary" style={{ fontSize: 11 }}>
-                    {record.number_of_massages || 0} massages
+                    {record.total_sessions || 0} sessions
                   </Text>
                 </div>
               </div>
@@ -419,32 +493,53 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
           />
 
           <Table.Column
-            dataIndex="booking_time"
-            title="Event Date"
-            render={(value) => (
-              <div>
-                <div><CalendarOutlined /> {dayjs(value).format('MMM DD, YYYY')}</div>
+            dataIndex="single_event_date"
+            title="Service Start Date"
+            render={(value, record: any) => {
+              // For single day events, use single_event_date
+              // For multi-day events, get first date from quote_dates
+              let displayDate = value;
+              if (record.event_structure === 'multi_day' && record.quote_dates?.length > 0) {
+                displayDate = record.quote_dates[0]?.event_date;
+              }
+
+              return displayDate ? (
                 <div>
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    {dayjs(value).format('dddd')}
-                  </Text>
+                  <div><CalendarOutlined /> {dayjs(displayDate).format('MMM DD, YYYY')}</div>
+                  <div>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                      {dayjs(displayDate).format('dddd')}
+                    </Text>
+                  </div>
                 </div>
-              </div>
-            )}
+              ) : (
+                <Text type="secondary">Date TBD</Text>
+              );
+            }}
             sorter
-            defaultSortOrder={getDefaultSortOrder('booking_time', sorters)}
+            defaultSortOrder={getDefaultSortOrder('single_event_date', sorters)}
           />
 
           <Table.Column
-            dataIndex="price"
-            title="Quote Amount"
-            render={(value) => (
-              <div style={{ textAlign: 'right' }}>
-                <Text strong style={{ color: '#52c41a', fontSize: 16 }}>
-                  ${(value || 0).toFixed(2)}
-                </Text>
-              </div>
-            )}
+            dataIndex="final_amount"
+            title="Estimate Value"
+            render={(value, record: any) => {
+              const finalAmount = value || record.total_amount || 0;
+              return (
+                <div style={{ textAlign: 'right' }}>
+                  <Text strong style={{ color: '#52c41a', fontSize: 16 }}>
+                    ${finalAmount.toFixed(2)}
+                  </Text>
+                  {record.discount_amount > 0 && (
+                    <div>
+                      <Text type="secondary" style={{ fontSize: 11 }}>
+                        (${record.discount_amount} discount)
+                      </Text>
+                    </div>
+                  )}
+                </div>
+              );
+            }}
             sorter
             width={120}
           />
@@ -453,7 +548,7 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
             dataIndex="status"
             title="Status"
             render={(value) => (
-              <Tag color={getStatusColor(value)}>
+              <Tag color={getStatusColor(value)} icon={getStatusIcon(value)}>
                 {getStatusText(value)}
               </Tag>
             )}
@@ -466,10 +561,13 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
                   value={props.selectedKeys}
                   onChange={props.setSelectedKeys}
                 >
-                  <Option value="requested">Pending</Option>
-                  <Option value="confirmed">Accepted</Option>
+                  <Option value="new">New</Option>
+                  <Option value="sent">Sent</Option>
+                  <Option value="accepted">Accepted</Option>
                   <Option value="declined">Declined</Option>
-                  <Option value="cancelled">Cancelled</Option>
+                  <Option value="invoiced">Invoiced</Option>
+                  <Option value="paid">Paid</Option>
+                  <Option value="completed">Completed</Option>
                 </Select>
               </FilterDropdown>
             )}
@@ -501,7 +599,7 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
                     type="text"
                     size="small"
                     icon={<EyeOutlined />}
-                    onClick={() => show('bookings', record.id)}
+                    onClick={() => show('quotes', record.id)}
                   />
                 </Tooltip>
                 <Tooltip title="Edit Quote">
@@ -509,7 +607,7 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
                     hideText
                     size="small"
                     recordItemId={record.id}
-                    resource="bookings"
+                    resource="quotes"
                   />
                 </Tooltip>
               </Space>

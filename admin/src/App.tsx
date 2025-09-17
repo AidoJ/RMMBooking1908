@@ -54,8 +54,8 @@ import CustomerCreate from "./pages/customers/create";
 // Import the system settings component
 import SystemSettings from "./pages/system-settings";
 
-// Import the quotes management component
-import { QuotesList } from "./pages/quotes";
+// Import the quotes management components
+import { QuotesList, QuoteShow, QuoteEdit } from "./pages/quotes";
 
 // Import the discount codes management components
 import { DiscountCodesList, DiscountCodesCreate, DiscountCodesEdit, DiscountCodesShow } from "./pages/discount-codes";
@@ -118,7 +118,10 @@ function App() {
                   {
                     name: "quotes",
                     list: "/quotes",
+                    show: "/quotes/show/:id",
+                    edit: "/quotes/edit/:id",
                     meta: {
+                      canDelete: true,
                       label: "Quotes",
                       icon: "💰",
                     },
@@ -285,7 +288,11 @@ function App() {
                     </Route>
                     
                     {/* Quote Management */}
-                    <Route path="/quotes" element={<QuotesList />} />
+                    <Route path="/quotes">
+                      <Route index element={<QuotesList />} />
+                      <Route path="show/:id" element={<QuoteShow />} />
+                      <Route path="edit/:id" element={<QuoteEdit />} />
+                    </Route>
                     
                     {/* Discount Codes Management */}
                     <Route path="/discount-codes">
