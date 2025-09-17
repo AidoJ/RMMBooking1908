@@ -410,10 +410,13 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
         <Card title="Current Assignments" style={{ marginBottom: 16 }}>
           {assignments.map((assignment, index) => {
             // Calculate hours and total fee for this assignment
-            const sessionDuration = availability?.days.find(d => d.date === assignment.date)?.sessions_count || 0;
-            const durationMinutes = sessionDuration * (availability?.days[0]?.sessions_count ?
-              (availability.days.find(d => d.date === assignment.date)?.sessions_count || 0) : 0);
-            const hours = durationMinutes / 60;
+            const day = availability?.days.find(d => d.date === assignment.date);
+            const sessionsCount = day?.sessions_count || 1;
+            const sessionDurationMinutes = availability?.session_duration_minutes || 60;
+
+            // Get the total duration for this assignment (therapist works all sessions for this day)
+            const totalDurationMinutes = sessionsCount * sessionDurationMinutes;
+            const hours = totalDurationMinutes / 60;
             const totalFee = hours * assignment.hourly_rate;
 
             return (
@@ -462,9 +465,11 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
             <Col span={12} style={{ textAlign: 'right' }}>
               <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
                 Total Therapist Fees: ${assignments.reduce((total, assignment) => {
-                  const sessionDuration = availability?.days.find(d => d.date === assignment.date)?.sessions_count || 0;
-                  const durationMinutes = sessionDuration * 60; // Assuming 60 min sessions
-                  const hours = durationMinutes / 60;
+                  const day = availability?.days.find(d => d.date === assignment.date);
+                  const sessionsCount = day?.sessions_count || 1;
+                  const sessionDurationMinutes = availability?.session_duration_minutes || 60;
+                  const totalDurationMinutes = sessionsCount * sessionDurationMinutes;
+                  const hours = totalDurationMinutes / 60;
                   return total + (hours * assignment.hourly_rate);
                 }, 0).toFixed(2)}
               </Text>

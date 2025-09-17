@@ -29,6 +29,7 @@ export interface QuoteAvailabilityResult {
   quote_id: string;
   can_fulfill_completely: boolean;
   overall_status: 'available' | 'partial' | 'unavailable';
+  session_duration_minutes: number;
   days: DayAvailability[];
   summary: {
     total_days: number;
@@ -371,6 +372,7 @@ export async function checkQuoteAvailability(quoteId: string): Promise<QuoteAvai
       quote_id: quoteId,
       can_fulfill_completely: canFulfillCompletely,
       overall_status: overallStatus,
+      session_duration_minutes: quote.session_duration_minutes || 60,
       days,
       summary: {
         total_days: days.length,

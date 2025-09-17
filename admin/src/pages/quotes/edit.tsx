@@ -133,10 +133,13 @@ export const QuoteEdit: React.FC = () => {
       availabilityStatus
     });
 
-    if (sessionChanged && (availabilityStatus === 'available' || availabilityStatus === 'partial')) {
-      setAvailabilityStatus('unchecked');
-      setTherapistAssignments([]);
-      message.warning('Session details changed - please re-check therapist availability');
+    if (sessionChanged) {
+      // If there are any changes and we had previous assignments or confirmed availability
+      if (availabilityStatus !== 'unchecked' || therapistAssignments.length > 0) {
+        setAvailabilityStatus('unchecked');
+        setTherapistAssignments([]);
+        message.warning('Session details changed - please re-check therapist availability');
+      }
     }
   };
 
