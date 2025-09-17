@@ -409,14 +409,14 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
       {assignments.length > 0 && (
         <Card title="Current Assignments" style={{ marginBottom: 16 }}>
           {assignments.map((assignment, index) => {
-            // Calculate hours and total fee for this assignment
-            const day = availability?.days.find(d => d.date === assignment.date);
-            const sessionsCount = day?.sessions_count || 1;
-            const sessionDurationMinutes = availability?.session_duration_minutes || 60;
+            // Simple calculation: total duration ÷ days ÷ therapists per day × rate
+            const totalDays = availability?.days.length || 1;
+            const totalDurationMinutes = availability?.duration_minutes || 0;
+            const therapistsPerDay = assignments.filter(a => a.date === assignment.date).length || 1;
 
-            // Get the total duration for this assignment (therapist works all sessions for this day)
-            const totalDurationMinutes = sessionsCount * sessionDurationMinutes;
-            const hours = totalDurationMinutes / 60;
+            // Duration per therapist per day
+            const durationPerTherapistMinutes = totalDurationMinutes / totalDays / therapistsPerDay;
+            const hours = durationPerTherapistMinutes / 60;
             const totalFee = hours * assignment.hourly_rate;
 
             return (
@@ -465,11 +465,11 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
             <Col span={12} style={{ textAlign: 'right' }}>
               <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
                 Total Therapist Fees: ${assignments.reduce((total, assignment) => {
-                  const day = availability?.days.find(d => d.date === assignment.date);
-                  const sessionsCount = day?.sessions_count || 1;
-                  const sessionDurationMinutes = availability?.session_duration_minutes || 60;
-                  const totalDurationMinutes = sessionsCount * sessionDurationMinutes;
-                  const hours = totalDurationMinutes / 60;
+                  const totalDays = availability?.days.length || 1;
+                  const totalDurationMinutes = availability?.duration_minutes || 0;
+                  const therapistsPerDay = assignments.filter(a => a.date === assignment.date).length || 1;
+                  const durationPerTherapistMinutes = totalDurationMinutes / totalDays / therapistsPerDay;
+                  const hours = durationPerTherapistMinutes / 60;
                   return total + (hours * assignment.hourly_rate);
                 }, 0).toFixed(2)}
               </Text>
