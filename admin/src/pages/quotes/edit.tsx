@@ -77,11 +77,9 @@ export const QuoteEdit: React.FC = () => {
       }, 0);
     }
 
-    // Check for session changes that affect availability
+    // Show warning when session fields change (affects duration and therapist assignments)
     if (changedValues.session_duration_minutes || changedValues.total_sessions) {
-      setTimeout(() => {
-        checkSessionDetailsChanged();
-      }, 0);
+      message.warning('Warning: This will affect the Therapist assignments. Please check all details and ensure you refresh the availability and assignments before sending the quote to the client.');
     }
   };
 
@@ -114,34 +112,6 @@ export const QuoteEdit: React.FC = () => {
     }
   };
 
-  // Check if session details changed (affects availability)
-  const checkSessionDetailsChanged = () => {
-    const currentValues = form?.getFieldsValue() as any;
-    if (!currentValues || !originalSessionData.session_duration_minutes) return;
-
-    const sessionChanged =
-      (currentValues.session_duration_minutes as number) !== originalSessionData.session_duration_minutes ||
-      (currentValues.total_sessions as number) !== originalSessionData.total_sessions;
-
-    console.log('Checking session changes:', {
-      current: {
-        duration: currentValues.session_duration_minutes,
-        sessions: currentValues.total_sessions
-      },
-      original: originalSessionData,
-      sessionChanged,
-      availabilityStatus
-    });
-
-    if (sessionChanged) {
-      // If there are any changes and we had previous assignments or confirmed availability
-      if (availabilityStatus !== 'unchecked' || therapistAssignments.length > 0) {
-        setAvailabilityStatus('unchecked');
-        setTherapistAssignments([]);
-        message.warning('Session details changed - please re-check therapist availability');
-      }
-    }
-  };
 
   const handleAvailabilityConfirmed = (assignments: TherapistAssignment[]) => {
     setTherapistAssignments(assignments);
