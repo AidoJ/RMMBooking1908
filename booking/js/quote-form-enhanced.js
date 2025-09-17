@@ -623,9 +623,23 @@ class QuoteFormManager {
   async saveQuoteDates(quoteId) {
     console.log('🔍 saveQuoteDates called with quoteId:', quoteId);
 
-    // Collect all multi-day dates
+    // First, update the quote record with the correct number of days
     const dateRows = document.querySelectorAll('.multi-day-date-row');
     console.log('🔍 Found date rows:', dateRows.length);
+
+    // Update the quote with the actual number of event days
+    if (dateRows.length > 0) {
+      console.log('📝 Updating quote with number_of_event_days:', dateRows.length);
+      const { error: updateError } = await window.supabase
+        .from('quotes')
+        .update({ number_of_event_days: dateRows.length })
+        .eq('id', quoteId);
+
+      if (updateError) {
+        console.error('Error updating quote event days:', updateError);
+        throw new Error('Failed to update quote event days');
+      }
+    }
 
     const quoteDates = [];
 
