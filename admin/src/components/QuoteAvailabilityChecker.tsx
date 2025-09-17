@@ -222,7 +222,8 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
     });
   };
 
-  const therapistColumns = [
+  // Create columns factory that includes day context
+  const createTherapistColumns = (currentDay: DayAvailability) => [
     {
       title: 'Therapist',
       dataIndex: 'therapist_name',
@@ -273,22 +274,15 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
     {
       title: 'Action',
       key: 'action',
-      render: (_: any, therapist: TherapistAvailability) => {
-        // Get day from context - we'll pass it through the render prop
-        const day = availability?.days.find(d =>
-          d.available_therapists.some(t => t.therapist_id === therapist.therapist_id)
-        );
-        if (!day) return null;
-
-        return (
+      render: (_: any, therapist: TherapistAvailability) => (
         <Space>
           {therapist.is_available ? (
             <Button
               type="primary"
               size="small"
               onClick={() => handleTherapistAssignment(
-                day.date,
-                day.start_time,
+                currentDay.date,
+                currentDay.start_time,
                 therapist.therapist_id,
                 0
               )}
@@ -300,14 +294,13 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
               type="dashed"
               size="small"
               icon={<WarningOutlined />}
-              onClick={() => handleOverrideRequest(day.date, therapist)}
+              onClick={() => handleOverrideRequest(currentDay.date, therapist)}
             >
               Override
             </Button>
           )}
         </Space>
-        );
-      },
+      ),
     },
   ];
 
@@ -411,7 +404,7 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
         >
           <Table
             dataSource={day.available_therapists}
-            columns={therapistColumns}
+            columns={createTherapistColumns(day)}
             rowKey="therapist_id"
             pagination={false}
             size="small"

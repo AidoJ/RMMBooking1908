@@ -55,15 +55,42 @@ function isBusinessHours(date: string, time: string): boolean {
 }
 
 /**
- * Get therapist's hourly rate based on time
+ * Get system settings for therapist rates
  */
-function getTherapistRate(therapist: any, date: string, time: string): number {
-  const isBusinessTime = isBusinessHours(date, time);
-  // Default rates if not specified in therapist profile
-  const daytimeRate = 75; // Base daytime rate
-  const afterhoursRate = 100; // Base afterhours rate
+async function getSystemRates(): Promise<{daytimeRate: number, weekendRate: number}> {
+  try {
+    const { data: settings, error } = await supabaseClient
+      .from('system_settings')
+      .select('key, value')
+      .in('key', ['therapist_daytime_hourly_rate', 'therapist_weekend_hourly_rate']);
 
-  return isBusinessTime ? daytimeRate : afterhoursRate;
+    if (error) {
+      console.error('Error fetching system settings:', error);
+      // Fallback rates
+      return { daytimeRate: 75, weekendRate: 100 };
+    }
+
+    const daytimeRate = settings?.find(s => s.key === 'therapist_daytime_hourly_rate')?.value || '75';
+    const weekendRate = settings?.find(s => s.key === 'therapist_weekend_hourly_rate')?.value || '100';
+
+    return {
+      daytimeRate: parseFloat(daytimeRate),
+      weekendRate: parseFloat(weekendRate)
+    };
+  } catch (error) {
+    console.error('Error getting system rates:', error);
+    return { daytimeRate: 75, weekendRate: 100 };
+  }
+}
+
+/**
+ * Get therapist's hourly rate based on time using system settings
+ */
+async function getTherapistRate(therapist: any, date: string, time: string): Promise<number> {
+  const rates = await getSystemRates();
+  const isBusinessTime = isBusinessHours(date, time);
+
+  return isBusinessTime ? rates.daytimeRate : rates.weekendRate;
 }
 
 /**
@@ -211,7 +238,7 @@ export async function getAvailableTherapists(
         }
       }
 
-      const hourlyRate = getTherapistRate(therapist, date, startTime);
+      const hourlyRate = await getTherapistRate(therapist, date, startTime);
       const isAfterHours = !isBusinessHours(date, startTime);
 
       availabilityResults.push({
