@@ -31,6 +31,7 @@ import {
   MailOutlined,
 } from '@ant-design/icons';
 import { QuoteAvailabilityChecker, type TherapistAssignment } from '../../components/QuoteAvailabilityChecker';
+import { supabaseClient } from '../../utility';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -43,14 +44,73 @@ export const QuoteEdit: React.FC = () => {
   const [availabilityStatus, setAvailabilityStatus] = useState<'unchecked' | 'checking' | 'available' | 'partial' | 'unavailable'>('unchecked');
   const [therapistAssignments, setTherapistAssignments] = useState<TherapistAssignment[]>([]);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [originalSessionData, setOriginalSessionData] = useState<{
+    session_duration_minutes?: number;
+    total_sessions?: number;
+  }>({});
 
-  const { formProps, saveButtonProps, queryResult } = useForm({
+  const { formProps, saveButtonProps, queryResult, form } = useForm({
     meta: {
       select: '*,quote_dates(*)',
     },
   });
 
   const quotesData = queryResult?.data?.data;
+
+  // Store original session data for change detection
+  useEffect(() => {
+    if (quotesData) {
+      setOriginalSessionData({
+        session_duration_minutes: quotesData.session_duration_minutes,
+        total_sessions: quotesData.total_sessions,
+      });
+    }
+  }, [quotesData]);
+
+  // Auto-calculate duration_minutes and pricing fields
+  const calculateFields = () => {
+    const values = form?.getFieldsValue() as any;
+    if (!values) return;
+
+    const sessionDuration = values.session_duration_minutes as number;
+    const totalSessions = values.total_sessions as number;
+    const totalAmount = values.total_amount as number;
+    const discountAmount = (values.discount_amount as number) || 0;
+
+    // Calculate duration_minutes
+    if (sessionDuration && totalSessions) {
+      const durationMinutes = sessionDuration * totalSessions;
+      form?.setFieldValue('duration_minutes', durationMinutes);
+    }
+
+    // Calculate pricing with GST
+    if (totalAmount !== undefined) {
+      const subtotal = totalAmount - discountAmount;
+      const gstAmount = subtotal / 11; // GST = subtotal / 1.1 * 0.1 = subtotal / 11
+      const finalAmount = subtotal;
+
+      form?.setFieldsValue({
+        gst_amount: parseFloat(gstAmount.toFixed(2)),
+        final_amount: parseFloat(finalAmount.toFixed(2))
+      });
+    }
+  };
+
+  // Check if session details changed (affects availability)
+  const checkSessionDetailsChanged = () => {
+    const currentValues = form?.getFieldsValue() as any;
+    if (!currentValues) return;
+
+    const sessionChanged =
+      (currentValues.session_duration_minutes as number) !== originalSessionData.session_duration_minutes ||
+      (currentValues.total_sessions as number) !== originalSessionData.total_sessions;
+
+    if (sessionChanged && availabilityStatus !== 'unchecked') {
+      setAvailabilityStatus('unchecked');
+      setTherapistAssignments([]);
+      message.warning('Session details changed - please re-check therapist availability');
+    }
+  };
 
   const handleAvailabilityConfirmed = (assignments: TherapistAssignment[]) => {
     setTherapistAssignments(assignments);
@@ -76,10 +136,27 @@ export const QuoteEdit: React.FC = () => {
 
   const sendOfficialQuote = async () => {
     try {
+      // Update quote status to 'sent' and timestamp
+      const { error } = await supabaseClient
+        .from('quotes')
+        .update({
+          status: 'sent',
+          quote_sent_at: new Date().toISOString()
+        })
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
       // TODO: Generate PDF, send email, create tentative bookings
       message.success('Official quote sent successfully!');
-      // TODO: Update status to 'sent'
+
+      // Refresh the form data to show updated status
+      queryResult?.refetch();
+
     } catch (error) {
+      console.error('Error sending quote:', error);
       message.error('Failed to send official quote');
     }
   };
@@ -290,25 +367,55 @@ export const QuoteEdit: React.FC = () => {
 
         <Card title="Service Specifications" style={{ marginBottom: 16 }}>
           <Row gutter={[16, 16]}>
-            <Col span={8}>
+            <Col span={6}>
               <Form.Item
                 label="Total Sessions"
                 name="total_sessions"
                 rules={[{ required: true, message: 'Please enter total sessions' }]}
               >
-                <InputNumber min={1} style={{ width: '100%' }} />
+                <InputNumber
+                  min={1}
+                  style={{ width: '100%' }}
+                  onChange={() => {
+                    setTimeout(() => {
+                      calculateFields();
+                      checkSessionDetailsChanged();
+                    }, 0);
+                  }}
+                />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
               <Form.Item
                 label="Session Duration (minutes)"
                 name="session_duration_minutes"
                 rules={[{ required: true, message: 'Please enter session duration' }]}
               >
-                <InputNumber min={1} style={{ width: '100%' }} />
+                <InputNumber
+                  min={1}
+                  style={{ width: '100%' }}
+                  onChange={() => {
+                    setTimeout(() => {
+                      calculateFields();
+                      checkSessionDetailsChanged();
+                    }, 0);
+                  }}
+                />
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
+              <Form.Item
+                label="Total Duration (minutes)"
+                name="duration_minutes"
+              >
+                <InputNumber
+                  style={{ width: '100%' }}
+                  disabled
+                  formatter={(value) => `${value} mins`}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
               <Form.Item
                 label="Therapists Needed"
                 name="therapists_needed"
@@ -347,6 +454,11 @@ export const QuoteEdit: React.FC = () => {
                   precision={2}
                   style={{ width: '100%' }}
                   formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  onChange={() => {
+                    setTimeout(() => {
+                      calculateFields();
+                    }, 0);
+                  }}
                 />
               </Form.Item>
             </Col>
@@ -376,19 +488,25 @@ export const QuoteEdit: React.FC = () => {
                   precision={2}
                   style={{ width: '100%' }}
                   formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  onChange={() => {
+                    setTimeout(() => {
+                      calculateFields();
+                    }, 0);
+                  }}
                 />
               </Form.Item>
             </Col>
             <Col span={8}>
               <Form.Item
-                label="Tax Amount ($)"
-                name="tax_rate_amount"
+                label="GST (10%)"
+                name="gst_amount"
               >
                 <InputNumber
                   min={0}
                   precision={2}
                   style={{ width: '100%' }}
                   formatter={(value) => `$ ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  disabled
                 />
               </Form.Item>
             </Col>
@@ -434,7 +552,19 @@ export const QuoteEdit: React.FC = () => {
                 label="Discount Code"
                 name="discount_code"
               >
-                <Input />
+                <Input
+                  placeholder="Enter discount code"
+                  onBlur={async (e) => {
+                    const code = e.target.value;
+                    if (code) {
+                      // TODO: Validate discount code against database
+                      // For now, just trigger calculation
+                      setTimeout(() => {
+                        calculateFields();
+                      }, 0);
+                    }
+                  }}
+                />
               </Form.Item>
             </Col>
             <Col span={12}>
