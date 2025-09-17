@@ -282,7 +282,14 @@ export async function checkQuoteAvailability(quoteId: string): Promise<QuoteAvai
           day_number: 1,
           sessions_count: quote.total_sessions
         }]
-      : quote.quote_dates || [];
+      : (quote.quote_dates && quote.quote_dates.length > 0
+         ? quote.quote_dates
+         : [{
+             event_date: null, // Will need manual entry
+             start_time: null,
+             day_number: 1,
+             sessions_count: quote.total_sessions
+           }]);
 
     for (const day of eventDays) {
       if (!day.event_date || !day.start_time) {

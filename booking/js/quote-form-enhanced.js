@@ -225,8 +225,17 @@ class QuoteFormManager {
       await this.saveQuoteToDatabase(quoteData);
 
       // Handle multi-day dates if needed
-      if (this.eventStructure === 'multi_day' && this.multiDayDates.length > 0) {
+      console.log('🔍 Event structure check:', {
+        eventStructure: this.eventStructure,
+        multiDayDatesLength: this.multiDayDates.length,
+        multiDayDates: this.multiDayDates
+      });
+
+      if (this.eventStructure === 'multi_day') {
+        console.log('✅ Multi-day event detected, calling saveQuoteDates...');
         await this.saveQuoteDates(quoteId);
+      } else {
+        console.log('ℹ️ Single day event, skipping quote_dates');
       }
 
       // Send confirmation email
@@ -612,27 +621,41 @@ class QuoteFormManager {
   }
 
   async saveQuoteDates(quoteId) {
+    console.log('🔍 saveQuoteDates called with quoteId:', quoteId);
+
     // Collect all multi-day dates
     const dateRows = document.querySelectorAll('.multi-day-date-row');
+    console.log('🔍 Found date rows:', dateRows.length);
+
     const quoteDates = [];
 
     dateRows.forEach((row, index) => {
       const dateInput = row.querySelector('.event-date');
       const timeInput = row.querySelector('.event-time');
 
-      if (dateInput.value && timeInput.value) {
-        quoteDates.push({
+      console.log(`🔍 Row ${index}:`, {
+        dateValue: dateInput?.value,
+        timeValue: timeInput?.value
+      });
+
+      if (dateInput && timeInput && dateInput.value && timeInput.value) {
+        const quoteDate = {
           quote_id: quoteId,
           event_date: dateInput.value,
           start_time: timeInput.value,
           day_number: index + 1,
-          sessions_count: Math.ceil(this.collectQuoteData(quoteId).total_sessions / dateRows.length)
-        });
+          sessions_count: Math.ceil(this.quoteData?.total_sessions || 1 / Math.max(dateRows.length, 1))
+        };
+        quoteDates.push(quoteDate);
+        console.log('✅ Added quote date:', quoteDate);
       }
     });
 
+    console.log('🔍 Total quote dates to save:', quoteDates.length);
+
     if (quoteDates.length > 0) {
-      const { error } = await window.supabase
+      console.log('💾 Saving quote dates to database...');
+      const { data, error } = await window.supabase
         .from('quote_dates')
         .insert(quoteDates);
 
