@@ -516,8 +516,8 @@ export const EmailService = {
         return groups;
       }, {});
 
-      // Create therapist schedule HTML
-      let therapistScheduleHtml = '';
+      // Create therapist schedule as formatted text
+      let therapistScheduleText = '';
       Object.keys(dayGroups).sort().forEach((date, dayIndex) => {
         const assignments = dayGroups[date];
         const formattedDate = new Date(date).toLocaleDateString('en-AU', {
@@ -527,29 +527,25 @@ export const EmailService = {
           day: 'numeric'
         });
 
-        therapistScheduleHtml += `
-          <tr>
-            <td colspan="4" style="background-color: #007e8c; color: white; padding: 12px; font-weight: bold; font-size: 16px;">
-              📅 Day ${dayIndex + 1}: ${formattedDate}
-            </td>
-          </tr>
-        `;
+        therapistScheduleText += `\n📅 DAY ${dayIndex + 1}: ${formattedDate.toUpperCase()}\n`;
+        therapistScheduleText += `═══════════════════════════════════════\n`;
 
-        assignments.forEach((assignment: any) => {
+        assignments.forEach((assignment: any, index: number) => {
           const duration = Math.round((quoteData.duration_minutes || 0) / therapistAssignments.length);
           const hours = Math.floor(duration / 60);
           const minutes = duration % 60;
           const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
           const fee = ((duration / 60) * assignment.hourly_rate).toFixed(2);
 
-          therapistScheduleHtml += `
-            <tr>
-              <td style="padding: 8px; border-bottom: 1px solid #e0f2f4; font-size: 14px;">${assignment.start_time}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e0f2f4; font-size: 14px; font-weight: 500;">${assignment.therapist_name}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e0f2f4; font-size: 14px;">${durationText}</td>
-              <td style="padding: 8px; border-bottom: 1px solid #e0f2f4; font-size: 14px; color: #007e8c; font-weight: 500;">$${fee}</td>
-            </tr>
-          `;
+          // Format time to remove seconds
+          const timeFormatted = assignment.start_time.substring(0, 5); // "10:00:00" -> "10:00"
+
+          therapistScheduleText += `${index + 1}. ${timeFormatted} - ${assignment.therapist_name}\n`;
+          therapistScheduleText += `   Duration: ${durationText} | Fee: $${fee}\n`;
+          if (assignment.is_override) {
+            therapistScheduleText += `   ⚠️ Override: ${assignment.override_reason || 'Special arrangement'}\n`;
+          }
+          therapistScheduleText += `\n`;
         });
       });
 
@@ -612,8 +608,8 @@ export const EmailService = {
         payment_method: quoteData.payment_method || 'Credit Card',
         po_number: quoteData.po_number || 'Not provided',
 
-        // Therapist Schedule (HTML)
-        therapist_schedule_html: therapistScheduleHtml,
+        // Therapist Schedule (Text)
+        therapist_schedule_text: therapistScheduleText,
 
         // Action URLs
         accept_url: acceptUrl,
