@@ -32,6 +32,7 @@ import {
 } from '@ant-design/icons';
 import { QuoteAvailabilityChecker, type TherapistAssignment } from '../../components/QuoteAvailabilityChecker';
 import { createBookingsFromQuote } from '../../services/bookingCreationService';
+import { EmailService } from '../../utils/emailService';
 import { supabaseClient } from '../../utility';
 import dayjs from 'dayjs';
 
@@ -174,7 +175,20 @@ export const QuoteEdit: React.FC = () => {
 
       console.log('Successfully created bookings:', bookingResult.bookingIds);
 
-      // Step 2: Update quote status to 'sent' and timestamp
+      // Step 2: Send enhanced official quote email
+      const emailResult = await EmailService.sendEnhancedOfficialQuote(
+        quotesData,
+        therapistAssignments,
+        bookingResult.bookingIds || []
+      );
+
+      if (!emailResult.success) {
+        // Don't fail the entire process if email fails, but log it
+        console.error('Email sending failed:', emailResult.error);
+        message.warning('Bookings created successfully, but email sending failed. Please send manually.');
+      }
+
+      // Step 3: Update quote status to 'sent' and timestamp
       const { error } = await supabaseClient
         .from('quotes')
         .update({
@@ -188,7 +202,8 @@ export const QuoteEdit: React.FC = () => {
       }
 
       message.destroy();
-      message.success(`Official quote sent successfully! Created ${bookingResult.bookingIds?.length || 0} bookings.`);
+      const emailStatus = emailResult.success ? '📧 Email sent!' : '⚠️ Email failed';
+      message.success(`Official quote sent successfully! Created ${bookingResult.bookingIds?.length || 0} bookings. ${emailStatus}`);
 
       // Refresh the form data to show updated status
       queryResult?.refetch();

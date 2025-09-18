@@ -486,5 +486,166 @@ export const EmailService = {
       console.error('❌ Error sending invoice email:', error);
       return { success: false, error: (error as Error).message };
     }
+  },
+
+  // Enhanced function to send official quote with detailed booking information
+  async sendEnhancedOfficialQuote(quoteData: any, therapistAssignments: any[], bookingIds: string[]): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      // Generate quote reference
+      const quoteReference = quoteData.id || `RQ${new Date().getFullYear().toString().slice(-2)}${(new Date().getMonth() + 1).toString().padStart(2, '0')}001`;
+
+      // Calculate quote expiry date (30 days from now)
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + 30);
+
+      // Format financial information
+      const subtotal = (quoteData.total_amount || 0) + (quoteData.discount_amount || 0);
+      const totalAmount = quoteData.final_amount || quoteData.total_amount || 0;
+
+      // Group assignments by date for display
+      const dayGroups = therapistAssignments.reduce((groups: any, assignment: any) => {
+        const date = assignment.date;
+        if (!groups[date]) {
+          groups[date] = [];
+        }
+        groups[date].push(assignment);
+        return groups;
+      }, {});
+
+      // Create therapist schedule HTML
+      let therapistScheduleHtml = '';
+      Object.keys(dayGroups).sort().forEach((date, dayIndex) => {
+        const assignments = dayGroups[date];
+        const formattedDate = new Date(date).toLocaleDateString('en-AU', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+
+        therapistScheduleHtml += `
+          <tr>
+            <td colspan="4" style="background-color: #007e8c; color: white; padding: 12px; font-weight: bold; font-size: 16px;">
+              📅 Day ${dayIndex + 1}: ${formattedDate}
+            </td>
+          </tr>
+        `;
+
+        assignments.forEach((assignment: any) => {
+          const duration = Math.round((quoteData.duration_minutes || 0) / therapistAssignments.length);
+          const hours = Math.floor(duration / 60);
+          const minutes = duration % 60;
+          const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+          const fee = ((duration / 60) * assignment.hourly_rate).toFixed(2);
+
+          therapistScheduleHtml += `
+            <tr>
+              <td style="padding: 8px; border-bottom: 1px solid #e0f2f4; font-size: 14px;">${assignment.start_time}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #e0f2f4; font-size: 14px; font-weight: 500;">${assignment.therapist_name}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #e0f2f4; font-size: 14px;">${durationText}</td>
+              <td style="padding: 8px; border-bottom: 1px solid #e0f2f4; font-size: 14px; color: #007e8c; font-weight: 500;">$${fee}</td>
+            </tr>
+          `;
+        });
+      });
+
+      // Create action URLs
+      const baseUrl = window.location.origin;
+      const acceptUrl = `${baseUrl}/.netlify/functions/quote-response?action=accept&id=${quoteData.id}`;
+      const declineUrl = `${baseUrl}/.netlify/functions/quote-response?action=decline&id=${quoteData.id}`;
+      const onlineQuoteUrl = `${baseUrl}/.netlify/functions/generate-quote-pdf?id=${quoteData.id}`;
+
+      // Determine contact information (corporate vs individual)
+      const usesCorporateInfo = !!quoteData.company_name;
+      const contactEmail = usesCorporateInfo ?
+        (quoteData.corporate_contact_email || quoteData.customer_email) :
+        quoteData.customer_email;
+      const contactName = usesCorporateInfo ?
+        (quoteData.corporate_contact_name || quoteData.customer_name) :
+        quoteData.customer_name;
+
+      const templateParams = {
+        // Required EmailJS system fields
+        to_email: contactEmail,
+        to_name: contactName,
+
+        // Contact Information
+        corporate_contact_email: contactEmail,
+        corporate_contact_name: contactName,
+
+        // Company Details
+        business_name: quoteData.company_name || quoteData.customer_name || 'Individual Booking',
+        event_type: quoteData.event_type || 'Wellness Event',
+
+        // Quote Information
+        quote_reference: quoteReference,
+        quote_amount: `$${totalAmount.toFixed(2)}`,
+        quote_expiry_date: expiryDate.toLocaleDateString('en-AU'),
+
+        // Event Overview
+        event_name: quoteData.event_name || 'Wellness Event',
+        event_address: quoteData.event_location || 'Address TBD',
+        expected_attendees: (quoteData.expected_attendees || 1).toString(),
+        total_therapists: therapistAssignments.length.toString(),
+        total_days: Object.keys(dayGroups).length.toString(),
+
+        // Service Details
+        total_sessions: (quoteData.total_sessions || 1).toString(),
+        session_duration: `${quoteData.session_duration_minutes || 60} minutes`,
+        total_duration: `${Math.floor((quoteData.duration_minutes || 0) / 60)}h ${(quoteData.duration_minutes || 0) % 60}m`,
+
+        // Financial Breakdown
+        subtotal: `$${subtotal.toFixed(2)}`,
+        discount_amount: quoteData.discount_amount > 0 ? `-$${quoteData.discount_amount.toFixed(2)}` : '$0.00',
+        gst_amount: `$${(quoteData.gst_amount || 0).toFixed(2)}`,
+        total_amount: `$${totalAmount.toFixed(2)}`,
+
+        // Requirements
+        special_requirements: quoteData.special_requirements || 'None specified',
+        setup_requirements: quoteData.setup_requirements || 'Standard setup',
+
+        // Payment Information
+        payment_method: quoteData.payment_method || 'Credit Card',
+        po_number: quoteData.po_number || 'Not provided',
+
+        // Therapist Schedule (HTML)
+        therapist_schedule_html: therapistScheduleHtml,
+
+        // Action URLs
+        accept_url: acceptUrl,
+        decline_url: declineUrl,
+        online_quote_url: onlineQuoteUrl,
+
+        // System Fields
+        from_name: 'Rejuvenators Mobile Massage',
+        reply_to: 'info@rejuvenators.com',
+
+        // Booking references for tracking
+        booking_ids: bookingIds.join(', '),
+        total_bookings: bookingIds.length.toString()
+      };
+
+      console.log('📧 Sending enhanced official quote email');
+      console.log('📧 Quote data:', quoteData);
+      console.log('📧 Therapist assignments:', therapistAssignments);
+      console.log('📧 Template parameters:', templateParams);
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.CORPORATE_QUOTE,
+        templateParams
+      );
+
+      console.log('✅ Enhanced official quote email sent:', response);
+      return { success: true };
+
+    } catch (error) {
+      console.error('❌ Error sending enhanced official quote email:', error);
+      return { success: false, error: (error as Error).message };
+    }
   }
 };
