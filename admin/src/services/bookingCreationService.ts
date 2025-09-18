@@ -154,8 +154,13 @@ export async function createBookingsFromQuote(
       const therapistHours = assignmentDurationMinutes / 60;
       const therapistFee = therapistHours * assignment.hourly_rate;
 
-      // Create booking time string
-      const bookingTime = `${assignment.date}T${assignment.start_time}:00.000Z`;
+      // Create booking time string - handle different time formats
+      let formattedTime = assignment.start_time;
+      // If time is in HH:MM format, add seconds
+      if (formattedTime.length === 5 && formattedTime.includes(':')) {
+        formattedTime += ':00';
+      }
+      const bookingTime = `${assignment.date}T${formattedTime}.000Z`;
 
       // Generate unique booking ID
       const bookingId = `BK-${quoteData.id}-${dayNumber}-${i + 1}`;
