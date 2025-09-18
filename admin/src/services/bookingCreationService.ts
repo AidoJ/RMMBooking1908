@@ -209,7 +209,7 @@ export async function createBookingsFromQuote(
         payment_status: 'pending',
         address: quoteData.event_location,
         service_id: quoteData.service_id,
-        booking_type: 'quote',
+        booking_type: quoteData.company_name ? 'Corporate Event/Office' : 'Hotel/Accommodation',
 
         // Additional fields
         service_acknowledgement: true,
