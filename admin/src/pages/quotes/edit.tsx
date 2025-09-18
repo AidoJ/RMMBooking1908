@@ -31,6 +31,7 @@ import {
   MailOutlined,
 } from '@ant-design/icons';
 import { QuoteAvailabilityChecker, type TherapistAssignment } from '../../components/QuoteAvailabilityChecker';
+import { createBookingsFromQuote } from '../../services/bookingCreationService';
 import { supabaseClient } from '../../utility';
 import dayjs from 'dayjs';
 
@@ -151,7 +152,29 @@ export const QuoteEdit: React.FC = () => {
 
   const sendOfficialQuote = async () => {
     try {
-      // Update quote status to 'sent' and timestamp
+      // Validate that we have therapist assignments
+      if (!therapistAssignments || therapistAssignments.length === 0) {
+        message.error('No therapist assignments found. Please confirm availability first.');
+        return;
+      }
+
+      message.loading('Creating bookings and sending quote...', 0);
+
+      // Step 1: Create bookings from quote and therapist assignments
+      if (!quotesData) {
+        throw new Error('Quote data not available');
+      }
+
+      const bookingResult = await createBookingsFromQuote(quotesData as any, therapistAssignments);
+
+      if (!bookingResult.success) {
+        message.destroy();
+        throw new Error(`Failed to create bookings: ${bookingResult.error}`);
+      }
+
+      console.log('Successfully created bookings:', bookingResult.bookingIds);
+
+      // Step 2: Update quote status to 'sent' and timestamp
       const { error } = await supabaseClient
         .from('quotes')
         .update({
@@ -164,15 +187,16 @@ export const QuoteEdit: React.FC = () => {
         throw error;
       }
 
-      // TODO: Generate PDF, send email, create tentative bookings
-      message.success('Official quote sent successfully!');
+      message.destroy();
+      message.success(`Official quote sent successfully! Created ${bookingResult.bookingIds?.length || 0} bookings.`);
 
       // Refresh the form data to show updated status
       queryResult?.refetch();
 
     } catch (error) {
+      message.destroy();
       console.error('Error sending quote:', error);
-      message.error('Failed to send official quote');
+      message.error('Failed to send official quote: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
