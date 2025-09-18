@@ -549,11 +549,11 @@ export const EmailService = {
         });
       });
 
-      // Create action URLs
+      // Create action URLs (using quote_id for multi-booking support)
       const baseUrl = window.location.origin;
-      const acceptUrl = `${baseUrl}/.netlify/functions/quote-response?action=accept&id=${quoteData.id}`;
-      const declineUrl = `${baseUrl}/.netlify/functions/quote-response?action=decline&id=${quoteData.id}`;
-      const onlineQuoteUrl = `${baseUrl}/.netlify/functions/generate-quote-pdf?id=${quoteData.id}`;
+      const acceptUrl = `${baseUrl}/.netlify/functions/quote-response?action=accept&quote_id=${quoteData.id}`;
+      const declineUrl = `${baseUrl}/.netlify/functions/quote-response?action=decline&quote_id=${quoteData.id}`;
+      const onlineQuoteUrl = `${baseUrl}/.netlify/functions/generate-quote-pdf?quote_id=${quoteData.id}`;
 
       // Determine contact information (corporate vs individual)
       const usesCorporateInfo = !!quoteData.company_name;

@@ -291,3 +291,133 @@ export async function updateBookingStatus(
     };
   }
 }
+
+/**
+ * Complete quote acceptance workflow - updates quote, bookings, and notifies therapists
+ */
+export async function acceptQuoteWorkflow(
+  quoteId: string
+): Promise<{ success: boolean; error?: string; bookingCount?: number }> {
+
+  try {
+    console.log(`Starting quote acceptance workflow for quote: ${quoteId}`);
+
+    // 1. Update quote status to 'accepted'
+    const { error: quoteError } = await supabaseClient
+      .from('quotes')
+      .update({
+        status: 'accepted',
+        accepted_at: new Date().toISOString()
+      })
+      .eq('id', quoteId);
+
+    if (quoteError) {
+      throw new Error(`Failed to update quote status: ${quoteError.message}`);
+    }
+
+    // 2. Get all bookings for this quote to count them
+    const { data: bookings, error: fetchError } = await supabaseClient
+      .from('bookings')
+      .select('id, therapist_id')
+      .eq('parent_quote_id', quoteId);
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch bookings: ${fetchError.message}`);
+    }
+
+    // 3. Update all related bookings to 'confirmed'
+    const { error: bookingError } = await supabaseClient
+      .from('bookings')
+      .update({
+        status: 'confirmed',
+        confirmed_at: new Date().toISOString()
+      })
+      .eq('parent_quote_id', quoteId);
+
+    if (bookingError) {
+      throw new Error(`Failed to update booking status: ${bookingError.message}`);
+    }
+
+    console.log(`Quote acceptance complete: Quote ${quoteId} accepted, ${bookings?.length || 0} bookings confirmed`);
+
+    // TODO: Add therapist diary slot confirmation
+    // TODO: Send therapist notifications
+
+    return {
+      success: true,
+      bookingCount: bookings?.length || 0
+    };
+
+  } catch (error) {
+    console.error('Error in quote acceptance workflow:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
+
+/**
+ * Complete quote decline workflow - updates quote, bookings, and releases diary slots
+ */
+export async function declineQuoteWorkflow(
+  quoteId: string
+): Promise<{ success: boolean; error?: string; bookingCount?: number }> {
+
+  try {
+    console.log(`Starting quote decline workflow for quote: ${quoteId}`);
+
+    // 1. Update quote status to 'declined'
+    const { error: quoteError } = await supabaseClient
+      .from('quotes')
+      .update({
+        status: 'declined',
+        declined_at: new Date().toISOString()
+      })
+      .eq('id', quoteId);
+
+    if (quoteError) {
+      throw new Error(`Failed to update quote status: ${quoteError.message}`);
+    }
+
+    // 2. Get all bookings for this quote to count them
+    const { data: bookings, error: fetchError } = await supabaseClient
+      .from('bookings')
+      .select('id, therapist_id')
+      .eq('parent_quote_id', quoteId);
+
+    if (fetchError) {
+      throw new Error(`Failed to fetch bookings: ${fetchError.message}`);
+    }
+
+    // 3. Update all related bookings to 'declined'
+    const { error: bookingError } = await supabaseClient
+      .from('bookings')
+      .update({
+        status: 'declined',
+        declined_at: new Date().toISOString()
+      })
+      .eq('parent_quote_id', quoteId);
+
+    if (bookingError) {
+      throw new Error(`Failed to update booking status: ${bookingError.message}`);
+    }
+
+    console.log(`Quote decline complete: Quote ${quoteId} declined, ${bookings?.length || 0} bookings declined`);
+
+    // TODO: Release therapist diary slots
+    // TODO: Send therapist notifications
+
+    return {
+      success: true,
+      bookingCount: bookings?.length || 0
+    };
+
+  } catch (error) {
+    console.error('Error in quote decline workflow:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred'
+    };
+  }
+}
