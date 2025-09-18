@@ -4,7 +4,8 @@ import {
   useForm,
   useSelect,
 } from '@refinedev/antd';
-import { useParams } from 'react-router';
+import { useDelete } from '@refinedev/core';
+import { useParams, useNavigate } from 'react-router';
 import {
   Form,
   Input,
@@ -42,9 +43,11 @@ const { TabPane } = Tabs;
 
 export const QuoteEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('details');
   const [availabilityStatus, setAvailabilityStatus] = useState<'unchecked' | 'checking' | 'available' | 'partial' | 'unavailable'>('unchecked');
   const [therapistAssignments, setTherapistAssignments] = useState<TherapistAssignment[]>([]);
+  const [loadingAssignments, setLoadingAssignments] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [originalSessionData, setOriginalSessionData] = useState<{
     session_duration_minutes?: number;
@@ -55,9 +58,63 @@ export const QuoteEdit: React.FC = () => {
     meta: {
       select: '*,quote_dates(*)',
     },
+    onMutationSuccess: (data, variables, context, isAutoSave) => {
+      // Handle successful mutations (save/update)
+      if (!isAutoSave) {
+        message.success('Quote updated successfully');
+      }
+    },
   });
 
   const quotesData = queryResult?.data?.data;
+
+  // Custom delete handler with cascade delete for bookings
+  const { mutate: deleteQuote } = useDelete();
+
+  const handleQuoteDelete = () => {
+    Modal.confirm({
+      title: 'Delete Quote',
+      content: 'Are you sure you want to delete this quote? This will also delete all associated bookings and cannot be undone.',
+      okText: 'Delete',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          message.loading('Deleting quote and associated bookings...', 0);
+
+          // First delete associated bookings
+          const { error: bookingsError } = await supabaseClient
+            .from('bookings')
+            .delete()
+            .eq('parent_quote_id', id);
+
+          if (bookingsError) {
+            throw new Error(`Failed to delete associated bookings: ${bookingsError.message}`);
+          }
+
+          // Then delete the quote using Refine's delete mutation
+          deleteQuote({
+            resource: 'quotes',
+            id: id!,
+            successNotification: {
+              message: 'Quote and all associated bookings deleted successfully',
+              type: 'success',
+            },
+            errorNotification: {
+              message: 'Failed to delete quote',
+              type: 'error',
+            },
+          });
+
+          message.destroy();
+        } catch (error) {
+          message.destroy();
+          console.error('Error deleting quote:', error);
+          message.error('Failed to delete quote: ' + (error instanceof Error ? error.message : 'Unknown error'));
+        }
+      },
+    });
+  };
 
   // Store original session data for change detection
   useEffect(() => {
@@ -68,6 +125,68 @@ export const QuoteEdit: React.FC = () => {
       });
     }
   }, [quotesData]);
+
+  // Load existing assignments from bookings table if quote has been sent
+  useEffect(() => {
+    const loadExistingAssignments = async () => {
+      if (!quotesData || !id) return;
+
+      // Only load from bookings if quote has been sent (has booking records)
+      if (quotesData.status === 'sent' || quotesData.status === 'accepted' || quotesData.status === 'declined') {
+        setLoadingAssignments(true);
+        try {
+          const { data: bookings, error } = await supabaseClient
+            .from('bookings')
+            .select(`
+              id,
+              therapist_id,
+              booking_time,
+              quote_day_number,
+              duration_minutes,
+              therapist_fee,
+              therapist_profiles!therapist_id (
+                id,
+                first_name,
+                last_name
+              )
+            `)
+            .eq('parent_quote_id', id)
+            .order('booking_time');
+
+          if (error) {
+            throw error;
+          }
+
+          if (bookings && bookings.length > 0) {
+            // Convert bookings to TherapistAssignment format
+            const assignments: TherapistAssignment[] = bookings.map(booking => ({
+              therapist_id: booking.therapist_id,
+              date: booking.booking_time.split('T')[0], // Extract date part
+              start_time: booking.booking_time.split('T')[1].substring(0, 8), // Extract time part
+              duration_minutes: booking.duration_minutes,
+              day_number: booking.quote_day_number,
+              hourly_rate: booking.therapist_fee ? (booking.therapist_fee * 60 / booking.duration_minutes) : 0, // Calculate hourly rate from fee
+              therapist_name: booking.therapist_profiles ?
+                `${(booking.therapist_profiles as any).first_name} ${(booking.therapist_profiles as any).last_name}` :
+                'Unknown Therapist',
+              is_override: false,
+              override_reason: ''
+            }));
+
+            setTherapistAssignments(assignments);
+            setAvailabilityStatus('available');
+          }
+        } catch (error) {
+          console.error('Error loading existing assignments:', error);
+          message.error('Failed to load existing therapist assignments');
+        } finally {
+          setLoadingAssignments(false);
+        }
+      }
+    };
+
+    loadExistingAssignments();
+  }, [quotesData, id]);
 
   // Handle form value changes
   const onValuesChange = (changedValues: any, allValues: any) => {
@@ -129,11 +248,43 @@ export const QuoteEdit: React.FC = () => {
   };
 
 
-  const handleAvailabilityConfirmed = (assignments: TherapistAssignment[]) => {
-    setTherapistAssignments(assignments);
-    setAvailabilityStatus('available');
-    message.success('Therapist availability confirmed! Ready to send official quote.');
-    // TODO: Create tentative bookings
+  const handleAvailabilityConfirmed = async (assignments: TherapistAssignment[]) => {
+    try {
+      setTherapistAssignments(assignments);
+      setAvailabilityStatus('available');
+
+      // If quote has been sent, update existing booking records
+      if (quotesData?.status === 'sent' || quotesData?.status === 'accepted' || quotesData?.status === 'declined') {
+        message.loading('Updating therapist assignments...', 0);
+
+        // First, delete existing booking records for this quote
+        const { error: deleteError } = await supabaseClient
+          .from('bookings')
+          .delete()
+          .eq('parent_quote_id', id);
+
+        if (deleteError) {
+          throw deleteError;
+        }
+
+        // Then create new booking records with updated assignments
+        const bookingResult = await createBookingsFromQuote(quotesData as any, assignments);
+
+        if (!bookingResult.success) {
+          throw new Error(`Failed to update bookings: ${bookingResult.error}`);
+        }
+
+        message.destroy();
+        message.success(`Therapist assignments updated! ${bookingResult.bookingIds?.length || 0} booking records updated.`);
+      } else {
+        // For new quotes, just store in local state
+        message.success('Therapist availability confirmed! Ready to send official quote.');
+      }
+    } catch (error) {
+      message.destroy();
+      console.error('Error saving therapist assignments:', error);
+      message.error('Failed to save assignment changes: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
   };
 
   const handleAvailabilityDeclined = () => {
@@ -265,8 +416,28 @@ export const QuoteEdit: React.FC = () => {
     return null;
   };
 
+  const handleClose = () => {
+    navigate('/quotes');
+  };
+
   return (
-    <Edit saveButtonProps={saveButtonProps}>
+    <Edit
+      saveButtonProps={saveButtonProps}
+      deleteButtonProps={{
+        onClick: handleQuoteDelete,
+      }}
+      headerButtons={({ defaultButtons }) => (
+        <>
+          {defaultButtons}
+          <Button
+            type="default"
+            onClick={handleClose}
+          >
+            Close
+          </Button>
+        </>
+      )}
+    >
       {getStatusAlert()}
 
       <Tabs activeKey={activeTab} onChange={setActiveTab}>

@@ -516,7 +516,7 @@ export const EmailService = {
         return groups;
       }, {});
 
-      // Create therapist schedule as formatted text
+      // Create therapist schedule as formatted text (improved formatting for email)
       let therapistScheduleText = '';
       Object.keys(dayGroups).sort().forEach((date, dayIndex) => {
         const assignments = dayGroups[date];
@@ -527,8 +527,8 @@ export const EmailService = {
           day: 'numeric'
         });
 
-        therapistScheduleText += `\n📅 DAY ${dayIndex + 1}: ${formattedDate.toUpperCase()}\n`;
-        therapistScheduleText += `═══════════════════════════════════════\n`;
+        therapistScheduleText += `\nDAY ${dayIndex + 1}: ${formattedDate.toUpperCase()}\n`;
+        therapistScheduleText += `---------------------------------------------------\n`;
 
         assignments.forEach((assignment: any, index: number) => {
           const duration = Math.round((quoteData.duration_minutes || 0) / therapistAssignments.length);
@@ -540,10 +540,10 @@ export const EmailService = {
           // Format time to remove seconds
           const timeFormatted = assignment.start_time.substring(0, 5); // "10:00:00" -> "10:00"
 
-          therapistScheduleText += `${index + 1}. ${timeFormatted} - ${assignment.therapist_name}\n`;
-          therapistScheduleText += `   Duration: ${durationText} | Fee: $${fee}\n`;
+          therapistScheduleText += `  ${index + 1}. ${timeFormatted} - ${assignment.therapist_name}\n`;
+          therapistScheduleText += `     Duration: ${durationText}  |  Fee: $${fee}\n`;
           if (assignment.is_override) {
-            therapistScheduleText += `   ⚠️ Override: ${assignment.override_reason || 'Special arrangement'}\n`;
+            therapistScheduleText += `     Special Arrangement: ${assignment.override_reason || 'Custom booking'}\n`;
           }
           therapistScheduleText += `\n`;
         });
@@ -608,13 +608,49 @@ export const EmailService = {
         payment_method: quoteData.payment_method || 'Credit Card',
         po_number: quoteData.po_number || 'Not provided',
 
-        // Therapist Schedule (Text)
+        // Therapist Schedule (Text) - Improved formatting
         therapist_schedule_text: therapistScheduleText,
+
+        // Enhanced formatting for email template
+        schedule_header: `THERAPIST SCHEDULE - ${Object.keys(dayGroups).length} DAY${Object.keys(dayGroups).length > 1 ? 'S' : ''}`,
+        schedule_summary: `${therapistAssignments.length} therapist session${therapistAssignments.length > 1 ? 's' : ''} across ${Object.keys(dayGroups).length} day${Object.keys(dayGroups).length > 1 ? 's' : ''}`,
+
+        // Professional formatting alternative
+        schedule_overview: therapistAssignments.map((assignment: any, index: number) => {
+          const duration = Math.round((quoteData.duration_minutes || 0) / therapistAssignments.length);
+          const hours = Math.floor(duration / 60);
+          const minutes = duration % 60;
+          const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+          const fee = ((duration / 60) * assignment.hourly_rate).toFixed(2);
+          const timeFormatted = assignment.start_time.substring(0, 5);
+          const formattedDate = new Date(assignment.date).toLocaleDateString('en-AU', {
+            weekday: 'short',
+            month: 'short',
+            day: 'numeric'
+          });
+
+          return `${formattedDate} at ${timeFormatted} - ${assignment.therapist_name} (${durationText}, $${fee})`;
+        }).join('\n'),
 
         // Action URLs
         accept_url: acceptUrl,
         decline_url: declineUrl,
         online_quote_url: onlineQuoteUrl,
+
+        // Professional summary sections
+        event_summary: `${quoteData.event_name || 'Wellness Event'} - ${Object.keys(dayGroups).length} day${Object.keys(dayGroups).length > 1 ? 's' : ''}, ${therapistAssignments.length} session${therapistAssignments.length > 1 ? 's' : ''}`,
+
+        financial_summary: [
+          `Service Total: $${subtotal.toFixed(2)}`,
+          quoteData.discount_amount > 0 ? `Discount: -$${quoteData.discount_amount.toFixed(2)}` : null,
+          `GST (10%): $${(quoteData.gst_amount || 0).toFixed(2)}`,
+          `TOTAL: $${totalAmount.toFixed(2)}`
+        ].filter(Boolean).join('\n'),
+
+        // Contact and business details
+        company_header: quoteData.company_name ?
+          `${quoteData.company_name}` :
+          `Individual Booking`,
 
         // System Fields
         from_name: 'Rejuvenators Mobile Massage',

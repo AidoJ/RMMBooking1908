@@ -140,12 +140,16 @@ exports.handler = async (event, context) => {
 
       // Update quote status
       const quoteNewStatus = response === 'accept' ? 'accepted' : 'declined';
+      const updateData = { status: quoteNewStatus };
+
+      // Only set quote_accepted_at for accepted quotes (no declined_at column exists)
+      if (response === 'accept') {
+        updateData.quote_accepted_at = new Date().toISOString();
+      }
+
       const { error: quoteUpdateError } = await supabase
         .from('quotes')
-        .update({
-          status: quoteNewStatus,
-          [`${quoteNewStatus}_at`]: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', quoteId);
 
       if (quoteUpdateError) {
@@ -156,8 +160,11 @@ exports.handler = async (event, context) => {
       const bookingNewStatus = response === 'accept' ? 'confirmed' : 'declined';
       const bookingUpdateData = {
         status: bookingNewStatus,
-        [`${bookingNewStatus}_at`]: new Date().toISOString()
+        updated_at: new Date().toISOString()
       };
+
+      // Note: No specific timestamp columns for confirmed/declined status
+      // Just using updated_at to track the change
 
       const { error: bookingUpdateError } = await supabase
         .from('bookings')

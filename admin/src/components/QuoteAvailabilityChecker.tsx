@@ -27,6 +27,7 @@ import {
   CalendarOutlined,
   TeamOutlined,
   WarningOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import {
   checkQuoteAvailability,
@@ -193,6 +194,18 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
     message.success('Override assignment confirmed');
   };
 
+  const handleRemoveAssignment = (assignmentToRemove: TherapistAssignment) => {
+    const newAssignments = assignments.filter(
+      assignment => !(
+        assignment.date === assignmentToRemove.date &&
+        assignment.start_time === assignmentToRemove.start_time &&
+        assignment.therapist_id === assignmentToRemove.therapist_id
+      )
+    );
+    setAssignments(newAssignments);
+    message.success('Therapist assignment removed');
+  };
+
   const canConfirmAvailability = () => {
     if (!availability) return false;
 
@@ -257,33 +270,61 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
     {
       title: 'Action',
       key: 'action',
-      render: (_: any, therapist: TherapistAvailability) => (
-        <Space>
-          {therapist.is_available ? (
-            <Button
-              type="primary"
-              size="small"
-              onClick={() => handleTherapistAssignment(
-                currentDay.date,
-                currentDay.start_time,
-                therapist.therapist_id,
-                0
-              )}
-            >
-              Assign
-            </Button>
-          ) : (
-            <Button
-              type="dashed"
-              size="small"
-              icon={<WarningOutlined />}
-              onClick={() => handleOverrideRequest(currentDay.date, therapist)}
-            >
-              Override
-            </Button>
-          )}
-        </Space>
-      ),
+      render: (_: any, therapist: TherapistAvailability) => {
+        // Check if this therapist is already assigned for this day/time
+        const isAssigned = assignments.some(
+          assignment => assignment.date === currentDay.date &&
+                       assignment.start_time === currentDay.start_time &&
+                       assignment.therapist_id === therapist.therapist_id
+        );
+
+        return (
+          <Space>
+            {isAssigned ? (
+              <Button
+                type="default"
+                danger
+                size="small"
+                icon={<DeleteOutlined />}
+                onClick={() => {
+                  const assignmentToRemove = assignments.find(
+                    assignment => assignment.date === currentDay.date &&
+                                 assignment.start_time === currentDay.start_time &&
+                                 assignment.therapist_id === therapist.therapist_id
+                  );
+                  if (assignmentToRemove) {
+                    handleRemoveAssignment(assignmentToRemove);
+                  }
+                }}
+              >
+                Remove
+              </Button>
+            ) : therapist.is_available ? (
+              <Button
+                type="primary"
+                size="small"
+                onClick={() => handleTherapistAssignment(
+                  currentDay.date,
+                  currentDay.start_time,
+                  therapist.therapist_id,
+                  0
+                )}
+              >
+                Assign
+              </Button>
+            ) : (
+              <Button
+                type="dashed"
+                size="small"
+                icon={<WarningOutlined />}
+                onClick={() => handleOverrideRequest(currentDay.date, therapist)}
+              >
+                Override
+              </Button>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 
@@ -446,10 +487,20 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
                       Duration: <Text strong>{hours.toFixed(1)} hours</Text>
                     </Text>
                   </Col>
-                  <Col span={12}>
+                  <Col span={10}>
                     <Text type="secondary">
                       Rate: <Text strong>${assignment.hourly_rate}/hr</Text> = <Text strong style={{ color: '#52c41a' }}>${totalFee.toFixed(2)}</Text>
                     </Text>
+                  </Col>
+                  <Col span={2} style={{ textAlign: 'right' }}>
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleRemoveAssignment(assignment)}
+                      title="Remove this assignment"
+                    />
                   </Col>
                 </Row>
               </div>
