@@ -181,7 +181,7 @@ export async function createBookingsFromQuote(
         therapist_id: assignment.therapist_id,
         booking_time: bookingTime,
         duration_minutes: Math.round(assignmentDurationMinutes),
-        status: 'pending',
+        status: 'requested',
 
         // Financial (split evenly)
         price: parseFloat(pricePerBooking.toFixed(2)),
