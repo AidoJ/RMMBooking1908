@@ -32,35 +32,38 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    let bookingId, response, customerMessage;
-    
+    let quoteId, bookingId, response, customerMessage;
+
     if (event.httpMethod === 'GET') {
       // Handle GET requests (URL parameters from email links)
       const params = event.queryStringParameters || {};
-      bookingId = params.id;
+      quoteId = params.quote_id;  // New: quote-based acceptance
+      bookingId = params.id;      // Old: single booking acceptance (for backwards compatibility)
       response = params.action;
       customerMessage = params.message || '';
     } else {
       // Handle POST requests - both JSON and form data
       if (event.headers['content-type']?.includes('application/json')) {
         const parsed = JSON.parse(event.body);
+        quoteId = parsed.quoteId;
         bookingId = parsed.bookingId;
         response = parsed.response;
         customerMessage = parsed.customerMessage;
       } else {
         // Handle form data
         const params = new URLSearchParams(event.body);
+        quoteId = params.get('quoteId');
         bookingId = params.get('bookingId');
         response = params.get('response');
         customerMessage = params.get('customerMessage');
       }
     }
-    
-    if (!bookingId || !response) {
+
+    if ((!quoteId && !bookingId) || !response) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Booking ID and response are required' })
+        body: JSON.stringify({ error: 'Quote ID (or Booking ID) and response are required' })
       };
     }
 
@@ -75,53 +78,150 @@ exports.handler = async (event, context) => {
 
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    // Fetch booking data
-    const { data: booking, error } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('id', bookingId)
-      .single();
 
-    if (error || !booking) {
-      return {
-        statusCode: 404,
-        headers,
-        body: JSON.stringify({ error: 'Booking not found' })
+    let booking, bookings;
+
+    // Handle quote-based response (multiple bookings) vs single booking response
+    if (quoteId) {
+      // NEW: Quote-based response - handle multiple bookings
+      console.log(`Processing quote-based response for quote: ${quoteId}`);
+
+      // Get quote data first
+      const { data: quote, error: quoteError } = await supabase
+        .from('quotes')
+        .select('*')
+        .eq('id', quoteId)
+        .single();
+
+      if (quoteError || !quote) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: 'Quote not found' })
+        };
+      }
+
+      // Check if quote has already been responded to
+      if (quote.status === 'accepted' || quote.status === 'declined') {
+        // Get first booking for display purposes
+        const { data: firstBooking } = await supabase
+          .from('bookings')
+          .select('*')
+          .eq('parent_quote_id', quoteId)
+          .limit(1)
+          .single();
+
+        return {
+          statusCode: 200,
+          headers: {
+            ...headers,
+            'Content-Type': 'text/html'
+          },
+          body: generateQuoteClosedPage(firstBooking || { id: quoteId, status: quote.status })
+        };
+      }
+
+      // Get all bookings for this quote
+      const { data: quoteBookings, error: bookingsError } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('parent_quote_id', quoteId);
+
+      if (bookingsError || !quoteBookings || quoteBookings.length === 0) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: 'No bookings found for this quote' })
+        };
+      }
+
+      bookings = quoteBookings;
+      booking = quoteBookings[0]; // Use first booking for display
+
+      // Update quote status
+      const quoteNewStatus = response === 'accept' ? 'accepted' : 'declined';
+      const { error: quoteUpdateError } = await supabase
+        .from('quotes')
+        .update({
+          status: quoteNewStatus,
+          [`${quoteNewStatus}_at`]: new Date().toISOString()
+        })
+        .eq('id', quoteId);
+
+      if (quoteUpdateError) {
+        throw quoteUpdateError;
+      }
+
+      // Update all related bookings
+      const bookingNewStatus = response === 'accept' ? 'confirmed' : 'declined';
+      const bookingUpdateData = {
+        status: bookingNewStatus,
+        [`${bookingNewStatus}_at`]: new Date().toISOString()
       };
-    }
 
-    // Check if quote has already been responded to
-    if (booking.status === 'confirmed' || booking.status === 'declined') {
-      return {
-        statusCode: 200,
-        headers: {
-          ...headers,
-          'Content-Type': 'text/html'
-        },
-        body: generateQuoteClosedPage(booking)
+      const { error: bookingUpdateError } = await supabase
+        .from('bookings')
+        .update(bookingUpdateData)
+        .eq('parent_quote_id', quoteId);
+
+      if (bookingUpdateError) {
+        throw bookingUpdateError;
+      }
+
+      console.log(`Updated quote ${quoteId} to ${quoteNewStatus} and ${bookings.length} bookings to ${bookingNewStatus}`);
+
+    } else {
+      // OLD: Single booking response (backwards compatibility)
+      console.log(`Processing single booking response for booking: ${bookingId}`);
+
+      const { data: singleBooking, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .eq('id', bookingId)
+        .single();
+
+      if (error || !singleBooking) {
+        return {
+          statusCode: 404,
+          headers,
+          body: JSON.stringify({ error: 'Booking not found' })
+        };
+      }
+
+      booking = singleBooking;
+
+      // Check if booking has already been responded to
+      if (booking.status === 'confirmed' || booking.status === 'declined') {
+        return {
+          statusCode: 200,
+          headers: {
+            ...headers,
+            'Content-Type': 'text/html'
+          },
+          body: generateQuoteClosedPage(booking)
+        };
+      }
+
+      // Update single booking status
+      const newStatus = response === 'accept' ? 'confirmed' : 'declined';
+      const updateData = {
+        status: newStatus,
+        updated_at: new Date().toISOString()
       };
-    }
 
-    // Update booking status - use valid database enum values
-    const newStatus = response === 'accept' ? 'confirmed' : 'declined';
-    const updateData = {
-      status: newStatus,
-      updated_at: new Date().toISOString()
-    };
+      // Add a note to indicate this was a quote response
+      const currentNotes = booking.notes || '';
+      const responseNote = `\n[${new Date().toLocaleDateString()}] Quote ${response}ed via email`;
+      updateData.notes = currentNotes + responseNote;
 
-    // Add a note to indicate this was a quote response
-    const currentNotes = booking.notes || '';
-    const responseNote = `\n[${new Date().toLocaleDateString()}] Quote ${response}ed via email`;
-    updateData.notes = currentNotes + responseNote;
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update(updateData)
+        .eq('id', bookingId);
 
-    const { error: updateError } = await supabase
-      .from('bookings')
-      .update(updateData)
-      .eq('id', bookingId);
-
-    if (updateError) {
-      throw updateError;
+      if (updateError) {
+        throw updateError;
+      }
     }
 
     // Return success response with admin notification trigger
@@ -131,7 +231,7 @@ exports.handler = async (event, context) => {
         ...headers,
         'Content-Type': 'text/html'
       },
-      body: generateResponsePage(booking, response, true)  // Pass flag to trigger admin email
+      body: generateResponsePage(booking, response, true, bookings?.length)  // Pass booking count
     };
 
   } catch (error) {
@@ -279,7 +379,7 @@ async function sendAdminNotification(booking, response, customerMessage) {
   }
 }
 
-function generateResponsePage(booking, response, shouldSendAdminEmail = false) {
+function generateResponsePage(booking, response, shouldSendAdminEmail = false, bookingCount = 1) {
   const isAccepted = response === 'accept';
   
   return `
@@ -423,6 +523,11 @@ function generateResponsePage(booking, response, shouldSendAdminEmail = false) {
             <div class="detail-row">
               <strong>Event Date:</strong> ${new Date(booking.booking_time).toLocaleDateString('en-AU')}
             </div>
+            ${bookingCount > 1 ? `
+            <div class="detail-row">
+              <strong>Bookings:</strong> ${bookingCount} therapist sessions
+            </div>
+            ` : ''}
           </div>
           
           <div class="next-steps">
