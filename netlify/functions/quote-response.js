@@ -238,7 +238,7 @@ exports.handler = async (event, context) => {
         ...headers,
         'Content-Type': 'text/html'
       },
-      body: generateResponsePage(booking, response, true, bookings?.length)  // Pass booking count
+      body: generateResponsePage(booking, response, true, bookings?.length, quoteId ? quote : null)  // Pass quote data for quote-based responses
     };
 
   } catch (error) {
@@ -386,8 +386,14 @@ async function sendAdminNotification(booking, response, customerMessage) {
   }
 }
 
-function generateResponsePage(booking, response, shouldSendAdminEmail = false, bookingCount = 1) {
+function generateResponsePage(booking, response, shouldSendAdminEmail = false, bookingCount = 1, quoteData = null) {
   const isAccepted = response === 'accept';
+
+  // Use quote data for quote-based responses, otherwise use booking data
+  const displayData = quoteData || booking;
+  const displayAmount = quoteData ? quoteData.total_amount : booking.price;
+  const displayReference = quoteData ? quoteData.id : booking.id;
+  const displayCompany = quoteData ? (quoteData.company_name || quoteData.customer_name) : (booking.business_name || 'Not specified');
   
   return `
     <!DOCTYPE html>
@@ -516,16 +522,16 @@ function generateResponsePage(booking, response, shouldSendAdminEmail = false, b
           <div class="details">
             <h3>Quote Details</h3>
             <div class="detail-row">
-              <strong>Quote ID:</strong> ${booking.id.substring(0, 8).toUpperCase()}
+              <strong>Quote ID:</strong> ${displayReference.substring(0, 8).toUpperCase()}
             </div>
             <div class="detail-row">
-              <strong>Company:</strong> ${booking.business_name || 'Not specified'}
+              <strong>Company:</strong> ${displayCompany}
             </div>
             <div class="detail-row">
-              <strong>Contact:</strong> ${booking.corporate_contact_name}
+              <strong>Contact:</strong> ${quoteData ? (quoteData.corporate_contact_name || quoteData.customer_name) : booking.corporate_contact_name}
             </div>
             <div class="detail-row">
-              <strong>Amount:</strong> $${booking.price}
+              <strong>Total Amount:</strong> $${displayAmount.toFixed(2)}
             </div>
             <div class="detail-row">
               <strong>Event Date:</strong> ${new Date(booking.booking_time).toLocaleDateString('en-AU')}
@@ -571,6 +577,7 @@ function generateResponsePage(booking, response, shouldSendAdminEmail = false, b
           
           // Admin notification data
           const bookingData = ${JSON.stringify(booking)};
+          const quoteData = ${JSON.stringify(quoteData)};
           const response = '${response}';
           const isAccepted = response === 'accept';
           
@@ -594,8 +601,8 @@ function generateResponsePage(booking, response, shouldSendAdminEmail = false, b
             ? 'Contact the customer within 24 hours to confirm details, process payment, and assign therapists.'
             : 'Consider reaching out to understand their concerns or offer alternative solutions if appropriate.';
           
-          // Generate quote reference and timestamps
-          const quoteReference = 'RMM-' + bookingData.id.substring(0, 8).toUpperCase();
+          // Generate quote reference and timestamps - use quote data if available
+          const quoteReference = 'RMM-' + (quoteData ? quoteData.id : bookingData.id).substring(0, 8).toUpperCase();
           const responseTimestamp = new Date().toLocaleDateString('en-AU', {
             day: 'numeric',
             month: 'numeric', 
@@ -627,7 +634,7 @@ function generateResponsePage(booking, response, shouldSendAdminEmail = false, b
             contact_email: bookingData.corporate_contact_email || 'Not provided',
             contact_phone: bookingData.corporate_contact_phone || 'Not provided',
             event_date: eventDate,
-            quote_amount: '$' + (bookingData.price || 0).toFixed(2),
+            quote_amount: '$' + (quoteData ? quoteData.total_amount : bookingData.price || 0).toFixed(2),
             header_color: headerColor,
             banner_color: bannerColor,
             urgency_text: urgencyText,
