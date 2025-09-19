@@ -1191,17 +1191,29 @@ console.log('Globals:', {
 
     const totalMinutes = numMassages * durationPerMassage;
 
-    // Step 1: Base calculation using service rate from services table ($160/hour)
+    // Step 1: Get service base price from services cache or use fallback
+    let serviceBasePrice = 160; // Fallback price
+
+    // Try to get actual service base price from cached services data
+    if (window.servicesCache && window.servicesCache.length > 0) {
+      // For quotes, typically use the first available service or a specific quote service
+      const quoteService = window.servicesCache.find(s => s.quote_only) || window.servicesCache[0];
+      if (quoteService && quoteService.service_base_price) {
+        serviceBasePrice = Number(quoteService.service_base_price);
+      }
+    }
+
+    // Calculate base estimate using actual service price
     const totalHours = totalMinutes / 60;
-    let totalEstimate = totalHours * 160; // $160 from services.service_base_price
+    let totalEstimate = totalHours * serviceBasePrice;
 
     // Step 2: Apply weekend/afterhours uplift (BEFORE discounts)
     // Note: For email we'll use a conservative estimate without specific date/time uplifts
 
-    // Step 3: Minimum price check
+    // Step 3: Minimum price check (for quotes only - 2 hours minimum)
     const minimumMinutes = 120;
     const minimumHours = minimumMinutes / 60;
-    let minimumPrice = minimumHours * 160; // 2 × $160 = $320
+    let minimumPrice = minimumHours * serviceBasePrice; // 2 hours × actual service base price
 
     // Apply minimum if calculated price is below it
     if (totalEstimate < minimumPrice) {
