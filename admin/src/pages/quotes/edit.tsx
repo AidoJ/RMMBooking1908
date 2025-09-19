@@ -795,6 +795,7 @@ export const QuoteEdit: React.FC = () => {
               quoteId={id}
               onAvailabilityConfirmed={handleAvailabilityConfirmed}
               onAvailabilityDeclined={handleAvailabilityDeclined}
+              existingAssignments={therapistAssignments}
             />
           )}
         </TabPane>

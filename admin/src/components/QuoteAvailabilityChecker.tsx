@@ -45,6 +45,7 @@ interface QuoteAvailabilityCheckerProps {
   quoteId: string;
   onAvailabilityConfirmed: (assignments: TherapistAssignment[]) => void;
   onAvailabilityDeclined: () => void;
+  existingAssignments?: TherapistAssignment[]; // For loading existing assignments from sent quotes
 }
 
 export interface TherapistAssignment {
@@ -61,6 +62,7 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
   quoteId,
   onAvailabilityConfirmed,
   onAvailabilityDeclined,
+  existingAssignments,
 }) => {
   const [loading, setLoading] = useState(false);
   const [availability, setAvailability] = useState<QuoteAvailabilityResult | null>(null);
@@ -78,14 +80,25 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
     }
   }, [quoteId]);
 
+  // Load existing assignments if provided
+  useEffect(() => {
+    if (existingAssignments && existingAssignments.length > 0) {
+      console.log('Loading existing assignments:', existingAssignments);
+      setAssignments(existingAssignments);
+    }
+  }, [existingAssignments]);
+
   const checkAvailability = async () => {
     setLoading(true);
     try {
       const result = await checkQuoteAvailability(quoteId);
       setAvailability(result);
 
-      // Don't auto-assign therapists - let admin manually select them
-      setAssignments([]);
+      // Only reset assignments if there are no existing assignments to preserve
+      if (!existingAssignments || existingAssignments.length === 0) {
+        // Don't auto-assign therapists - let admin manually select them
+        setAssignments([]);
+      }
     } catch (error) {
       console.error('Error checking availability:', error);
       message.error('Failed to check therapist availability');
