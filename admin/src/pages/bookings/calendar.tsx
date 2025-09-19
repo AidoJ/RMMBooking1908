@@ -63,6 +63,7 @@ interface BookingEvent {
   customer_name: string;
   service_name: string;
   price: number;
+  therapist_fee?: number;
   address: string;
   business_name?: string;
   room_number?: string;
@@ -197,6 +198,7 @@ export const CalendarBookingManagement: React.FC = () => {
           customer_name: customerName,
           service_name: booking.services?.name || 'Unknown Service',
           price: parseFloat(booking.price) || 0,
+          therapist_fee: parseFloat(booking.therapist_fee) || 0,
           address: booking.address || '',
           business_name: booking.business_name || '',
           room_number: booking.room_number || '',
@@ -532,7 +534,11 @@ export const CalendarBookingManagement: React.FC = () => {
                       </div>
                       <div>
                         <DollarOutlined style={{ marginRight: 8 }} />
-                        ${selectedBooking.price ? selectedBooking.price.toFixed(2) : '0.00'}
+                        Therapist Fee: ${selectedBooking.therapist_fee ? selectedBooking.therapist_fee.toFixed(2) : '0.00'}
+                      </div>
+                      <div>
+                        <DollarOutlined style={{ marginRight: 8 }} />
+                        Total Price: ${selectedBooking.price ? selectedBooking.price.toFixed(2) : '0.00'}
                       </div>
                     </Space>
                   </div>
