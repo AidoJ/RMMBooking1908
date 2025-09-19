@@ -108,7 +108,7 @@ export const CalendarBookingManagement: React.FC = () => {
     if (therapists.length > 0) {
       fetchBookings();
     }
-  }, [selectedTherapistId, currentDate, therapists]);
+  }, [selectedTherapistId, currentDate, therapists, calendarView]);
 
   const initializeData = async () => {
     try {
@@ -153,8 +153,16 @@ export const CalendarBookingManagement: React.FC = () => {
 
   const fetchBookings = async () => {
     try {
-      const startOfWeek = currentDate.startOf('week');
-      const endOfWeek = currentDate.endOf('week');
+      let startDate, endDate;
+
+      if (calendarView === 'week') {
+        startDate = currentDate.startOf('week');
+        endDate = currentDate.endOf('week');
+      } else {
+        // For schedule and day views, fetch current day and surrounding days for context
+        startDate = currentDate.subtract(1, 'day').startOf('day');
+        endDate = currentDate.add(1, 'day').endOf('day');
+      }
 
       let query = supabaseClient
         .from('bookings')
@@ -164,8 +172,8 @@ export const CalendarBookingManagement: React.FC = () => {
           customers(first_name, last_name, phone),
           services(name)
         `)
-        .gte('booking_time', startOfWeek.toISOString())
-        .lte('booking_time', endOfWeek.toISOString());
+        .gte('booking_time', startDate.toISOString())
+        .lte('booking_time', endDate.toISOString());
 
       // Role-based filtering
       if (isTherapist(userRole) && identity?.id) {
@@ -279,12 +287,22 @@ export const CalendarBookingManagement: React.FC = () => {
     setShowBookingDrawer(true);
   };
 
-  const handlePrevWeek = () => {
-    setCurrentDate(currentDate.subtract(1, 'week'));
+  const handlePrev = () => {
+    if (calendarView === 'week') {
+      setCurrentDate(currentDate.subtract(1, 'week'));
+    } else {
+      // For schedule and day views, move by day
+      setCurrentDate(currentDate.subtract(1, 'day'));
+    }
   };
 
-  const handleNextWeek = () => {
-    setCurrentDate(currentDate.add(1, 'week'));
+  const handleNext = () => {
+    if (calendarView === 'week') {
+      setCurrentDate(currentDate.add(1, 'week'));
+    } else {
+      // For schedule and day views, move by day
+      setCurrentDate(currentDate.add(1, 'day'));
+    }
   };
 
   const handleToday = () => {
@@ -543,9 +561,9 @@ export const CalendarBookingManagement: React.FC = () => {
           <Row gutter={16} align="middle">
             <Col>
               <Space>
-                <Button onClick={handlePrevWeek}>← Previous</Button>
+                <Button onClick={handlePrev}>← Previous</Button>
                 <Button onClick={handleToday}>Today</Button>
-                <Button onClick={handleNextWeek}>Next →</Button>
+                <Button onClick={handleNext}>Next →</Button>
               </Space>
             </Col>
             <Col>
