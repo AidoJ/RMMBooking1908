@@ -36,6 +36,7 @@ import {
   type DayAvailability,
   type TherapistAvailability,
 } from '../services/availabilityService';
+import { supabaseClient } from '../utility';
 import dayjs from 'dayjs';
 
 const { Text, Title } = Typography;
@@ -207,16 +208,47 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
     message.success('Override assignment confirmed');
   };
 
-  const handleRemoveAssignment = (assignmentToRemove: TherapistAssignment) => {
-    const newAssignments = assignments.filter(
-      assignment => !(
-        assignment.date === assignmentToRemove.date &&
-        assignment.start_time === assignmentToRemove.start_time &&
-        assignment.therapist_id === assignmentToRemove.therapist_id
-      )
-    );
-    setAssignments(newAssignments);
-    message.success('Therapist assignment removed');
+  const handleRemoveAssignment = async (assignmentToRemove: TherapistAssignment) => {
+    try {
+      // Remove from local state first
+      const newAssignments = assignments.filter(
+        assignment => !(
+          assignment.date === assignmentToRemove.date &&
+          assignment.start_time === assignmentToRemove.start_time &&
+          assignment.therapist_id === assignmentToRemove.therapist_id
+        )
+      );
+      setAssignments(newAssignments);
+
+      // If this quote has existing assignments (quote has been sent), also delete from database
+      if (existingAssignments && existingAssignments.length > 0) {
+        message.loading('Removing assignment from database...', 0);
+
+        // Find and delete the corresponding booking record
+        const { error } = await supabaseClient
+          .from('bookings')
+          .delete()
+          .eq('parent_quote_id', quoteId)
+          .eq('therapist_id', assignmentToRemove.therapist_id)
+          .eq('booking_time', `${assignmentToRemove.date}T${assignmentToRemove.start_time}.000Z`);
+
+        if (error) {
+          throw error;
+        }
+
+        message.destroy();
+        message.success('Therapist assignment removed and database updated');
+      } else {
+        message.success('Therapist assignment removed');
+      }
+    } catch (error) {
+      message.destroy();
+      console.error('Error removing assignment:', error);
+      message.error('Failed to remove assignment: ' + (error instanceof Error ? error.message : 'Unknown error'));
+
+      // Revert local state change on error
+      setAssignments(assignments);
+    }
   };
 
   const canConfirmAvailability = () => {
