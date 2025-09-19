@@ -71,6 +71,9 @@ interface BookingEvent {
   notes?: string;
   backgroundColor: string;
   borderColor: string;
+  duration_minutes: number;
+  startTime: dayjs.Dayjs;
+  endTime: dayjs.Dayjs;
 }
 
 interface CalendarDay {
@@ -87,7 +90,7 @@ export const CalendarBookingManagement: React.FC = () => {
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [selectedTherapistId, setSelectedTherapistId] = useState<string>('all');
   const [currentDate, setCurrentDate] = useState(dayjs());
-  const [calendarView, setCalendarView] = useState<'week' | 'day'>('week');
+  const [calendarView, setCalendarView] = useState<'week' | 'day' | 'schedule'>('schedule');
   const [bookings, setBookings] = useState<BookingEvent[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<BookingEvent | null>(null);
   const [showBookingDrawer, setShowBookingDrawer] = useState(false);
@@ -152,7 +155,7 @@ export const CalendarBookingManagement: React.FC = () => {
     try {
       const startOfWeek = currentDate.startOf('week');
       const endOfWeek = currentDate.endOf('week');
-      
+
       let query = supabaseClient
         .from('bookings')
         .select(`
@@ -164,8 +167,12 @@ export const CalendarBookingManagement: React.FC = () => {
         .gte('booking_time', startOfWeek.toISOString())
         .lte('booking_time', endOfWeek.toISOString());
 
-      // Filter by therapist if selected
-      if (selectedTherapistId !== 'all') {
+      // Role-based filtering
+      if (isTherapist(userRole) && identity?.id) {
+        // Therapists only see their own bookings
+        query = query.eq('therapist_id', identity.id);
+      } else if (selectedTherapistId !== 'all') {
+        // Admins can filter by specific therapist
         query = query.eq('therapist_id', selectedTherapistId);
       }
 
@@ -206,6 +213,9 @@ export const CalendarBookingManagement: React.FC = () => {
           notes: booking.notes || '',
           backgroundColor: getStatusColor(booking.status),
           borderColor: getStatusColor(booking.status),
+          duration_minutes: duration,
+          startTime: startTime,
+          endTime: endTime,
         };
       });
 
@@ -283,6 +293,220 @@ export const CalendarBookingManagement: React.FC = () => {
 
   const weekDays = generateWeekDays();
 
+  // Generate time slots for schedule view (8 AM to 8 PM in 30-minute intervals)
+  const generateTimeSlots = () => {
+    const slots = [];
+    for (let hour = 8; hour <= 20; hour++) {
+      slots.push(`${hour}:00`);
+      if (hour < 20) {
+        slots.push(`${hour}:30`);
+      }
+    }
+    return slots;
+  };
+
+  const timeSlots = generateTimeSlots();
+
+  const renderScheduleView = () => {
+    const today = currentDate;
+    const dayBookings = bookings.filter(booking =>
+      dayjs(booking.start).isSame(today, 'day')
+    );
+
+    return (
+      <div style={{ display: 'flex', height: '600px', overflow: 'auto' }}>
+        {/* Time column */}
+        <div style={{ width: '80px', borderRight: '1px solid #e8e8e8' }}>
+          <div style={{ height: '40px', borderBottom: '1px solid #e8e8e8' }}></div>
+          {timeSlots.map(time => (
+            <div
+              key={time}
+              style={{
+                height: '30px',
+                padding: '5px',
+                fontSize: '12px',
+                borderBottom: '1px solid #f0f0f0',
+                textAlign: 'right',
+                paddingRight: '8px',
+                color: '#666'
+              }}
+            >
+              {time.endsWith(':00') ? dayjs(`2023-01-01 ${time}`).format('h A') : ''}
+            </div>
+          ))}
+        </div>
+
+        {/* Schedule column */}
+        <div style={{ flex: 1, position: 'relative' }}>
+          {/* Date header */}
+          <div style={{
+            height: '40px',
+            borderBottom: '2px solid #e8e8e8',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 'bold',
+            backgroundColor: today.isSame(dayjs(), 'day') ? '#e6f7ff' : '#fafafa'
+          }}>
+            {today.format('dddd, MMMM D')}
+          </div>
+
+          {/* Time grid */}
+          <div style={{ position: 'relative' }}>
+            {timeSlots.map((time, index) => (
+              <div
+                key={time}
+                style={{
+                  height: '30px',
+                  borderBottom: time.endsWith(':00') ? '1px solid #e8e8e8' : '1px solid #f5f5f5',
+                  backgroundColor: time.endsWith(':00') ? '#fafafa' : 'transparent'
+                }}
+              />
+            ))}
+
+            {/* Bookings overlay */}
+            {dayBookings.map(booking => {
+              const startTime = dayjs(booking.start);
+              const endTime = dayjs(booking.end);
+
+              // Calculate position
+              const startHour = startTime.hour();
+              const startMinute = startTime.minute();
+              const duration = endTime.diff(startTime, 'minute');
+
+              // Skip bookings outside our time range
+              if (startHour < 8 || startHour >= 21) return null;
+
+              const startPosition = ((startHour - 8) * 60 + startMinute) / 30 * 30; // 30px per 30min slot
+              const height = (duration / 30) * 30; // 30px per 30min
+
+              return (
+                <div
+                  key={booking.id}
+                  onClick={() => handleBookingClick(booking)}
+                  style={{
+                    position: 'absolute',
+                    top: `${startPosition}px`,
+                    left: '4px',
+                    right: '4px',
+                    height: `${height}px`,
+                    backgroundColor: booking.backgroundColor,
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    border: `2px solid ${booking.borderColor}`,
+                    overflow: 'hidden',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    opacity: booking.status === 'cancelled' ? 0.6 : 1,
+                    zIndex: 10
+                  }}
+                  title={`${booking.customer_name} - ${booking.service_name}`}
+                >
+                  <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
+                    {startTime.format('h:mm A')}
+                  </div>
+                  <div style={{ fontSize: '11px' }}>
+                    {booking.customer_name}
+                  </div>
+                  <div style={{ fontSize: '10px', opacity: 0.9 }}>
+                    {booking.service_name}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderWeekView = () => {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, backgroundColor: '#f0f0f0' }}>
+        {/* Day Headers */}
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+          <div
+            key={day}
+            style={{
+              padding: '12px 8px',
+              backgroundColor: '#fafafa',
+              textAlign: 'center',
+              fontWeight: 'bold',
+              borderBottom: '2px solid #e8e8e8'
+            }}
+          >
+            {day}
+          </div>
+        ))}
+
+        {/* Calendar Days */}
+        {weekDays.map(day => (
+          <div
+            key={day.date.format('YYYY-MM-DD')}
+            style={{
+              minHeight: 400,
+              backgroundColor: day.isToday ? '#e6f7ff' : '#fff',
+              border: day.isSelected ? '2px solid #1890ff' : '1px solid #e8e8e8',
+              padding: 8,
+              position: 'relative',
+            }}
+          >
+            {/* Date Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 8,
+              paddingBottom: 4,
+              borderBottom: '1px solid #f0f0f0'
+            }}>
+              <Text strong={day.isToday}>
+                {day.date.format('D')}
+              </Text>
+              {day.bookings.length > 0 && (
+                <Badge count={day.bookings.length} size="small" />
+              )}
+            </div>
+
+            {/* Bookings */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {day.bookings.map(booking => (
+                <Tooltip
+                  key={booking.id}
+                  title={`${booking.customer_name} - ${booking.service_name} at ${dayjs(booking.start).format('h:mm A')}`}
+                >
+                  <div
+                    onClick={() => handleBookingClick(booking)}
+                    style={{
+                      backgroundColor: booking.backgroundColor,
+                      color: 'white',
+                      padding: '4px 6px',
+                      borderRadius: 4,
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      opacity: booking.status === 'cancelled' ? 0.6 : 1,
+                    }}
+                  >
+                    <div style={{ fontWeight: 'bold' }}>
+                      {dayjs(booking.start).format('h:mm A')}
+                    </div>
+                    <div>{booking.customer_name}</div>
+                  </div>
+                </Tooltip>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <RoleGuard requiredPermission="canViewBookingCalendar">
       <div style={{ padding: 24 }}>
@@ -329,6 +553,20 @@ export const CalendarBookingManagement: React.FC = () => {
                 {currentDate.format('MMMM YYYY')}
               </Title>
             </Col>
+            <Col>
+              <Space>
+                <Text>View:</Text>
+                <Select
+                  value={calendarView}
+                  onChange={setCalendarView}
+                  style={{ width: 120 }}
+                >
+                  <Option value="schedule">Schedule</Option>
+                  <Option value="week">Week</Option>
+                  <Option value="day">Day</Option>
+                </Select>
+              </Space>
+            </Col>
             <Col flex="auto" />
             {canAccess(userRole, 'canViewAllTherapists') && (
               <Col>
@@ -352,87 +590,11 @@ export const CalendarBookingManagement: React.FC = () => {
           </Row>
         </Card>
 
-        {/* Calendar Grid */}
+        {/* Calendar Content */}
         <Card>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, backgroundColor: '#f0f0f0' }}>
-            {/* Day Headers */}
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div
-                key={day}
-                style={{
-                  padding: '12px 8px',
-                  backgroundColor: '#fafafa',
-                  textAlign: 'center',
-                  fontWeight: 'bold',
-                  borderBottom: '2px solid #e8e8e8'
-                }}
-              >
-                {day}
-              </div>
-            ))}
-            
-            {/* Calendar Days */}
-            {weekDays.map(day => (
-              <div
-                key={day.date.format('YYYY-MM-DD')}
-                style={{
-                  minHeight: 400,
-                  backgroundColor: day.isToday ? '#e6f7ff' : '#fff',
-                  border: day.isSelected ? '2px solid #1890ff' : '1px solid #e8e8e8',
-                  padding: 8,
-                  position: 'relative',
-                }}
-              >
-                {/* Date Header */}
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  marginBottom: 8,
-                  paddingBottom: 4,
-                  borderBottom: '1px solid #f0f0f0'
-                }}>
-                  <Text strong={day.isToday}>
-                    {day.date.format('D')}
-                  </Text>
-                  {day.bookings.length > 0 && (
-                    <Badge count={day.bookings.length} size="small" />
-                  )}
-                </div>
-                
-                {/* Bookings */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {day.bookings.map(booking => (
-                    <Tooltip
-                      key={booking.id}
-                      title={`${booking.customer_name} - ${booking.service_name} at ${dayjs(booking.start).format('h:mm A')}`}
-                    >
-                      <div
-                        onClick={() => handleBookingClick(booking)}
-                        style={{
-                          backgroundColor: booking.backgroundColor,
-                          color: 'white',
-                          padding: '4px 6px',
-                          borderRadius: 4,
-                          fontSize: '11px',
-                          cursor: 'pointer',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          opacity: booking.status === 'cancelled' ? 0.6 : 1,
-                        }}
-                      >
-                        <div style={{ fontWeight: 'bold' }}>
-                          {dayjs(booking.start).format('h:mm A')}
-                        </div>
-                        <div>{booking.customer_name}</div>
-                      </div>
-                    </Tooltip>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+          {calendarView === 'schedule' && renderScheduleView()}
+          {calendarView === 'week' && renderWeekView()}
+          {calendarView === 'day' && renderScheduleView()}
         </Card>
 
         {/* Booking Details Drawer */}
@@ -536,10 +698,13 @@ export const CalendarBookingManagement: React.FC = () => {
                         <DollarOutlined style={{ marginRight: 8 }} />
                         Therapist Fee: ${selectedBooking.therapist_fee ? selectedBooking.therapist_fee.toFixed(2) : '0.00'}
                       </div>
-                      <div>
-                        <DollarOutlined style={{ marginRight: 8 }} />
-                        Total Price: ${selectedBooking.price ? selectedBooking.price.toFixed(2) : '0.00'}
-                      </div>
+                      {/* Only show total price to admins */}
+                      {!isTherapist(userRole) && (
+                        <div>
+                          <DollarOutlined style={{ marginRight: 8 }} />
+                          Total Price: ${selectedBooking.price ? selectedBooking.price.toFixed(2) : '0.00'}
+                        </div>
+                      )}
                     </Space>
                   </div>
                 </div>
