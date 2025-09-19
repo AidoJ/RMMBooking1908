@@ -1158,7 +1158,12 @@ console.log('Globals:', {
         po_number: quoteData.po_number || 'Not provided',
         setup_requirements: quoteData.setup_requirements || 'None specified',
         special_requirements: quoteData.special_requirements || 'None specified',
-        quote_reference: quoteRecord ? quoteRecord.booking_id : 'QR' + Date.now().toString().substring(-6)
+        quote_reference: quoteRecord ? quoteRecord.booking_id : 'QR' + Date.now().toString().substring(-6),
+
+        // Add estimate investment range
+        estimate_investment_min: `$${calculateQuoteEstimateRange(quoteData).min}`,
+        estimate_investment_max: `$${calculateQuoteEstimateRange(quoteData).max}`,
+        estimate_investment_range: `$${calculateQuoteEstimateRange(quoteData).min} - $${calculateQuoteEstimateRange(quoteData).max}`
       };
 
       // Send email using EmailJS
@@ -1173,6 +1178,54 @@ console.log('Globals:', {
       console.error('Error sending quote confirmation email:', error);
       // Don't throw error - we don't want to fail the quote submission if email fails
     }
+  }
+
+  // Calculate quote estimate range for email (extracted from calculateQuoteEstimate)
+  function calculateQuoteEstimateRange(quoteData) {
+    const numMassages = parseInt(quoteData.number_of_massages || 0);
+    const durationPerMassage = parseInt(quoteData.duration_per_massage || 0);
+
+    if (numMassages <= 0 || durationPerMassage <= 0) {
+      return { min: 0, max: 0 };
+    }
+
+    const totalMinutes = numMassages * durationPerMassage;
+
+    // Step 1: Base calculation using service rate from services table ($160/hour)
+    const totalHours = totalMinutes / 60;
+    let totalEstimate = totalHours * 160; // $160 from services.service_base_price
+
+    // Step 2: Apply weekend/afterhours uplift (BEFORE discounts)
+    // Note: For email we'll use a conservative estimate without specific date/time uplifts
+
+    // Step 3: Minimum price check
+    const minimumMinutes = 120;
+    const minimumHours = minimumMinutes / 60;
+    let minimumPrice = minimumHours * 160; // 2 × $160 = $320
+
+    // Apply minimum if calculated price is below it
+    if (totalEstimate < minimumPrice) {
+      totalEstimate = minimumPrice;
+    }
+
+    // Calculate range: base price (flexible) to urgency price
+    const basePrice = Math.round(totalEstimate); // Base price without urgency
+
+    // Apply urgency multiplier for max estimate
+    const urgencyMultipliers = {
+      'flexible': 1.0,
+      'within_week': 1.1,
+      'within_3_days': 1.25,
+      'urgent_24h': 1.5
+    };
+
+    const urgencyMultiplier = urgencyMultipliers[quoteData.urgency] || 1.0;
+    const urgencyPrice = Math.round(totalEstimate * urgencyMultiplier);
+
+    return {
+      min: basePrice,
+      max: urgencyPrice
+    };
   }
 
   // Helper functions for email formatting
