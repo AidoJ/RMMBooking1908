@@ -219,8 +219,8 @@ export const CalendarBookingManagement: React.FC = () => {
           room_number: booking.room_number || '',
           phone: booking.customers?.phone || booking.customer_phone || '',
           notes: booking.notes || '',
-          backgroundColor: getStatusColor(booking.status),
-          borderColor: getStatusColor(booking.status),
+          backgroundColor: getTherapistColor(booking.therapist_id),
+          borderColor: getTherapistColor(booking.therapist_id),
           duration_minutes: duration,
           startTime: startTime,
           endTime: endTime,
@@ -243,6 +243,35 @@ export const CalendarBookingManagement: React.FC = () => {
       case 'declined': return '#c02000';        // Red
       default: return '#e0e0e0';                // Light gray
     }
+  };
+
+  const getTherapistColor = (therapistId: string): string => {
+    // Predefined color palette for therapists
+    const therapistColors = [
+      '#1890ff', // Blue
+      '#52c41a', // Green
+      '#fa8c16', // Orange
+      '#eb2f96', // Magenta
+      '#722ed1', // Purple
+      '#13c2c2', // Cyan
+      '#f5222d', // Red
+      '#a0d911', // Lime
+      '#fa541c', // Volcano
+      '#2f54eb', // Geek Blue
+      '#b37feb', // Purple Light
+      '#40a9ff', // Blue Light
+    ];
+
+    // Create a simple hash of the therapist ID to get consistent color assignment
+    let hash = 0;
+    for (let i = 0; i < therapistId.length; i++) {
+      const char = therapistId.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+
+    const colorIndex = Math.abs(hash) % therapistColors.length;
+    return therapistColors[colorIndex];
   };
 
   const getStatusTag = (status: string) => {
@@ -383,7 +412,7 @@ export const CalendarBookingManagement: React.FC = () => {
             ))}
 
             {/* Bookings overlay */}
-            {dayBookings.map(booking => {
+            {dayBookings.map((booking, bookingIndex) => {
               const startTime = dayjs(booking.start);
               const endTime = dayjs(booking.end);
 
@@ -398,6 +427,23 @@ export const CalendarBookingManagement: React.FC = () => {
               const startPosition = ((startHour - 8) * 60 + startMinute) / 30 * 30; // 30px per 30min slot
               const height = (duration / 30) * 30; // 30px per 30min
 
+              // Find overlapping bookings to calculate horizontal positioning
+              const overlappingBookings = dayBookings.filter(otherBooking => {
+                const otherStart = dayjs(otherBooking.start);
+                const otherEnd = dayjs(otherBooking.end);
+                return (
+                  (startTime.isBefore(otherEnd) && endTime.isAfter(otherStart)) ||
+                  (startTime.isSame(otherStart) && endTime.isSame(otherEnd))
+                );
+              });
+
+              const overlapIndex = overlappingBookings.findIndex(b => b.id === booking.id);
+              const totalOverlapping = overlappingBookings.length;
+
+              // Calculate width and left position for side-by-side display
+              const columnWidth = totalOverlapping > 1 ? `calc((100% - 8px) / ${totalOverlapping})` : 'calc(100% - 8px)';
+              const leftOffset = totalOverlapping > 1 ? `calc(4px + ((100% - 8px) / ${totalOverlapping}) * ${overlapIndex})` : '4px';
+
               return (
                 <div
                   key={booking.id}
@@ -405,15 +451,15 @@ export const CalendarBookingManagement: React.FC = () => {
                   style={{
                     position: 'absolute',
                     top: `${startPosition}px`,
-                    left: '4px',
-                    right: '4px',
+                    left: leftOffset,
+                    width: columnWidth,
                     height: `${height}px`,
                     backgroundColor: booking.backgroundColor,
                     color: 'white',
-                    padding: '4px 8px',
+                    padding: '4px 6px',
                     borderRadius: '4px',
                     cursor: 'pointer',
-                    fontSize: '12px',
+                    fontSize: '11px',
                     fontWeight: 'bold',
                     border: `2px solid ${booking.borderColor}`,
                     overflow: 'hidden',
@@ -421,15 +467,15 @@ export const CalendarBookingManagement: React.FC = () => {
                     opacity: booking.status === 'cancelled' ? 0.6 : 1,
                     zIndex: 10
                   }}
-                  title={`${booking.customer_name} - ${booking.service_name}`}
+                  title={`${booking.therapist_name} - ${booking.service_name}`}
                 >
-                  <div style={{ fontWeight: 'bold', marginBottom: '2px' }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '2px', fontSize: '10px' }}>
                     {startTime.format('h:mm A')}
                   </div>
-                  <div style={{ fontSize: '11px' }}>
-                    {booking.customer_name}
+                  <div style={{ fontSize: '10px' }}>
+                    {booking.therapist_name}
                   </div>
-                  <div style={{ fontSize: '10px', opacity: 0.9 }}>
+                  <div style={{ fontSize: '9px', opacity: 0.9 }}>
                     {booking.service_name}
                   </div>
                 </div>
@@ -494,7 +540,7 @@ export const CalendarBookingManagement: React.FC = () => {
               {day.bookings.map(booking => (
                 <Tooltip
                   key={booking.id}
-                  title={`${booking.customer_name} - ${booking.service_name} at ${dayjs(booking.start).format('h:mm A')}`}
+                  title={`${booking.therapist_name} - ${booking.service_name} at ${dayjs(booking.start).format('h:mm A')}`}
                 >
                   <div
                     onClick={() => handleBookingClick(booking)}
@@ -514,7 +560,7 @@ export const CalendarBookingManagement: React.FC = () => {
                     <div style={{ fontWeight: 'bold' }}>
                       {dayjs(booking.start).format('h:mm A')}
                     </div>
-                    <div>{booking.customer_name}</div>
+                    <div>{booking.therapist_name}</div>
                   </div>
                 </Tooltip>
               ))}
