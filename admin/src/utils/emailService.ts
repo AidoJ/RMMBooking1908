@@ -537,18 +537,16 @@ export const EmailService = {
           const hours = Math.floor(duration / 60);
           const minutes = duration % 60;
           const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-          const fee = ((duration / 60) * assignment.hourly_rate).toFixed(2);
 
           // Format time to remove seconds
           const timeFormatted = assignment.start_time.substring(0, 5); // "10:00:00" -> "10:00"
 
-          // Enhanced therapist session formatting with better structure
+          // Enhanced therapist session formatting with better structure - NO FEES SHOWN TO CLIENT
           therapistScheduleText += `   🕒 SESSION ${index + 1}\n`;
           therapistScheduleText += `   ┌─────────────────────────────────────────────────────────────────┐\n`;
           therapistScheduleText += `   │  👤 Therapist: ${assignment.therapist_name.padEnd(42)} │\n`;
           therapistScheduleText += `   │  ⏰ Time:      ${timeFormatted.padEnd(42)} │\n`;
           therapistScheduleText += `   │  ⏱️  Duration:  ${durationText.padEnd(42)} │\n`;
-          therapistScheduleText += `   │  💰 Fee:       $${fee.padEnd(41)} │\n`;
 
           if (assignment.is_override) {
             const reason = assignment.override_reason || 'Custom booking';
