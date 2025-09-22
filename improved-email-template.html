@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Corporate Massage Quote - {{quote_reference}}</title>
+    <style type="text/css">
+        /* Enhanced reset for email clients */
+        body, table, td, p, a, li, blockquote {
+            -webkit-text-size-adjust: 100%;
+            -ms-text-size-adjust: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        table, td {
+            mso-table-lspace: 0pt;
+            mso-table-rspace: 0pt;
+            border-collapse: collapse;
+        }
+        img {
+            -ms-interpolation-mode: bicubic;
+            border: 0;
+            height: auto;
+            line-height: 100%;
+            outline: none;
+            text-decoration: none;
+        }
+        /* Client-specific styles */
+        .ReadMsgBody { width: 100%; }
+        .ExternalClass { width: 100%; }
+        .ExternalClass, .ExternalClass p, .ExternalClass span, .ExternalClass font, .ExternalClass td, .ExternalClass div {
+            line-height: 100%;
+        }
+        /* Custom styles for better appearance */
+        .therapist-card {
+            background: linear-gradient(135deg, #f8feff 0%, #e8f5ff 100%);
+            border: 1px solid #d1ecf1;
+            border-radius: 8px;
+            margin: 8px 0;
+            overflow: hidden;
+        }
+        .therapist-header {
+            background: linear-gradient(135deg, #007e8c 0%, #005a66 100%);
+            color: #ffffff;
+            padding: 12px 16px;
+            font-weight: bold;
+        }
+        .therapist-details {
+            padding: 16px;
+        }
+        .session-row {
+            background-color: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            margin: 4px 0;
+            padding: 8px 12px;
+        }
+        .financial-highlight {
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
+            border-left: 4px solid #28a745;
+        }
+        .button-primary {
+            background: linear-gradient(135deg, #007e8c 0%, #005a66 100%);
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 126, 140, 0.2);
+            transition: all 0.3s ease;
+        }
+        .button-secondary {
+            background: #ffffff;
+            border: 2px solid #dc3545;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        @media only screen and (max-width: 600px) {
+            .container { width: 95% !important; max-width: 95% !important; }
+            .mobile-padding { padding: 15px !important; }
+            .mobile-font { font-size: 14px !important; }
+            .button-stack { display: block !important; margin: 8px 0 !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background: linear-gradient(135deg, #f8feff 0%, #e8f5ff 100%); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+
+    <!-- Email Container -->
+    <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #f8feff 0%, #e8f5ff 100%); padding: 20px 0;">
+        <tr>
+            <td align="center">
+                <!-- Main Email Table -->
+                <table cellpadding="0" cellspacing="0" border="0" width="650" class="container" style="max-width: 650px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 126, 140, 0.15); overflow: hidden;">
+
+                    <!-- Enhanced Header with Gradient -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #007e8c 0%, #005a66 100%); color: #ffffff; padding: 40px 30px; text-align: center;">
+                            <div style="font-size: 48px; margin-bottom: 16px; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">📋</div>
+                            <h1 style="margin: 0 0 12px 0; font-size: 28px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 3px rgba(0,0,0,0.3);">Professional Massage Quote</h1>
+                            <div style="background-color: rgba(255,255,255,0.2); padding: 8px 16px; border-radius: 20px; display: inline-block;">
+                                <p style="margin: 0; font-size: 16px; color: #ffffff; font-weight: 600;">Ref: {{quote_reference}}</p>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- Content -->
+                    <tr>
+                        <td class="mobile-padding" style="padding: 40px 30px;">
+
+                            <!-- Enhanced Greeting -->
+                            <div style="text-align: center; margin-bottom: 30px;">
+                                <h2 style="color: #007e8c; font-size: 24px; margin: 0 0 12px 0; font-weight: bold;">Hello {{corporate_contact_name}}! 👋</h2>
+                                <p style="font-size: 16px; color: #6c757d; line-height: 1.6; margin: 0; max-width: 500px; margin: 0 auto;">Thank you for your interest in our wellness services. We've prepared your detailed quote with confirmed therapist assignments and premium service details.</p>
+                            </div>
+
+                            <!-- Enhanced Company Banner -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #007e8c 0%, #005a66 100%); margin: 25px 0; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 126, 140, 0.2);">
+                                <tr>
+                                    <td style="padding: 25px; text-align: center; color: #ffffff;">
+                                        <div style="font-size: 14px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 2px; opacity: 0.9;">{{event_type}}</div>
+                                        <div style="font-size: 26px; font-weight: bold; margin-bottom: 6px; text-shadow: 0 1px 3px rgba(0,0,0,0.3);">{{business_name}}</div>
+                                        <div style="font-size: 18px; opacity: 0.95;">{{event_name}}</div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Enhanced Quote Summary -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%); border: 2px solid #28a745; margin: 25px 0; border-radius: 12px; overflow: hidden; box-shadow: 0 6px 16px rgba(40, 167, 69, 0.15);">
+                                <tr>
+                                    <td style="padding: 30px; text-align: center;">
+                                        <h3 style="color: #28a745; font-size: 20px; margin: 0 0 16px 0; font-weight: bold;">💰 Total Investment</h3>
+                                        <div style="font-size: 42px; font-weight: bold; color: #28a745; margin-bottom: 12px; text-shadow: 0 1px 3px rgba(40, 167, 69, 0.2);">{{quote_amount}}</div>
+                                        <div style="background-color: rgba(255,255,255,0.8); padding: 6px 12px; border-radius: 16px; display: inline-block; font-size: 14px; color: #28a745; font-weight: 600;">Valid until {{quote_expiry_date}}</div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Enhanced Financial Breakdown -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" class="financial-highlight" style="border: 1px solid #d4edda; border-radius: 8px; margin: 25px 0;">
+                                <tr>
+                                    <td style="padding: 25px;">
+                                        <h3 style="color: #28a745; font-size: 20px; margin: 0 0 20px 0; font-weight: bold; display: flex; align-items: center;">💳 Financial Breakdown</h3>
+
+                                        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #ffffff; border-radius: 6px; padding: 15px;">
+                                            <tr>
+                                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: 600; color: #495057; font-size: 15px;">Subtotal:</td>
+                                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; color: #28a745; font-size: 15px; text-align: right; font-weight: 600;">{{subtotal}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: 600; color: #495057; font-size: 15px;">Discount:</td>
+                                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; color: #dc3545; font-size: 15px; text-align: right; font-weight: 600;">{{discount_amount}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 12px 0; border-bottom: 2px solid #28a745; font-weight: 600; color: #495057; font-size: 15px;">GST (10%):</td>
+                                                <td style="padding: 12px 0; border-bottom: 2px solid #28a745; color: #28a745; font-size: 15px; text-align: right; font-weight: 600;">{{gst_amount}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 16px 0 8px 0; font-weight: bold; color: #28a745; font-size: 18px;">TOTAL:</td>
+                                                <td style="padding: 16px 0 8px 0; color: #28a745; font-size: 18px; font-weight: bold; text-align: right;">{{total_amount}}</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Enhanced Event Overview -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #f8feff 0%, #e8f5ff 100%); border: 1px solid #d1ecf1; border-radius: 8px; margin: 25px 0;">
+                                <tr>
+                                    <td style="padding: 25px;">
+                                        <h3 style="color: #007e8c; font-size: 20px; margin: 0 0 20px 0; font-weight: bold;">📅 Event Overview</h3>
+
+                                        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #ffffff; border-radius: 6px; padding: 15px;">
+                                            <tr>
+                                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: 600; color: #495057; font-size: 15px; width: 160px;">📍 Location:</td>
+                                                <td style="padding: 12px 0 12px 20px; border-bottom: 1px solid #e9ecef; color: #212529; font-size: 15px;">{{event_address}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: 600; color: #495057; font-size: 15px;">📆 Total Days:</td>
+                                                <td style="padding: 12px 0 12px 20px; border-bottom: 1px solid #e9ecef; color: #212529; font-size: 15px;">{{total_days}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: 600; color: #495057; font-size: 15px;">🎯 Total Sessions:</td>
+                                                <td style="padding: 12px 0 12px 20px; border-bottom: 1px solid #e9ecef; color: #212529; font-size: 15px;">{{total_sessions}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: 600; color: #495057; font-size: 15px;">⏱️ Session Duration:</td>
+                                                <td style="padding: 12px 0 12px 20px; border-bottom: 1px solid #e9ecef; color: #212529; font-size: 15px;">{{session_duration}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: 600; color: #495057; font-size: 15px;">🕒 Total Duration:</td>
+                                                <td style="padding: 12px 0 12px 20px; border-bottom: 1px solid #e9ecef; color: #212529; font-size: 15px;">{{total_duration}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 12px 0; border-bottom: 1px solid #e9ecef; font-weight: 600; color: #495057; font-size: 15px;">👥 Therapists:</td>
+                                                <td style="padding: 12px 0 12px 20px; border-bottom: 1px solid #e9ecef; color: #007e8c; font-size: 15px; font-weight: 600;">{{total_therapists}} Professional Therapists</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 12px 0; font-weight: 600; color: #495057; font-size: 15px;">👤 Expected Attendees:</td>
+                                                <td style="padding: 12px 0 12px 20px; color: #212529; font-size: 15px;">{{expected_attendees}}</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- ENHANCED Therapist Schedule Section -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%); border: 2px solid #28a745; border-radius: 12px; margin: 30px 0; box-shadow: 0 6px 16px rgba(40, 167, 69, 0.15);">
+                                <tr>
+                                    <td style="padding: 25px;">
+                                        <div style="text-align: center; margin-bottom: 25px;">
+                                            <h3 style="color: #28a745; font-size: 22px; margin: 0 0 8px 0; font-weight: bold;">👥 Confirmed Therapist Schedule</h3>
+                                            <p style="margin: 0; font-size: 16px; color: #6c757d;">All therapists have been assigned and confirmed for your event</p>
+                                        </div>
+
+                                        <!-- Enhanced Schedule Display -->
+                                        <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+
+                                            <!-- Schedule Header -->
+                                            <div style="background: linear-gradient(135deg, #007e8c 0%, #005a66 100%); color: #ffffff; padding: 15px 20px; border-radius: 6px; margin-bottom: 15px; text-align: center;">
+                                                <h4 style="margin: 0; font-size: 18px; font-weight: bold;">Detailed Schedule Breakdown</h4>
+                                            </div>
+
+                                            <!-- Formatted Schedule Content -->
+                                            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 14px; line-height: 1.6; color: #212529;">
+                                                <!-- This will be populated with better formatted therapist data -->
+                                                {{therapist_schedule_formatted}}
+                                            </div>
+
+                                            <!-- If formatted version not available, fall back to text -->
+                                            <div style="font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; color: #495057; background-color: #f8f9fa; padding: 15px; border-radius: 4px; border-left: 4px solid #007e8c; white-space: pre-line; display: {{therapist_schedule_text_display}};">{{therapist_schedule_text}}</div>
+                                        </div>
+
+                                        <!-- Enhanced Confirmation Box -->
+                                        <div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #d4edda 0%, #e8f5e8 100%); border-radius: 8px; border-left: 4px solid #28a745; text-align: center;">
+                                            <div style="font-size: 18px; margin-bottom: 8px;">✅</div>
+                                            <p style="margin: 0 0 8px 0; font-size: 16px; color: #28a745; font-weight: 600;">
+                                                All therapists confirmed and assigned
+                                            </p>
+                                            <p style="margin: 0; font-size: 14px; color: #6c757d;">
+                                                📋 Total bookings created: <strong style="color: #28a745;">{{total_bookings}}</strong>
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Enhanced Requirements -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #fff3cd 0%, #fefaf0 100%); border: 1px solid #ffc107; border-radius: 8px; margin: 25px 0;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <h4 style="color: #856404; font-size: 18px; margin: 0 0 15px 0; font-weight: bold;">📝 Requirements & Notes</h4>
+                                        <div style="background-color: #ffffff; padding: 15px; border-radius: 6px; margin: 8px 0;">
+                                            <p style="color: #856404; font-size: 15px; margin: 0 0 10px 0; font-weight: 600;"><strong>🛠️ Setup Requirements:</strong></p>
+                                            <p style="color: #6c757d; font-size: 14px; margin: 0;">{{setup_requirements}}</p>
+                                        </div>
+                                        <div style="background-color: #ffffff; padding: 15px; border-radius: 6px; margin: 8px 0;">
+                                            <p style="color: #856404; font-size: 15px; margin: 0 0 10px 0; font-weight: 600;"><strong>⭐ Special Requirements:</strong></p>
+                                            <p style="color: #6c757d; font-size: 14px; margin: 0;">{{special_requirements}}</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Enhanced Payment Information -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%); border: 1px solid #28a745; border-radius: 8px; margin: 25px 0;">
+                                <tr>
+                                    <td style="padding: 20px;">
+                                        <h4 style="color: #28a745; font-size: 18px; margin: 0 0 15px 0; font-weight: bold;">💳 Payment Details</h4>
+                                        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #ffffff; border-radius: 6px; padding: 15px;">
+                                            <tr>
+                                                <td style="padding: 10px 0; font-weight: 600; color: #495057; font-size: 15px; width: 140px;">💰 Payment Method:</td>
+                                                <td style="padding: 10px 0 10px 15px; color: #28a745; font-size: 15px; font-weight: 600;">{{payment_method}}</td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 10px 0; font-weight: 600; color: #495057; font-size: 15px;">📄 PO Number:</td>
+                                                <td style="padding: 10px 0 10px 15px; color: #28a745; font-size: 15px; font-weight: 600;">{{po_number}}</td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Enhanced Action Buttons -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #f8feff 0%, #e8f5ff 100%); border: 1px solid #d1ecf1; border-radius: 12px; margin: 35px 0;">
+                                <tr>
+                                    <td style="padding: 35px; text-align: center;">
+                                        <h3 style="color: #007e8c; margin: 0 0 25px 0; font-size: 22px; font-weight: bold;">⚡ Ready to Proceed?</h3>
+                                        <p style="margin: 0 0 30px 0; font-size: 16px; color: #6c757d; max-width: 400px; margin: 0 auto 30px auto;">Click below to accept or decline this quote. You can also download a PDF version for your records.</p>
+
+                                        <!-- Enhanced Accept Button -->
+                                        <table cellpadding="0" cellspacing="0" border="0" class="button-stack" style="display: inline-block; margin: 8px 15px;">
+                                            <tr>
+                                                <td class="button-primary" style="padding: 18px 45px; text-align: center; border-radius: 8px; box-shadow: 0 4px 12px rgba(0, 126, 140, 0.3);">
+                                                    <a href="{{accept_url}}" style="color: #ffffff; text-decoration: none; font-weight: bold; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; display: block;">✅ ACCEPT QUOTE</a>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <!-- Enhanced Decline Button -->
+                                        <table cellpadding="0" cellspacing="0" border="0" class="button-stack" style="display: inline-block; margin: 8px 15px;">
+                                            <tr>
+                                                <td class="button-secondary" style="padding: 16px 43px; text-align: center; border-radius: 8px; box-shadow: 0 4px 12px rgba(220, 53, 69, 0.2);">
+                                                    <a href="{{decline_url}}" style="color: #dc3545; text-decoration: none; font-weight: bold; font-size: 16px; text-transform: uppercase; letter-spacing: 0.5px; display: block;">❌ DECLINE QUOTE</a>
+                                                </td>
+                                            </tr>
+                                        </table>
+
+                                        <div style="margin: 25px 0 0 0; padding: 20px; background-color: rgba(255,255,255,0.7); border-radius: 8px;">
+                                            <p style="margin: 0 0 12px 0; font-size: 15px;">
+                                                📄 <a href="{{online_quote_url}}" style="color: #007e8c; text-decoration: none; font-weight: bold; font-size: 16px;">Download PDF version of this quote</a>
+                                            </p>
+                                            <p style="margin: 0; font-size: 13px; color: #6c757d;">
+                                                You can also view this quote online for a more interactive experience.
+                                            </p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Enhanced Contact Information -->
+                            <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background: linear-gradient(135deg, #e0f3ff 0%, #f0f8ff 100%); border: 1px solid #007e8c; border-radius: 8px; margin: 25px 0;">
+                                <tr>
+                                    <td style="padding: 25px;">
+                                        <h4 style="color: #007e8c; font-size: 18px; margin: 0 0 20px 0; font-weight: bold; text-align: center;">📞 Questions? We're Here to Help!</h4>
+                                        <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #ffffff; border-radius: 6px; padding: 20px;">
+                                            <tr>
+                                                <td style="text-align: center;">
+                                                    <p style="margin: 8px 0; font-size: 15px; color: #007e8c; font-weight: 600;">📧 <strong>Email:</strong> info@rejuvenators.com</p>
+                                                    <p style="margin: 8px 0; font-size: 15px; color: #007e8c; font-weight: 600;">📱 <strong>Phone:</strong> 1300 302 542</p>
+                                                    <p style="margin: 8px 0; font-size: 15px; color: #007e8c; font-weight: 600;">🌐 <strong>Web:</strong> www.rejuvenators.com</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                        </td>
+                    </tr>
+
+                    <!-- Enhanced Footer -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #f8feff 0%, #e8f5ff 100%); padding: 30px; text-align: center; border-top: 1px solid #d1ecf1;">
+                            <p style="color: #007e8c; font-size: 16px; margin: 0 0 8px 0; font-weight: 600;">Thank you for choosing <span style="color: #28a745; font-weight: bold;">{{from_name}}</span> 🙏</p>
+                            <p style="color: #6c757d; font-size: 13px; margin: 0 0 15px 0;">This quote is valid until {{quote_expiry_date}} and is subject to our terms and conditions.</p>
+                            <div style="background-color: #007e8c; color: #ffffff; padding: 12px 20px; border-radius: 20px; display: inline-block; font-weight: bold; font-size: 14px;">
+                                Quote Reference: {{quote_reference}}
+                            </div>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
