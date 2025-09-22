@@ -595,7 +595,7 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
               disabled={!canConfirmAvailability()}
               onClick={() => onAvailabilityConfirmed(assignments)}
             >
-              Confirm Availability & Send Quote
+              Confirm Therapist Assignments
             </Button>
           </Space>
         </Space>

@@ -253,8 +253,19 @@ export const QuoteEdit: React.FC = () => {
       setTherapistAssignments(assignments);
       setAvailabilityStatus('available');
 
-      // If quote has been sent, update existing booking records
-      if (quotesData?.status === 'sent' || quotesData?.status === 'accepted' || quotesData?.status === 'declined') {
+      // Check if assignments have actually changed to avoid unnecessary updates
+      const hasAssignmentChanges = !therapistAssignments ||
+        assignments.length !== therapistAssignments.length ||
+        assignments.some(newAssignment =>
+          !therapistAssignments.some(existingAssignment =>
+            existingAssignment.date === newAssignment.date &&
+            existingAssignment.start_time === newAssignment.start_time &&
+            existingAssignment.therapist_id === newAssignment.therapist_id
+          )
+        );
+
+      // Only update bookings if quote has been sent AND assignments have changed
+      if ((quotesData?.status === 'sent' || quotesData?.status === 'accepted' || quotesData?.status === 'declined') && hasAssignmentChanges) {
         message.loading('Updating therapist assignments...', 0);
 
         // First, delete existing booking records for this quote
@@ -276,6 +287,9 @@ export const QuoteEdit: React.FC = () => {
 
         message.destroy();
         message.success(`Therapist assignments updated! ${bookingResult.bookingIds?.length || 0} booking records updated.`);
+      } else if ((quotesData?.status === 'sent' || quotesData?.status === 'accepted' || quotesData?.status === 'declined') && !hasAssignmentChanges) {
+        // No changes detected - just acknowledge
+        message.success('Therapist assignments confirmed - no changes detected.');
       } else {
         // For new quotes, just store in local state
         message.success('Therapist availability confirmed! Ready to send official quote.');
@@ -310,9 +324,30 @@ export const QuoteEdit: React.FC = () => {
         return;
       }
 
+      // Check if quote has already been sent to prevent duplicate booking creation
+      if (quotesData?.status === 'sent' || quotesData?.status === 'accepted' || quotesData?.status === 'declined') {
+        message.loading('Resending quote...', 0);
+
+        // For already-sent quotes, just resend the email without creating new bookings
+        const emailResult = await EmailService.sendEnhancedOfficialQuote(
+          quotesData,
+          therapistAssignments,
+          [] // No new booking IDs needed for resend
+        );
+
+        if (!emailResult.success) {
+          message.destroy();
+          throw new Error(`Failed to resend quote: ${emailResult.error}`);
+        }
+
+        message.destroy();
+        message.success('Official quote resent successfully!');
+        return;
+      }
+
       message.loading('Creating bookings and sending quote...', 0);
 
-      // Step 1: Create bookings from quote and therapist assignments
+      // Step 1: Create bookings from quote and therapist assignments (only for new quotes)
       if (!quotesData) {
         throw new Error('Quote data not available');
       }
@@ -393,8 +428,16 @@ export const QuoteEdit: React.FC = () => {
     if (availabilityStatus === 'available') {
       return (
         <Alert
-          message="Ready to Send Official Quote"
-          description="Therapist availability confirmed. You can now send the official quote to the customer."
+          message={
+            quotesData?.status === 'sent' || quotesData?.status === 'accepted' || quotesData?.status === 'declined'
+              ? "Quote Already Sent"
+              : "Ready to Send Official Quote"
+          }
+          description={
+            quotesData?.status === 'sent' || quotesData?.status === 'accepted' || quotesData?.status === 'declined'
+              ? "This quote has already been sent. You can resend it or modify therapist assignments above if needed."
+              : "Therapist availability confirmed. You can now send the official quote to the customer."
+          }
           type="success"
           showIcon
           icon={<CheckCircleOutlined />}
@@ -405,7 +448,10 @@ export const QuoteEdit: React.FC = () => {
               icon={<MailOutlined />}
               onClick={sendOfficialQuote}
             >
-              Send Official Quote
+              {quotesData?.status === 'sent' || quotesData?.status === 'accepted' || quotesData?.status === 'declined'
+                ? "Resend Official Quote"
+                : "Send Official Quote"
+              }
             </Button>
           }
           style={{ marginBottom: 16 }}
@@ -590,33 +636,102 @@ export const QuoteEdit: React.FC = () => {
           </Row>
         </Card>
 
-        <Card title="Service Specifications" style={{ marginBottom: 16 }}>
+        <Card title="Event Schedule & Timing" style={{ marginBottom: 16 }}>
           <Row gutter={[16, 16]}>
+            <Col span={8}>
+              <Form.Item
+                label="Event Structure"
+                name="event_structure"
+                rules={[{ required: true, message: 'Please select event structure' }]}
+              >
+                <Select>
+                  <Option value="single_day">Single Day Event</Option>
+                  <Option value="multi_day">Multi-Day Event</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                label="Event Date"
+                name="single_event_date"
+                rules={[{ required: true, message: 'Please select event date' }]}
+              >
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item
+                label="Preferred Start Time"
+                name="single_start_time"
+                rules={[{ required: true, message: 'Please select start time' }]}
+              >
+                <TimePicker style={{ width: '100%' }} format="HH:mm" />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={6}>
+              <Form.Item
+                label="Number of Event Days"
+                name="number_of_event_days"
+                tooltip="For multi-day events only"
+              >
+                <InputNumber min={1} max={30} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={6}>
+              <Form.Item
+                label="Session Duration (mins)"
+                name="session_duration_minutes"
+                rules={[{ required: true, message: 'Please enter session duration' }]}
+              >
+                <InputNumber min={15} max={180} step={15} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
             <Col span={6}>
               <Form.Item
                 label="Total Sessions"
                 name="total_sessions"
                 rules={[{ required: true, message: 'Please enter total sessions' }]}
               >
-                <InputNumber
-                  min={1}
-                  style={{ width: '100%' }}
-                />
+                <InputNumber min={1} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
             <Col span={6}>
               <Form.Item
-                label="Session Duration (minutes)"
-                name="session_duration_minutes"
-                rules={[{ required: true, message: 'Please enter session duration' }]}
+                label="Therapists Needed"
+                name="therapists_needed"
+                rules={[{ required: true, message: 'Please enter number of therapists needed' }]}
               >
-                <InputNumber
-                  min={1}
-                  style={{ width: '100%' }}
-                />
+                <InputNumber min={1} style={{ width: '100%' }} />
               </Form.Item>
             </Col>
-            <Col span={6}>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item
+                label="Sessions Per Day"
+                name="sessions_per_day"
+                tooltip="For multi-day events: average sessions per day"
+              >
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Preferred Therapists"
+                name="preferred_therapists"
+                tooltip="Number of different therapists client prefers"
+              >
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Card>
+
+        <Card title="Service Specifications" style={{ marginBottom: 16 }}>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
               <Form.Item
                 label="Total Duration (minutes)"
                 name="duration_minutes"
