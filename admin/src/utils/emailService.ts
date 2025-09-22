@@ -516,7 +516,7 @@ export const EmailService = {
         return groups;
       }, {});
 
-      // Create therapist schedule as formatted text (improved formatting for email)
+      // Create therapist schedule as beautifully formatted text for email
       let therapistScheduleText = '';
       Object.keys(dayGroups).sort().forEach((date, dayIndex) => {
         const assignments = dayGroups[date];
@@ -527,8 +527,10 @@ export const EmailService = {
           day: 'numeric'
         });
 
-        therapistScheduleText += `\nDAY ${dayIndex + 1}: ${formattedDate.toUpperCase()}\n`;
-        therapistScheduleText += `---------------------------------------------------\n`;
+        // Enhanced day header with better formatting
+        therapistScheduleText += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+        therapistScheduleText += `                    DAY ${dayIndex + 1}: ${formattedDate.toUpperCase()}\n`;
+        therapistScheduleText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
         assignments.forEach((assignment: any, index: number) => {
           const duration = Math.round((quoteData.duration_minutes || 0) / therapistAssignments.length);
@@ -540,76 +542,23 @@ export const EmailService = {
           // Format time to remove seconds
           const timeFormatted = assignment.start_time.substring(0, 5); // "10:00:00" -> "10:00"
 
-          therapistScheduleText += `  ${index + 1}. ${timeFormatted} - ${assignment.therapist_name}\n`;
-          therapistScheduleText += `     Duration: ${durationText}  |  Fee: $${fee}\n`;
+          // Enhanced therapist session formatting with better structure
+          therapistScheduleText += `   🕒 SESSION ${index + 1}\n`;
+          therapistScheduleText += `   ┌─────────────────────────────────────────────────────────────────┐\n`;
+          therapistScheduleText += `   │  👤 Therapist: ${assignment.therapist_name.padEnd(42)} │\n`;
+          therapistScheduleText += `   │  ⏰ Time:      ${timeFormatted.padEnd(42)} │\n`;
+          therapistScheduleText += `   │  ⏱️  Duration:  ${durationText.padEnd(42)} │\n`;
+          therapistScheduleText += `   │  💰 Fee:       $${fee.padEnd(41)} │\n`;
+
           if (assignment.is_override) {
-            therapistScheduleText += `     Special Arrangement: ${assignment.override_reason || 'Custom booking'}\n`;
+            const reason = assignment.override_reason || 'Custom booking';
+            therapistScheduleText += `   │  ⭐ Special:   ${reason.padEnd(42)} │\n`;
           }
-          therapistScheduleText += `\n`;
+
+          therapistScheduleText += `   └─────────────────────────────────────────────────────────────────┘\n\n`;
         });
       });
 
-      // Create enhanced HTML formatted therapist schedule for better email presentation
-      let therapistScheduleFormatted = '';
-      Object.keys(dayGroups).sort().forEach((date, dayIndex) => {
-        const assignments = dayGroups[date];
-        const formattedDate = new Date(date).toLocaleDateString('en-AU', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        });
-
-        // Day header
-        therapistScheduleFormatted += `
-          <div style="margin: 20px 0 15px 0;">
-            <div style="background: linear-gradient(135deg, #007e8c 0%, #005a66 100%); color: #ffffff; padding: 12px 20px; border-radius: 6px; font-weight: bold; text-align: center;">
-              <div style="font-size: 16px;">DAY ${dayIndex + 1}</div>
-              <div style="font-size: 14px; opacity: 0.9;">${formattedDate}</div>
-            </div>
-          </div>
-        `;
-
-        // Therapist assignments for this day
-        assignments.forEach((assignment: any, index: number) => {
-          const duration = Math.round((quoteData.duration_minutes || 0) / therapistAssignments.length);
-          const hours = Math.floor(duration / 60);
-          const minutes = duration % 60;
-          const durationText = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
-          const fee = ((duration / 60) * assignment.hourly_rate).toFixed(2);
-          const timeFormatted = assignment.start_time.substring(0, 5);
-
-          // Create individual therapist card
-          therapistScheduleFormatted += `
-            <div style="background: linear-gradient(135deg, #f8feff 0%, #e8f5ff 100%); border: 1px solid #d1ecf1; border-radius: 8px; margin: 8px 0; overflow: hidden;">
-              <div style="background: linear-gradient(135deg, #28a745 0%, #20935c 100%); color: #ffffff; padding: 10px 16px; font-weight: bold; display: flex; align-items: center; justify-content: space-between;">
-                <div style="font-size: 15px;">👤 ${assignment.therapist_name}</div>
-                <div style="font-size: 13px; background-color: rgba(255,255,255,0.2); padding: 4px 8px; border-radius: 12px;">Session ${index + 1}</div>
-              </div>
-              <div style="padding: 16px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                  <span style="color: #495057; font-weight: 600;">🕒 Time:</span>
-                  <span style="color: #28a745; font-weight: bold;">${timeFormatted}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                  <span style="color: #495057; font-weight: 600;">⏱️ Duration:</span>
-                  <span style="color: #007e8c; font-weight: bold;">${durationText}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between;">
-                  <span style="color: #495057; font-weight: 600;">💰 Fee:</span>
-                  <span style="color: #28a745; font-weight: bold; font-size: 16px;">$${fee}</span>
-                </div>
-                ${assignment.is_override ? `
-                  <div style="margin-top: 12px; padding: 8px 12px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
-                    <div style="color: #856404; font-size: 13px; font-weight: 600;">⭐ Special Arrangement:</div>
-                    <div style="color: #856404; font-size: 12px;">${assignment.override_reason || 'Custom booking'}</div>
-                  </div>
-                ` : ''}
-              </div>
-            </div>
-          `;
-        });
-      });
 
       // Create action URLs (using quote_id for multi-booking support)
       const baseUrl = window.location.origin;
@@ -670,14 +619,8 @@ export const EmailService = {
         payment_method: quoteData.payment_method || 'Credit Card',
         po_number: quoteData.po_number || 'Not provided',
 
-        // Therapist Schedule (Text) - Improved formatting
+        // Therapist Schedule (Text) - Enhanced formatting for email display
         therapist_schedule_text: therapistScheduleText,
-
-        // Enhanced HTML formatted therapist schedule for better email presentation
-        therapist_schedule_formatted: therapistScheduleFormatted,
-
-        // Control display of fallback text schedule (hide if formatted version is available)
-        therapist_schedule_text_display: therapistScheduleFormatted ? 'none' : 'block',
 
         // Enhanced formatting for email template
         schedule_header: `THERAPIST SCHEDULE - ${Object.keys(dayGroups).length} DAY${Object.keys(dayGroups).length > 1 ? 'S' : ''}`,
