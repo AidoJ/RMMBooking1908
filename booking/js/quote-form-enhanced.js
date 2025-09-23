@@ -25,8 +25,8 @@ class QuoteFormManager {
     });
 
     // Auto-calculation listeners
-    document.getElementById('totalSessions')?.addEventListener('input', () => this.calculateEstimate());
-    document.getElementById('sessionDuration')?.addEventListener('change', () => this.calculateEstimate());
+    document.getElementById('numberOfServices')?.addEventListener('input', () => this.calculateEstimate());
+    document.getElementById('durationPerService')?.addEventListener('change', () => this.calculateEstimate());
     document.getElementById('therapistsNeeded')?.addEventListener('change', () => this.calculateEstimate());
 
     // Submit handler
@@ -84,12 +84,16 @@ class QuoteFormManager {
     dateRow.innerHTML = `
       <div class="day-number">Day ${dayNum}</div>
       <div class="form-group">
-        <label>Date *</label>
+        <label>Event Date *</label>
         <input type="date" class="event-date" data-day="${dayNum}" required />
       </div>
       <div class="form-group">
-        <label>Start Time *</label>
-        <input type="time" class="event-time" data-day="${dayNum}" required />
+        <label>Event Start Time *</label>
+        <input type="time" class="event-start-time" data-day="${dayNum}" required />
+      </div>
+      <div class="form-group">
+        <label>Event Finish Time *</label>
+        <input type="time" class="event-finish-time" data-day="${dayNum}" required />
       </div>
       ${!dayNumber ? '<button type="button" class="remove-date-btn" onclick="quoteForm.removeEventDate(this)">Remove</button>' : ''}
     `;
@@ -97,7 +101,7 @@ class QuoteFormManager {
     container.appendChild(dateRow);
 
     if (!dayNumber) {
-      this.multiDayDates.push({ day: dayNum, date: '', time: '' });
+      this.multiDayDates.push({ day: dayNum, date: '', startTime: '', finishTime: '' });
     }
 
     this.calculateSessionsPerDay();
@@ -134,15 +138,15 @@ class QuoteFormManager {
     console.log('calculateSessionsPerDay called, eventStructure:', this.eventStructure);
 
     if (this.eventStructure === 'multi_day') {
-      const totalSessions = parseInt(document.getElementById('totalSessions')?.value) || 0;
+      const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
 
       // Count actual date input fields instead of relying on multiDayDates array
       const dateInputs = document.querySelectorAll('.event-date');
       const numberOfDays = Math.max(dateInputs.length, 1); // At least 1 day
 
-      const averageSessionsPerDay = Math.round((totalSessions / numberOfDays) * 100) / 100; // Round to 2 decimal places
+      const averageSessionsPerDay = Math.round((numberOfServices / numberOfDays) * 100) / 100; // Round to 2 decimal places
 
-      console.log(`Sessions calculation: ${totalSessions} sessions ÷ ${numberOfDays} days (${dateInputs.length} date inputs) = ${averageSessionsPerDay}`);
+      console.log(`Sessions calculation: ${numberOfServices} services ÷ ${numberOfDays} days (${dateInputs.length} date inputs) = ${averageSessionsPerDay}`);
 
       const sessionsPerDayField = document.getElementById('sessionsPerDay');
       if (sessionsPerDayField) {
@@ -158,20 +162,20 @@ class QuoteFormManager {
   }
 
   calculateEstimate() {
-    const totalSessions = parseInt(document.getElementById('totalSessions')?.value) || 0;
-    const sessionDuration = parseInt(document.getElementById('sessionDuration')?.value) || 0;
+    const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
+    const durationPerService = parseInt(document.getElementById('durationPerService')?.value) || 0;
     const therapistsNeeded = parseInt(document.getElementById('therapistsNeeded')?.value) || 1;
 
     // Update display elements
-    document.getElementById('estimateSessions').textContent = totalSessions || '-';
-    document.getElementById('estimateDuration').textContent = sessionDuration ? `${sessionDuration} min` : '-';
+    document.getElementById('estimateSessions').textContent = numberOfServices || '-';
+    document.getElementById('estimateDuration').textContent = durationPerService ? `${durationPerService} min` : '-';
     document.getElementById('estimateTherapists').textContent = therapistsNeeded || '-';
 
     // Calculate price estimate using proper business rules
-    if (totalSessions && sessionDuration) {
-      this.calculateAccurateEstimate(totalSessions, sessionDuration);
+    if (numberOfServices && durationPerService) {
+      this.calculateAccurateEstimate(numberOfServices, durationPerService);
     } else {
-      document.getElementById('estimateRange').textContent = 'Enter details above';
+      document.getElementById('estimatePrice').textContent = 'Enter details above';
     }
 
     this.calculateSessionsPerDay();
@@ -258,7 +262,7 @@ class QuoteFormManager {
   validateForm() {
     const required = [
       'contactName', 'contactEmail', 'contactPhone', 'eventLocation',
-      'totalSessions', 'sessionDuration', 'paymentMethod', 'urgency'
+      'numberOfServices', 'durationPerService', 'paymentMethod', 'urgency'
     ];
 
     // Add structure-specific required fields
@@ -334,9 +338,9 @@ class QuoteFormManager {
       latitude: parseFloat(locationInput.dataset.lat) || null,
       longitude: parseFloat(locationInput.dataset.lng) || null,
 
-      // Session specifications (ensure all required fields)
-      total_sessions: parseInt(document.getElementById('totalSessions').value) || 0,
-      session_duration_minutes: parseInt(document.getElementById('sessionDuration').value) || 0,
+      // Service specifications (updated field names)
+      number_of_services: parseInt(document.getElementById('numberOfServices').value) || 0,
+      duration_per_service: parseInt(document.getElementById('durationPerService').value) || 0,
       therapists_needed: parseInt(document.getElementById('therapistsNeeded').value) || 1,
       expected_attendees: parseInt(document.getElementById('expectedAttendees').value) || null,
 
@@ -377,12 +381,12 @@ class QuoteFormManager {
     return data;
   }
 
-  async calculateAccurateEstimate(totalSessions, sessionDuration) {
+  async calculateAccurateEstimate(numberOfServices, durationPerService) {
     try {
       // 1. Check minimum 2 hours requirement
-      const totalMinutes = totalSessions * sessionDuration;
+      const totalMinutes = numberOfServices * durationPerService;
       if (totalMinutes < 120) {
-        document.getElementById('estimateRange').innerHTML =
+        document.getElementById('estimatePrice').innerHTML =
           '<span style="color: #dc3545; font-weight: bold;">⚠️ Quote request must be at least 120 minutes to proceed</span>';
         return;
       }
@@ -390,7 +394,7 @@ class QuoteFormManager {
       // 2. Get base rate from selected service
       const serviceBaseRate = await this.getServiceBaseRate();
       if (!serviceBaseRate) {
-        document.getElementById('estimateRange').textContent = 'Select a service to see estimate';
+        document.getElementById('estimatePrice').textContent = 'Select a service to see estimate';
         return;
       }
 
@@ -407,14 +411,13 @@ class QuoteFormManager {
       baseCost *= urgencyMultiplier;
 
       // 6. Create variance of 0.90 to 1.10
-      const lowEstimate = Math.round(baseCost * 0.90);
-      const highEstimate = Math.round(baseCost * 1.10);
+      const finalEstimate = Math.round(baseCost);
 
-      document.getElementById('estimateRange').textContent = `$${lowEstimate} - $${highEstimate}`;
+      document.getElementById('estimatePrice').textContent = `$${finalEstimate}`;
 
     } catch (error) {
       console.error('Error calculating estimate:', error);
-      document.getElementById('estimateRange').textContent = 'Unable to calculate estimate';
+      document.getElementById('estimatePrice').textContent = 'Unable to calculate estimate';
     }
   }
 
@@ -579,15 +582,15 @@ class QuoteFormManager {
   }
 
   calculateTotalAmount() {
-    const totalSessions = parseInt(document.getElementById('totalSessions')?.value) || 0;
-    const sessionDuration = parseInt(document.getElementById('sessionDuration')?.value) || 0;
+    const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
+    const durationPerService = parseInt(document.getElementById('durationPerService')?.value) || 0;
     const hourlyRate = 160; // Base rate for database storage
 
-    if (totalSessions <= 0 || sessionDuration <= 0) {
+    if (numberOfServices <= 0 || durationPerService <= 0) {
       return 0.00;
     }
 
-    const totalHours = (totalSessions * sessionDuration) / 60;
+    const totalHours = (numberOfServices * durationPerService) / 60;
     const amount = totalHours * hourlyRate;
     return Math.round(amount * 100) / 100; // Ensure 2 decimal places
   }

@@ -110,23 +110,17 @@
         <div id="event-address-status" class="status-message"></div>
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="eventName">Event Name</label>
-          <input type="text" id="eventName" placeholder="e.g., Annual Wellness Day" />
-        </div>
-        <div class="form-group">
-          <label for="eventType">Event Type</label>
-          <select id="eventType">
-            <option value="">Select event type...</option>
-            <option value="corporate_wellness">Corporate Wellness Day</option>
-            <option value="team_building">Team Building Event</option>
-            <option value="conference">Conference/Retreat</option>
-            <option value="employee_appreciation">Employee Appreciation</option>
-            <option value="product_launch">Product Launch</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
+      <div class="form-group">
+        <label for="eventType">Event Type</label>
+        <select id="eventType">
+          <option value="">Select event type...</option>
+          <option value="corporate_wellness">Corporate Wellness Day</option>
+          <option value="team_building">Team Building Event</option>
+          <option value="conference">Conference/Retreat</option>
+          <option value="employee_appreciation">Employee Appreciation</option>
+          <option value="product_launch">Product Launch</option>
+          <option value="other">Other</option>
+        </select>
       </div>
 
       <div class="form-group">
@@ -141,21 +135,20 @@
 
       <div class="form-row">
         <div class="form-group">
-          <label for="totalSessions">🎯 Total Sessions *</label>
-          <input type="number" id="totalSessions" placeholder="Total number of sessions" min="1" max="100" required />
-          <small class="field-hint">How many massage sessions in total</small>
+          <label for="numberOfServices">🎯 Number of Services *</label>
+          <input type="number" id="numberOfServices" placeholder="Number of services (Default = Expected Attendees)" min="1" max="100" required />
+          <small class="field-hint">How many services in total</small>
         </div>
         <div class="form-group">
-          <label for="sessionDuration">⏱️ Session Duration *</label>
-          <select id="sessionDuration" required>
+          <label for="durationPerService">⏱️ Duration per Service *</label>
+          <select id="durationPerService" required>
             <option value="">Select duration...</option>
+            <option value="5">5 minutes</option>
             <option value="10">10 minutes</option>
             <option value="15">15 minutes</option>
             <option value="20">20 minutes</option>
             <option value="30">30 minutes</option>
-            <option value="45">45 minutes</option>
             <option value="60">60 minutes</option>
-            <option value="90">90 minutes</option>
           </select>
         </div>
       </div>
@@ -206,10 +199,6 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="poNumber">📋 PO Number (if applicable)</label>
-        <input type="text" id="poNumber" placeholder="Purchase order number" />
-      </div>
     </div>
 
     <!-- Requirements & Notes -->
@@ -245,8 +234,8 @@
             <span id="estimateTherapists">-</span>
           </div>
           <div class="estimate-total">
-            <span>Estimated Range:</span>
-            <span id="estimateRange">$XXX - $XXX</span>
+            <span>Estimate Price (Incl GST):</span>
+            <span id="estimatePrice">$XXX</span>
           </div>
         </div>
         <p class="estimate-disclaimer">
