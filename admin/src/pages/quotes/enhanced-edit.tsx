@@ -91,31 +91,44 @@ export const EnhancedQuoteEdit: React.FC = () => {
   // Workflow steps configuration
   const workflowSteps: WorkflowStep[] = [
     { key: 'received', title: 'Quote Received', status: 'completed', description: 'Quote request received from client' },
-    { key: 'availability', title: 'Check Availability', status: workflowStep >= 2 ? 'active' : 'pending', description: 'Check therapist availability' },
-    { key: 'assign', title: 'Assign Therapists', status: workflowStep >= 3 ? 'active' : 'pending', description: 'Assign and confirm therapists' },
+    { key: 'availability', title: 'Check Availability', status: workflowStep >= 2 ? (availabilityStatus === 'available' ? 'completed' : 'active') : 'pending', description: 'Check therapist availability' },
+    { key: 'assign', title: 'Assign Therapists', status: workflowStep >= 3 ? (workflowStep > 3 ? 'completed' : 'active') : 'pending', description: 'Assign and confirm therapists' },
     { key: 'send', title: 'Send Quote', status: workflowStep >= 4 ? 'active' : 'pending', description: 'Send official quote to client' },
     { key: 'response', title: 'Client Response', status: workflowStep >= 5 ? 'active' : 'pending', description: 'Wait for client acceptance' },
     { key: 'complete', title: 'Job Complete', status: workflowStep >= 6 ? 'active' : 'pending', description: 'Execute and complete job' },
   ];
 
-  // Calculate time validation
+  // Calculate time validation based on event structure
   useEffect(() => {
     if (quotesData) {
-      const eventStart = quotesData.single_start_time;
-      const eventEnd = quotesData.single_finish_time;
       const totalSessions = quotesData.total_sessions || 0;
       const sessionDuration = quotesData.session_duration_minutes || 0;
+      const serviceDuration = totalSessions * sessionDuration;
 
       let eventDuration = 0;
-      if (eventStart && eventEnd) {
-        const start = dayjs(`2000-01-01 ${eventStart}`);
-        const end = dayjs(`2000-01-01 ${eventEnd}`);
-        eventDuration = end.diff(start, 'minute');
+
+      if (quotesData.event_structure === 'single_day') {
+        // For single day: calculate finish time from start time + total duration
+        const eventStart = quotesData.single_start_time;
+        if (eventStart) {
+          // Calculate expected finish time
+          const start = dayjs(`2000-01-01 ${eventStart}`);
+          const expectedEnd = start.add(serviceDuration, 'minute');
+          eventDuration = serviceDuration; // For single day, event duration should match service duration
+        }
+      } else if (quotesData.event_structure === 'multi_day' && quotesData.quote_dates) {
+        // For multi-day: sum all day durations from quote_dates
+        eventDuration = quotesData.quote_dates.reduce((total: number, day: any) => {
+          if (day.start_time && day.finish_time) {
+            const start = dayjs(`2000-01-01 ${day.start_time}`);
+            const end = dayjs(`2000-01-01 ${day.finish_time}`);
+            return total + end.diff(start, 'minute');
+          }
+          return total;
+        }, 0);
       }
 
-      const serviceDuration = totalSessions * sessionDuration;
       const isValid = eventDuration === serviceDuration;
-
       setTimeValidation({ eventDuration, serviceDuration, isValid });
     }
   }, [quotesData]);
@@ -149,6 +162,17 @@ export const EnhancedQuoteEdit: React.FC = () => {
     return totalHours < 5 ? 1 : 2;
   };
 
+  // Calculate finish time for single day events
+  const calculateFinishTime = () => {
+    if (!quotesData?.single_start_time || !quotesData?.total_sessions || !quotesData?.session_duration_minutes) {
+      return null;
+    }
+    const totalMinutes = quotesData.total_sessions * quotesData.session_duration_minutes;
+    const startTime = dayjs(`2000-01-01 ${quotesData.single_start_time}`);
+    const finishTime = startTime.add(totalMinutes, 'minute');
+    return finishTime.format('HH:mm');
+  };
+
   // Handle section toggle
   const handleSectionToggle = (section: string) => {
     setExpandedSections(prev =>
@@ -167,15 +191,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
   // Workflow handlers
   const handleCheckAvailability = async () => {
     setAvailabilityStatus('checking');
-    message.loading('Checking therapist availability...', 0);
-
-    // Simulate availability check
-    setTimeout(() => {
-      setAvailabilityStatus('available');
-      message.destroy();
-      message.success('Availability confirmed! Therapists are available for requested dates.');
-      setWorkflowStep(3);
-    }, 2000);
+    setWorkflowStep(2);
   };
 
   const handleConfirmAssignments = async () => {
@@ -257,15 +273,10 @@ export const EnhancedQuoteEdit: React.FC = () => {
       return (
         <Alert
           message="Action Required: Check Therapist Availability"
-          description="Before proceeding, you must check therapist availability for all requested dates and times."
+          description="Scroll down to the 'Therapist Availability & Assignment' section to check availability for all requested dates and times."
           type="warning"
           showIcon
           icon={<ExclamationCircleOutlined />}
-          action={
-            <Button type="primary" size="small" onClick={handleCheckAvailability}>
-              🔍 Check Availability Now
-            </Button>
-          }
           style={{ marginBottom: 16 }}
         />
       );
@@ -274,16 +285,11 @@ export const EnhancedQuoteEdit: React.FC = () => {
     if (workflowStep === 3 && availabilityStatus === 'available') {
       return (
         <Alert
-          message="Ready to Confirm Therapist Assignments"
-          description="Availability confirmed. Please review and confirm the therapist assignments below."
-          type="info"
+          message="Therapist Assignments Confirmed"
+          description="Availability checked and therapists assigned. You can now send the official quote to the customer."
+          type="success"
           showIcon
           icon={<CheckCircleOutlined />}
-          action={
-            <Button type="primary" size="small" onClick={handleConfirmAssignments}>
-              ✓ Confirm Assignments
-            </Button>
-          }
           style={{ marginBottom: 16 }}
         />
       );
@@ -310,8 +316,122 @@ export const EnhancedQuoteEdit: React.FC = () => {
     return null;
   };
 
+  const renderEventScheduleFields = () => {
+    if (quotesData?.event_structure === 'single_day') {
+      const calculatedFinishTime = calculateFinishTime();
+
+      return (
+        <>
+          <Row gutter={[16, 16]}>
+            <Col span={8}>
+              <Form.Item label="Event Date" name="single_event_date" rules={[{ required: true }]}>
+                <DatePicker style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item label="Start Time" name="single_start_time" rules={[{ required: true }]}>
+                <TimePicker style={{ width: '100%' }} format="HH:mm" />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <div className="form-group">
+                <label className="form-label">Calculated Finish Time</label>
+                <Input
+                  value={calculatedFinishTime || 'Not available'}
+                  readOnly
+                  style={{ backgroundColor: '#f0f0f0', fontWeight: 600 }}
+                />
+                <small style={{ color: '#007e8c', fontSize: '12px' }}>
+                  Auto-calculated from start time + total duration
+                </small>
+              </div>
+            </Col>
+          </Row>
+        </>
+      );
+    } else if (quotesData?.event_structure === 'multi_day') {
+      return (
+        <>
+          <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+            <Col span={8}>
+              <Form.Item label="Number of Event Days" name="number_of_event_days">
+                <InputNumber min={1} max={30} style={{ width: '100%' }} readOnly />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          {quotesData.quote_dates && quotesData.quote_dates.length > 0 && (
+            <Card title={`📅 Event Days (${quotesData.quote_dates.length} days)`} size="small">
+              <Table
+                dataSource={quotesData.quote_dates}
+                pagination={false}
+                size="small"
+                rowKey="id"
+                columns={[
+                  {
+                    title: 'Day',
+                    dataIndex: 'day_number',
+                    key: 'day_number',
+                    render: (dayNum: number) => <strong>Day {dayNum}</strong>,
+                    width: 80,
+                  },
+                  {
+                    title: 'Date',
+                    dataIndex: 'event_date',
+                    key: 'event_date',
+                    render: (date: string) => dayjs(date).format('MMM DD, YYYY'),
+                  },
+                  {
+                    title: 'Start Time',
+                    dataIndex: 'start_time',
+                    key: 'start_time',
+                    render: (time: string) => dayjs(`2000-01-01 ${time}`).format('HH:mm'),
+                  },
+                  {
+                    title: 'Finish Time',
+                    dataIndex: 'finish_time',
+                    key: 'finish_time',
+                    render: (time: string) => time ? dayjs(`2000-01-01 ${time}`).format('HH:mm') : 'Not set',
+                  },
+                  {
+                    title: 'Duration',
+                    key: 'duration',
+                    render: (_: any, record: any) => {
+                      if (record.start_time && record.finish_time) {
+                        const start = dayjs(`2000-01-01 ${record.start_time}`);
+                        const end = dayjs(`2000-01-01 ${record.finish_time}`);
+                        const duration = end.diff(start, 'minute');
+                        return formatMinutesToTime(duration);
+                      }
+                      return 'Not calculated';
+                    },
+                  },
+                  {
+                    title: 'Sessions',
+                    dataIndex: 'sessions_count',
+                    key: 'sessions_count',
+                    render: (count: number) => count || 'Not set',
+                  },
+                ]}
+              />
+            </Card>
+          )}
+        </>
+      );
+    }
+
+    return (
+      <Alert
+        message="Event Structure Not Recognized"
+        description="Unable to determine if this is a single day or multi-day event."
+        type="warning"
+        showIcon
+      />
+    );
+  };
+
   const renderTimeValidation = () => (
-    <Card className="time-validation-card" title="⏱️ Time Validation">
+    <Card className="time-validation-card" title="⏱️ Time Validation" style={{ marginTop: 20 }}>
       <Row gutter={[16, 16]}>
         <Col span={8}>
           <div className="validation-item">
@@ -339,143 +459,47 @@ export const EnhancedQuoteEdit: React.FC = () => {
           <strong>Total Validated Duration: {formatMinutesToTime(timeValidation.eventDuration)}</strong>
         </div>
       )}
+      {!timeValidation.isValid && timeValidation.serviceDuration > 0 && (
+        <Alert
+          message="Time Mismatch Detected"
+          description={`The event schedule duration (${formatMinutesToTime(timeValidation.eventDuration)}) does not match the service requirements (${formatMinutesToTime(timeValidation.serviceDuration)}). Please review the schedule.`}
+          type="warning"
+          showIcon
+          style={{ marginTop: 16 }}
+        />
+      )}
     </Card>
   );
 
   const renderTherapistAssignments = () => {
-    const columns = [
-      {
-        title: 'Assignment',
-        dataIndex: 'assignment',
-        key: 'assignment',
-        render: (_: any, __: any, index: number) => <strong>Assignment {index + 1}</strong>,
-      },
-      {
-        title: 'Therapist',
-        dataIndex: 'therapist_name',
-        key: 'therapist_name',
-        render: (name: string) => (
-          <Select
-            style={{ minWidth: 140 }}
-            placeholder="Select Therapist..."
-            value={name}
-            onChange={(value) => {
-              // Handle therapist selection
-              message.info(`Therapist ${value} selected`);
-            }}
-          >
-            <Option value="Emma Wilson">Emma Wilson</Option>
-            <Option value="James Chen">James Chen</Option>
-            <Option value="Maria Santos">Maria Santos</Option>
-            <Option value="David Kim">David Kim</Option>
-          </Select>
-        ),
-      },
-      {
-        title: 'Time Slot',
-        dataIndex: 'time_slot',
-        key: 'time_slot',
-        render: () => '09:00 - 13:00', // This would come from data
-      },
-      {
-        title: 'Rate',
-        dataIndex: 'hourly_rate',
-        key: 'hourly_rate',
-        render: (rate: number) => <span className="rate-display">${rate}/hr</span>,
-      },
-      {
-        title: 'Diary Status',
-        dataIndex: 'status',
-        key: 'status',
-        render: () => <Tag color="green">✓ Available</Tag>,
-      },
-      {
-        title: 'Actions',
-        key: 'actions',
-        render: (_: any, record: any, index: number) => {
-          const isLocked = diaryLocks[`assignment-${index}`];
-          return (
-            <Button
-              size="small"
-              icon={isLocked ? <LockOutlined /> : <UnlockOutlined />}
-              onClick={() => handleDiaryLock(`assignment-${index}`, !isLocked)}
-              type={isLocked ? 'primary' : 'default'}
-            >
-              {isLocked ? 'Locked' : 'Lock Slot'}
-            </Button>
-          );
-        },
-      },
-    ];
-
-    const mockAssignments = [
-      { therapist_name: 'Emma Wilson', hourly_rate: 85 },
-      { therapist_name: 'James Chen', hourly_rate: 85 },
-    ];
+    if (!id) {
+      return (
+        <Card title="👥 Therapist Availability & Assignment">
+          <Alert
+            message="Quote ID Required"
+            description="Unable to check therapist availability without a valid quote ID."
+            type="warning"
+            showIcon
+          />
+        </Card>
+      );
+    }
 
     return (
-      <Card title="👥 Therapist Availability & Assignment">
-        <div className="availability-summary">
-          <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
-            <Col span={6}>
-              <div className="summary-stat">
-                <div className="stat-number">{calculateTherapistsNeeded()}</div>
-                <div className="stat-label">Therapists Required</div>
-              </div>
-            </Col>
-            <Col span={6}>
-              <div className="summary-stat">
-                <div className="stat-number">5</div>
-                <div className="stat-label">Available</div>
-              </div>
-            </Col>
-            <Col span={6}>
-              <div className="summary-stat">
-                <div className="stat-number">100%</div>
-                <div className="stat-label">Can Fulfill</div>
-              </div>
-            </Col>
-            <Col span={6}>
-              <div className="summary-stat">
-                <div className="stat-number">0</div>
-                <div className="stat-label">Conflicts</div>
-              </div>
-            </Col>
-          </Row>
-        </div>
-
-        <Table
-          columns={columns}
-          dataSource={mockAssignments}
-          pagination={false}
-          size="small"
-          rowKey={(_, index) => `assignment-${index}`}
-        />
-
-        <div className="assignment-actions" style={{ marginTop: 16 }}>
-          <Space>
-            <Button
-              type="primary"
-              icon={<ReloadOutlined />}
-              onClick={handleCheckAvailability}
-              loading={availabilityStatus === 'checking'}
-            >
-              🔍 Check Availability
-            </Button>
-            <Button
-              type="default"
-              icon={<CheckCircleOutlined />}
-              onClick={handleConfirmAssignments}
-              disabled={availabilityStatus !== 'available'}
-            >
-              ✓ Confirm Assignments
-            </Button>
-            <Button type="default">
-              🔄 Suggest Alternatives
-            </Button>
-          </Space>
-        </div>
-      </Card>
+      <QuoteAvailabilityChecker
+        quoteId={id}
+        onAvailabilityConfirmed={(assignments) => {
+          setTherapistAssignments(assignments);
+          setAvailabilityStatus('available');
+          setWorkflowStep(3);
+          message.success('Therapist assignments confirmed! Ready to send official quote.');
+        }}
+        onAvailabilityDeclined={() => {
+          setAvailabilityStatus('unavailable');
+          message.warning('Quote declined due to therapist availability issues.');
+        }}
+        existingAssignments={therapistAssignments}
+      />
     );
   };
 
@@ -575,22 +599,17 @@ export const EnhancedQuoteEdit: React.FC = () => {
 
               {/* Event Schedule */}
               <Panel header="📅 Event Schedule & Time Validation" key="schedule">
-                <Row gutter={[16, 16]}>
-                  <Col span={8}>
-                    <Form.Item label="Event Date" name="single_event_date" rules={[{ required: true }]}>
-                      <DatePicker style={{ width: '100%' }} />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item label="Start Time" name="single_start_time" rules={[{ required: true }]}>
-                      <TimePicker style={{ width: '100%' }} format="HH:mm" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item label="Finish Time" name="single_finish_time" rules={[{ required: true }]}>
-                      <TimePicker style={{ width: '100%' }} format="HH:mm" />
-                    </Form.Item>
-                  </Col>
+                <div style={{ marginBottom: 20 }}>
+                  <Tag color={quotesData?.event_structure === 'single_day' ? 'blue' : 'green'} style={{ fontSize: '14px', padding: '4px 12px' }}>
+                    {quotesData?.event_structure === 'single_day' ? '📅 Single Day Event' : '🗓️ Multi-Day Event'}
+                  </Tag>
+                </div>
+
+                {/* Dynamic Event Schedule Fields */}
+                {renderEventScheduleFields()}
+
+                {/* Service Specifications */}
+                <Row gutter={[16, 16]} style={{ marginTop: 20 }}>
                   <Col span={8}>
                     <Form.Item label="Total Sessions" name="total_sessions" rules={[{ required: true }]}>
                       <InputNumber min={1} style={{ width: '100%' }} />
@@ -599,6 +618,8 @@ export const EnhancedQuoteEdit: React.FC = () => {
                   <Col span={8}>
                     <Form.Item label="Session Duration" name="session_duration_minutes" rules={[{ required: true }]}>
                       <Select>
+                        <Option value={5}>5 minutes</Option>
+                        <Option value={10}>10 minutes</Option>
                         <Option value={15}>15 minutes</Option>
                         <Option value={20}>20 minutes</Option>
                         <Option value={30}>30 minutes</Option>
@@ -613,10 +634,12 @@ export const EnhancedQuoteEdit: React.FC = () => {
                         readOnly
                         style={{ width: '100%', backgroundColor: '#e8f4f5', fontWeight: 600 }}
                       />
-                      <small style={{ color: '#007e8c' }}>Auto-calculated: ≥5 hours = 2 therapists</small>
+                      <small style={{ color: '#007e8c', fontSize: '12px' }}>Auto-calculated: &lt;5 hours = 1, ≥5 hours = 2 therapists</small>
                     </Form.Item>
                   </Col>
                 </Row>
+
+                {/* Time Validation */}
                 {renderTimeValidation()}
               </Panel>
 
