@@ -417,8 +417,11 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Enhanced Quote Form Step -->
+<!-- ENHANCED QUOTE FORM - Fixed to match business requirements -->
+<!-- Integrates with time validation and database-driven pricing -->
+
 <div id="quoteStep" class="step">
   <div class="step-header">
     <h2>✨ Request Your Custom Quote</h2>
@@ -467,28 +470,36 @@
     <div id="singleDayFields" class="form-section">
       <div class="form-row">
         <div class="form-group">
-          <label for="singleEventDate">📅 Event Date *</label>
-          <input type="date" id="singleEventDate" required />
+          <label for="singleEventDate">Event Date *</label>
+          <input type="date" id="singleEventDate" class="form-control" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="singleStartTime">Event Start Time *</label>
+          <input type="time" id="singleStartTime" class="form-control" required>
         </div>
         <div class="form-group">
-          <label for="singleStartTime">🕐 Start Time *</label>
-          <input type="time" id="singleStartTime" required />
+          <label for="singleFinishTime">Event Finish Time *</label>
+          <input type="time" id="singleFinishTime" class="form-control" required>
         </div>
       </div>
     </div>
 
     <!-- Multi-Day Event Fields -->
-    <div id="multiDayFields" class="form-section" style="display: none;">
+    <div id="multiDayFields" class="form-section multi-day-container">
       <div class="form-group">
-        <label for="numberOfDays">📊 Number of Event Days *</label>
-        <input type="number" id="numberOfDays" min="2" max="30" placeholder="e.g., 3" />
+        <label for="numberOfDays">Number of Event Days</label>
+        <select id="numberOfDays" class="form-control">
+          <option value="">Select number of days...</option>
+          <option value="2">2 Days</option>
+          <option value="3">3 Days</option>
+          <option value="4">4 Days</option>
+          <option value="5">5 Days</option>
+        </select>
       </div>
-
-      <div id="multiDayDates" class="multi-day-container">
-        <!-- Dynamic date fields will be added here -->
-      </div>
-
-      <button type="button" id="addEventDate" class="btn-secondary">+ Add Event Date</button>
+      <div id="multiDayDates"></div>
+      <button type="button" class="btn btn-outline-success" id="addEventDate">+ Add Another Day</button>
     </div>
 
     <!-- Contact Information -->
@@ -497,22 +508,21 @@
       <div class="form-row">
         <div class="form-group">
           <label for="contactName">Full Name *</label>
-          <input type="text" id="contactName" placeholder="Your full name" required />
+          <input type="text" id="contactName" class="form-control" placeholder="Your full name" required>
         </div>
         <div class="form-group">
           <label for="companyName">Company Name</label>
-          <input type="text" id="companyName" placeholder="Your company" />
+          <input type="text" id="companyName" class="form-control" placeholder="Your company">
         </div>
       </div>
-
       <div class="form-row">
         <div class="form-group">
           <label for="contactEmail">Email Address *</label>
-          <input type="email" id="contactEmail" placeholder="your@email.com" required />
+          <input type="email" id="contactEmail" class="form-control" placeholder="your@email.com" required>
         </div>
         <div class="form-group">
           <label for="contactPhone">Phone Number *</label>
-          <input type="tel" id="contactPhone" placeholder="+61 XXX XXX XXX" required />
+          <input type="tel" id="contactPhone" class="form-control" placeholder="+61 XXX XXX XXX" required>
         </div>
       </div>
     </div>
@@ -520,164 +530,135 @@
     <!-- Event Details -->
     <div class="form-section">
       <h3>🎯 Event Details</h3>
-
       <div class="form-group">
-        <label for="eventLocation">📍 Event Location *</label>
-        <input id="eventLocation" autocomplete="off" placeholder="Start typing the event address..." required />
-        <div id="event-address-status" class="status-message"></div>
+        <label for="eventLocation">Event Location *</label>
+        <input type="text" id="eventLocation" class="form-control" placeholder="Start typing your address..." required>
+        <div id="event-address-status" class="address-status"></div>
       </div>
-
       <div class="form-row">
         <div class="form-group">
-          <label for="eventName">Event Name</label>
-          <input type="text" id="eventName" placeholder="e.g., Annual Wellness Day" />
-        </div>
-        <div class="form-group">
           <label for="eventType">Event Type</label>
-          <select id="eventType">
+          <select id="eventType" class="form-control">
             <option value="">Select event type...</option>
-            <option value="corporate_wellness">Corporate Wellness Day</option>
-            <option value="team_building">Team Building Event</option>
-            <option value="conference">Conference/Retreat</option>
-            <option value="employee_appreciation">Employee Appreciation</option>
-            <option value="product_launch">Product Launch</option>
+            <option value="corporate_wellness">Corporate Wellness</option>
+            <option value="team_building">Team Building</option>
+            <option value="conference">Conference</option>
+            <option value="retreat">Retreat</option>
             <option value="other">Other</option>
           </select>
         </div>
-      </div>
-
-      <div class="form-group">
-        <label for="expectedAttendees">👥 Expected Attendees</label>
-        <input type="number" id="expectedAttendees" placeholder="Number of people attending" min="1" />
+        <div class="form-group">
+          <label for="expectedAttendees">Expected Attendees</label>
+          <input type="number" id="expectedAttendees" class="form-control" min="1" placeholder="Number of people">
+        </div>
       </div>
     </div>
 
     <!-- Massage Specifications -->
     <div class="form-section">
       <h3>💆‍♀️ Massage Specifications</h3>
-
       <div class="form-row">
         <div class="form-group">
-          <label for="totalSessions">🎯 Total Sessions *</label>
-          <input type="number" id="totalSessions" placeholder="Total number of sessions" min="1" max="100" required />
-          <small class="field-hint">How many massage sessions in total</small>
+          <label for="numberOfServices">Total Number of Service Sessions *</label>
+          <input type="number" id="numberOfServices" class="form-control" min="1" placeholder="How many service sessions required" required>
         </div>
         <div class="form-group">
-          <label for="sessionDuration">⏱️ Session Duration *</label>
-          <select id="sessionDuration" required>
+          <label for="durationPerService">Service Duration *</label>
+          <select id="durationPerService" class="form-control" required>
             <option value="">Select duration...</option>
+            <option value="5">5 minutes</option>
             <option value="10">10 minutes</option>
             <option value="15">15 minutes</option>
             <option value="20">20 minutes</option>
             <option value="30">30 minutes</option>
-            <option value="45">45 minutes</option>
             <option value="60">60 minutes</option>
-            <option value="90">90 minutes</option>
           </select>
         </div>
       </div>
 
-      <div class="form-row" id="multiDaySessionsRow" style="display: none;">
-        <div class="form-group">
-          <label for="sessionsPerDay">📊 Average Sessions per Day</label>
-          <input type="number" id="sessionsPerDay" placeholder="Average sessions each day" min="1" step="0.01" />
-          <small class="field-hint">Will be calculated automatically</small>
+      <!-- Time Validation Display -->
+      <div class="calculation-display">
+        <div class="calculation-row">
+          <span>Event Schedule Time:</span>
+          <span id="eventScheduleTime">-</span>
+        </div>
+        <div class="calculation-row">
+          <span>Service Requirements Time:</span>
+          <span id="serviceRequirementsTime">-</span>
+        </div>
+        <div class="calculation-row total-row">
+          <span>Total Validated Time:</span>
+          <span id="totalValidatedTime">-</span>
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="therapistsNeeded">👥 Therapists Needed</label>
-        <select id="therapistsNeeded">
-          <option value="">Let us recommend...</option>
-          <option value="1">1 Therapist</option>
-          <option value="2">2 Therapists</option>
-          <option value="3">3 Therapists</option>
-          <option value="4">4 Therapists</option>
-          <option value="5">5+ Therapists</option>
-        </select>
-        <small class="field-hint">We'll optimize based on your needs</small>
-      </div>
+      <div id="timeValidationMessage" class="validation-message"></div>
     </div>
 
     <!-- Business Requirements -->
     <div class="form-section">
       <h3>💼 Business Requirements</h3>
-
       <div class="form-row">
         <div class="form-group">
-          <label for="paymentMethod">💳 Preferred Payment Method *</label>
-          <select id="paymentMethod" required>
-            <option value="invoice">Invoice (Net 30)</option>
+          <label for="paymentMethod">Preferred Payment Method *</label>
+          <select id="paymentMethod" class="form-control" required>
+            <option value="">Select payment method...</option>
             <option value="card">Credit Card</option>
             <option value="bank_transfer">Bank Transfer/EFT</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="urgency">⚡ Timeline *</label>
-          <select id="urgency" required>
+          <label for="urgency">Timeline *</label>
+          <select id="urgency" class="form-control" required>
+            <option value="">Select timeline...</option>
             <option value="flexible">Flexible timing</option>
             <option value="within_week">Within 1 week</option>
             <option value="within_3_days">Within 3 days</option>
-            <option value="urgent_24h">Urgent (24 hours)</option>
+            <option value="urgent_24h">Urgent (within 24 hours)</option>
           </select>
         </div>
       </div>
-
-      <div class="form-group">
-        <label for="poNumber">📋 PO Number (if applicable)</label>
-        <input type="text" id="poNumber" placeholder="Purchase order number" />
-      </div>
     </div>
 
-    <!-- Requirements & Notes -->
+    <!-- Setup Requirements -->
     <div class="form-section">
       <h3>📝 Special Requirements</h3>
-
       <div class="form-group">
-        <label for="setupRequirements">🏗️ Setup Requirements</label>
-        <textarea id="setupRequirements" rows="3" placeholder="e.g., Changing rooms needed, tables provided, music preferences, privacy requirements..."></textarea>
+        <label for="setupRequirements">Setup Requirements</label>
+        <textarea id="setupRequirements" class="form-control" rows="3" placeholder="e.g., Changing rooms needed, tables provided, music preferences, privacy requirements..."></textarea>
       </div>
-
       <div class="form-group">
-        <label for="specialRequirements">✨ Additional Notes</label>
-        <textarea id="specialRequirements" rows="3" placeholder="Any special requests, accessibility needs, dietary restrictions for therapists, etc."></textarea>
+        <label for="specialRequirements">Additional Notes</label>
+        <textarea id="specialRequirements" class="form-control" rows="3" placeholder="Any special requests, accessibility needs, dietary restrictions for therapists, etc."></textarea>
       </div>
     </div>
 
-    <!-- Price Estimate -->
-    <div id="priceEstimate" class="price-estimate-section">
-      <div class="estimate-card">
-        <h3>💰 Investment Estimate</h3>
-        <div class="estimate-breakdown">
-          <div class="estimate-row">
-            <span>Sessions:</span>
-            <span id="estimateSessions">-</span>
-          </div>
-          <div class="estimate-row">
-            <span>Duration:</span>
-            <span id="estimateDuration">-</span>
-          </div>
-          <div class="estimate-row">
-            <span>Therapists:</span>
-            <span id="estimateTherapists">-</span>
-          </div>
-          <div class="estimate-total">
-            <span>Estimated Range:</span>
-            <span id="estimateRange">$XXX - $XXX</span>
-          </div>
+    <!-- Investment Estimate -->
+    <div class="form-section">
+      <h3>💰 Investment Estimate</h3>
+      <div class="estimate-display">
+        <div class="estimate-row">
+          <span>Sessions:</span>
+          <span id="estimateSessions">-</span>
         </div>
-        <p class="estimate-disclaimer">
-          *Final pricing will be confirmed in your detailed quote
-        </p>
+        <div class="estimate-row">
+          <span>Duration:</span>
+          <span id="estimateDuration">-</span>
+        </div>
+        <div class="estimate-row total-estimate">
+          <span>Estimated Range:</span>
+          <span id="estimatePrice">Enter details above</span>
+        </div>
       </div>
+      <p class="estimate-note">*Final pricing will be confirmed in your detailed quote</p>
     </div>
 
-    <!-- Action Buttons -->
+    <!-- Form Actions -->
     <div class="form-actions">
-      <button type="button" class="btn-back" onclick="resetToServiceSelection()">
+      <button type="button" class="btn btn-outline-secondary" onclick="resetToServiceSelection()">
         ← Change Service
       </button>
-      <button type="button" id="submitQuoteRequest" class="btn-primary">
+      <button type="button" id="submitQuoteRequest" class="btn btn-primary btn-lg">
         Request Quote 🚀
       </button>
     </div>
@@ -685,17 +666,21 @@
 </div>
 
 <!-- Success Modal -->
-<div id="quoteSuccessModal" class="modal" style="display: none;">
+<div id="quoteSuccessModal" class="quote-modal" style="display: none;">
   <div class="modal-content">
-    <div class="success-animation">🎉</div>
-    <h3>Quote Request Submitted!</h3>
-    <p>We've received your quote request and will get back to you within 24 hours with a detailed proposal.</p>
-    <div class="quote-reference">
-      <strong>Reference: <span id="quoteReferenceNumber"></span></strong>
+    <div class="modal-header">
+      <h2>✅ Quote Request Submitted!</h2>
     </div>
-    <button class="btn-primary" onclick="window.location.href='https://www.rejuvenators.com'">
-      Exit
-    </button>
+    <div class="modal-body">
+      <p>Your quote request has been submitted successfully.</p>
+      <p><strong>Reference Number:</strong> <span id="quoteReferenceNumber"></span></p>
+      <p>We'll review your request and send you a detailed quote within 24 hours.</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" onclick="document.getElementById('quoteSuccessModal').style.display='none'">
+        Close
+      </button>
+    </div>
   </div>
 </div>
   </div>
