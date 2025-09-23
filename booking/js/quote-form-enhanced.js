@@ -620,6 +620,9 @@ class QuoteFormManager {
       session_duration_minutes: parseInt(document.getElementById('durationPerService').value) || 0,
       expected_attendees: parseInt(document.getElementById('expectedAttendees').value) || null,
 
+      // Calculate therapists needed based on total time
+      therapists_needed: this.calculateTherapistsNeeded(),
+
       // Business requirements
       payment_method: document.getElementById('paymentMethod').value || 'card',
       urgency: document.getElementById('urgency').value || 'flexible',
@@ -672,6 +675,21 @@ class QuoteFormManager {
     const basicAmount = totalHours * 150; // Default rate for database storage
 
     return Math.round(basicAmount * 100) / 100;
+  }
+
+  calculateTherapistsNeeded() {
+    const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
+    const durationPerService = parseInt(document.getElementById('durationPerService')?.value) || 0;
+
+    if (numberOfServices <= 0 || durationPerService <= 0) {
+      return 1; // Default to 1 therapist if no data
+    }
+
+    const totalMinutes = numberOfServices * durationPerService;
+    const totalHours = totalMinutes / 60;
+
+    // Business logic: If total time < 5 hours → 1 therapist, if ≥ 5 hours → 2 therapists
+    return totalHours < 5 ? 1 : 2;
   }
 
   async saveQuoteToDatabase(quoteData) {
