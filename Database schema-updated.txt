@@ -234,6 +234,8 @@ CREATE TABLE public.quote_dates (
   sessions_count integer DEFAULT 0 CHECK (sessions_count >= 0),
   notes text,
   created_at timestamp with time zone DEFAULT now(),
+  finish_time time without time zone,
+  duration_minutes integer,
   CONSTRAINT quote_dates_pkey PRIMARY KEY (id),
   CONSTRAINT quote_dates_quote_id_fkey FOREIGN KEY (quote_id) REFERENCES public.quotes(id)
 );

@@ -1,5 +1,5 @@
-// ENHANCED QUOTE FORM JAVASCRIPT - Mobile-First & Clean Architecture Integration
-// Integrates with the new quotes table and quote_dates table
+// ENHANCED QUOTE FORM JAVASCRIPT - Complete Implementation with Time Validation & Pricing
+// Integrates with quotes table and quote_dates table per business requirements
 
 class QuoteFormManager {
   constructor() {
@@ -11,8 +11,8 @@ class QuoteFormManager {
 
   setupEventListeners() {
     // Event structure selection
-    document.querySelectorAll('input[name="eventStructure"]').forEach(input => {
-      input.addEventListener('change', (e) => this.handleEventStructureChange(e.target.value));
+    document.querySelectorAll('.event-type-card').forEach(card => {
+      card.addEventListener('click', (e) => this.handleEventStructureChange(card.dataset.type));
     });
 
     // Multi-day management
@@ -24,10 +24,13 @@ class QuoteFormManager {
       this.addEventDateField();
     });
 
-    // Auto-calculation listeners
-    document.getElementById('numberOfServices')?.addEventListener('input', () => this.calculateEstimate());
-    document.getElementById('durationPerService')?.addEventListener('change', () => this.calculateEstimate());
-    document.getElementById('therapistsNeeded')?.addEventListener('change', () => this.calculateEstimate());
+    // Real-time calculation listeners
+    document.getElementById('numberOfServices')?.addEventListener('input', () => this.validateAndCalculate());
+    document.getElementById('durationPerService')?.addEventListener('change', () => this.validateAndCalculate());
+
+    // Time field listeners for validation
+    document.getElementById('singleStartTime')?.addEventListener('change', () => this.validateAndCalculate());
+    document.getElementById('singleFinishTime')?.addEventListener('change', () => this.validateAndCalculate());
 
     // Submit handler
     document.getElementById('submitQuoteRequest')?.addEventListener('click', () => this.submitQuoteRequest());
@@ -48,19 +51,16 @@ class QuoteFormManager {
     // Show/hide relevant fields
     const singleDayFields = document.getElementById('singleDayFields');
     const multiDayFields = document.getElementById('multiDayFields');
-    const multiDaySessionsRow = document.getElementById('multiDaySessionsRow');
 
     if (structure === 'single_day') {
       singleDayFields.style.display = 'block';
-      multiDayFields.style.display = 'none';
-      multiDaySessionsRow.style.display = 'none';
+      multiDayFields.classList.remove('active');
     } else {
       singleDayFields.style.display = 'none';
-      multiDayFields.style.display = 'block';
-      multiDaySessionsRow.style.display = 'block';
+      multiDayFields.classList.add('active');
     }
 
-    this.calculateEstimate();
+    this.validateAndCalculate();
   }
 
   generateMultiDayFields(numberOfDays) {
@@ -72,7 +72,7 @@ class QuoteFormManager {
       this.addEventDateField(i);
     }
 
-    this.calculateSessionsPerDay();
+    this.validateAndCalculate();
   }
 
   addEventDateField(dayNumber = null) {
@@ -83,28 +83,37 @@ class QuoteFormManager {
     dateRow.className = 'multi-day-date-row';
     dateRow.innerHTML = `
       <div class="day-number">Day ${dayNum}</div>
-      <div class="form-group">
-        <label>Event Date *</label>
-        <input type="date" class="event-date" data-day="${dayNum}" required />
+      <div class="date-time-grid">
+        <div class="form-group">
+          <label>Event Date *</label>
+          <input type="date" class="event-date" data-day="${dayNum}" required />
+        </div>
+        <div class="form-group">
+          <label>Event Start Time *</label>
+          <input type="time" class="event-start-time" data-day="${dayNum}" required />
+        </div>
+        <div class="form-group">
+          <label>Event Finish Time *</label>
+          <input type="time" class="event-finish-time" data-day="${dayNum}" required />
+        </div>
       </div>
-      <div class="form-group">
-        <label>Event Start Time *</label>
-        <input type="time" class="event-start-time" data-day="${dayNum}" required />
-      </div>
-      <div class="form-group">
-        <label>Event Finish Time *</label>
-        <input type="time" class="event-finish-time" data-day="${dayNum}" required />
-      </div>
-      ${!dayNumber ? '<button type="button" class="remove-date-btn" onclick="quoteForm.removeEventDate(this)">Remove</button>' : ''}
+      ${!dayNumber ? '<button type="button" class="remove-day-btn" onclick="quoteForm.removeEventDate(this)">Remove Day</button>' : ''}
     `;
 
     container.appendChild(dateRow);
+
+    // Add event listeners for time validation
+    const startTimeInput = dateRow.querySelector('.event-start-time');
+    const finishTimeInput = dateRow.querySelector('.event-finish-time');
+
+    startTimeInput.addEventListener('change', () => this.validateAndCalculate());
+    finishTimeInput.addEventListener('change', () => this.validateAndCalculate());
 
     if (!dayNumber) {
       this.multiDayDates.push({ day: dayNum, date: '', startTime: '', finishTime: '' });
     }
 
-    this.calculateSessionsPerDay();
+    this.validateAndCalculate();
   }
 
   removeEventDate(button) {
@@ -116,7 +125,7 @@ class QuoteFormManager {
 
     // Renumber remaining days
     this.renumberDays();
-    this.calculateSessionsPerDay();
+    this.validateAndCalculate();
   }
 
   renumberDays() {
@@ -125,7 +134,8 @@ class QuoteFormManager {
       const dayNum = index + 1;
       row.querySelector('.day-number').textContent = `Day ${dayNum}`;
       row.querySelector('.event-date').dataset.day = dayNum;
-      row.querySelector('.event-time').dataset.day = dayNum;
+      row.querySelector('.event-start-time').dataset.day = dayNum;
+      row.querySelector('.event-finish-time').dataset.day = dayNum;
     });
 
     // Update multiDayDates array
@@ -134,289 +144,153 @@ class QuoteFormManager {
     });
   }
 
-  calculateSessionsPerDay() {
-    console.log('calculateSessionsPerDay called, eventStructure:', this.eventStructure);
+  // CORE BUSINESS LOGIC: Time Validation & Calculation
+  validateAndCalculate() {
+    console.log('🔍 Starting time validation and calculation...');
 
-    if (this.eventStructure === 'multi_day') {
-      const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
+    // Calculate event schedule time
+    const eventScheduleMinutes = this.calculateEventScheduleTime();
 
-      // Count actual date input fields instead of relying on multiDayDates array
-      const dateInputs = document.querySelectorAll('.event-date');
-      const numberOfDays = Math.max(dateInputs.length, 1); // At least 1 day
+    // Calculate service requirements time
+    const serviceRequirementsMinutes = this.calculateServiceRequirementsTime();
 
-      const averageSessionsPerDay = Math.round((numberOfServices / numberOfDays) * 100) / 100; // Round to 2 decimal places
+    // Update display
+    document.getElementById('eventScheduleTime').textContent =
+      eventScheduleMinutes > 0 ? `${eventScheduleMinutes} minutes` : '-';
 
-      console.log(`Sessions calculation: ${numberOfServices} services ÷ ${numberOfDays} days (${dateInputs.length} date inputs) = ${averageSessionsPerDay}`);
+    document.getElementById('serviceRequirementsTime').textContent =
+      serviceRequirementsMinutes > 0 ? `${serviceRequirementsMinutes} minutes` : '-';
 
-      const sessionsPerDayField = document.getElementById('sessionsPerDay');
-      if (sessionsPerDayField) {
-        console.log('Setting sessionsPerDay field to:', averageSessionsPerDay);
-        sessionsPerDayField.value = averageSessionsPerDay;
-        sessionsPerDayField.readOnly = true;
+    // Validate times match
+    const validationMessage = document.getElementById('timeValidationMessage');
+
+    if (eventScheduleMinutes > 0 && serviceRequirementsMinutes > 0) {
+      if (eventScheduleMinutes === serviceRequirementsMinutes) {
+        // Times match - valid!
+        document.getElementById('totalValidatedTime').textContent = `${eventScheduleMinutes} minutes`;
+        validationMessage.className = 'validation-message success';
+        validationMessage.textContent = '✅ Event schedule and service requirements match perfectly!';
+        validationMessage.style.display = 'block';
+
+        // Calculate pricing
+        this.calculatePricing(eventScheduleMinutes);
+
       } else {
-        console.error('sessionsPerDay field not found!');
+        // Times don't match - show error
+        document.getElementById('totalValidatedTime').textContent = 'Times do not match';
+        validationMessage.className = 'validation-message error';
+        validationMessage.textContent = 'The number of sessions compared to the requested times above do not match. Either increase your dates/times above or reduce your number of sessions or durations.';
+        validationMessage.style.display = 'block';
+
+        // Clear pricing
+        document.getElementById('estimatePrice').textContent = 'Fix time mismatch above';
       }
     } else {
-      console.log('Not multi-day event, skipping sessions per day calculation');
-    }
-  }
-
-  calculateEstimate() {
-    const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
-    const durationPerService = parseInt(document.getElementById('durationPerService')?.value) || 0;
-    const therapistsNeeded = parseInt(document.getElementById('therapistsNeeded')?.value) || 1;
-
-    // Update display elements
-    document.getElementById('estimateSessions').textContent = numberOfServices || '-';
-    document.getElementById('estimateDuration').textContent = durationPerService ? `${durationPerService} min` : '-';
-    document.getElementById('estimateTherapists').textContent = therapistsNeeded || '-';
-
-    // Calculate price estimate using proper business rules
-    if (numberOfServices && durationPerService) {
-      this.calculateAccurateEstimate(numberOfServices, durationPerService);
-    } else {
+      // Not enough data yet
+      document.getElementById('totalValidatedTime').textContent = '-';
+      validationMessage.style.display = 'none';
       document.getElementById('estimatePrice').textContent = 'Enter details above';
     }
 
-    this.calculateSessionsPerDay();
+    // Update session display
+    const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
+    const durationPerService = parseInt(document.getElementById('durationPerService')?.value) || 0;
+
+    document.getElementById('estimateSessions').textContent = numberOfServices || '-';
+    document.getElementById('estimateDuration').textContent =
+      durationPerService ? `${durationPerService} min` : '-';
   }
 
-  setupAddressAutocomplete() {
-    const addressInput = document.getElementById('eventLocation');
-    if (!addressInput || !window.google) return;
+  calculateEventScheduleTime() {
+    console.log('📅 Calculating event schedule time for:', this.eventStructure);
 
-    const autocomplete = new google.maps.places.Autocomplete(addressInput, {
-      types: ['address'],
-      componentRestrictions: { country: 'AU' }
-    });
+    if (this.eventStructure === 'single_day') {
+      const startTime = document.getElementById('singleStartTime')?.value;
+      const finishTime = document.getElementById('singleFinishTime')?.value;
 
-    autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace();
-      if (place.geometry) {
-        addressInput.dataset.lat = place.geometry.location.lat();
-        addressInput.dataset.lng = place.geometry.location.lng();
+      console.log('Single day times:', { startTime, finishTime });
 
-        const statusDiv = document.getElementById('event-address-status');
-        statusDiv.className = 'status-message success';
-        statusDiv.textContent = '✓ Address verified';
-        statusDiv.style.display = 'block';
-      }
-    });
-  }
+      if (!startTime || !finishTime) return 0;
 
-  async submitQuoteRequest() {
-    const submitBtn = document.getElementById('submitQuoteRequest');
-    const originalText = submitBtn.textContent;
+      const start = new Date(`1970-01-01T${startTime}:00`);
+      const finish = new Date(`1970-01-01T${finishTime}:00`);
 
-    try {
-      // Validate form
-      if (!this.validateForm()) {
-        return;
-      }
+      const diffMs = finish - start;
+      const diffMinutes = diffMs / (1000 * 60);
 
-      // Show loading state
-      submitBtn.textContent = 'Submitting...';
-      submitBtn.disabled = true;
-      submitBtn.classList.add('loading');
+      console.log('Single day calculation:', { diffMinutes });
+      return Math.max(0, diffMinutes);
+    } else {
+      // Multi-day calculation
+      let totalMinutes = 0;
 
-      // Generate quote ID
-      const quoteId = await this.generateQuoteId();
+      const dateRows = document.querySelectorAll('.multi-day-date-row');
+      console.log('Multi-day rows found:', dateRows.length);
 
-      // Prepare quote data
-      const quoteData = this.collectQuoteData(quoteId);
+      dateRows.forEach((row, index) => {
+        const startTime = row.querySelector('.event-start-time')?.value;
+        const finishTime = row.querySelector('.event-finish-time')?.value;
 
-      // Submit to quotes table
-      await this.saveQuoteToDatabase(quoteData);
+        console.log(`Day ${index + 1} times:`, { startTime, finishTime });
 
-      // Handle multi-day dates if needed
-      console.log('🔍 Event structure check:', {
-        eventStructure: this.eventStructure,
-        multiDayDatesLength: this.multiDayDates.length,
-        multiDayDates: this.multiDayDates
+        if (startTime && finishTime) {
+          const start = new Date(`1970-01-01T${startTime}:00`);
+          const finish = new Date(`1970-01-01T${finishTime}:00`);
+
+          const diffMs = finish - start;
+          const dayMinutes = Math.max(0, diffMs / (1000 * 60));
+
+          console.log(`Day ${index + 1} minutes:`, dayMinutes);
+          totalMinutes += dayMinutes;
+        }
       });
 
-      if (this.eventStructure === 'multi_day') {
-        console.log('✅ Multi-day event detected, calling saveQuoteDates...');
-        await this.saveQuoteDates(quoteId);
-      } else {
-        console.log('ℹ️ Single day event, skipping quote_dates');
-      }
-
-      // Send confirmation email
-      await this.sendQuoteConfirmationEmail(quoteData);
-
-      // Show success
-      this.showSuccessModal(quoteId);
-
-    } catch (error) {
-      console.error('Quote submission error:', error);
-      alert('Sorry, there was an error submitting your quote request. Please try again.');
-    } finally {
-      // Reset button
-      submitBtn.textContent = originalText;
-      submitBtn.disabled = false;
-      submitBtn.classList.remove('loading');
+      console.log('Multi-day total:', totalMinutes);
+      return totalMinutes;
     }
   }
 
-  validateForm() {
-    const required = [
-      'contactName', 'contactEmail', 'contactPhone', 'eventLocation',
-      'numberOfServices', 'durationPerService', 'paymentMethod', 'urgency'
-    ];
+  calculateServiceRequirementsTime() {
+    const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
+    const durationPerService = parseInt(document.getElementById('durationPerService')?.value) || 0;
 
-    // Add structure-specific required fields
-    if (this.eventStructure === 'single_day') {
-      required.push('singleEventDate', 'singleStartTime');
-    } else {
-      // Validate multi-day dates
-      const dateInputs = document.querySelectorAll('.event-date');
-      const timeInputs = document.querySelectorAll('.event-time');
+    const total = numberOfServices * durationPerService;
+    console.log('Service requirements:', { numberOfServices, durationPerService, total });
 
-      if (dateInputs.length === 0) {
-        alert('Please add at least one event date');
-        return false;
-      }
-
-      for (let i = 0; i < dateInputs.length; i++) {
-        if (!dateInputs[i].value || !timeInputs[i].value) {
-          alert(`Please complete Day ${i + 1} date and time`);
-          return false;
-        }
-      }
-    }
-
-    // Check required fields
-    for (const fieldId of required) {
-      const field = document.getElementById(fieldId);
-      if (!field || !field.value.trim()) {
-        const label = document.querySelector(`label[for="${fieldId}"]`)?.textContent || fieldId;
-        alert(`Please fill in: ${label}`);
-        field?.focus();
-        return false;
-      }
-    }
-
-    // Validate email
-    const email = document.getElementById('contactEmail').value;
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      alert('Please enter a valid email address');
-      document.getElementById('contactEmail').focus();
-      return false;
-    }
-
-    // Validate address has coordinates
-    const locationInput = document.getElementById('eventLocation');
-    if (!locationInput.dataset.lat || !locationInput.dataset.lng) {
-      alert('Please select a valid address from the dropdown suggestions');
-      locationInput.focus();
-      return false;
-    }
-
-    return true;
+    return total;
   }
 
-  collectQuoteData(quoteId) {
-    const locationInput = document.getElementById('eventLocation');
-    const data = {
-      id: quoteId,
-      event_structure: this.eventStructure,
-      status: 'draft',
+  async calculatePricing(validatedMinutes) {
+    console.log('💰 Calculating pricing for', validatedMinutes, 'minutes');
 
-      // Contact information
-      customer_name: document.getElementById('contactName').value.trim(),
-      customer_email: document.getElementById('contactEmail').value.trim(),
-      customer_phone: document.getElementById('contactPhone').value.trim(),
-
-      // Event details
-      event_name: document.getElementById('eventName').value.trim() || null,
-      event_location: locationInput.value.trim(),
-      event_type: document.getElementById('eventType').value || null,
-      company_name: document.getElementById('companyName').value.trim() || null,
-
-      // Location coordinates
-      latitude: parseFloat(locationInput.dataset.lat) || null,
-      longitude: parseFloat(locationInput.dataset.lng) || null,
-
-      // Service specifications (updated field names)
-      number_of_services: parseInt(document.getElementById('numberOfServices').value) || 0,
-      duration_per_service: parseInt(document.getElementById('durationPerService').value) || 0,
-      therapists_needed: parseInt(document.getElementById('therapistsNeeded').value) || 1,
-      expected_attendees: parseInt(document.getElementById('expectedAttendees').value) || null,
-
-      // Business requirements
-      payment_method: document.getElementById('paymentMethod').value || 'invoice',
-      urgency: document.getElementById('urgency').value || 'flexible',
-      po_number: document.getElementById('poNumber').value.trim() || null,
-
-      // Requirements
-      setup_requirements: document.getElementById('setupRequirements').value.trim() || null,
-      special_requirements: document.getElementById('specialRequirements').value.trim() || null,
-
-      // Financial fields (all required NOT NULL fields)
-      hourly_rate: 160.00,
-      total_amount: this.calculateTotalAmount(),
-      total_therapist_fees: this.calculateTherapistFees(),
-      discount_amount: 0.00,
-      tax_rate_amount: 0.00,
-      final_amount: this.calculateTotalAmount(), // Will be calculated properly later
-
-      // Status fields
-      payment_status: 'pending',
-
-      // Service reference
-      service_id: this.selectedService?.id || null
-    };
-
-    // Add structure-specific fields
-    if (this.eventStructure === 'single_day') {
-      data.single_event_date = document.getElementById('singleEventDate').value;
-      data.single_start_time = document.getElementById('singleStartTime').value;
-      data.sessions_per_day = data.total_sessions;
-    } else {
-      data.number_of_event_days = this.multiDayDates.length;
-      data.sessions_per_day = Math.ceil(data.total_sessions / this.multiDayDates.length);
+    // Check minimum 2 hours requirement
+    if (validatedMinutes < 120) {
+      document.getElementById('estimatePrice').innerHTML =
+        '<span style="color: #dc3545; font-weight: bold;">⚠️ Quote request must be at least 120 minutes to proceed</span>';
+      return;
     }
 
-    return data;
-  }
-
-  async calculateAccurateEstimate(numberOfServices, durationPerService) {
     try {
-      // 1. Check minimum 2 hours requirement
-      const totalMinutes = numberOfServices * durationPerService;
-      if (totalMinutes < 120) {
-        document.getElementById('estimatePrice').innerHTML =
-          '<span style="color: #dc3545; font-weight: bold;">⚠️ Quote request must be at least 120 minutes to proceed</span>';
-        return;
-      }
-
-      // 2. Get base rate from selected service
+      // Get base rate from services
       const serviceBaseRate = await this.getServiceBaseRate();
-      if (!serviceBaseRate) {
-        document.getElementById('estimatePrice').textContent = 'Select a service to see estimate';
-        return;
-      }
+      console.log('Service base rate:', serviceBaseRate);
 
-      // 3. Calculate total hours
-      const totalHours = totalMinutes / 60;
-      let baseCost = totalHours * serviceBaseRate;
+      // Calculate base amount: Total Duration (Minutes/60) × Base Price for Service
+      const totalHours = validatedMinutes / 60;
+      let baseAmount = totalHours * serviceBaseRate;
 
-      // 4. Apply weekend uplifts for dates
+      console.log('Base calculation:', { totalHours, baseAmount });
+
+      // Apply weekend uplifts based on selected dates
       const weekendMultiplier = await this.getWeekendMultiplier();
-      baseCost *= weekendMultiplier;
+      const finalAmount = baseAmount * weekendMultiplier;
 
-      // 5. Apply urgency premium if needed
-      const urgencyMultiplier = this.getUrgencyMultiplier();
-      baseCost *= urgencyMultiplier;
+      console.log('Final pricing:', { baseAmount, weekendMultiplier, finalAmount });
 
-      // 6. Create variance of 0.90 to 1.10
-      const finalEstimate = Math.round(baseCost);
-
-      document.getElementById('estimatePrice').textContent = `$${finalEstimate}`;
+      document.getElementById('estimatePrice').textContent = `$${Math.round(finalAmount)}`;
 
     } catch (error) {
-      console.error('Error calculating estimate:', error);
+      console.error('Error calculating pricing:', error);
       document.getElementById('estimatePrice').textContent = 'Unable to calculate estimate';
     }
   }
@@ -424,25 +298,41 @@ class QuoteFormManager {
   async getServiceBaseRate() {
     // Get the base rate from the selected service
     if (!this.selectedService?.id) {
-      return null;
+      // If no specific service selected, get default base price
+      try {
+        const { data: services, error } = await window.supabase
+          .from('services')
+          .select('service_base_price, base_quote_price')
+          .eq('is_active', true)
+          .limit(1);
+
+        if (!error && services.length > 0) {
+          // Use base_quote_price if available, otherwise service_base_price
+          return services[0].base_quote_price || services[0].service_base_price || 150;
+        }
+      } catch (error) {
+        console.error('Error fetching default service rate:', error);
+      }
+      return 150; // Business default rate
     }
 
     try {
       const { data: service, error } = await window.supabase
         .from('services')
-        .select('service_base_price')
+        .select('service_base_price, base_quote_price')
         .eq('id', this.selectedService.id)
         .single();
 
       if (error) {
         console.error('Error fetching service rate:', error);
-        return 160; // Fallback rate
+        return 150; // Business default rate
       }
 
-      return service.service_base_price || 160;
+      // Use base_quote_price if available for quotes, otherwise service_base_price
+      return service.base_quote_price || service.service_base_price || 150;
     } catch (error) {
       console.error('Error getting service base rate:', error);
-      return 160; // Fallback rate
+      return 150; // Business default rate
     }
   }
 
@@ -480,7 +370,7 @@ class QuoteFormManager {
       const { data: pricingRule, error } = await window.supabase
         .from('time_pricing_rules')
         .select('uplift_percentage')
-        .eq('day_of_week', dayOfWeek.toString())
+        .eq('day_of_week', dayOfWeek)
         .eq('start_time', '08:00:00')
         .eq('end_time', '18:00:00')
         .eq('is_active', true)
@@ -521,7 +411,7 @@ class QuoteFormManager {
         const { data: pricingRule, error } = await window.supabase
           .from('time_pricing_rules')
           .select('uplift_percentage')
-          .eq('day_of_week', dayOfWeek.toString())
+          .eq('day_of_week', dayOfWeek)
           .eq('start_time', '08:00:00')
           .eq('end_time', '18:00:00')
           .eq('is_active', true)
@@ -570,38 +460,218 @@ class QuoteFormManager {
     return dates;
   }
 
-  getUrgencyMultiplier() {
-    const urgency = document.getElementById('urgency')?.value;
+  setupAddressAutocomplete() {
+    const addressInput = document.getElementById('eventLocation');
+    if (!addressInput || !window.google) return;
 
-    // Apply 10% premium for urgent requests (less than 3 days)
-    if (urgency === 'within_3_days' || urgency === 'urgent_24h') {
-      return 1.10; // 10% uplift
-    }
+    const autocomplete = new google.maps.places.Autocomplete(addressInput, {
+      types: ['address'],
+      componentRestrictions: { country: 'AU' }
+    });
 
-    return 1.0; // No urgency premium
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (place.geometry) {
+        addressInput.dataset.lat = place.geometry.location.lat();
+        addressInput.dataset.lng = place.geometry.location.lng();
+
+        const statusDiv = document.getElementById('event-address-status');
+        statusDiv.className = 'address-status success';
+        statusDiv.textContent = '✓ Address verified';
+        statusDiv.style.display = 'block';
+      }
+    });
   }
 
-  calculateTotalAmount() {
+  async submitQuoteRequest() {
+    const submitBtn = document.getElementById('submitQuoteRequest');
+    const originalText = submitBtn.textContent;
+
+    try {
+      // Validate form
+      if (!this.validateForm()) {
+        return;
+      }
+
+      // Show loading state
+      submitBtn.textContent = 'Submitting...';
+      submitBtn.disabled = true;
+      submitBtn.classList.add('loading');
+
+      // Generate quote ID
+      const quoteId = await this.generateQuoteId();
+
+      // Prepare quote data
+      const quoteData = this.collectQuoteData(quoteId);
+
+      // Submit to quotes table
+      await this.saveQuoteToDatabase(quoteData);
+
+      // Handle multi-day dates if needed
+      if (this.eventStructure === 'multi_day') {
+        await this.saveQuoteDates(quoteId);
+      }
+
+      // Send confirmation email
+      await this.sendQuoteConfirmationEmail(quoteData);
+
+      // Show success
+      this.showSuccessModal(quoteId);
+
+    } catch (error) {
+      console.error('Quote submission error:', error);
+      alert('Sorry, there was an error submitting your quote request. Please try again.');
+    } finally {
+      // Reset button
+      submitBtn.textContent = originalText;
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('loading');
+    }
+  }
+
+  validateForm() {
+    // First check time validation
+    const validationMessage = document.getElementById('timeValidationMessage');
+    if (!validationMessage.classList.contains('success')) {
+      alert('Please ensure your event schedule times match your service requirements.');
+      return false;
+    }
+
+    const required = [
+      'contactName', 'contactEmail', 'contactPhone', 'eventLocation',
+      'numberOfServices', 'durationPerService', 'paymentMethod', 'urgency'
+    ];
+
+    // Add structure-specific required fields
+    if (this.eventStructure === 'single_day') {
+      required.push('singleEventDate', 'singleStartTime', 'singleFinishTime');
+    } else {
+      // Validate multi-day dates
+      const dateInputs = document.querySelectorAll('.event-date');
+      const startTimeInputs = document.querySelectorAll('.event-start-time');
+      const finishTimeInputs = document.querySelectorAll('.event-finish-time');
+
+      if (dateInputs.length === 0) {
+        alert('Please add at least one event date');
+        return false;
+      }
+
+      for (let i = 0; i < dateInputs.length; i++) {
+        if (!dateInputs[i].value || !startTimeInputs[i].value || !finishTimeInputs[i].value) {
+          alert(`Please complete Day ${i + 1} date, start time, and finish time`);
+          return false;
+        }
+      }
+    }
+
+    // Check required fields
+    for (const fieldId of required) {
+      const field = document.getElementById(fieldId);
+      if (!field || !field.value.trim()) {
+        const label = document.querySelector(`label[for="${fieldId}"]`)?.textContent || fieldId;
+        alert(`Please fill in: ${label}`);
+        field?.focus();
+        return false;
+      }
+    }
+
+    // Validate email
+    const email = document.getElementById('contactEmail').value;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      alert('Please enter a valid email address');
+      document.getElementById('contactEmail').focus();
+      return false;
+    }
+
+    // Validate address has coordinates
+    const locationInput = document.getElementById('eventLocation');
+    if (!locationInput.dataset.lat || !locationInput.dataset.lng) {
+      alert('Please select a valid address from the dropdown suggestions');
+      locationInput.focus();
+      return false;
+    }
+
+    return true;
+  }
+
+  collectQuoteData(quoteId) {
+    const locationInput = document.getElementById('eventLocation');
+    const data = {
+      id: quoteId,
+      event_structure: this.eventStructure,
+      status: 'draft',
+
+      // Contact information
+      customer_name: document.getElementById('contactName').value.trim(),
+      customer_email: document.getElementById('contactEmail').value.trim(),
+      customer_phone: document.getElementById('contactPhone').value.trim(),
+
+      // Event details
+      event_location: locationInput.value.trim(),
+      event_type: document.getElementById('eventType').value || null,
+      company_name: document.getElementById('companyName').value.trim() || null,
+
+      // Location coordinates
+      latitude: parseFloat(locationInput.dataset.lat) || null,
+      longitude: parseFloat(locationInput.dataset.lng) || null,
+
+      // Service specifications (aligned with database schema)
+      total_sessions: parseInt(document.getElementById('numberOfServices').value) || 0,
+      session_duration_minutes: parseInt(document.getElementById('durationPerService').value) || 0,
+      expected_attendees: parseInt(document.getElementById('expectedAttendees').value) || null,
+
+      // Business requirements
+      payment_method: document.getElementById('paymentMethod').value || 'card',
+      urgency: document.getElementById('urgency').value || 'flexible',
+
+      // Requirements
+      setup_requirements: document.getElementById('setupRequirements').value.trim() || null,
+      special_requirements: document.getElementById('specialRequirements').value.trim() || null,
+
+      // Financial fields - basic values for database
+      hourly_rate: 150, // Will be updated by admin with actual service rate
+      total_amount: this.calculateBasicAmount(),
+      total_therapist_fees: 0.00, // Will be calculated by admin, not client
+      discount_amount: 0.00,
+      tax_rate_amount: 0.00,
+      final_amount: this.calculateBasicAmount(),
+
+      // Status fields
+      payment_status: 'pending',
+
+      // Service reference
+      service_id: this.selectedService?.id || null
+    };
+
+    // Add structure-specific fields
+    if (this.eventStructure === 'single_day') {
+      data.single_event_date = document.getElementById('singleEventDate').value;
+      data.single_start_time = document.getElementById('singleStartTime').value;
+      data.sessions_per_day = data.total_sessions;
+    } else {
+      // Count actual date input fields for multi-day events
+      const dateInputs = document.querySelectorAll('.event-date');
+      const numberOfDays = Math.max(dateInputs.length, 1);
+      data.number_of_event_days = numberOfDays;
+      data.sessions_per_day = Math.ceil(data.total_sessions / numberOfDays);
+    }
+
+    return data;
+  }
+
+  calculateBasicAmount() {
     const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
     const durationPerService = parseInt(document.getElementById('durationPerService')?.value) || 0;
-    const hourlyRate = 160; // Base rate for database storage
 
     if (numberOfServices <= 0 || durationPerService <= 0) {
       return 0.00;
     }
 
-    const totalHours = (numberOfServices * durationPerService) / 60;
-    const amount = totalHours * hourlyRate;
-    return Math.round(amount * 100) / 100; // Ensure 2 decimal places
-  }
+    const totalMinutes = numberOfServices * durationPerService;
+    const totalHours = totalMinutes / 60;
+    const basicAmount = totalHours * 150; // Default rate for database storage
 
-  calculateTherapistFees() {
-    const totalAmount = this.calculateTotalAmount();
-    if (totalAmount <= 0) {
-      return 0.00;
-    }
-    // Simplified calculation - 56% of total amount
-    return Math.round(totalAmount * 0.56 * 100) / 100;
+    return Math.round(basicAmount * 100) / 100;
   }
 
   async saveQuoteToDatabase(quoteData) {
@@ -626,11 +696,10 @@ class QuoteFormManager {
   async saveQuoteDates(quoteId) {
     console.log('🔍 saveQuoteDates called with quoteId:', quoteId);
 
-    // First, update the quote record with the correct number of days
+    // Update the quote record with the correct number of days
     const dateRows = document.querySelectorAll('.multi-day-date-row');
     console.log('🔍 Found date rows:', dateRows.length);
 
-    // Update the quote with the actual number of event days
     if (dateRows.length > 0) {
       console.log('📝 Updating quote with number_of_event_days:', dateRows.length);
       const { error: updateError } = await window.supabase
@@ -648,20 +717,22 @@ class QuoteFormManager {
 
     dateRows.forEach((row, index) => {
       const dateInput = row.querySelector('.event-date');
-      const timeInput = row.querySelector('.event-time');
+      const startTimeInput = row.querySelector('.event-start-time');
+      const finishTimeInput = row.querySelector('.event-finish-time');
 
-      console.log(`🔍 Row ${index}:`, {
-        dateValue: dateInput?.value,
-        timeValue: timeInput?.value
-      });
+      if (dateInput && startTimeInput && dateInput.value && startTimeInput.value) {
+        // Calculate sessions per day for this quote
+        const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
+        const sessionsThisDay = Math.ceil(numberOfServices / Math.max(dateRows.length, 1));
 
-      if (dateInput && timeInput && dateInput.value && timeInput.value) {
         const quoteDate = {
           quote_id: quoteId,
           event_date: dateInput.value,
-          start_time: timeInput.value,
+          start_time: startTimeInput.value,
+          finish_time: finishTimeInput?.value || null,
           day_number: index + 1,
-          sessions_count: Math.ceil(this.quoteData?.total_sessions || 1 / Math.max(dateRows.length, 1))
+          sessions_count: sessionsThisDay,
+          duration_minutes: parseInt(document.getElementById('durationPerService')?.value) || 0
         };
         quoteDates.push(quoteDate);
         console.log('✅ Added quote date:', quoteDate);
@@ -709,7 +780,6 @@ class QuoteFormManager {
     try {
       console.log('📧 Sending quote confirmation email...');
 
-      // Prepare email data matching the enhanced template
       const emailData = {
         to_email: quoteData.customer_email,
         to_name: quoteData.customer_name,
@@ -724,24 +794,21 @@ class QuoteFormManager {
         // Event structure and details
         event_structure: quoteData.event_structure,
         event_structure_display: quoteData.event_structure === 'single_day' ? 'Single Day Event' : 'Multi-Day Event',
-        event_name: quoteData.event_name || 'Corporate Wellness Event',
         event_type: quoteData.event_type || 'Not specified',
         event_location: quoteData.event_location,
         expected_attendees: quoteData.expected_attendees || 'Not specified',
 
-        // Event dates (formatted based on structure)
+        // Event dates
         event_dates: this.formatEventDates(quoteData),
 
         // Session specifications
         total_sessions: quoteData.total_sessions,
         session_duration_minutes: quoteData.session_duration_minutes,
         sessions_per_day: quoteData.sessions_per_day,
-        therapists_needed: quoteData.therapists_needed,
 
         // Business requirements
         payment_method: this.formatPaymentMethod(quoteData.payment_method),
         urgency: this.formatUrgency(quoteData.urgency),
-        po_number: quoteData.po_number || 'Not provided',
 
         // Special requirements
         setup_requirements: quoteData.setup_requirements || 'None specified',
@@ -773,8 +840,6 @@ class QuoteFormManager {
       const time = quoteData.single_start_time;
       return `${date} at ${time}`;
     } else {
-      // For multi-day, we'd need to fetch from quote_dates table
-      // For now, show the number of days
       const days = quoteData.number_of_event_days || 'multiple';
       return `${days} day event (dates to be confirmed)`;
     }
@@ -782,7 +847,6 @@ class QuoteFormManager {
 
   formatPaymentMethod(method) {
     const methods = {
-      'invoice': 'Invoice (Net 30)',
       'card': 'Credit Card',
       'bank_transfer': 'Bank Transfer/EFT'
     };
@@ -809,21 +873,14 @@ class QuoteFormManager {
   }
 
   showSuccessModal(quoteId) {
-    const modal = document.getElementById('quoteSuccessModal');
-    const referenceSpan = document.getElementById('quoteReferenceNumber');
-
-    referenceSpan.textContent = quoteId;
-    modal.style.display = 'flex';
+    // For now, show simple alert - replace with modal later
+    alert(`Quote request submitted successfully! Reference: ${quoteId}\n\nWe'll review your request and send you a detailed quote within 24 hours.`);
   }
 
   // Initialize with service information
   initializeWithService(serviceData) {
     this.selectedService = serviceData;
-
-    // Update service banner
-    document.getElementById('serviceTitle').textContent = serviceData.name;
-    document.getElementById('serviceDescription').textContent =
-      serviceData.quote_description || serviceData.description || 'Professional massage service for your event';
+    console.log('Initialized with service:', serviceData);
   }
 }
 
