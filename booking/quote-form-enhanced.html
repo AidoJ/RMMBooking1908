@@ -1,6 +1,5 @@
-<!-- ENHANCED QUOTE FORM - Beautiful Mobile-First Design -->
-<!-- Updated: Fixed average sessions per day calculation and weekend pricing -->
-<!-- This replaces the existing quote form with clean architecture integration -->
+<!-- ENHANCED QUOTE FORM - Fixed to match business requirements -->
+<!-- Integrates with time validation and database-driven pricing -->
 
 <div id="quoteStep" class="step">
   <div class="step-header">
@@ -50,28 +49,36 @@
     <div id="singleDayFields" class="form-section">
       <div class="form-row">
         <div class="form-group">
-          <label for="singleEventDate">📅 Event Date *</label>
-          <input type="date" id="singleEventDate" required />
+          <label for="singleEventDate">Event Date *</label>
+          <input type="date" id="singleEventDate" class="form-control" required>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="singleStartTime">Event Start Time *</label>
+          <input type="time" id="singleStartTime" class="form-control" required>
         </div>
         <div class="form-group">
-          <label for="singleStartTime">🕐 Start Time *</label>
-          <input type="time" id="singleStartTime" required />
+          <label for="singleFinishTime">Event Finish Time *</label>
+          <input type="time" id="singleFinishTime" class="form-control" required>
         </div>
       </div>
     </div>
 
     <!-- Multi-Day Event Fields -->
-    <div id="multiDayFields" class="form-section" style="display: none;">
+    <div id="multiDayFields" class="form-section multi-day-container">
       <div class="form-group">
-        <label for="numberOfDays">📊 Number of Event Days *</label>
-        <input type="number" id="numberOfDays" min="2" max="30" placeholder="e.g., 3" />
+        <label for="numberOfDays">Number of Event Days</label>
+        <select id="numberOfDays" class="form-control">
+          <option value="">Select number of days...</option>
+          <option value="2">2 Days</option>
+          <option value="3">3 Days</option>
+          <option value="4">4 Days</option>
+          <option value="5">5 Days</option>
+        </select>
       </div>
-
-      <div id="multiDayDates" class="multi-day-container">
-        <!-- Dynamic date fields will be added here -->
-      </div>
-
-      <button type="button" id="addEventDate" class="btn-secondary">+ Add Event Date</button>
+      <div id="multiDayDates"></div>
+      <button type="button" class="btn btn-outline-success" id="addEventDate">+ Add Another Day</button>
     </div>
 
     <!-- Contact Information -->
@@ -80,22 +87,21 @@
       <div class="form-row">
         <div class="form-group">
           <label for="contactName">Full Name *</label>
-          <input type="text" id="contactName" placeholder="Your full name" required />
+          <input type="text" id="contactName" class="form-control" placeholder="Your full name" required>
         </div>
         <div class="form-group">
           <label for="companyName">Company Name</label>
-          <input type="text" id="companyName" placeholder="Your company" />
+          <input type="text" id="companyName" class="form-control" placeholder="Your company">
         </div>
       </div>
-
       <div class="form-row">
         <div class="form-group">
           <label for="contactEmail">Email Address *</label>
-          <input type="email" id="contactEmail" placeholder="your@email.com" required />
+          <input type="email" id="contactEmail" class="form-control" placeholder="your@email.com" required>
         </div>
         <div class="form-group">
           <label for="contactPhone">Phone Number *</label>
-          <input type="tel" id="contactPhone" placeholder="+61 XXX XXX XXX" required />
+          <input type="tel" id="contactPhone" class="form-control" placeholder="+61 XXX XXX XXX" required>
         </div>
       </div>
     </div>
@@ -103,45 +109,41 @@
     <!-- Event Details -->
     <div class="form-section">
       <h3>🎯 Event Details</h3>
-
       <div class="form-group">
-        <label for="eventLocation">📍 Event Location *</label>
-        <input id="eventLocation" autocomplete="off" placeholder="Start typing the event address..." required />
-        <div id="event-address-status" class="status-message"></div>
+        <label for="eventLocation">Event Location *</label>
+        <input type="text" id="eventLocation" class="form-control" placeholder="Start typing your address..." required>
+        <div id="event-address-status" class="address-status"></div>
       </div>
-
-      <div class="form-group">
-        <label for="eventType">Event Type</label>
-        <select id="eventType">
-          <option value="">Select event type...</option>
-          <option value="corporate_wellness">Corporate Wellness Day</option>
-          <option value="team_building">Team Building Event</option>
-          <option value="conference">Conference/Retreat</option>
-          <option value="employee_appreciation">Employee Appreciation</option>
-          <option value="product_launch">Product Launch</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-
-      <div class="form-group">
-        <label for="expectedAttendees">👥 Expected Attendees</label>
-        <input type="number" id="expectedAttendees" placeholder="Number of people attending" min="1" />
+      <div class="form-row">
+        <div class="form-group">
+          <label for="eventType">Event Type</label>
+          <select id="eventType" class="form-control">
+            <option value="">Select event type...</option>
+            <option value="corporate_wellness">Corporate Wellness</option>
+            <option value="team_building">Team Building</option>
+            <option value="conference">Conference</option>
+            <option value="retreat">Retreat</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="expectedAttendees">Expected Attendees</label>
+          <input type="number" id="expectedAttendees" class="form-control" min="1" placeholder="Number of people">
+        </div>
       </div>
     </div>
 
     <!-- Massage Specifications -->
     <div class="form-section">
       <h3>💆‍♀️ Massage Specifications</h3>
-
       <div class="form-row">
         <div class="form-group">
-          <label for="numberOfServices">🎯 Number of Services *</label>
-          <input type="number" id="numberOfServices" placeholder="Number of services (Default = Expected Attendees)" min="1" max="100" required />
-          <small class="field-hint">How many services in total</small>
+          <label for="numberOfServices">Total Number of Service Sessions *</label>
+          <input type="number" id="numberOfServices" class="form-control" min="1" placeholder="How many service sessions required" required>
         </div>
         <div class="form-group">
-          <label for="durationPerService">⏱️ Duration per Service *</label>
-          <select id="durationPerService" required>
+          <label for="durationPerService">Service Duration *</label>
+          <select id="durationPerService" class="form-control" required>
             <option value="">Select duration...</option>
             <option value="5">5 minutes</option>
             <option value="10">10 minutes</option>
@@ -153,103 +155,89 @@
         </div>
       </div>
 
-      <div class="form-row" id="multiDaySessionsRow" style="display: none;">
-        <div class="form-group">
-          <label for="sessionsPerDay">📊 Average Sessions per Day</label>
-          <input type="number" id="sessionsPerDay" placeholder="Average sessions each day" min="1" step="0.01" />
-          <small class="field-hint">Will be calculated automatically</small>
+      <!-- Time Validation Display -->
+      <div class="calculation-display">
+        <div class="calculation-row">
+          <span>Event Schedule Time:</span>
+          <span id="eventScheduleTime">-</span>
+        </div>
+        <div class="calculation-row">
+          <span>Service Requirements Time:</span>
+          <span id="serviceRequirementsTime">-</span>
+        </div>
+        <div class="calculation-row total-row">
+          <span>Total Validated Time:</span>
+          <span id="totalValidatedTime">-</span>
         </div>
       </div>
 
-      <div class="form-group">
-        <label for="therapistsNeeded">👥 Therapists Needed</label>
-        <select id="therapistsNeeded">
-          <option value="">Let us recommend...</option>
-          <option value="1">1 Therapist</option>
-          <option value="2">2 Therapists</option>
-          <option value="3">3 Therapists</option>
-          <option value="4">4 Therapists</option>
-          <option value="5">5+ Therapists</option>
-        </select>
-        <small class="field-hint">We'll optimize based on your needs</small>
-      </div>
+      <div id="timeValidationMessage" class="validation-message"></div>
     </div>
 
     <!-- Business Requirements -->
     <div class="form-section">
       <h3>💼 Business Requirements</h3>
-
       <div class="form-row">
         <div class="form-group">
-          <label for="paymentMethod">💳 Preferred Payment Method *</label>
-          <select id="paymentMethod" required>
-            <option value="invoice">Invoice (Net 30)</option>
+          <label for="paymentMethod">Preferred Payment Method *</label>
+          <select id="paymentMethod" class="form-control" required>
+            <option value="">Select payment method...</option>
             <option value="card">Credit Card</option>
             <option value="bank_transfer">Bank Transfer/EFT</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="urgency">⚡ Timeline *</label>
-          <select id="urgency" required>
+          <label for="urgency">Timeline *</label>
+          <select id="urgency" class="form-control" required>
+            <option value="">Select timeline...</option>
             <option value="flexible">Flexible timing</option>
             <option value="within_week">Within 1 week</option>
             <option value="within_3_days">Within 3 days</option>
-            <option value="urgent_24h">Urgent (24 hours)</option>
+            <option value="urgent_24h">Urgent (within 24 hours)</option>
           </select>
         </div>
       </div>
-
     </div>
 
-    <!-- Requirements & Notes -->
+    <!-- Setup Requirements -->
     <div class="form-section">
       <h3>📝 Special Requirements</h3>
-
       <div class="form-group">
-        <label for="setupRequirements">🏗️ Setup Requirements</label>
-        <textarea id="setupRequirements" rows="3" placeholder="e.g., Changing rooms needed, tables provided, music preferences, privacy requirements..."></textarea>
+        <label for="setupRequirements">Setup Requirements</label>
+        <textarea id="setupRequirements" class="form-control" rows="3" placeholder="e.g., Changing rooms needed, tables provided, music preferences, privacy requirements..."></textarea>
       </div>
-
       <div class="form-group">
-        <label for="specialRequirements">✨ Additional Notes</label>
-        <textarea id="specialRequirements" rows="3" placeholder="Any special requests, accessibility needs, dietary restrictions for therapists, etc."></textarea>
+        <label for="specialRequirements">Additional Notes</label>
+        <textarea id="specialRequirements" class="form-control" rows="3" placeholder="Any special requests, accessibility needs, dietary restrictions for therapists, etc."></textarea>
       </div>
     </div>
 
-    <!-- Price Estimate -->
-    <div id="priceEstimate" class="price-estimate-section">
-      <div class="estimate-card">
-        <h3>💰 Investment Estimate</h3>
-        <div class="estimate-breakdown">
-          <div class="estimate-row">
-            <span>Sessions:</span>
-            <span id="estimateSessions">-</span>
-          </div>
-          <div class="estimate-row">
-            <span>Duration:</span>
-            <span id="estimateDuration">-</span>
-          </div>
-          <div class="estimate-row">
-            <span>Therapists:</span>
-            <span id="estimateTherapists">-</span>
-          </div>
-          <div class="estimate-total">
-            <span>Estimate Price (Incl GST):</span>
-            <span id="estimatePrice">$XXX</span>
-          </div>
+    <!-- Investment Estimate -->
+    <div class="form-section">
+      <h3>💰 Investment Estimate</h3>
+      <div class="estimate-display">
+        <div class="estimate-row">
+          <span>Sessions:</span>
+          <span id="estimateSessions">-</span>
         </div>
-        <p class="estimate-disclaimer">
-          *Final pricing will be confirmed in your detailed quote
-        </p>
+        <div class="estimate-row">
+          <span>Duration:</span>
+          <span id="estimateDuration">-</span>
+        </div>
+        <div class="estimate-row total-estimate">
+          <span>Estimated Range:</span>
+          <span id="estimatePrice">Enter details above</span>
+        </div>
       </div>
+      <p class="estimate-note">*Final pricing will be confirmed in your detailed quote</p>
     </div>
 
-    <!-- Action Buttons -->
+    <!-- Form Actions -->
     <div class="form-actions">
-      <button type="button" class="btn-back" onclick="resetToServiceSelection()">
+      <button type="button" class="btn btn-outline-secondary" onclick="resetToServiceSelection()">
         ← Change Service
       </button>
-      <button type="button" id="submitQuoteRequest" class="btn-primary">
+      <button type="button" id="submitQuoteRequest" class="btn btn-primary btn-lg">
         Request Quote 🚀
       </button>
     </div>
@@ -257,16 +245,196 @@
 </div>
 
 <!-- Success Modal -->
-<div id="quoteSuccessModal" class="modal" style="display: none;">
+<div id="quoteSuccessModal" class="quote-modal" style="display: none;">
   <div class="modal-content">
-    <div class="success-animation">🎉</div>
-    <h3>Quote Request Submitted!</h3>
-    <p>We've received your quote request and will get back to you within 24 hours with a detailed proposal.</p>
-    <div class="quote-reference">
-      <strong>Reference: <span id="quoteReferenceNumber"></span></strong>
+    <div class="modal-header">
+      <h2>✅ Quote Request Submitted!</h2>
     </div>
-    <button class="btn-primary" onclick="window.location.href='https://www.rejuvenators.com'">
-      Exit
-    </button>
+    <div class="modal-body">
+      <p>Your quote request has been submitted successfully.</p>
+      <p><strong>Reference Number:</strong> <span id="quoteReferenceNumber"></span></p>
+      <p>We'll review your request and send you a detailed quote within 24 hours.</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" onclick="document.getElementById('quoteSuccessModal').style.display='none'">
+        Close
+      </button>
+    </div>
   </div>
 </div>
+
+<style>
+/* Additional styles for quote form */
+.multi-day-container {
+  display: none;
+}
+
+.multi-day-container.active {
+  display: block;
+}
+
+.multi-day-date-row {
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 15px;
+  background: #f8f9fa;
+}
+
+.day-number {
+  font-weight: bold;
+  color: #007e8c;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.date-time-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 15px;
+}
+
+.remove-day-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.calculation-display {
+  background: #e8f4f5;
+  border: 1px solid #007e8c;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.calculation-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 5px 0;
+}
+
+.calculation-row.total-row {
+  border-top: 2px solid #007e8c;
+  padding-top: 15px;
+  margin-top: 15px;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.validation-message {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  color: #856404;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 15px 0;
+  display: none;
+}
+
+.validation-message.error {
+  background: #f8d7da;
+  border-color: #f5c6cb;
+  color: #721c24;
+}
+
+.validation-message.success {
+  background: #d4edda;
+  border-color: #c3e6cb;
+  color: #155724;
+}
+
+.estimate-display {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+.estimate-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 5px 0;
+}
+
+.estimate-row.total-estimate {
+  border-top: 2px solid #007e8c;
+  padding-top: 15px;
+  margin-top: 15px;
+  font-weight: bold;
+  font-size: 18px;
+  color: #007e8c;
+}
+
+.estimate-note {
+  font-size: 13px;
+  color: #6c757d;
+  margin-top: 15px;
+  font-style: italic;
+}
+
+.address-status {
+  font-size: 12px;
+  margin-top: 5px;
+  padding: 5px;
+  border-radius: 4px;
+  display: none;
+}
+
+.address-status.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.quote-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 8px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  padding: 20px 30px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.modal-body {
+  padding: 30px;
+}
+
+.modal-footer {
+  padding: 20px 30px;
+  border-top: 1px solid #e9ecef;
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .date-time-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
