@@ -348,7 +348,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
         title: 'Assignment',
         dataIndex: 'assignment',
         key: 'assignment',
-        render: (_, __, index) => <strong>Assignment {index + 1}</strong>,
+        render: (_: any, __: any, index: number) => <strong>Assignment {index + 1}</strong>,
       },
       {
         title: 'Therapist',
@@ -392,7 +392,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
       {
         title: 'Actions',
         key: 'actions',
-        render: (_, record, index) => {
+        render: (_: any, record: any, index: number) => {
           const isLocked = diaryLocks[`assignment-${index}`];
           return (
             <Button
