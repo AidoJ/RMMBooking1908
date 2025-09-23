@@ -55,7 +55,7 @@ import CustomerCreate from "./pages/customers/create";
 import SystemSettings from "./pages/system-settings";
 
 // Import the quotes management components
-import { QuotesList, QuoteShow, QuoteEdit } from "./pages/quotes";
+import { QuotesList, QuoteShow, QuoteEdit, EnhancedQuoteEdit } from "./pages/quotes";
 
 // Import the discount codes management components
 import { DiscountCodesList, DiscountCodesCreate, DiscountCodesEdit, DiscountCodesShow } from "./pages/discount-codes";
@@ -291,7 +291,7 @@ function App() {
                     <Route path="/quotes">
                       <Route index element={<QuotesList />} />
                       <Route path="show/:id" element={<QuoteShow />} />
-                      <Route path="edit/:id" element={<QuoteEdit />} />
+                      <Route path="edit/:id" element={<EnhancedQuoteEdit />} />
                     </Route>
                     
                     {/* Discount Codes Management */}
