@@ -260,7 +260,7 @@
         <div class="content">
             <!-- Welcome Section -->
             <div class="welcome-section">
-                <h3>Hello {{contact_name}}!</h3>
+                <h3>Hello {{customer_name}}!</h3>
                 <p>Your quote request has been successfully received and is now being reviewed. We'll prepare a customized quote for your corporate event.</p>
             </div>
             
@@ -270,67 +270,67 @@
                 
                 <div class="detail-row">
                     <span class="detail-label">Reference ID:</span>
-                    <span class="detail-value">{{quote_reference}}</span>
+                    <span class="detail-value">{{quote_id}}</span>
                 </div>
-                
+
                 <div class="detail-row">
                     <span class="detail-label">Contact Name:</span>
-                    <span class="detail-value">{{contact_name}}</span>
+                    <span class="detail-value">{{customer_name}}</span>
                 </div>
-                
+
                 <div class="detail-row">
                     <span class="detail-label">Company Name:</span>
-                    <span class="detail-value">{{business_name}}</span>
+                    <span class="detail-value">{{company_name}}</span>
                 </div>
-                
+
                 <div class="detail-row">
                     <span class="detail-label">Email:</span>
-                    <span class="detail-value">{{contact_email}}</span>
+                    <span class="detail-value">{{customer_email}}</span>
                 </div>
-                
+
                 <div class="detail-row">
                     <span class="detail-label">Phone:</span>
-                    <span class="detail-value">{{contact_phone}}</span>
+                    <span class="detail-value">{{customer_phone}}</span>
                 </div>
-                
+
                 <div class="detail-row">
                     <span class="detail-label">Event Address:</span>
-                    <span class="detail-value">{{event_address}}</span>
+                    <span class="detail-value">{{event_location}}</span>
                 </div>
-                
+
                 <div class="detail-row">
                     <span class="detail-label">Event Date:</span>
-                    <span class="detail-value">{{event_date}}</span>
+                    <span class="detail-value">{{event_dates}}</span>
                 </div>
-                
+
                 <div class="detail-row">
                     <span class="detail-label">Event Type:</span>
                     <span class="detail-value">{{event_type}}</span>
                 </div>
-                
+
                 <div class="detail-row">
                     <span class="detail-label">Expected Attendees:</span>
                     <span class="detail-value">{{expected_attendees}}</span>
                 </div>
-                
+
                 <div class="detail-row">
-                    <span class="detail-label">Number of Massages:</span>
-                    <span class="detail-value">{{number_of_massages}}</span>
+                    <span class="detail-label">Number of Services:</span>
+                    <span class="detail-value">{{total_sessions}}</span>
                 </div>
-                
+
                 <div class="detail-row">
-                    <span class="detail-label">Duration per Massage:</span>
-                    <span class="detail-value">{{duration_per_massage}} minutes</span>
+                    <span class="detail-label">Duration per Service:</span>
+                    <span class="detail-value">{{session_duration_minutes}} minutes</span>
                 </div>
-                
+
                 <div class="detail-row">
                     <span class="detail-label">Total Event Duration:</span>
-                    <span class="detail-value">{{total_duration}}</span>
+                    <span class="detail-value">{{total_event_duration}}</span>
                 </div>
-                
+
                 <div class="detail-row">
-                    <span class="detail-label">Preferred Therapists:</span>
-                    <span class="detail-value">{{preferred_therapists}}</span>
+                    <span class="detail-label">No of Therapists:</span>
+                    <span class="detail-value">{{therapists_needed}}</span>
                 </div>
                 
                 <div class="detail-row">
@@ -343,10 +343,7 @@
                     <span class="detail-value">{{payment_method}}</span>
                 </div>
                 
-                <div class="detail-row">
-                    <span class="detail-label">PO Number:</span>
-                    <span class="detail-value">{{po_number}}</span>
-                </div>
+                
                 
                 <div class="detail-row">
                     <span class="detail-label">Setup Requirements:</span>

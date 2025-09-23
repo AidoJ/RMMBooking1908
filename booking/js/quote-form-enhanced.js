@@ -692,6 +692,20 @@ class QuoteFormManager {
     return totalHours < 5 ? 1 : 2;
   }
 
+  calculateTotalEventDuration(quoteData) {
+    const totalMinutes = quoteData.total_sessions * quoteData.session_duration_minutes;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours === 0) {
+      return `${minutes} minutes`;
+    } else if (minutes === 0) {
+      return `${hours} hour${hours > 1 ? 's' : ''}`;
+    } else {
+      return `${hours} hour${hours > 1 ? 's' : ''} ${minutes} minutes`;
+    }
+  }
+
   async saveQuoteToDatabase(quoteData) {
     console.log('Attempting to save quote data:', quoteData);
 
@@ -823,6 +837,12 @@ class QuoteFormManager {
         total_sessions: quoteData.total_sessions,
         session_duration_minutes: quoteData.session_duration_minutes,
         sessions_per_day: quoteData.sessions_per_day,
+
+        // Calculate total event duration
+        total_event_duration: this.calculateTotalEventDuration(quoteData),
+
+        // Therapists needed
+        therapists_needed: quoteData.therapists_needed,
 
         // Business requirements
         payment_method: this.formatPaymentMethod(quoteData.payment_method),
