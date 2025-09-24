@@ -96,7 +96,9 @@ export async function createBookingsFromQuote(
 ): Promise<{ success: boolean; bookingIds?: string[]; error?: string }> {
 
   try {
-    console.log('Creating bookings from quote:', quoteData.id, 'with', therapistAssignments.length, 'assignments');
+    console.log('🔄 Creating bookings from quote:', quoteData.id, 'with', therapistAssignments.length, 'assignments');
+    console.log('💰 Total amount:', quoteData.total_amount, 'GST:', quoteData.gst_amount);
+    console.log('📅 Duration:', quoteData.duration_minutes, 'minutes');
 
     // Validate inputs
     if (!therapistAssignments || therapistAssignments.length === 0) {
@@ -105,6 +107,20 @@ export async function createBookingsFromQuote(
 
     if (!quoteData.total_amount || !quoteData.duration_minutes) {
       throw new Error('Quote missing required financial or duration data');
+    }
+
+    // Check for existing bookings for this quote to prevent duplicates
+    const { data: existingBookings, error: checkError } = await supabaseClient
+      .from('bookings')
+      .select('id, booking_id')
+      .eq('parent_quote_id', quoteData.id);
+
+    if (checkError) {
+      console.warn('Warning: Could not check for existing bookings:', checkError.message);
+    } else if (existingBookings && existingBookings.length > 0) {
+      console.log('⚠️ Found', existingBookings.length, 'existing bookings for quote:', quoteData.id);
+      console.log('Existing booking IDs:', existingBookings.map(b => b.booking_id).join(', '));
+      throw new Error(`Quote ${quoteData.id} already has ${existingBookings.length} booking(s). Use update workflow instead.`);
     }
 
     // Calculate per-booking amounts (split evenly)
@@ -181,7 +197,7 @@ export async function createBookingsFromQuote(
         therapist_id: assignment.therapist_id,
         booking_time: bookingTime,
         duration_minutes: Math.round(assignmentDurationMinutes),
-        status: 'requested',
+        status: 'pending', // CRITICAL: This blocks therapist diary immediately
 
         // Financial (split evenly)
         price: parseFloat(pricePerBooking.toFixed(2)),
@@ -224,7 +240,9 @@ export async function createBookingsFromQuote(
       bookingRecords.push(bookingRecord);
     }
 
-    console.log('Prepared', bookingRecords.length, 'booking records');
+    console.log('📋 Prepared', bookingRecords.length, 'booking records');
+    console.log('💵 Price per booking:', pricePerBooking.toFixed(2), 'GST per booking:', gstPerBooking.toFixed(2));
+    console.log('🔒 All bookings will have status: PENDING (blocks therapist diaries)');
 
     // Insert booking records into database
     const { data: insertedBookings, error: insertError } = await supabaseClient
@@ -239,7 +257,8 @@ export async function createBookingsFromQuote(
 
     const bookingIds = insertedBookings?.map(b => b.id) || [];
 
-    console.log('Successfully created', bookingIds.length, 'bookings');
+    console.log('✅ Successfully created', bookingIds.length, 'PENDING bookings - therapist diaries now BLOCKED');
+    console.log('📋 Booking IDs created:', insertedBookings?.map(b => b.booking_id).join(', '));
 
     return {
       success: true,
