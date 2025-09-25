@@ -197,7 +197,7 @@ export async function createBookingsFromQuote(
         therapist_id: assignment.therapist_id,
         booking_time: bookingTime,
         duration_minutes: Math.round(assignmentDurationMinutes),
-        status: 'pending', // CRITICAL: This blocks therapist diary immediately
+        status: 'requested', // CRITICAL: This blocks therapist diary immediately
 
         // Financial (split evenly)
         price: parseFloat(pricePerBooking.toFixed(2)),
@@ -242,7 +242,7 @@ export async function createBookingsFromQuote(
 
     console.log('📋 Prepared', bookingRecords.length, 'booking records');
     console.log('💵 Price per booking:', pricePerBooking.toFixed(2), 'GST per booking:', gstPerBooking.toFixed(2));
-    console.log('🔒 All bookings will have status: PENDING (blocks therapist diaries)');
+    console.log('🔒 All bookings will have status: REQUESTED (blocks therapist diaries)');
 
     // Insert booking records into database
     const { data: insertedBookings, error: insertError } = await supabaseClient

@@ -154,7 +154,7 @@ async function checkBookingConflicts(
     .from('bookings')
     .select('booking_time, duration_minutes')
     .eq('therapist_id', therapistId)
-    .in('status', ['confirmed', 'pending']) // Include tentative bookings
+    .in('status', ['confirmed', 'requested']) // Include tentative bookings
     .gte('booking_time', startDateTime.subtract(30, 'minute').toISOString()) // Buffer before
     .lte('booking_time', endDateTime.add(30, 'minute').toISOString()); // Buffer after
 
