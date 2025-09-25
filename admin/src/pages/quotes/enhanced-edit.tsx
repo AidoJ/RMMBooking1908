@@ -180,6 +180,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
             booking_time,
             therapist_id,
             therapist_fee,
+            duration_minutes,
             therapist_profiles!bookings_therapist_id_fkey(first_name, last_name)
           `)
           .eq('parent_quote_id', id)
@@ -200,7 +201,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
             const time = bookingDateTime.toTimeString().split(' ')[0]; // HH:MM:SS
 
             // Calculate actual hourly rate from total fee and duration
-            const durationHours = quotesData.session_duration_minutes / 60;
+            const durationHours = booking.duration_minutes / 60;
             const actualHourlyRate = booking.therapist_fee / durationHours;
 
             return {
