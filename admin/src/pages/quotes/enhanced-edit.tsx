@@ -165,6 +165,63 @@ export const EnhancedQuoteEdit: React.FC = () => {
     fetchTaxRate();
   }, []);
 
+  // Load existing therapist assignments from bookings table
+  useEffect(() => {
+    const loadExistingAssignments = async () => {
+      if (!id || !quotesData) return;
+
+      try {
+        const supabase = supabaseClient;
+
+        // Query bookings with therapist profile data
+        const { data: bookingsData, error } = await supabase
+          .from('bookings')
+          .select(`
+            booking_time,
+            therapist_id,
+            therapist_fee,
+            therapist_profiles!inner(first_name, last_name)
+          `)
+          .eq('parent_quote_id', id)
+          .order('booking_time');
+
+        if (error) {
+          console.error('Error loading existing assignments:', error);
+          return;
+        }
+
+        if (bookingsData && bookingsData.length > 0) {
+          console.log('Found existing bookings:', bookingsData.length);
+
+          // Transform to TherapistAssignment format
+          const assignments: TherapistAssignment[] = bookingsData.map((booking: any) => {
+            const bookingDateTime = new Date(booking.booking_time);
+            const date = bookingDateTime.toISOString().split('T')[0]; // YYYY-MM-DD
+            const time = bookingDateTime.toTimeString().split(' ')[0]; // HH:MM:SS
+
+            return {
+              date,
+              start_time: time,
+              therapist_id: booking.therapist_id,
+              therapist_name: `${booking.therapist_profiles.first_name} ${booking.therapist_profiles.last_name}`,
+              hourly_rate: booking.therapist_fee,
+              is_override: false
+            };
+          });
+
+          console.log('Transformed assignments:', assignments);
+          setTherapistAssignments(assignments);
+          setAvailabilityStatus('available');
+          setWorkflowStep(3); // Move to therapist assignment step
+        }
+      } catch (error) {
+        console.error('Error loading existing assignments:', error);
+      }
+    };
+
+    loadExistingAssignments();
+  }, [id, quotesData]);
+
   // Watch for changes in total_amount and discount_amount to auto-calculate GST and final amount
   const totalAmount = Form.useWatch('total_amount', form);
   const discountAmount = Form.useWatch('discount_amount', form);
