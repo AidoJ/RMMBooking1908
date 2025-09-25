@@ -147,6 +147,28 @@ export const EnhancedQuoteEdit: React.FC = () => {
     }
   }, [quotesData]);
 
+  // Watch for changes in total_amount and discount_amount to auto-calculate GST and final amount
+  const totalAmount = Form.useWatch('total_amount', form);
+  const discountAmount = Form.useWatch('discount_amount', form);
+
+  // Auto-calculate GST and Final Amount when watched values change
+  useEffect(() => {
+    if (totalAmount != null && discountAmount != null) {
+      // Calculate the subtotal after discount
+      const subtotal = totalAmount - discountAmount;
+
+      // Calculate 10% GST on subtotal (only if subtotal is positive)
+      const gstAmount = subtotal > 0 ? subtotal * 0.1 : 0;
+
+      // Calculate final amount (subtotal + GST)
+      const finalAmount = subtotal + gstAmount;
+
+      // Update form fields
+      form.setFieldValue('gst_amount', parseFloat(gstAmount.toFixed(2)));
+      form.setFieldValue('final_amount', parseFloat(finalAmount.toFixed(2)));
+    }
+  }, [totalAmount, discountAmount, form]);
+
   // Get status color and text
   const getStatusInfo = (status: string) => {
     const statusMap = {
@@ -866,8 +888,10 @@ export const EnhancedQuoteEdit: React.FC = () => {
                   onClick={handleSendOfficialQuote}
                   disabled={!workflowState.availabilityConfirmed || workflowState.quoteSent}
                   style={{
+                    color: '#ffffff',
                     opacity: workflowState.quoteSent ? 0.6 : 1,
-                    background: workflowState.quoteSent ? '#d9d9d9' : undefined
+                    backgroundColor: workflowState.quoteSent ? '#d9d9d9' : '#007e8c',
+                    borderColor: workflowState.quoteSent ? '#d9d9d9' : '#007e8c'
                   }}
                 >
                   {workflowState.quoteSent ? '✅ Quote Sent' : '📧 Send Official Quote'}

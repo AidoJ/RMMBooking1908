@@ -68,6 +68,7 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
   const [loading, setLoading] = useState(false);
   const [availability, setAvailability] = useState<QuoteAvailabilityResult | null>(null);
   const [assignments, setAssignments] = useState<TherapistAssignment[]>([]);
+  const [availabilityConfirmed, setAvailabilityConfirmed] = useState(false);
   const [showOverrideModal, setShowOverrideModal] = useState(false);
   const [overrideSelection, setOverrideSelection] = useState<{
     date: string;
@@ -590,13 +591,27 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
             >
               Decline Quote
             </Button>
-            <Button
-              type="primary"
-              disabled={!canConfirmAvailability()}
-              onClick={() => onAvailabilityConfirmed(assignments)}
+            <Tooltip
+              title={canConfirmAvailability()
+                ? "Click to confirm therapist assignments and create pending bookings"
+                : "Please assign all required therapists before confirming"}
             >
-              Confirm Therapist Assignments
-            </Button>
+              <Button
+                type="primary"
+                disabled={!canConfirmAvailability() || availabilityConfirmed}
+                onClick={() => {
+                  setAvailabilityConfirmed(true);
+                  onAvailabilityConfirmed(assignments);
+                }}
+                style={{
+                  color: '#ffffff',
+                  backgroundColor: availabilityConfirmed ? '#d9d9d9' : (canConfirmAvailability() ? '#007e8c' : undefined),
+                  borderColor: availabilityConfirmed ? '#d9d9d9' : (canConfirmAvailability() ? '#007e8c' : undefined)
+                }}
+              >
+                {availabilityConfirmed ? '✓ Assignments Confirmed' : 'Confirm Therapist Assignments'}
+              </Button>
+            </Tooltip>
           </Space>
         </Space>
       </Card>

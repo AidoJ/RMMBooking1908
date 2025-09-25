@@ -79,7 +79,7 @@ exports.handler = async (event, context) => {
     // Initialize Supabase client
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    let booking, bookings;
+    let booking, bookings, quote;
 
     // Handle quote-based response (multiple bookings) vs single booking response
     if (quoteId) {
@@ -87,19 +87,21 @@ exports.handler = async (event, context) => {
       console.log(`Processing quote-based response for quote: ${quoteId}`);
 
       // Get quote data first
-      const { data: quote, error: quoteError } = await supabase
+      const { data: quoteData, error: quoteError } = await supabase
         .from('quotes')
         .select('*')
         .eq('id', quoteId)
         .single();
 
-      if (quoteError || !quote) {
+      if (quoteError || !quoteData) {
         return {
           statusCode: 404,
           headers,
           body: JSON.stringify({ error: 'Quote not found' })
         };
       }
+
+      quote = quoteData;
 
       // Check if quote has already been responded to
       if (quote.status === 'accepted' || quote.status === 'declined') {

@@ -542,7 +542,7 @@ export const EmailService = {
           const timeFormatted = assignment.start_time.substring(0, 5); // "10:00:00" -> "10:00"
 
           // Enhanced therapist session formatting with better structure - NO FEES SHOWN TO CLIENT
-          therapistScheduleText += `   🕒 SESSION ${index + 1}\n`;
+          therapistScheduleText += `   🕒 THERAPIST ${index + 1}\n`;
           therapistScheduleText += `   ┌─────────────────────────────────────────────────────────────────┐\n`;
           therapistScheduleText += `   │  👤 Therapist: ${assignment.therapist_name.padEnd(42)} │\n`;
           therapistScheduleText += `   │  ⏰ Time:      ${timeFormatted.padEnd(42)} │\n`;
