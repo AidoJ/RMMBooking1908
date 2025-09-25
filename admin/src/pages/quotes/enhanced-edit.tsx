@@ -74,6 +74,20 @@ export const EnhancedQuoteEdit: React.FC = () => {
     isValid: boolean;
   }>({ eventDuration: 0, serviceDuration: 0, isValid: false });
 
+  // Stage 1: Button state management
+  const [workflowState, setWorkflowState] = useState({
+    availabilityConfirmed: false,
+    availabilityConfirmedAt: null as string | null,
+    quoteSent: false,
+    quoteSentAt: null as string | null,
+    quoteAccepted: false,
+    quoteAcceptedAt: null as string | null,
+    invoiceSent: false,
+    invoiceSentAt: null as string | null,
+    receiptSent: false,
+    receiptSentAt: null as string | null,
+  });
+
   const { formProps, saveButtonProps, queryResult, form } = useForm({
     meta: {
       select: '*,quote_dates(*)',
@@ -205,19 +219,28 @@ export const EnhancedQuoteEdit: React.FC = () => {
   };
 
   const handleSendOfficialQuote = async () => {
-    if (therapistAssignments.length === 0) {
-      message.error('No therapist assignments found. Please confirm availability first.');
+    if (!workflowState.availabilityConfirmed) {
+      message.error('Please confirm therapist availability first.');
+      return;
+    }
+
+    if (workflowState.quoteSent) {
+      message.warning('Official quote has already been sent.');
       return;
     }
 
     try {
-      message.loading('Creating bookings and sending quote...', 0);
+      message.loading('Sending official quote...', 0);
 
-      // Create bookings
-      const bookingResult = await createBookingsFromQuote(quotesData as any, therapistAssignments);
+      // Send official quote email (bookings already created in availability confirmation)
+      const emailResult = await EmailService.sendEnhancedOfficialQuote(
+        quotesData,
+        therapistAssignments,
+        [] // BookingIds - we'll get these from the database as they were created during availability confirmation
+      );
 
-      if (!bookingResult.success) {
-        throw new Error(`Failed to create bookings: ${bookingResult.error}`);
+      if (!emailResult.success) {
+        throw new Error('Failed to send quote email');
       }
 
       // Update quote status
@@ -231,8 +254,16 @@ export const EnhancedQuoteEdit: React.FC = () => {
 
       if (error) throw error;
 
+      // Update workflow state
+      const now = new Date().toLocaleDateString();
+      setWorkflowState(prev => ({
+        ...prev,
+        quoteSent: true,
+        quoteSentAt: now
+      }));
+
       message.destroy();
-      message.success(`Official quote sent! Created ${bookingResult.bookingIds?.length || 0} bookings.`);
+      message.success(`✅ Official quote sent ${now}! Client will receive email with Accept/Decline options.`);
       setWorkflowStep(5);
       queryResult?.refetch();
 
@@ -315,6 +346,52 @@ export const EnhancedQuoteEdit: React.FC = () => {
 
     return null;
   };
+
+  // Stage 1: Workflow status messages
+  const renderWorkflowMessages = () => (
+    <Card title="📋 Workflow Status" style={{ marginBottom: 16 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {workflowState.availabilityConfirmed && (
+          <div style={{ padding: 8, background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 4 }}>
+            ✅ <strong>Therapist availability confirmed</strong> {workflowState.availabilityConfirmedAt}
+            <div style={{ fontSize: 12, color: '#52c41a', marginTop: 4 }}>
+              Therapist calendars updated with pending bookings
+            </div>
+          </div>
+        )}
+
+        {workflowState.quoteSent && (
+          <div style={{ padding: 8, background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 4 }}>
+            ✅ <strong>Official quote sent</strong> {workflowState.quoteSentAt}
+            <div style={{ fontSize: 12, color: '#52c41a', marginTop: 4 }}>
+              Client will receive email with Accept/Decline options
+            </div>
+          </div>
+        )}
+
+        {workflowState.quoteAccepted && (
+          <div style={{ padding: 8, background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 4 }}>
+            ✅ <strong>Quote accepted by client</strong> {workflowState.quoteAcceptedAt}
+            <div style={{ fontSize: 12, color: '#52c41a', marginTop: 4 }}>
+              Therapist calendars updated to confirmed bookings
+            </div>
+          </div>
+        )}
+
+        {workflowState.invoiceSent && (
+          <div style={{ padding: 8, background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 4 }}>
+            ✅ <strong>Official invoice sent</strong> {workflowState.invoiceSentAt}
+          </div>
+        )}
+
+        {workflowState.receiptSent && (
+          <div style={{ padding: 8, background: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 4 }}>
+            ✅ <strong>Official receipt sent</strong> {workflowState.receiptSentAt}
+          </div>
+        )}
+      </div>
+    </Card>
+  );
 
   const renderEventScheduleFields = () => {
     if (quotesData?.event_structure === 'single_day') {
@@ -488,11 +565,31 @@ export const EnhancedQuoteEdit: React.FC = () => {
     return (
       <QuoteAvailabilityChecker
         quoteId={id}
-        onAvailabilityConfirmed={(assignments) => {
-          setTherapistAssignments(assignments);
-          setAvailabilityStatus('available');
-          setWorkflowStep(3);
-          message.success('Therapist assignments confirmed! Ready to send official quote.');
+        onAvailabilityConfirmed={async (assignments) => {
+          try {
+            // Create pending bookings immediately
+            const bookingResult = await createBookingsFromQuote(quotesData as any, assignments);
+
+            if (!bookingResult.success) {
+              throw new Error(`Failed to create bookings: ${bookingResult.error}`);
+            }
+
+            // Update workflow state
+            const now = new Date().toLocaleDateString();
+            setTherapistAssignments(assignments);
+            setAvailabilityStatus('available');
+            setWorkflowStep(3);
+            setWorkflowState(prev => ({
+              ...prev,
+              availabilityConfirmed: true,
+              availabilityConfirmedAt: now
+            }));
+
+            message.success(`✅ Therapist availability confirmed ${now}! ${bookingResult.bookingIds?.length} pending bookings created.`);
+          } catch (error) {
+            console.error('Error confirming availability:', error);
+            message.error('Failed to confirm availability and create bookings.');
+          }
         }}
         onAvailabilityDeclined={() => {
           setAvailabilityStatus('unavailable');
@@ -531,6 +628,9 @@ export const EnhancedQuoteEdit: React.FC = () => {
 
       {/* Workflow Progress */}
       {renderWorkflowProgress()}
+
+      {/* Stage 1: Workflow Status Messages */}
+      {renderWorkflowMessages()}
 
       {/* Workflow Alert */}
       {renderWorkflowAlert()}
@@ -764,9 +864,13 @@ export const EnhancedQuoteEdit: React.FC = () => {
                   size="large"
                   icon={<MailOutlined />}
                   onClick={handleSendOfficialQuote}
-                  disabled={workflowStep < 4}
+                  disabled={!workflowState.availabilityConfirmed || workflowState.quoteSent}
+                  style={{
+                    opacity: workflowState.quoteSent ? 0.6 : 1,
+                    background: workflowState.quoteSent ? '#d9d9d9' : undefined
+                  }}
                 >
-                  📧 Send Official Quote
+                  {workflowState.quoteSent ? '✅ Quote Sent' : '📧 Send Official Quote'}
                 </Button>
                 <Button size="large">
                   📋 Preview Quote
