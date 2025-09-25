@@ -44,6 +44,7 @@ import { QuoteAvailabilityChecker, type TherapistAssignment } from '../../compon
 import { createBookingsFromQuote } from '../../services/bookingCreationService';
 import { EmailService } from '../../utils/emailService';
 import { supabaseClient } from '../../utility';
+import { getSystemSetting } from '../../utils/systemSettings';
 import dayjs from 'dayjs';
 import './enhanced-edit.css';
 
@@ -87,6 +88,8 @@ export const EnhancedQuoteEdit: React.FC = () => {
     receiptSent: false,
     receiptSentAt: null as string | null,
   });
+
+  const [taxRatePercentage, setTaxRatePercentage] = useState<number>(10.0); // Default to 10% if not loaded
 
   const { formProps, saveButtonProps, queryResult, form } = useForm({
     meta: {
@@ -147,6 +150,21 @@ export const EnhancedQuoteEdit: React.FC = () => {
     }
   }, [quotesData]);
 
+  // Fetch tax rate from system settings
+  useEffect(() => {
+    const fetchTaxRate = async () => {
+      try {
+        const taxRate = await getSystemSetting('tax_rate_percentage', 'decimal', 10.0);
+        setTaxRatePercentage(taxRate);
+      } catch (error) {
+        console.error('Error fetching tax rate from system settings:', error);
+        // Keep default 10% if fetch fails
+      }
+    };
+
+    fetchTaxRate();
+  }, []);
+
   // Watch for changes in total_amount and discount_amount to auto-calculate GST and final amount
   const totalAmount = Form.useWatch('total_amount', form);
   const discountAmount = Form.useWatch('discount_amount', form);
@@ -157,8 +175,8 @@ export const EnhancedQuoteEdit: React.FC = () => {
       // Calculate the subtotal after discount
       const subtotal = totalAmount - discountAmount;
 
-      // Calculate 10% GST on subtotal (only if subtotal is positive)
-      const gstAmount = subtotal > 0 ? subtotal * 0.1 : 0;
+      // Calculate GST on subtotal using system setting (only if subtotal is positive)
+      const gstAmount = subtotal > 0 ? subtotal * (taxRatePercentage / 100) : 0;
 
       // Calculate final amount (subtotal + GST)
       const finalAmount = subtotal + gstAmount;
@@ -167,7 +185,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
       form.setFieldValue('gst_amount', parseFloat(gstAmount.toFixed(2)));
       form.setFieldValue('final_amount', parseFloat(finalAmount.toFixed(2)));
     }
-  }, [totalAmount, discountAmount, form]);
+  }, [totalAmount, discountAmount, taxRatePercentage, form]);
 
   // Get status color and text
   const getStatusInfo = (status: string) => {
@@ -815,7 +833,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
                     </Form.Item>
                   </Col>
                   <Col span={8}>
-                    <Form.Item label="GST (10%)" name="gst_amount">
+                    <Form.Item label={`GST (${taxRatePercentage}%)`} name="gst_amount">
                       <InputNumber
                         min={0}
                         precision={2}
@@ -942,7 +960,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
                   <span>${quotesData?.total_amount?.toFixed(2) || '0.00'}</span>
                 </div>
                 <div className="summary-item">
-                  <span>GST (10%):</span>
+                  <span>GST ({taxRatePercentage}%):</span>
                   <span>${quotesData?.gst_amount?.toFixed(2) || '0.00'}</span>
                 </div>
                 <Divider style={{ margin: '12px 0' }} />
