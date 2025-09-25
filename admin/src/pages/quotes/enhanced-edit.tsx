@@ -173,14 +173,14 @@ export const EnhancedQuoteEdit: React.FC = () => {
       try {
         const supabase = supabaseClient;
 
-        // Query bookings with therapist profile data
+        // Query bookings with therapist profile data - specify the exact foreign key relationship
         const { data: bookingsData, error } = await supabase
           .from('bookings')
           .select(`
             booking_time,
             therapist_id,
             therapist_fee,
-            therapist_profiles!inner(first_name, last_name)
+            therapist_profiles!bookings_therapist_id_fkey(first_name, last_name)
           `)
           .eq('parent_quote_id', id)
           .order('booking_time');
