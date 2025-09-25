@@ -199,12 +199,16 @@ export const EnhancedQuoteEdit: React.FC = () => {
             const date = bookingDateTime.toISOString().split('T')[0]; // YYYY-MM-DD
             const time = bookingDateTime.toTimeString().split(' ')[0]; // HH:MM:SS
 
+            // Calculate actual hourly rate from total fee and duration
+            const durationHours = quotesData.session_duration_minutes / 60;
+            const actualHourlyRate = booking.therapist_fee / durationHours;
+
             return {
               date,
               start_time: time,
               therapist_id: booking.therapist_id,
               therapist_name: `${booking.therapist_profiles.first_name} ${booking.therapist_profiles.last_name}`,
-              hourly_rate: booking.therapist_fee,
+              hourly_rate: actualHourlyRate,
               is_override: false
             };
           });
