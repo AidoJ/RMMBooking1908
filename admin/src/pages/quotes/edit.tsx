@@ -78,6 +78,28 @@ export const QuoteEdit: React.FC = () => {
             transformedData.single_start_time = dayjs(`2000-01-01 ${transformedData.single_start_time}`);
           }
           
+          // Convert quote_dates date/time fields to dayjs objects
+          if (transformedData.quote_dates && Array.isArray(transformedData.quote_dates)) {
+            transformedData.quote_dates = transformedData.quote_dates.map((dateEntry: any) => ({
+              ...dateEntry,
+              event_date: dateEntry.event_date ? dayjs(dateEntry.event_date) : null,
+              start_time: dateEntry.start_time ? dayjs(`2000-01-01 ${dateEntry.start_time}`) : null,
+              finish_time: dateEntry.finish_time ? dayjs(`2000-01-01 ${dateEntry.finish_time}`) : null,
+            }));
+          }
+          
+          // Convert other timestamp fields to dayjs objects if they exist
+          const timestampFields = [
+            'created_at', 'updated_at', 'quote_sent_at', 'quote_accepted_at', 
+            'invoice_sent_at', 'payment_due_date', 'paid_date', 'quote_valid_until'
+          ];
+          
+          timestampFields.forEach(field => {
+            if (transformedData[field]) {
+              transformedData[field] = dayjs(transformedData[field]);
+            }
+          });
+          
           // Set the transformed data to the form
           form?.setFieldsValue(transformedData);
         }
