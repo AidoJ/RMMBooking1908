@@ -599,13 +599,13 @@ export const EnhancedQuoteEdit: React.FC = () => {
                     title: 'Date',
                     dataIndex: 'event_date',
                     key: 'event_date',
-                    render: (date: string) => dayjs(date).format('MMM DD, YYYY'),
+                    render: (date: string) => date ? dayjs(date).format('MMM DD, YYYY') : 'Not set',
                   },
                   {
                     title: 'Start Time',
                     dataIndex: 'start_time',
                     key: 'start_time',
-                    render: (time: string) => dayjs(`2000-01-01 ${time}`).format('HH:mm'),
+                    render: (time: string) => time ? dayjs(`2000-01-01 ${time}`).format('HH:mm') : 'Not set',
                   },
                   {
                     title: 'Finish Time',
