@@ -100,6 +100,25 @@ export const EnhancedQuoteEdit: React.FC = () => {
         message.success('Quote updated successfully');
       }
     },
+    // Transform data when loading from database
+    queryOptions: {
+      onSuccess: (data) => {
+        if (data?.data) {
+          const transformedData = { ...data.data };
+          
+          // Convert date/time strings to dayjs objects for DatePicker/TimePicker
+          if (transformedData.single_event_date) {
+            transformedData.single_event_date = dayjs(transformedData.single_event_date);
+          }
+          if (transformedData.single_start_time) {
+            transformedData.single_start_time = dayjs(`2000-01-01 ${transformedData.single_start_time}`);
+          }
+          
+          // Set the transformed data to the form
+          form?.setFieldsValue(transformedData);
+        }
+      }
+    }
   });
 
   const quotesData = queryResult?.data?.data;
