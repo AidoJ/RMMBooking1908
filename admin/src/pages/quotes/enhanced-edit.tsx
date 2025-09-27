@@ -93,7 +93,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
 
   const { formProps, saveButtonProps, queryResult, form } = useForm({
     meta: {
-      select: '*,quote_dates(*)',
+      select: '*,quote_dates(*),services(id,service_name,service_base_price)',
     },
     onMutationSuccess: (data, variables, context, isAutoSave) => {
       if (!isAutoSave) {
@@ -130,7 +130,12 @@ export const EnhancedQuoteEdit: React.FC = () => {
               transformedData[field] = dayjs(transformedData[field]);
             }
           });
-          
+
+          // Set hourly rate from service base price if available and not already set
+          if (transformedData.services && transformedData.services.service_base_price && !transformedData.hourly_rate) {
+            transformedData.hourly_rate = transformedData.services.service_base_price;
+          }
+
           // Set the transformed data to the form
           form?.setFieldsValue(transformedData);
         }
@@ -278,6 +283,16 @@ export const EnhancedQuoteEdit: React.FC = () => {
       form.setFieldValue('final_amount', parseFloat(finalAmount.toFixed(2)));
     }
   }, [totalAmount, discountAmount, taxRatePercentage, form]);
+
+  // Ensure hourly rate is set from service base price when quote data loads
+  useEffect(() => {
+    if (quotesData?.services?.service_base_price) {
+      const currentHourlyRate = form?.getFieldValue('hourly_rate');
+      if (!currentHourlyRate) {
+        form?.setFieldValue('hourly_rate', quotesData.services.service_base_price);
+      }
+    }
+  }, [quotesData, form]);
 
   // Get status color and text
   const getStatusInfo = (status: string) => {
@@ -790,6 +805,13 @@ export const EnhancedQuoteEdit: React.FC = () => {
                       </Select>
                     </Form.Item>
                   </Col>
+                  <Col span={12}>
+                    <Form.Item label="Selected Service" name={["services", "service_name"]}>
+                      <Input readOnly disabled />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row gutter={[16, 16]}>
                   <Col span={12}>
                     <Form.Item label="Expected Attendees" name="expected_attendees">
                       <InputNumber min={1} style={{ width: '100%' }} />
