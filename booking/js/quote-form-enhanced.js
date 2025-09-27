@@ -208,52 +208,34 @@ class QuoteFormManager {
   }
 
   calculateEventScheduleTime() {
-    console.log('📅 Calculating event schedule time for:', this.eventStructure);
+    console.log('📅 Calculating event schedule time using unified structure');
 
-    if (this.eventStructure === 'single_day') {
-      const startTime = document.getElementById('singleStartTime')?.value;
-      const finishTime = document.getElementById('singleFinishTime')?.value;
+    // Always use unified multi-day structure
+    let totalMinutes = 0;
 
-      console.log('Single day times:', { startTime, finishTime });
+    const dateRows = document.querySelectorAll('.multi-day-date-row');
+    console.log('Date rows found:', dateRows.length);
 
-      if (!startTime || !finishTime) return 0;
+    dateRows.forEach((row, index) => {
+      const startTime = row.querySelector('.event-start-time')?.value;
+      const finishTime = row.querySelector('.event-finish-time')?.value;
 
-      const start = new Date(`1970-01-01T${startTime}:00`);
-      const finish = new Date(`1970-01-01T${finishTime}:00`);
+      console.log(`Day ${index + 1} times:`, { startTime, finishTime });
 
-      const diffMs = finish - start;
-      const diffMinutes = diffMs / (1000 * 60);
+      if (startTime && finishTime) {
+        const start = new Date(`1970-01-01T${startTime}:00`);
+        const finish = new Date(`1970-01-01T${finishTime}:00`);
 
-      console.log('Single day calculation:', { diffMinutes });
-      return Math.max(0, diffMinutes);
-    } else {
-      // Multi-day calculation
-      let totalMinutes = 0;
+        const diffMs = finish - start;
+        const dayMinutes = Math.max(0, diffMs / (1000 * 60));
 
-      const dateRows = document.querySelectorAll('.multi-day-date-row');
-      console.log('Multi-day rows found:', dateRows.length);
+        console.log(`Day ${index + 1} minutes:`, dayMinutes);
+        totalMinutes += dayMinutes;
+      }
+    });
 
-      dateRows.forEach((row, index) => {
-        const startTime = row.querySelector('.event-start-time')?.value;
-        const finishTime = row.querySelector('.event-finish-time')?.value;
-
-        console.log(`Day ${index + 1} times:`, { startTime, finishTime });
-
-        if (startTime && finishTime) {
-          const start = new Date(`1970-01-01T${startTime}:00`);
-          const finish = new Date(`1970-01-01T${finishTime}:00`);
-
-          const diffMs = finish - start;
-          const dayMinutes = Math.max(0, diffMs / (1000 * 60));
-
-          console.log(`Day ${index + 1} minutes:`, dayMinutes);
-          totalMinutes += dayMinutes;
-        }
-      });
-
-      console.log('Multi-day total:', totalMinutes);
-      return totalMinutes;
-    }
+    console.log('Total event schedule time:', totalMinutes);
+    return totalMinutes;
   }
 
   calculateServiceRequirementsTime() {
@@ -448,19 +430,13 @@ class QuoteFormManager {
   getEventDates() {
     const dates = [];
 
-    if (this.eventStructure === 'single_day') {
-      const singleDate = document.getElementById('singleEventDate')?.value;
-      console.log('Single day date:', singleDate);
-      if (singleDate) dates.push(singleDate);
-    } else {
-      // Multi-day: get all date inputs
-      const dateInputs = document.querySelectorAll('.event-date');
-      console.log('Multi-day date inputs found:', dateInputs.length);
-      dateInputs.forEach((input, index) => {
-        console.log(`Date input ${index}:`, input.value);
-        if (input.value) dates.push(input.value);
-      });
-    }
+    // Always use unified multi-day structure
+    const dateInputs = document.querySelectorAll('.event-date');
+    console.log('Date inputs found:', dateInputs.length);
+    dateInputs.forEach((input, index) => {
+      console.log(`Date input ${index}:`, input.value);
+      if (input.value) dates.push(input.value);
+    });
 
     console.log('All collected dates:', dates);
     return dates;
@@ -546,25 +522,20 @@ class QuoteFormManager {
       'numberOfServices', 'durationPerService', 'paymentMethod', 'urgency'
     ];
 
-    // Add structure-specific required fields
-    if (this.eventStructure === 'single_day') {
-      required.push('singleEventDate', 'singleStartTime', 'singleFinishTime');
-    } else {
-      // Validate multi-day dates
-      const dateInputs = document.querySelectorAll('.event-date');
-      const startTimeInputs = document.querySelectorAll('.event-start-time');
-      const finishTimeInputs = document.querySelectorAll('.event-finish-time');
+    // Validate unified event date/time fields
+    const dateInputs = document.querySelectorAll('.event-date');
+    const startTimeInputs = document.querySelectorAll('.event-start-time');
+    const finishTimeInputs = document.querySelectorAll('.event-finish-time');
 
-      if (dateInputs.length === 0) {
-        alert('Please add at least one event date');
+    if (dateInputs.length === 0) {
+      alert('Please add at least one event date');
+      return false;
+    }
+
+    for (let i = 0; i < dateInputs.length; i++) {
+      if (!dateInputs[i].value || !startTimeInputs[i].value || !finishTimeInputs[i].value) {
+        alert(`Please complete Day ${i + 1} date, start time, and finish time`);
         return false;
-      }
-
-      for (let i = 0; i < dateInputs.length; i++) {
-        if (!dateInputs[i].value || !startTimeInputs[i].value || !finishTimeInputs[i].value) {
-          alert(`Please complete Day ${i + 1} date, start time, and finish time`);
-          return false;
-        }
       }
     }
 
@@ -650,18 +621,11 @@ class QuoteFormManager {
       service_id: this.selectedService?.id || null
     };
 
-    // Add structure-specific fields
-    if (this.eventStructure === 'single_day') {
-      data.single_event_date = document.getElementById('singleEventDate').value;
-      data.single_start_time = document.getElementById('singleStartTime').value;
-      data.sessions_per_day = data.total_sessions;
-    } else {
-      // Count actual date input fields for multi-day events
-      const dateInputs = document.querySelectorAll('.event-date');
-      const numberOfDays = Math.max(dateInputs.length, 1);
-      data.number_of_event_days = numberOfDays;
-      data.sessions_per_day = Math.ceil(data.total_sessions / numberOfDays);
-    }
+    // Add unified event fields
+    const dateInputs = document.querySelectorAll('.event-date');
+    const numberOfDays = Math.max(dateInputs.length, 1);
+    data.number_of_event_days = numberOfDays;
+    data.sessions_per_day = Math.ceil(data.total_sessions / numberOfDays);
 
     return data;
   }
