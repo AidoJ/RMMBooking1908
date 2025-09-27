@@ -56,7 +56,7 @@ export const QuoteEdit: React.FC = () => {
 
   const { formProps, saveButtonProps, queryResult, form } = useForm({
     meta: {
-      select: '*,quote_dates(*),services(id,service_name,service_base_price)',
+      select: '*,quote_dates(*),services(id,name,service_base_price)',
     },
     onMutationSuccess: (data, variables, context, isAutoSave) => {
       // Handle successful mutations (save/update)
@@ -645,7 +645,7 @@ export const QuoteEdit: React.FC = () => {
             <Col span={12}>
               <Form.Item
                 label="Selected Service"
-                name={["services", "service_name"]}
+                name={["services", "name"]}
               >
                 <Input readOnly disabled />
               </Form.Item>

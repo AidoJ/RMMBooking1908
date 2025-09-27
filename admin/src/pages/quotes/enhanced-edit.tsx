@@ -93,7 +93,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
 
   const { formProps, saveButtonProps, queryResult, form } = useForm({
     meta: {
-      select: '*,quote_dates(*),services(id,service_name,service_base_price)',
+      select: '*,quote_dates(*),services(id,name,service_base_price)',
     },
     onMutationSuccess: (data, variables, context, isAutoSave) => {
       if (!isAutoSave) {
@@ -806,7 +806,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item label="Selected Service" name={["services", "service_name"]}>
+                    <Form.Item label="Selected Service" name={["services", "name"]}>
                       <Input readOnly disabled />
                     </Form.Item>
                   </Col>
