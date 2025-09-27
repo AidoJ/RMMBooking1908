@@ -150,8 +150,8 @@ export const QuoteShow: React.FC = () => {
                       {record.event_structure === 'single_day' ? 'Single Day' : 'Multi-Day'}
                     </Tag>
                   </Descriptions.Item>
-                  <Descriptions.Item label="Event Name">
-                    {record.event_name || 'N/A'}
+                  <Descriptions.Item label="Event Type">
+                    {record.event_type || 'N/A'}
                   </Descriptions.Item>
                   <Descriptions.Item label="Location">
                     {record.event_location || 'N/A'}
@@ -168,12 +168,12 @@ export const QuoteShow: React.FC = () => {
           <Card title="Event Schedule" style={{ marginTop: 16 }}>
             {record.event_structure === 'single_day' ? (
               <Descriptions column={2}>
-                <Descriptions.Item label="Date">
+                <Descriptions.Item label="Event Duration">
                   <CalendarOutlined style={{ marginRight: 8 }} />
-                  {record.single_event_date ? dayjs(record.single_event_date).format('MMMM DD, YYYY') : 'TBD'}
+                  {record.number_of_event_days ? `${record.number_of_event_days} day(s)` : 'TBD'}
                 </Descriptions.Item>
-                <Descriptions.Item label="Start Time">
-                  {record.single_start_time || 'TBD'}
+                <Descriptions.Item label="Total Duration">
+                  {record.duration_minutes ? `${record.duration_minutes} minutes` : 'TBD'}
                 </Descriptions.Item>
               </Descriptions>
             ) : (

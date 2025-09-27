@@ -71,12 +71,7 @@ export const QuoteEdit: React.FC = () => {
           const transformedData = { ...data.data };
           
           // Convert date/time strings to dayjs objects for DatePicker/TimePicker
-          if (transformedData.single_event_date) {
-            transformedData.single_event_date = dayjs(transformedData.single_event_date);
-          }
-          if (transformedData.single_start_time) {
-            transformedData.single_start_time = dayjs(`2000-01-01 ${transformedData.single_start_time}`);
-          }
+          // (removed single_event_date and single_start_time - using unified structure)
           
           // Convert quote_dates date/time fields to dayjs objects
           if (transformedData.quote_dates && Array.isArray(transformedData.quote_dates)) {
@@ -623,8 +618,8 @@ export const QuoteEdit: React.FC = () => {
             </Col>
             <Col span={12}>
               <Form.Item
-                label="Event Name"
-                name="event_name"
+                label="Event Type"
+                name="event_type"
               >
                 <Input />
               </Form.Item>
@@ -693,20 +688,20 @@ export const QuoteEdit: React.FC = () => {
             </Col>
             <Col span={8}>
               <Form.Item
-                label="Event Date"
-                name="single_event_date"
-                rules={[{ required: true, message: 'Please select event date' }]}
+                label="Event Duration (Days)"
+                name="number_of_event_days"
+                rules={[{ required: true, message: 'Please specify number of event days' }]}
               >
-                <DatePicker style={{ width: '100%' }} />
+                <InputNumber style={{ width: '100%' }} min={1} max={30} />
               </Form.Item>
             </Col>
             <Col span={8}>
               <Form.Item
-                label="Preferred Start Time"
-                name="single_start_time"
-                rules={[{ required: true, message: 'Please select start time' }]}
+                label="Total Duration (Minutes)"
+                name="duration_minutes"
+                rules={[{ required: true, message: 'Please specify total duration' }]}
               >
-                <TimePicker style={{ width: '100%' }} format="HH:mm" />
+                <InputNumber style={{ width: '100%' }} min={1} placeholder="Duration in minutes" />
               </Form.Item>
             </Col>
           </Row>

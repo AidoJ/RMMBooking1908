@@ -493,13 +493,12 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
           />
 
           <Table.Column
-            dataIndex="single_event_date"
+            dataIndex="quote_dates"
             title="Service Start Date"
             render={(value, record: any) => {
-              // For single day events, use single_event_date
-              // For multi-day events, get first date from quote_dates
-              let displayDate = value;
-              if (record.event_structure === 'multi_day' && record.quote_dates?.length > 0) {
+              // Use quote_dates for all events (unified structure)
+              let displayDate = null;
+              if (record.quote_dates?.length > 0) {
                 displayDate = record.quote_dates[0]?.event_date;
               }
 
@@ -517,7 +516,7 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
               );
             }}
             sorter
-            defaultSortOrder={getDefaultSortOrder('single_event_date', sorters)}
+            defaultSortOrder={getDefaultSortOrder('quote_dates', sorters)}
           />
 
           <Table.Column

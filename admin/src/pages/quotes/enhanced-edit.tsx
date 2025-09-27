@@ -107,12 +107,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
           const transformedData = { ...data.data };
           
           // Convert date/time strings to dayjs objects for DatePicker/TimePicker
-          if (transformedData.single_event_date) {
-            transformedData.single_event_date = dayjs(transformedData.single_event_date);
-          }
-          if (transformedData.single_start_time) {
-            transformedData.single_start_time = dayjs(`2000-01-01 ${transformedData.single_start_time}`);
-          }
+          // (removed single_event_date and single_start_time - using unified structure)
           
           // Convert quote_dates date/time fields to dayjs objects
           if (transformedData.quote_dates && Array.isArray(transformedData.quote_dates)) {
@@ -166,14 +161,8 @@ export const EnhancedQuoteEdit: React.FC = () => {
       let eventDuration = 0;
 
       if (quotesData.event_structure === 'single_day') {
-        // For single day: calculate finish time from start time + total duration
-        const eventStart = quotesData.single_start_time;
-        if (eventStart) {
-          // Calculate expected finish time
-          const start = dayjs(`2000-01-01 ${eventStart}`);
-          const expectedEnd = start.add(serviceDuration, 'minute');
-          eventDuration = serviceDuration; // For single day, event duration should match service duration
-        }
+        // For single day: use duration_minutes field (unified structure)
+        eventDuration = quotesData.duration_minutes || serviceDuration;
       } else if (quotesData.event_structure === 'multi_day' && quotesData.quote_dates) {
         // For multi-day: sum all day durations from quote_dates
         eventDuration = quotesData.quote_dates.reduce((total: number, day: any) => {
@@ -319,16 +308,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
     return totalHours < 5 ? 1 : 2;
   };
 
-  // Calculate finish time for single day events
-  const calculateFinishTime = () => {
-    if (!quotesData?.single_start_time || !quotesData?.total_sessions || !quotesData?.session_duration_minutes) {
-      return null;
-    }
-    const totalMinutes = quotesData.total_sessions * quotesData.session_duration_minutes;
-    const startTime = dayjs(`2000-01-01 ${quotesData.single_start_time}`);
-    const finishTime = startTime.add(totalMinutes, 'minute');
-    return finishTime.format('HH:mm');
-  };
+  // Removed calculateFinishTime - using unified structure with quote_dates
 
   // Handle section toggle
   const handleSectionToggle = (section: string) => {
@@ -538,36 +518,14 @@ export const EnhancedQuoteEdit: React.FC = () => {
 
   const renderEventScheduleFields = () => {
     if (quotesData?.event_structure === 'single_day') {
-      const calculatedFinishTime = calculateFinishTime();
-
       return (
-        <>
-          <Row gutter={[16, 16]}>
-            <Col span={8}>
-              <Form.Item label="Event Date" name="single_event_date" rules={[{ required: true }]}>
-                <DatePicker style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <Form.Item label="Start Time" name="single_start_time" rules={[{ required: true }]}>
-                <TimePicker style={{ width: '100%' }} format="HH:mm" />
-              </Form.Item>
-            </Col>
-            <Col span={8}>
-              <div className="form-group">
-                <label className="form-label">Calculated Finish Time</label>
-                <Input
-                  value={calculatedFinishTime || 'Not available'}
-                  readOnly
-                  style={{ backgroundColor: '#f0f0f0', fontWeight: 600 }}
-                />
-                <small style={{ color: '#007e8c', fontSize: '12px' }}>
-                  Auto-calculated from start time + total duration
-                </small>
-              </div>
-            </Col>
-          </Row>
-        </>
+        <Alert
+          message="Unified Event Structure"
+          description="This quote uses the unified event structure. Please use the Quote Dates section below to manage event timing for both single and multi-day events."
+          type="info"
+          showIcon
+          style={{ margin: '16px 0' }}
+        />
       );
     } else if (quotesData?.event_structure === 'multi_day') {
       return (
