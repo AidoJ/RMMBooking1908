@@ -191,7 +191,7 @@ export const QuoteShow: React.FC = () => {
                 <Table.Column
                   title="Date"
                   dataIndex="event_date"
-                  render={(value) => dayjs(value).format('MMMM DD, YYYY')}
+                  render={(value) => value ? dayjs(value).format('MMMM DD, YYYY') : 'Not set'}
                 />
                 <Table.Column
                   title="Start Time"

@@ -577,12 +577,14 @@ export const QuotesList: React.FC<IResourceComponentsProps> = () => {
           <Table.Column
             dataIndex="created_at"
             title="Requested"
-            render={(value) => (
+            render={(value) => value ? (
               <Tooltip title={dayjs(value).format('YYYY-MM-DD HH:mm:ss')}>
                 <Text type="secondary">
                   {dayjs(value).format('MMM DD')}
                 </Text>
               </Tooltip>
+            ) : (
+              <Text type="secondary">Not set</Text>
             )}
             sorter
             defaultSortOrder={getDefaultSortOrder('created_at', sorters)}
