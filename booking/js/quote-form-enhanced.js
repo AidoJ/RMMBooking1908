@@ -254,13 +254,21 @@ class QuoteFormManager {
   }
 
   calculateServiceRequirementsTime() {
+    // Since durationPerService is now calculated, we should use the event schedule time
+    // The service requirements should match the event schedule when properly calculated
     const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
-    const durationPerService = parseInt(document.getElementById('durationPerService')?.value) || 0;
 
-    const total = numberOfServices * durationPerService;
-    console.log('Service requirements:', { numberOfServices, durationPerService, total });
+    if (numberOfServices <= 0) {
+      console.log('Service requirements: No services specified');
+      return 0;
+    }
 
-    return total;
+    // Get the calculated event schedule time
+    const eventScheduleMinutes = this.calculateEventScheduleTime();
+
+    console.log('Service requirements based on event schedule:', { numberOfServices, eventScheduleMinutes });
+
+    return eventScheduleMinutes;
   }
 
   // UX IMPROVEMENT: Auto-calculate average service duration
