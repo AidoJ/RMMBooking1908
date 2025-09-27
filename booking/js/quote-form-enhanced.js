@@ -3,19 +3,15 @@
 
 class QuoteFormManager {
   constructor() {
-    this.eventStructure = 'single_day';
+    this.eventStructure = 'multi_day'; // Always use unified multi-day structure
     this.multiDayDates = [];
     this.selectedService = null;
     this.setupEventListeners();
+    this.initializeUnifiedForm();
   }
 
   setupEventListeners() {
-    // Event structure selection
-    document.querySelectorAll('.event-type-card').forEach(card => {
-      card.addEventListener('click', (e) => this.handleEventStructureChange(card.dataset.type));
-    });
-
-    // Multi-day management
+    // Number of days management (unified approach)
     document.getElementById('numberOfDays')?.addEventListener('change', (e) => {
       this.generateMultiDayFields(parseInt(e.target.value));
     });
@@ -28,10 +24,6 @@ class QuoteFormManager {
     document.getElementById('numberOfServices')?.addEventListener('input', () => this.validateAndCalculate());
     document.getElementById('durationPerService')?.addEventListener('change', () => this.validateAndCalculate());
 
-    // Time field listeners for validation
-    document.getElementById('singleStartTime')?.addEventListener('change', () => this.validateAndCalculate());
-    document.getElementById('singleFinishTime')?.addEventListener('change', () => this.validateAndCalculate());
-
     // Submit handler
     document.getElementById('submitQuoteRequest')?.addEventListener('click', () => this.submitQuoteRequest());
 
@@ -39,25 +31,39 @@ class QuoteFormManager {
     this.setupAddressAutocomplete();
   }
 
-  handleEventStructureChange(structure) {
-    this.eventStructure = structure;
-
-    // Update UI
-    document.querySelectorAll('.event-type-card').forEach(card => {
-      card.classList.remove('active');
-    });
-    document.querySelector(`[data-type="${structure}"]`).classList.add('active');
-
-    // Show/hide relevant fields
-    const singleDayFields = document.getElementById('singleDayFields');
+  initializeUnifiedForm() {
+    // Always show multi-day fields and hide single day fields
     const multiDayFields = document.getElementById('multiDayFields');
+    const singleDayFields = document.getElementById('singleDayFields');
 
-    if (structure === 'single_day') {
-      singleDayFields.style.display = 'block';
-      multiDayFields.classList.remove('active');
-    } else {
-      singleDayFields.style.display = 'none';
+    if (multiDayFields) {
       multiDayFields.classList.add('active');
+    }
+
+    if (singleDayFields) {
+      singleDayFields.style.display = 'none';
+    }
+
+    // Initialize with 1 day by default (unified single day handling)
+    const numberOfDaysInput = document.getElementById('numberOfDays');
+    if (numberOfDaysInput && !numberOfDaysInput.value) {
+      numberOfDaysInput.value = 1;
+      this.generateMultiDayFields(1);
+    }
+  }
+
+  handleEventStructureChange(structure) {
+    // Always use unified multi-day structure
+    this.eventStructure = 'multi_day';
+
+    // Always show multi-day fields
+    const multiDayFields = document.getElementById('multiDayFields');
+    multiDayFields.classList.add('active');
+
+    // Hide single day fields (deprecated)
+    const singleDayFields = document.getElementById('singleDayFields');
+    if (singleDayFields) {
+      singleDayFields.style.display = 'none';
     }
 
     this.validateAndCalculate();
@@ -507,10 +513,8 @@ class QuoteFormManager {
       // Submit to quotes table
       await this.saveQuoteToDatabase(quoteData);
 
-      // Handle multi-day dates if needed
-      if (this.eventStructure === 'multi_day') {
-        await this.saveQuoteDates(quoteId);
-      }
+      // Handle quote dates for all events (unified structure)
+      await this.saveQuoteDates(quoteId);
 
       // Send confirmation email
       await this.sendQuoteConfirmationEmail(quoteData);
@@ -718,58 +722,20 @@ class QuoteFormManager {
 
     const quoteDates = [];
 
-    if (this.eventStructure === 'single_day') {
-      console.log('📝 Processing single day event');
+    // Handle all events using unified multi-day structure
+    const dateRows = document.querySelectorAll('.multi-day-date-row');
+    console.log('🔍 Found date rows:', dateRows.length);
 
-      // Handle single day events
-      const singleEventDate = document.getElementById('singleEventDate')?.value;
-      const singleStartTime = document.getElementById('singleStartTime')?.value;
+    if (dateRows.length > 0) {
+      console.log('📝 Updating quote with number_of_event_days:', dateRows.length);
+      const { error: updateError } = await window.supabase
+        .from('quotes')
+        .update({ number_of_event_days: dateRows.length })
+        .eq('id', quoteId);
 
-      if (singleEventDate && singleStartTime) {
-        const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
-        const durationPerService = parseInt(document.getElementById('durationPerService')?.value) || 0;
-
-        const quoteDate = {
-          quote_id: quoteId,
-          event_date: singleEventDate,
-          start_time: singleStartTime,
-          finish_time: null, // Single day events don't have finish time in current form
-          day_number: 1,
-          sessions_count: numberOfServices,
-          duration_minutes: durationPerService
-        };
-        quoteDates.push(quoteDate);
-        console.log('✅ Added single day quote date:', quoteDate);
-
-        // Update the quote record with number of days (1 for single day)
-        const { error: updateError } = await window.supabase
-          .from('quotes')
-          .update({ number_of_event_days: 1 })
-          .eq('id', quoteId);
-
-        if (updateError) {
-          console.error('Error updating quote event days:', updateError);
-          throw new Error('Failed to update quote event days');
-        }
-      }
-    } else {
-      console.log('📝 Processing multi-day event');
-
-      // Handle multi-day events (existing logic)
-      const dateRows = document.querySelectorAll('.multi-day-date-row');
-      console.log('🔍 Found date rows:', dateRows.length);
-
-      if (dateRows.length > 0) {
-        console.log('📝 Updating quote with number_of_event_days:', dateRows.length);
-        const { error: updateError } = await window.supabase
-          .from('quotes')
-          .update({ number_of_event_days: dateRows.length })
-          .eq('id', quoteId);
-
-        if (updateError) {
-          console.error('Error updating quote event days:', updateError);
-          throw new Error('Failed to update quote event days');
-        }
+      if (updateError) {
+        console.error('Error updating quote event days:', updateError);
+        throw new Error('Failed to update quote event days');
       }
 
       dateRows.forEach((row, index) => {

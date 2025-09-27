@@ -440,58 +440,18 @@
       </div>
     </div>
 
-    <!-- Event Structure Selection -->
+    <!-- Unified Event Planning -->
     <div class="form-section event-structure-section">
       <h3>📅 Event Planning</h3>
-      <div class="event-type-selector">
-        <label class="event-type-card active" data-type="single_day">
-          <input type="radio" name="eventStructure" value="single_day" checked>
-          <div class="card-icon">📅</div>
-          <div class="card-content">
-            <h4>Single Day Event</h4>
-            <p>One day massage session</p>
-          </div>
-          <div class="card-check">✓</div>
-        </label>
 
-        <label class="event-type-card" data-type="multi_day">
-          <input type="radio" name="eventStructure" value="multi_day">
-          <div class="card-icon">🗓️</div>
-          <div class="card-content">
-            <h4>Multi-Day Event</h4>
-            <p>Spread across multiple days</p>
-          </div>
-          <div class="card-check">✓</div>
-        </label>
-      </div>
-    </div>
 
-    <!-- Single Day Event Fields -->
-    <div id="singleDayFields" class="form-section">
-      <div class="form-row">
-        <div class="form-group">
-          <label for="singleEventDate">Event Date *</label>
-          <input type="date" id="singleEventDate" class="form-control" required>
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label for="singleStartTime">Event Start Time *</label>
-          <input type="time" id="singleStartTime" class="form-control" required>
-        </div>
-        <div class="form-group">
-          <label for="singleFinishTime">Event Finish Time *</label>
-          <input type="time" id="singleFinishTime" class="form-control" required>
-        </div>
-      </div>
-    </div>
-
-    <!-- Multi-Day Event Fields -->
-    <div id="multiDayFields" class="form-section multi-day-container">
+    <!-- Unified Event Date/Time Fields -->
+    <div id="multiDayFields" class="form-section multi-day-container active">
       <div class="form-group">
         <label for="numberOfDays">Number of Event Days</label>
         <select id="numberOfDays" class="form-control">
           <option value="">Select number of days...</option>
+          <option value="1">1 Day</option>
           <option value="2">2 Days</option>
           <option value="3">3 Days</option>
           <option value="4">4 Days</option>
