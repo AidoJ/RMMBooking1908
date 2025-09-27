@@ -595,6 +595,9 @@ class QuoteFormManager {
       session_duration_minutes: parseInt(document.getElementById('durationPerService').value) || 0,
       expected_attendees: parseInt(document.getElementById('expectedAttendees').value) || null,
 
+      // Duration - capture the Total Validated Time that's calculated in validation
+      duration_minutes: this.calculateEventScheduleTime(),
+
       // Calculate therapists needed based on total time
       therapists_needed: this.calculateTherapistsNeeded(),
 
@@ -794,8 +797,8 @@ class QuoteFormManager {
         session_duration_minutes: quoteData.session_duration_minutes,
         sessions_per_day: quoteData.sessions_per_day,
 
-        // Total event duration calculated from existing fields (session_duration_minutes * total_sessions)
-        // No need to store separately - can be calculated when needed
+        // Total event duration - using the validated time calculation
+        total_event_duration: quoteData.duration_minutes,
 
         // Therapists needed
         therapists_needed: quoteData.therapists_needed,
