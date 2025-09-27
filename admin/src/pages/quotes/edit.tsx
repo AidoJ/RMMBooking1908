@@ -56,7 +56,7 @@ export const QuoteEdit: React.FC = () => {
 
   const { formProps, saveButtonProps, queryResult, form } = useForm({
     meta: {
-      select: '*,quote_dates(*)',
+      select: '*,quote_dates(*),services(id,service_name,service_base_price)',
     },
     onMutationSuccess: (data, variables, context, isAutoSave) => {
       // Handle successful mutations (save/update)
@@ -94,7 +94,12 @@ export const QuoteEdit: React.FC = () => {
               transformedData[field] = dayjs(transformedData[field]);
             }
           });
-          
+
+          // Set hourly rate from service base price if available and not already set
+          if (transformedData.services && transformedData.services.service_base_price && !transformedData.hourly_rate) {
+            transformedData.hourly_rate = transformedData.services.service_base_price;
+          }
+
           // Set the transformed data to the form
           form?.setFieldsValue(transformedData);
         }
@@ -159,6 +164,11 @@ export const QuoteEdit: React.FC = () => {
         session_duration_minutes: quotesData.session_duration_minutes,
         total_sessions: quotesData.total_sessions,
       });
+
+      // Trigger calculations when data loads to ensure service base price is applied
+      setTimeout(() => {
+        calculateFields();
+      }, 100);
     }
   }, [quotesData]);
 
@@ -247,8 +257,14 @@ export const QuoteEdit: React.FC = () => {
 
     const sessionDuration = values.session_duration_minutes as number;
     const totalSessions = values.total_sessions as number;
-    const hourlyRate = values.hourly_rate as number;
+    let hourlyRate = values.hourly_rate as number;
     const discountAmount = (values.discount_amount as number) || 0;
+
+    // If no hourly rate is set, use service base price
+    if (!hourlyRate && quotesData?.services?.service_base_price) {
+      hourlyRate = quotesData.services.service_base_price;
+      form?.setFieldValue('hourly_rate', hourlyRate);
+    }
 
     // Calculate duration_minutes
     if (sessionDuration && totalSessions) {
@@ -622,6 +638,16 @@ export const QuoteEdit: React.FC = () => {
                 name="event_type"
               >
                 <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
+              <Form.Item
+                label="Selected Service"
+                name={["services", "service_name"]}
+              >
+                <Input readOnly disabled />
               </Form.Item>
             </Col>
           </Row>

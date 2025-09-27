@@ -498,6 +498,7 @@ formatPhoneNumber(phone) {
         total_sessions: quoteData.total_sessions,
         session_duration_minutes: quoteData.session_duration_minutes,
         sessions_per_day: quoteData.sessions_per_day,
+        total_event_duration: quoteData.total_event_duration,
         therapists_needed: quoteData.therapists_needed,
 
         // Business requirements
