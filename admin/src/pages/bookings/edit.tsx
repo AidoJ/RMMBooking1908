@@ -86,7 +86,7 @@ interface Booking {
   // Quote-specific fields
   event_type?: string;
   expected_attendees?: number;
-  number_of_massages?: number;
+  total_sessions?: number;
   preferred_therapists?: number;
   corporate_contact_name?: string;
   corporate_contact_email?: string;
@@ -95,7 +95,7 @@ interface Booking {
   urgency?: string;
   setup_requirements?: string;
   special_requirements?: string;
-  duration_per_massage?: number;
+  session_duration_minutes?: number;
   payment_method?: string;
   preferred_time_range?: string;
   quote_only?: string | boolean;
@@ -470,7 +470,7 @@ export const BookingEdit: React.FC = () => {
         // Quote-specific fields for change detection
         event_type: bookingData.event_type,
         expected_attendees: bookingData.expected_attendees,
-        number_of_massages: bookingData.number_of_massages,
+        total_sessions: bookingData.total_sessions,
         preferred_therapists: bookingData.preferred_therapists,
         corporate_contact_name: bookingData.corporate_contact_name,
         corporate_contact_email: bookingData.corporate_contact_email,
@@ -479,7 +479,7 @@ export const BookingEdit: React.FC = () => {
         urgency: bookingData.urgency,
         setup_requirements: bookingData.setup_requirements,
         special_requirements: bookingData.special_requirements,
-        duration_per_massage: bookingData.duration_per_massage,
+        session_duration_minutes: bookingData.session_duration_minutes,
         payment_method: bookingData.payment_method,
         preferred_time_range: bookingData.preferred_time_range,
       });
@@ -508,7 +508,7 @@ export const BookingEdit: React.FC = () => {
         // Quote-specific fields
         event_type: bookingData.event_type,
         expected_attendees: bookingData.expected_attendees,
-        number_of_massages: bookingData.number_of_massages,
+        total_sessions: bookingData.total_sessions,
         preferred_therapists: bookingData.preferred_therapists,
         corporate_contact_name: bookingData.corporate_contact_name,
         corporate_contact_email: bookingData.corporate_contact_email,
@@ -517,7 +517,7 @@ export const BookingEdit: React.FC = () => {
         urgency: bookingData.urgency,
         setup_requirements: bookingData.setup_requirements,
         special_requirements: bookingData.special_requirements,
-        duration_per_massage: bookingData.duration_per_massage,
+        session_duration_minutes: bookingData.session_duration_minutes,
         payment_method: bookingData.payment_method,
         preferred_time_range: bookingData.preferred_time_range,
         discount_amount: bookingData.discount_amount || 0,
@@ -668,14 +668,14 @@ export const BookingEdit: React.FC = () => {
       const bookingTime = dayjs(booking.booking_time).format('HH:mm');
       const therapistCount = therapistAssignments.length;
       
-      // For quotes: total duration = attendees × duration_per_massage
+      // For quotes: total duration = attendees × session_duration_minutes
       // For regular bookings: use duration_minutes
       let totalDuration;
       if (isQuote(booking)) {
-        const attendees = booking.expected_attendees || booking.number_of_massages || 1;
-        const durationPerMassage = booking.duration_per_massage || booking.duration_minutes || 30;
-        totalDuration = attendees * durationPerMassage;
-        console.log(`Quote fee calculation: ${attendees} attendees × ${durationPerMassage} min/massage = ${totalDuration} total minutes`);
+        const attendees = booking.expected_attendees || booking.total_sessions || 1;
+        const durationPerService = booking.session_duration_minutes || booking.duration_minutes || 30;
+        totalDuration = attendees * durationPerService;
+        console.log(`Quote fee calculation: ${attendees} attendees × ${durationPerService} min/service = ${totalDuration} total minutes`);
       } else {
         totalDuration = booking.duration_minutes || 60;
         console.log(`Regular booking duration: ${totalDuration} minutes`);
@@ -845,7 +845,7 @@ export const BookingEdit: React.FC = () => {
       if (isQuote(booking)) {
         if (values.event_type !== undefined) updateData.event_type = values.event_type;
         if (values.expected_attendees !== undefined) updateData.expected_attendees = values.expected_attendees;
-        if (values.number_of_massages !== undefined) updateData.number_of_massages = values.number_of_massages;
+        if (values.total_sessions !== undefined) updateData.total_sessions = values.total_sessions;
         if (values.preferred_therapists !== undefined) updateData.preferred_therapists = values.preferred_therapists;
         if (values.corporate_contact_name !== undefined) updateData.corporate_contact_name = values.corporate_contact_name;
         if (values.corporate_contact_email !== undefined) updateData.corporate_contact_email = values.corporate_contact_email;
@@ -854,7 +854,7 @@ export const BookingEdit: React.FC = () => {
         if (values.urgency !== undefined) updateData.urgency = values.urgency;
         if (values.setup_requirements !== undefined) updateData.setup_requirements = values.setup_requirements;
         if (values.special_requirements !== undefined) updateData.special_requirements = values.special_requirements;
-        if (values.duration_per_massage !== undefined) updateData.duration_per_massage = values.duration_per_massage;
+        if (values.session_duration_minutes !== undefined) updateData.session_duration_minutes = values.session_duration_minutes;
         if (values.payment_method !== undefined) updateData.payment_method = values.payment_method;
         if (values.preferred_time_range !== undefined) updateData.preferred_time_range = values.preferred_time_range;
       }
@@ -1074,8 +1074,8 @@ export const BookingEdit: React.FC = () => {
         booking_time: booking.booking_time,
         event_type: booking.event_type || '',
         expected_attendees: booking.expected_attendees || 0,
-        number_of_massages: booking.number_of_massages || 0,
-        duration_per_massage: booking.duration_per_massage || 0,
+        total_sessions: booking.total_sessions || 0,
+        session_duration_minutes: booking.session_duration_minutes || 0,
         preferred_therapists: booking.preferred_therapists || 0,
         urgency: booking.urgency || '',
         payment_method: booking.payment_method || '',
@@ -1135,8 +1135,8 @@ export const BookingEdit: React.FC = () => {
         booking_time: booking.booking_time,
         event_type: booking.event_type,
         expected_attendees: booking.expected_attendees,
-        number_of_massages: booking.number_of_massages,
-        duration_per_massage: booking.duration_per_massage,
+        total_sessions: booking.total_sessions,
+        session_duration_minutes: booking.session_duration_minutes,
         preferred_therapists: booking.preferred_therapists,
         urgency: booking.urgency,
         payment_method: booking.payment_method,
@@ -1196,8 +1196,8 @@ export const BookingEdit: React.FC = () => {
         booking_time: bookingData.booking_time,
         event_type: bookingData.event_type,
         expected_attendees: bookingData.expected_attendees,
-        number_of_massages: bookingData.number_of_massages,
-        duration_per_massage: bookingData.duration_per_massage,
+        total_sessions: bookingData.total_sessions,
+        session_duration_minutes: bookingData.session_duration_minutes,
         preferred_therapists: bookingData.preferred_therapists,
         urgency: bookingData.urgency,
         payment_method: bookingData.payment_method,
@@ -1558,20 +1558,20 @@ export const BookingEdit: React.FC = () => {
                         </Card>
                       </Col>
 
-                      {/* Massage Requirements Section */}
+                      {/* Service Requirements Section */}
                       <Col span={24}>
                         <Card style={{ marginBottom: '16px' }}>
                           <Title level={4} style={{ marginBottom: '16px', color: '#1890ff' }}>
-                            💆‍♀️ Massage Requirements
+                            💆‍♀️ Service Requirements
                           </Title>
                           <Row gutter={[16, 8]}>
                             <Col span={8}>
-                              <Form.Item name="number_of_massages" label="Number of Massages" rules={[{ required: true }]}>
-                                <InputNumber min={1} max={50} placeholder="How many massages needed" style={{ width: '100%' }} />
+                              <Form.Item name="total_sessions" label="Number of Services" rules={[{ required: true }]}>
+                                <InputNumber min={1} max={50} placeholder="How many services needed" style={{ width: '100%' }} />
                               </Form.Item>
                             </Col>
                             <Col span={8}>
-                              <Form.Item name="duration_per_massage" label="Duration per Massage" rules={[{ required: true }]}>
+                              <Form.Item name="session_duration_minutes" label="Duration per Service" rules={[{ required: true }]}>
                                 <Select 
                                   placeholder="Select duration..."
                                   onChange={(value) => setCustomDuration(value === 'custom')}
@@ -1587,7 +1587,7 @@ export const BookingEdit: React.FC = () => {
                             </Col>
                             {customDuration && (
                               <Col span={8}>
-                                <Form.Item name="duration_per_massage" label="Custom Duration (min)" rules={[{ required: true }]}>
+                                <Form.Item name="session_duration_minutes" label="Custom Duration (min)" rules={[{ required: true }]}>
                                   <InputNumber min={5} max={120} placeholder="Minutes" style={{ width: '100%' }} />
                                 </Form.Item>
                               </Col>
@@ -1618,9 +1618,9 @@ export const BookingEdit: React.FC = () => {
                             <Col span={24}>
                               <Form.Item shouldUpdate>
                                 {() => {
-                                  const numMassages = form.getFieldValue('number_of_massages') || 0;
-                                  const durationPerMassage = form.getFieldValue('duration_per_massage') || 0;
-                                  const totalMinutes = numMassages * durationPerMassage;
+                                  const numServices = form.getFieldValue('total_sessions') || 0;
+                                  const durationPerService = form.getFieldValue('session_duration_minutes') || 0;
+                                  const totalMinutes = numServices * durationPerService;
                                   const hours = Math.floor(totalMinutes / 60);
                                   const minutes = totalMinutes % 60;
                                   
@@ -2068,9 +2068,9 @@ export const BookingEdit: React.FC = () => {
                                     <span>🕒 {dayjs(booking.booking_time).format('HH:mm')}</span>
                                     <span>⏱️ {(() => {
                                       if (isQuote(booking)) {
-                                        const attendees = booking.expected_attendees || booking.number_of_massages || 1;
-                                        const durationPerMassage = booking.duration_per_massage || booking.duration_minutes || 30;
-                                        return attendees * durationPerMassage;
+                                        const attendees = booking.expected_attendees || booking.total_sessions || 1;
+                                        const durationPerService = booking.session_duration_minutes || booking.duration_minutes || 30;
+                                        return attendees * durationPerService;
                                       }
                                       return booking.duration_minutes || 0;
                                     })()} min</span>
@@ -2199,8 +2199,8 @@ export const BookingEdit: React.FC = () => {
                                     </Button>
                                     {isQuote(booking) && (
                                       <Text style={{ fontSize: '11px', color: '#666' }}>
-                                        Attendees: {booking.expected_attendees || booking.number_of_massages || 1}, 
-                                        Duration/massage: {booking.duration_per_massage || booking.duration_minutes || 30}min
+                                        Attendees: {booking.expected_attendees || booking.total_sessions || 1}, 
+                                        Duration/massage: {booking.session_duration_minutes || booking.duration_minutes || 30}min
                                       </Text>
                                     )}
                                   </Space>
@@ -2377,8 +2377,8 @@ export const BookingEdit: React.FC = () => {
               <Descriptions.Item label="Email">{booking?.corporate_contact_email}</Descriptions.Item>
               <Descriptions.Item label="Event Type">{booking?.event_type || 'Corporate Wellness'}</Descriptions.Item>
               <Descriptions.Item label="Expected Attendees">{booking?.expected_attendees}</Descriptions.Item>
-              <Descriptions.Item label="Number of Massages">{booking?.number_of_massages}</Descriptions.Item>
-              <Descriptions.Item label="Duration per Massage">{booking?.duration_per_massage} minutes</Descriptions.Item>
+              <Descriptions.Item label="Number of Services">{booking?.total_sessions}</Descriptions.Item>
+              <Descriptions.Item label="Duration per Service">{booking?.session_duration_minutes} minutes</Descriptions.Item>
               <Descriptions.Item label="Estimate Price">
                 <Text>${((booking.price || 0) + (booking.discount_amount || 0)).toFixed(2)}</Text>
               </Descriptions.Item>

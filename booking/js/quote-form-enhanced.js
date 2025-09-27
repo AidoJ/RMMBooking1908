@@ -692,19 +692,7 @@ class QuoteFormManager {
     return totalHours < 5 ? 1 : 2;
   }
 
-  calculateTotalEventDuration(quoteData) {
-    const totalMinutes = quoteData.total_sessions * quoteData.session_duration_minutes;
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-
-    if (hours === 0) {
-      return `${minutes} minutes`;
-    } else if (minutes === 0) {
-      return `${hours} hour${hours > 1 ? 's' : ''}`;
-    } else {
-      return `${hours} hour${hours > 1 ? 's' : ''} ${minutes} minutes`;
-    }
-  }
+  // Removed calculateTotalEventDuration function - duration calculated from session_duration_minutes * total_sessions when needed
 
   async saveQuoteToDatabase(quoteData) {
     console.log('Attempting to save quote data:', quoteData);
@@ -728,48 +716,86 @@ class QuoteFormManager {
   async saveQuoteDates(quoteId) {
     console.log('🔍 saveQuoteDates called with quoteId:', quoteId);
 
-    // Update the quote record with the correct number of days
-    const dateRows = document.querySelectorAll('.multi-day-date-row');
-    console.log('🔍 Found date rows:', dateRows.length);
-
-    if (dateRows.length > 0) {
-      console.log('📝 Updating quote with number_of_event_days:', dateRows.length);
-      const { error: updateError } = await window.supabase
-        .from('quotes')
-        .update({ number_of_event_days: dateRows.length })
-        .eq('id', quoteId);
-
-      if (updateError) {
-        console.error('Error updating quote event days:', updateError);
-        throw new Error('Failed to update quote event days');
-      }
-    }
-
     const quoteDates = [];
 
-    dateRows.forEach((row, index) => {
-      const dateInput = row.querySelector('.event-date');
-      const startTimeInput = row.querySelector('.event-start-time');
-      const finishTimeInput = row.querySelector('.event-finish-time');
+    if (this.eventStructure === 'single_day') {
+      console.log('📝 Processing single day event');
 
-      if (dateInput && startTimeInput && dateInput.value && startTimeInput.value) {
-        // Calculate sessions per day for this quote
+      // Handle single day events
+      const singleEventDate = document.getElementById('singleEventDate')?.value;
+      const singleStartTime = document.getElementById('singleStartTime')?.value;
+
+      if (singleEventDate && singleStartTime) {
         const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
-        const sessionsThisDay = Math.ceil(numberOfServices / Math.max(dateRows.length, 1));
+        const durationPerService = parseInt(document.getElementById('durationPerService')?.value) || 0;
 
         const quoteDate = {
           quote_id: quoteId,
-          event_date: dateInput.value,
-          start_time: startTimeInput.value,
-          finish_time: finishTimeInput?.value || null,
-          day_number: index + 1,
-          sessions_count: sessionsThisDay,
-          duration_minutes: parseInt(document.getElementById('durationPerService')?.value) || 0
+          event_date: singleEventDate,
+          start_time: singleStartTime,
+          finish_time: null, // Single day events don't have finish time in current form
+          day_number: 1,
+          sessions_count: numberOfServices,
+          duration_minutes: durationPerService
         };
         quoteDates.push(quoteDate);
-        console.log('✅ Added quote date:', quoteDate);
+        console.log('✅ Added single day quote date:', quoteDate);
+
+        // Update the quote record with number of days (1 for single day)
+        const { error: updateError } = await window.supabase
+          .from('quotes')
+          .update({ number_of_event_days: 1 })
+          .eq('id', quoteId);
+
+        if (updateError) {
+          console.error('Error updating quote event days:', updateError);
+          throw new Error('Failed to update quote event days');
+        }
       }
-    });
+    } else {
+      console.log('📝 Processing multi-day event');
+
+      // Handle multi-day events (existing logic)
+      const dateRows = document.querySelectorAll('.multi-day-date-row');
+      console.log('🔍 Found date rows:', dateRows.length);
+
+      if (dateRows.length > 0) {
+        console.log('📝 Updating quote with number_of_event_days:', dateRows.length);
+        const { error: updateError } = await window.supabase
+          .from('quotes')
+          .update({ number_of_event_days: dateRows.length })
+          .eq('id', quoteId);
+
+        if (updateError) {
+          console.error('Error updating quote event days:', updateError);
+          throw new Error('Failed to update quote event days');
+        }
+      }
+
+      dateRows.forEach((row, index) => {
+        const dateInput = row.querySelector('.event-date');
+        const startTimeInput = row.querySelector('.event-start-time');
+        const finishTimeInput = row.querySelector('.event-finish-time');
+
+        if (dateInput && startTimeInput && dateInput.value && startTimeInput.value) {
+          // Calculate sessions per day for this quote
+          const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
+          const sessionsThisDay = Math.ceil(numberOfServices / Math.max(dateRows.length, 1));
+
+          const quoteDate = {
+            quote_id: quoteId,
+            event_date: dateInput.value,
+            start_time: startTimeInput.value,
+            finish_time: finishTimeInput?.value || null,
+            day_number: index + 1,
+            sessions_count: sessionsThisDay,
+            duration_minutes: parseInt(document.getElementById('durationPerService')?.value) || 0
+          };
+          quoteDates.push(quoteDate);
+          console.log('✅ Added quote date:', quoteDate);
+        }
+      });
+    }
 
     console.log('🔍 Total quote dates to save:', quoteDates.length);
 
@@ -838,8 +864,8 @@ class QuoteFormManager {
         session_duration_minutes: quoteData.session_duration_minutes,
         sessions_per_day: quoteData.sessions_per_day,
 
-        // Calculate total event duration
-        total_event_duration: this.calculateTotalEventDuration(quoteData),
+        // Total event duration calculated from existing fields (session_duration_minutes * total_sessions)
+        // No need to store separately - can be calculated when needed
 
         // Therapists needed
         therapists_needed: quoteData.therapists_needed,

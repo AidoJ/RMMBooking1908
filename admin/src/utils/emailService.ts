@@ -57,7 +57,7 @@ export interface BookingData {
   // Quote-specific fields
   event_type?: string;
   expected_attendees?: number;
-  number_of_massages?: number;
+  total_sessions?: number;
   preferred_therapists?: number;
   corporate_contact_name?: string;
   corporate_contact_email?: string;
@@ -66,7 +66,7 @@ export interface BookingData {
   urgency?: string;
   setup_requirements?: string;
   special_requirements?: string;
-  duration_per_massage?: number;
+  session_duration_minutes?: number;
   payment_method?: string;
   preferred_time_range?: string;
   created_at?: string;
@@ -276,8 +276,9 @@ export const EmailService = {
       const eventTime = bookingData.preferred_time_range || 
                        new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
-      // Calculate total event duration
-      const totalMinutes = (bookingData.number_of_massages || 0) * (bookingData.duration_per_massage || 0);
+      // Calculate total event duration using quote fields
+      const totalMinutes = (bookingData.total_sessions || 0) *
+                           (bookingData.session_duration_minutes || 0);
       const hours = Math.floor(totalMinutes / 60);
       const minutes = totalMinutes % 60;
       const totalDuration = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
@@ -310,8 +311,8 @@ export const EmailService = {
         event_date: eventDate,
         event_time: eventTime,
         event_address: bookingData.address || 'Address TBD',
-        number_of_massages: (bookingData.number_of_massages || 1).toString(),
-        duration_per_massage: `${bookingData.duration_per_massage || 30} minutes`,
+        number_of_massages: (bookingData.total_sessions || 1).toString(),
+        duration_per_massage: `${bookingData.session_duration_minutes || 30} minutes`,
         expected_attendees: (bookingData.expected_attendees || 1).toString(),
         total_event_duration: totalDuration,
         preferred_therapists: (bookingData.preferred_therapists || 1).toString(),
@@ -448,8 +449,8 @@ export const EmailService = {
         event_time: eventTime,
         event_address: bookingData.address || 'Not specified',
         expected_attendees: bookingData.expected_attendees?.toString() || 'Not specified',
-        number_of_massages: bookingData.number_of_massages?.toString() || '0',
-        duration_per_massage: `${bookingData.duration_per_massage || 0} minutes`,
+        number_of_massages: bookingData.total_sessions?.toString() || '0',
+        duration_per_massage: `${bookingData.session_duration_minutes || 0} minutes`,
         event_type: bookingData.event_type || 'Corporate Event',
         subtotal: `$${subtotal.toFixed(2)}`,
         discount_amount: discountAmount > 0 ? `-$${discountAmount.toFixed(2)}` : '$0.00',
