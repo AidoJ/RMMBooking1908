@@ -1196,3 +1196,42 @@ input::placeholder {
 .terms-link:hover {
   color: var(--primary-dark);
 }
+
+/* ===== CALCULATED FIELDS STYLING ===== */
+
+/* Calculated Field Input Styling */
+.calculated-field {
+  background-color: var(--primary-pale);
+  color: var(--primary-dark);
+  font-weight: 600;
+  border: 2px solid var(--primary-light);
+  cursor: not-allowed;
+  font-style: italic;
+}
+
+.calculated-field:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 126, 140, 0.1);
+}
+
+/* Calculated Field Help Text */
+.calculated-help {
+  display: block;
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-style: italic;
+  margin-top: var(--space-1);
+  font-weight: 500;
+}
+
+/* Enhanced styling for calculated field labels */
+.form-group:has(.calculated-field) label {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.form-group:has(.calculated-field) label::after {
+  content: " 🧮";
+  font-size: 0.9rem;
+}

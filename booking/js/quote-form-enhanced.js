@@ -20,9 +20,21 @@ class QuoteFormManager {
       this.addEventDateField();
     });
 
+    // Auto-populate service sessions from attendees (UX improvement)
+    document.getElementById('expectedAttendees')?.addEventListener('input', (e) => {
+      const attendees = parseInt(e.target.value) || 0;
+      const numberOfServicesField = document.getElementById('numberOfServices');
+      if (attendees > 0 && numberOfServicesField) {
+        // Auto-populate but allow user to edit
+        numberOfServicesField.value = attendees;
+        // Trigger validation/calculation
+        this.validateAndCalculate();
+      }
+    });
+
     // Real-time calculation listeners
     document.getElementById('numberOfServices')?.addEventListener('input', () => this.validateAndCalculate());
-    document.getElementById('durationPerService')?.addEventListener('change', () => this.validateAndCalculate());
+    // Note: durationPerService is now a calculated field, no need for change listener
 
     // Submit handler
     document.getElementById('submitQuoteRequest')?.addEventListener('click', () => this.submitQuoteRequest());
@@ -167,6 +179,9 @@ class QuoteFormManager {
     document.getElementById('serviceRequirementsTime').textContent =
       serviceRequirementsMinutes > 0 ? `${serviceRequirementsMinutes} minutes` : '-';
 
+    // Calculate and update average service duration (Event Schedule Time ÷ Total Sessions)
+    this.updateAverageServiceDuration(eventScheduleMinutes);
+
     // Validate times match
     const validationMessage = document.getElementById('timeValidationMessage');
 
@@ -246,6 +261,20 @@ class QuoteFormManager {
     console.log('Service requirements:', { numberOfServices, durationPerService, total });
 
     return total;
+  }
+
+  // UX IMPROVEMENT: Auto-calculate average service duration
+  updateAverageServiceDuration(eventScheduleMinutes) {
+    const numberOfServices = parseInt(document.getElementById('numberOfServices')?.value) || 0;
+    const durationField = document.getElementById('durationPerService');
+
+    if (eventScheduleMinutes > 0 && numberOfServices > 0 && durationField) {
+      const averageDuration = Math.round(eventScheduleMinutes / numberOfServices);
+      durationField.value = averageDuration;
+      console.log('📊 Auto-calculated average service duration:', averageDuration, 'minutes');
+    } else if (durationField) {
+      durationField.value = '';
+    }
   }
 
   async calculatePricing(validatedMinutes) {
