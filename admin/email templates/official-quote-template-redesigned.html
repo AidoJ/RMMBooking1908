@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Official Quote - {{quote_reference}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #2d3748;
+            background-color: #f7fafc;
+            padding: 20px 0;
+        }
+
+        .email-container {
+            max-width: 650px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: #007e8c;
+            color: white;
+            padding: 35px 30px;
+            text-align: center;
+        }
+
+        .brand-name {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            margin-bottom: 4px;
+        }
+
+        .brand-tagline {
+            font-size: 13px;
+            opacity: 0.9;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+        }
+
+        .header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 15px 0 8px 0;
+        }
+
+        .quote-ref {
+            font-size: 14px;
+            opacity: 0.85;
+            font-weight: 500;
+        }
+
+        .content {
+            padding: 35px 30px;
+        }
+
+        .greeting {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .greeting h3 {
+            color: #1a202c;
+            font-size: 22px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .greeting p {
+            font-size: 15px;
+            color: #718096;
+        }
+
+        /* Event Summary Card */
+        .event-card {
+            background-color: #f7fafc;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 25px 0;
+            border-left: 4px solid #007e8c;
+        }
+
+        .event-card h4 {
+            color: #007e8c;
+            font-size: 18px;
+            margin-bottom: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 140px 1fr;
+            gap: 12px;
+            font-size: 14px;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .detail-value {
+            color: #1a202c;
+        }
+
+        /* Therapist Schedule - PROMINENT */
+        .schedule-section {
+            background-color: #e6fffa;
+            border-radius: 8px;
+            padding: 25px 20px;
+            margin: 30px 0;
+            border: 2px solid #38b2ac;
+        }
+
+        .schedule-section h4 {
+            color: #234e52;
+            font-size: 20px;
+            margin-bottom: 8px;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .schedule-subtitle {
+            text-align: center;
+            color: #2c7a7b;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .schedule-text {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #2d3748;
+            white-space: pre-line;
+        }
+
+        /* Action Buttons - PROMINENT */
+        .action-section {
+            text-align: center;
+            padding: 35px 25px;
+            margin: 30px 0;
+            background-color: #edf2f7;
+            border-radius: 8px;
+        }
+
+        .action-section h4 {
+            color: #1a202c;
+            font-size: 20px;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .action-subtitle {
+            color: #718096;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+
+        .action-buttons {
+            margin: 25px 0;
+        }
+
+        .accept-button {
+            background-color: #48bb78;
+            color: white;
+            padding: 14px 45px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-block;
+            margin: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .decline-button {
+            background-color: white;
+            color: #e53e3e;
+            padding: 14px 45px;
+            border: 2px solid #e53e3e;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-block;
+            margin: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .pdf-link {
+            margin-top: 20px;
+            font-size: 14px;
+        }
+
+        .pdf-link a {
+            color: #007e8c;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        /* Financial Summary - SUBTLE AT BOTTOM */
+        .financial-summary {
+            background-color: #f7fafc;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 30px 0 0 0;
+            border-top: 3px solid #cbd5e0;
+        }
+
+        .financial-summary h4 {
+            color: #4a5568;
+            font-size: 16px;
+            margin-bottom: 18px;
+            font-weight: 600;
+        }
+
+        .financial-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 14px;
+            color: #4a5568;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .financial-row:last-child {
+            border-bottom: none;
+            border-top: 2px solid #cbd5e0;
+            padding-top: 14px;
+            margin-top: 6px;
+            font-weight: 700;
+            font-size: 16px;
+            color: #1a202c;
+        }
+
+        .validity-note {
+            background-color: #fef5e7;
+            border-left: 4px solid #f39c12;
+            border-radius: 6px;
+            padding: 18px 20px;
+            margin: 25px 0;
+            font-size: 14px;
+            color: #7d6608;
+        }
+
+        .validity-note strong {
+            color: #7d6608;
+            font-weight: 700;
+        }
+
+        .footer {
+            background-color: #f7fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer p {
+            color: #718096;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .company-name {
+            color: #007e8c;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .contact-info {
+            color: #007e8c;
+            font-weight: 600;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .content {
+                padding: 25px 15px;
+            }
+
+            .header {
+                padding: 25px 15px;
+            }
+
+            .brand-name {
+                font-size: 22px;
+            }
+
+            .header h2 {
+                font-size: 20px;
+            }
+
+            .event-card, .schedule-section, .action-section, .financial-summary {
+                padding: 18px 15px;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .detail-label {
+                margin-bottom: 2px;
+                font-weight: 700;
+            }
+
+            .detail-value {
+                padding-left: 0;
+                margin-bottom: 12px;
+            }
+
+            .accept-button, .decline-button {
+                display: block;
+                margin: 10px auto;
+                width: 100%;
+                max-width: 280px;
+                padding: 16px 20px;
+                font-size: 14px;
+            }
+
+            .financial-row {
+                font-size: 13px;
+            }
+
+            .schedule-text {
+                font-size: 13px;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- EmailJS Recipient Fields -->
+    <input type="hidden" name="to_email" value="{{to_email}}" />
+    <input type="hidden" name="to_name" value="{{to_name}}" />
+    <input type="hidden" name="from_name" value="Rejuvenators Mobile Massage" />
+    <input type="hidden" name="reply_to" value="info@rejuvenators.com" />
+
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="brand-name">REJUVENATORS®</div>
+            <div class="brand-tagline">Mobile Massage</div>
+            <h2>📋 Official Quote</h2>
+            <p class="quote-ref">{{quote_reference}}</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Greeting -->
+            <div class="greeting">
+                <h3>Hello {{corporate_contact_name}}! 👋</h3>
+                <p>Thank you for choosing Rejuvenators. We're delighted to confirm your wellness event with assigned therapists ready to deliver exceptional service.</p>
+            </div>
+
+            <!-- Event Summary -->
+            <div class="event-card">
+                <h4>🏢 Your Event</h4>
+                <div class="detail-grid">
+                    <span class="detail-label">Company:</span>
+                    <span class="detail-value">{{business_name}}</span>
+                    
+                    <span class="detail-label">Event Name:</span>
+                    <span class="detail-value">{{event_name}}</span>
+                    
+                    <span class="detail-label">Location:</span>
+                    <span class="detail-value">{{event_address}}</span>
+                    
+                    <span class="detail-label">Attendees:</span>
+                    <span class="detail-value">{{expected_attendees}}</span>
+                    
+                    <span class="detail-label">Event Type:</span>
+                    <span class="detail-value">{{event_type}}</span>
+                </div>
+            </div>
+
+            <!-- Therapist Schedule - PROMINENT FIRST -->
+            <div class="schedule-section">
+                <h4>👥 Your Confirmed Therapist Team</h4>
+                <p class="schedule-subtitle">{{total_therapists}} professional therapist(s) assigned across {{total_days}} day(s)</p>
+                
+                <div class="schedule-text">{{therapist_schedule_text}}</div>
+                
+                <div style="text-align: center; margin-top: 20px; padding-top: 18px; border-top: 2px solid #81e6d9;">
+                    <span style="color: #2c7a7b; font-weight: 700; font-size: 15px;">✅ {{total_bookings}} booking(s) confirmed and locked in</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons - PROMINENT -->
+            <div class="action-section">
+                <h4>Ready to Proceed? ⚡</h4>
+                <p class="action-subtitle">Your therapist team is ready! Accept this quote to secure your bookings.</p>
+
+                <div class="action-buttons">
+                    <a href="{{accept_url}}" class="accept-button">✅ Accept Quote</a>
+                    <a href="{{decline_url}}" class="decline-button">❌ Decline</a>
+                </div>
+
+                <div class="pdf-link">
+                    <p>📄 <a href="{{online_quote_url}}">Download PDF version</a></p>
+                </div>
+            </div>
+
+            <!-- Additional Details -->
+            <div class="event-card">
+                <h4>📝 Service Details</h4>
+                <div class="detail-grid">
+                    <span class="detail-label">Total Sessions:</span>
+                    <span class="detail-value">{{total_sessions}}</span>
+                    
+                    <span class="detail-label">Session Duration:</span>
+                    <span class="detail-value">{{session_duration}}</span>
+                    
+                    <span class="detail-label">Total Duration:</span>
+                    <span class="detail-value">{{total_duration}}</span>
+                    
+                    <span class="detail-label">Setup Requirements:</span>
+                    <span class="detail-value">{{setup_requirements}}</span>
+                    
+                    <span class="detail-label">Special Requirements:</span>
+                    <span class="detail-value">{{special_requirements}}</span>
+                    
+                    <span class="detail-label">Payment Method:</span>
+                    <span class="detail-value">{{payment_method}}</span>
+                    
+                    <span class="detail-label">PO Number:</span>
+                    <span class="detail-value">{{po_number}}</span>
+                </div>
+            </div>
+
+            <!-- Validity Notice -->
+            <div class="validity-note">
+                <strong>⏰ Quote Valid Until:</strong> {{quote_expiry_date}}
+                <br>
+                Please accept within this timeframe to secure your therapist assignments.
+            </div>
+
+            <!-- Financial Summary - SUBTLE, AT BOTTOM -->
+            <div class="financial-summary">
+                <h4>Investment Summary</h4>
+                
+                <div class="financial-row">
+                    <span>Subtotal</span>
+                    <span>{{subtotal}}</span>
+                </div>
+                
+                <div class="financial-row">
+                    <span>Discount</span>
+                    <span>{{discount_amount}}</span>
+                </div>
+                
+                <div class="financial-row">
+                    <span>GST (10%)</span>
+                    <span>{{gst_amount}}</span>
+                </div>
+                
+                <div class="financial-row">
+                    <span>Total</span>
+                    <span>{{total_amount}}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p style="font-size: 14px; margin-bottom: 15px;">Thank you for choosing <span class="company-name">{{from_name}}</span></p>
+            <p>We look forward to delivering an exceptional wellness experience for your team.</p>
+            <div class="contact-info">
+                📧 info@rejuvenators.com | 📞 1300 302 542
+            </div>
+            <div style="margin-top: 18px; padding-top: 18px; border-top: 1px solid #e2e8f0;">
+                <span style="background-color: #007e8c; color: white; padding: 8px 16px; border-radius: 20px; font-weight: 600; font-size: 13px;">
+                    {{quote_reference}}
+                </span>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+

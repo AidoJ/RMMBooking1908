@@ -1,0 +1,65 @@
+[build]
+  # Build command that builds admin panel and merges with booking platform
+  command = "npm run build"
+  
+  # Publish directory (where the merged build output will be)
+  publish = "dist"
+  
+  # Functions directory
+  functions = "netlify/functions"
+  
+  # Node version for the build
+  [build.environment]
+    NODE_VERSION = "18"
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache static assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/admin/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# IMPORTANT: Order matters! Most specific routes first
+
+# Admin panel SPA routing - must come BEFORE root catch-all
+[[redirects]]
+  from = "/admin/*"
+  to = "/admin/index.html"
+  status = 200
+
+# API proxy (optional)
+[[redirects]]
+  from = "/api/*"
+  to = "https://dcukfurezlkagvvwgsgr.supabase.co/rest/v1/:splat"
+  status = 200
+  headers = {Authorization = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjdWtmdXJlemxrYWd2dndnc2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5MjM0NjQsImV4cCI6MjA2NzQ5OTQ2NH0.ThXQKNHj0XpSkPa--ghmuRXFJ7nfcf0YVlH0liHofFw"}
+
+# Ensure root serves booking platform (index.html should be at root)
+# No redirect needed - Netlify serves index.html by default at root
+
+# Form handling (if needed for contact forms)
+[build.processing]
+  skip_processing = false
+[build.processing.css]
+  bundle = true
+  minify = true
+[build.processing.js]
+  bundle = true
+  minify = true
+[build.processing.html]
+  pretty_urls = true
+[build.processing.images]
+  compress = true

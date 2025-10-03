@@ -1,0 +1,201 @@
+ Netlify Build                                                 
+11:02:22 PM: ────────────────────────────────────────────────────────────────
+11:02:22 PM: ​
+11:02:22 PM: ❯ Version
+11:02:22 PM:   @netlify/build 35.1.0
+11:02:22 PM: ​
+11:02:22 PM: ❯ Flags
+11:02:22 PM:   accountId: 68564f89ed2d0e4e62858a6d
+11:02:22 PM:   baseRelDir: true
+11:02:22 PM:   buildId: 68a475af7b81fb2591d57b26
+11:02:22 PM:   deployId: 68a475af7b81fb2591d57b28
+11:02:22 PM: ​
+11:02:22 PM: ❯ Current directory
+11:02:22 PM:   /opt/build/repo
+11:02:22 PM: ​
+11:02:22 PM: ❯ Config file
+11:02:22 PM:   /opt/build/repo/netlify.toml
+11:02:22 PM: ​
+11:02:22 PM: ❯ Context
+11:02:22 PM:   production
+11:02:22 PM: ​
+11:02:22 PM: ❯ Installing extensions
+11:02:22 PM:    - neon
+11:02:46 PM: ​
+11:02:46 PM: ❯ Loading extensions
+11:02:46 PM:    - neon
+11:02:47 PM: ​
+11:02:47 PM: build.command from netlify.toml                               
+11:02:47 PM: ────────────────────────────────────────────────────────────────
+11:02:47 PM: ​
+11:02:47 PM: $ npm run build
+11:02:47 PM: > rejuvenators-platform@1.0.0 build
+11:02:47 PM: > node merge-builds.js
+11:02:47 PM: 🚀 Building platforms...
+11:02:47 PM: 🧹 Cleaning admin build...
+11:02:47 PM: 📦 Building admin panel...
+11:02:51 PM: ❌ Build failed: Error: Command failed: npm run build
+11:02:51 PM:     at ChildProcess.exithandler (node:child_process:422:12)
+11:02:51 PM:     at ChildProcess.emit (node:events:517:28)
+11:02:51 PM:     at maybeClose (node:internal/child_process:1098:16)
+11:02:51 PM:     at ChildProcess._handle.onexit (node:internal/child_process:303:5) {
+11:02:51 PM:   code: 2,
+11:02:51 PM:   killed: false,
+11:02:51 PM:   signal: null,
+11:02:51 PM:   cmd: 'npm run build',
+11:02:51 PM:   stdout: '\n' +
+11:02:51 PM:     '> adminpanel@0.1.0 build\n' +
+11:02:51 PM:     '> tsc && refine build\n' +
+11:02:51 PM:     '\n' +
+11:02:51 PM:     "src/pages/bookings/show.tsx(283,30): error TS2339: Property 'payment_intent_id' does not exist on type 'Booking'.\n" +
+11:02:51 PM:     "src/pages/bookings/show.tsx(297,38): error TS2339: Property 'payment_intent_id' does not exist on type 'Booking'.\n" +
+11:02:51 PM:     "src/pages/bookings/show.tsx(313,48): error TS18046: 'error' is of type 'unknown'.\n" +
+11:02:51 PM:     "src/pages/bookings/show.tsx(320,30): error TS2339: Property 'payment_intent_id' does not exist on type 'Booking'.\n" +
+11:02:51 PM:     "src/pages/bookings/show.tsx(334,38): error TS2339: Property 'payment_intent_id' does not exist on type 'Booking'.\n" +
+11:02:51 PM:     "src/pages/bookings/show.tsx(351,50): error TS18046: 'error' is of type 'unknown'.\n" +
+11:02:51 PM:     "src/pages/bookings/show.tsx(512,26): error TS2339: Property 'payment_intent_id' does not exist on type 'Booking'.\n" +
+11:02:51 PM:     "src/pages/bookings/show.tsx(514,41): error TS2339: Property 'payment_intent_id' does not exist on type 'Booking'.\n" +
+11:02:51 PM:     "src/pages/bookings/show.tsx(652,33): error TS2339: Property 'payment_intent_id' does not exist on type 'Booking'.\n" +
+11:02:51 PM:     "src/pages/bookings/show.tsx(662,28): error TS2339: Property 'payment_intent_id' does not exist on type 'Booking'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(14,1): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(15,3): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(16,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(19,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(20,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(21,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(24,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(27,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(28,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(29,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(30,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(31,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(32,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(33,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(34,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(37,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(40,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(41,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(42,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(43,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(44,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(45,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(46,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(47,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(48,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(51,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(54,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(55,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(56,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(57,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(58,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(59,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(60,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(61,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(62,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(65,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(68,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(69,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(70,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(71,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(72,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(73,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(74,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(78,3): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(79,5): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(80,7): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(81,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(84,7): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(85,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(86,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(87,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(88,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(92,5): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(93,7): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(94,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(95,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(98,7): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(99,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(100,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(101,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(105,5): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(106,7): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(107,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(110,7): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(111,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(112,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(113,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(114,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(118,5): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(119,7): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(120,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(123,7): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(124,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(125,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(126,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(127,9): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(132,3): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(133,5): error TS2582: Cannot find name 'it'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.\n" +
+11:02:51 PM:     "src/utils/roleUtils.test.ts(134,7): error TS2304: Cannot find name 'expect'.\n" +
+11:02:51 PM:     'src/utils/roleUtils.test.ts(13'... 4587 more characters,
+11:02:51 PM:   stderr: ''
+11:02:51 PM: }
+11:02:51 PM: ​
+11:02:51 PM: "build.command" failed                                        
+11:02:51 PM: ────────────────────────────────────────────────────────────────
+11:02:51 PM: ​
+11:02:51 PM:   Error message
+11:02:51 PM:   Command failed with exit code 1: npm run build (https://ntl.fyi/exit-code-1)
+11:02:51 PM: ​
+11:02:51 PM:   Error location
+11:02:51 PM:   In build.command from netlify.toml:
+11:02:51 PM:   npm run build
+11:02:51 PM: ​
+11:02:51 PM:   Resolved config
+11:02:51 PM:   build:
+11:02:51 PM:     command: npm run build
+11:02:51 PM:     commandOrigin: config
+11:02:51 PM:     environment:
+11:02:51 PM:       - NODE_VERSION
+11:02:51 PM:     processing:
+11:02:51 PM:       css:
+11:02:51 PM:         bundle: true
+11:02:51 PM:         minify: true
+11:02:51 PM:       html:
+11:02:51 PM:         pretty_urls: true
+11:02:51 PM:       images:
+11:02:51 PM:         compress: true
+11:02:51 PM:       js:
+11:02:51 PM:         bundle: true
+11:02:51 PM:         minify: true
+11:02:51 PM:       skip_processing: false
+11:02:51 PM:     publish: /opt/build/repo/dist
+11:02:51 PM:     publishOrigin: config
+11:02:51 PM:   headers:
+11:02:52 PM: Failed during stage 'building site': Build script returned non-zero exit code: 2 (https://ntl.fyi/exit-code-2)
+11:02:52 PM:     - for: /*
+      values:
+        Referrer-Policy: strict-origin-when-cross-origin
+        X-Content-Type-Options: nosniff
+        X-Frame-Options: DENY
+        X-XSS-Protection: 1; mode=block
+    - for: /assets/*
+      values:
+        Cache-Control: public, max-age=31536000, immutable
+    - for: /admin/assets/*
+      values:
+        Cache-Control: public, max-age=31536000, immutable
+  headersOrigin: config
+  redirects:
+    - from: /admin/*
+      status: 200
+      to: /admin/index.html
+    - from: /api/*
+      headers:
+        Authorization: Bearer
+          eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjdWtmdXJlemxrYWd2dndnc2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5MjM0NjQsImV4cCI6MjA2NzQ5OTQ2NH0.ThXQKNHj0XpSkPa--ghmuRXFJ7nfcf0YVlH0liHofFw
+      status: 200
+      to: https://dcukfurezlkagvvwgsgr.supabase.co/rest/v1/:splat
+  redirectsOrigin: config
+11:02:52 PM: Build failed due to a user error: Build script returned non-zero exit code: 2
+11:02:52 PM: Failing build: Failed to build site
+11:02:52 PM: Finished processing build request in 1m15.193s

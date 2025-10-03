@@ -1,0 +1,23 @@
+﻿# Dependencies
+node_modules/
+**/node_modules/
+
+# Builds
+/dist/
+admin/dist/
+booking/dist/
+**/build/
+**/dist/
+
+# Env
+.env
+*.env
+**/*.env
+
+# Logs
+*.log
+**/*.log
+
+# Misc
+.DS_Store
+Thumbs.db

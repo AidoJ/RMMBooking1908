@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quote Booking Confirmed - Therapist</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+    }
+    .header {
+      background-color: #007e8c;
+      padding: 30px 20px;
+      text-align: center;
+      color: white;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+    }
+    .header p {
+      margin: 8px 0 0 0;
+      font-size: 16px;
+      opacity: 0.95;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .greeting {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .intro-text {
+      font-size: 15px;
+      color: #555;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #007e8c;
+      margin: 30px 0 15px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #007e8c;
+    }
+    .info-grid {
+      display: table;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .info-row {
+      display: table-row;
+    }
+    .info-label {
+      display: table-cell;
+      padding: 8px 0;
+      font-weight: 600;
+      color: #555;
+      width: 40%;
+    }
+    .info-value {
+      display: table-cell;
+      padding: 8px 0;
+      color: #333;
+    }
+    .schedule-item {
+      background-color: #f8f9fa;
+      border-left: 4px solid #007e8c;
+      padding: 15px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+    }
+    .schedule-date {
+      font-size: 16px;
+      font-weight: 600;
+      color: #007e8c;
+      margin-bottom: 8px;
+    }
+    .schedule-time {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 4px;
+    }
+    .schedule-duration {
+      font-size: 14px;
+      color: #555;
+    }
+    .fee-highlight {
+      background-color: #e8f4f5;
+      border: 2px solid #007e8c;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 25px 0;
+      text-align: center;
+    }
+    .fee-label {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 8px;
+    }
+    .fee-amount {
+      font-size: 32px;
+      font-weight: 700;
+      color: #007e8c;
+    }
+    .important-note {
+      background-color: #fff9e6;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .important-note strong {
+      color: #f57c00;
+    }
+    .cta-button {
+      display: inline-block;
+      background-color: #007e8c;
+      color: white !important;
+      text-decoration: none;
+      padding: 14px 32px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 20px 0;
+      text-align: center;
+    }
+    .footer {
+      background-color: #f8f9fa;
+      padding: 30px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .footer-logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: #007e8c;
+      margin-bottom: 10px;
+    }
+    @media only screen and (max-width: 600px) {
+      .content {
+        padding: 30px 20px;
+      }
+      .header h1 {
+        font-size: 24px;
+      }
+      .fee-amount {
+        font-size: 28px;
+      }
+      .info-label, .info-value {
+        display: block;
+        width: 100%;
+        padding: 4px 0;
+      }
+      .info-label {
+        font-weight: 700;
+        margin-top: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <!-- Header -->
+    <div class="header">
+      <h1>✅ Booking Confirmed</h1>
+      <p>Your assignment for Quote {{quote_reference}}</p>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <div class="greeting">
+        Hi {{therapist_name}},
+      </div>
+
+      <div class="intro-text">
+        Great news! The client has accepted their quote and your booking is now confirmed. Please review the details below and add this to your schedule.
+      </div>
+
+      <!-- Quote Details -->
+      <div class="section-title">📋 Quote Details</div>
+      <div class="info-grid">
+        <div class="info-row">
+          <div class="info-label">Quote Reference:</div>
+          <div class="info-value">{{quote_reference}}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Client Name:</div>
+          <div class="info-value">{{client_name}}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Company:</div>
+          <div class="info-value">{{company_name}}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Service:</div>
+          <div class="info-value">{{service_name}}</div>
+        </div>
+      </div>
+
+      <!-- Your Schedule -->
+      <div class="section-title">📅 Your Confirmed Schedule</div>
+      {{therapist_schedule}}
+
+      <!-- Your Fee -->
+      <div class="fee-highlight">
+        <div class="fee-label">Your Total Fee</div>
+        <div class="fee-amount">${{therapist_fee}}</div>
+      </div>
+
+      <!-- Location Details -->
+      <div class="section-title">📍 Event Location</div>
+      <div class="info-grid">
+        <div class="info-row">
+          <div class="info-label">Address:</div>
+          <div class="info-value">{{event_address}}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Parking:</div>
+          <div class="info-value">{{parking_info}}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Contact:</div>
+          <div class="info-value">{{contact_person}} - {{contact_phone}}</div>
+        </div>
+      </div>
+
+      <!-- Special Requirements -->
+      {{#if special_requirements}}
+      <div class="important-note">
+        <strong>⚠️ Special Requirements:</strong><br>
+        {{special_requirements}}
+      </div>
+      {{/if}}
+
+      <!-- Important Note -->
+      <div class="important-note">
+        <strong>💡 Important:</strong> Please arrive 15 minutes early to set up. If you need to cancel or have any questions, contact us immediately at admin@rejuvenators.com.au or 0412 345 678.
+      </div>
+
+      <!-- Call to Action -->
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="mailto:admin@rejuvenators.com.au?subject=Query about {{quote_reference}}" class="cta-button">
+          Contact Admin
+        </a>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-logo">Rejuvenators</div>
+      <p>
+        📧 admin@rejuvenators.com.au<br>
+        📞 0412 345 678<br>
+        🌐 www.rejuvenators.com.au
+      </p>
+      <p style="font-size: 12px; color: #999; margin-top: 15px;">
+        This is an automated confirmation email. Please do not reply directly to this email.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+
+
+
+
+
+
+

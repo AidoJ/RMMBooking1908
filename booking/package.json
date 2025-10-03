@@ -1,0 +1,13 @@
+{
+  "name": "massage-booking-vanilla",
+  "version": "1.0.0", 
+  "description": "Massage booking platform - vanilla version",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "twilio": "^4.19.0",
+    "stripe": "^14.21.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}

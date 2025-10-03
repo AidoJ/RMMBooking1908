@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Official Payment Receipt</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+    }
+    .header {
+      background-color: #4caf50;
+      padding: 30px 20px;
+      text-align: center;
+      color: white;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+    }
+    .header p {
+      margin: 8px 0 0 0;
+      font-size: 16px;
+      opacity: 0.95;
+    }
+    .paid-badge {
+      background-color: white;
+      color: #4caf50;
+      padding: 12px 24px;
+      border-radius: 25px;
+      display: inline-block;
+      margin: 20px 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .greeting {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .intro-text {
+      font-size: 15px;
+      color: #555;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #4caf50;
+      margin: 30px 0 15px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #4caf50;
+    }
+    .receipt-box {
+      border: 2px solid #4caf50;
+      border-radius: 8px;
+      padding: 25px;
+      margin: 25px 0;
+      background-color: #f1f8f4;
+    }
+    .receipt-header {
+      text-align: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px dashed #4caf50;
+    }
+    .receipt-number {
+      font-size: 24px;
+      font-weight: 700;
+      color: #4caf50;
+      margin-bottom: 5px;
+    }
+    .receipt-date {
+      font-size: 14px;
+      color: #666;
+    }
+    .info-grid {
+      display: table;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .info-row {
+      display: table-row;
+    }
+    .info-label {
+      display: table-cell;
+      padding: 8px 0;
+      font-weight: 600;
+      color: #555;
+      width: 45%;
+    }
+    .info-value {
+      display: table-cell;
+      padding: 8px 0;
+      color: #333;
+    }
+    .payment-breakdown {
+      background-color: white;
+      padding: 20px;
+      border-radius: 6px;
+      margin: 20px 0;
+    }
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 15px;
+      color: #555;
+    }
+    .payment-total {
+      display: flex;
+      justify-content: space-between;
+      padding: 15px 0 0 0;
+      margin-top: 10px;
+      border-top: 2px solid #4caf50;
+      font-size: 22px;
+      font-weight: 700;
+      color: #4caf50;
+    }
+    .amount-paid-box {
+      background-color: #4caf50;
+      color: white;
+      text-align: center;
+      padding: 25px;
+      border-radius: 8px;
+      margin: 25px 0;
+    }
+    .amount-paid-label {
+      font-size: 16px;
+      margin-bottom: 10px;
+      opacity: 0.9;
+    }
+    .amount-paid {
+      font-size: 36px;
+      font-weight: 700;
+    }
+    .payment-method-box {
+      background-color: #fff9e6;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .thank-you-section {
+      background-color: #f8f9fa;
+      padding: 30px;
+      text-align: center;
+      margin: 30px 0;
+      border-radius: 8px;
+    }
+    .thank-you-section h2 {
+      color: #4caf50;
+      margin: 0 0 15px 0;
+      font-size: 24px;
+    }
+    .cta-button {
+      display: inline-block;
+      background-color: #4caf50;
+      color: white !important;
+      text-decoration: none;
+      padding: 14px 32px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 10px;
+    }
+    .footer {
+      background-color: #f8f9fa;
+      padding: 30px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .footer-logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: #4caf50;
+      margin-bottom: 10px;
+    }
+    .tax-note {
+      font-size: 12px;
+      color: #999;
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 4px;
+    }
+    @media only screen and (max-width: 600px) {
+      .content {
+        padding: 30px 20px;
+      }
+      .header h1 {
+        font-size: 24px;
+      }
+      .amount-paid {
+        font-size: 30px;
+      }
+      .receipt-number {
+        font-size: 20px;
+      }
+      .info-label, .info-value {
+        display: block;
+        width: 100%;
+        padding: 4px 0;
+      }
+      .info-label {
+        font-weight: 700;
+        margin-top: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <!-- Header -->
+    <div class="header">
+      <h1>✓ Payment Received</h1>
+      <p>Official Payment Receipt</p>
+      <div class="paid-badge">PAID IN FULL</div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <div class="greeting">
+        Hi {{client_name}},
+      </div>
+
+      <div class="intro-text">
+        Thank you! We have successfully received your payment. This email serves as your official receipt for the services provided by Rejuvenators.
+      </div>
+
+      <!-- Receipt Box -->
+      <div class="receipt-box">
+        <div class="receipt-header">
+          <div class="receipt-number">RECEIPT #{{receipt_number}}</div>
+          <div class="receipt-date">Issued: {{receipt_date}}</div>
+        </div>
+
+        <!-- Payment Details -->
+        <div class="info-grid">
+          <div class="info-row">
+            <div class="info-label">Payment Date:</div>
+            <div class="info-value">{{payment_date}}</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Invoice Number:</div>
+            <div class="info-value">{{invoice_number}}</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Quote Reference:</div>
+            <div class="info-value">{{quote_reference}}</div>
+          </div>
+          <div class="info-row">
+            <div class="info-label">Company:</div>
+            <div class="info-value">{{company_name}}</div>
+          </div>
+        </div>
+
+        <!-- Payment Breakdown -->
+        <div class="payment-breakdown">
+          <div class="payment-row">
+            <span>Service Total:</span>
+            <span>${{subtotal}}</span>
+          </div>
+          {{#if discount}}
+          <div class="payment-row">
+            <span>Discount:</span>
+            <span>-${{discount}}</span>
+          </div>
+          {{/if}}
+          <div class="payment-row">
+            <span>GST (10%):</span>
+            <span>${{gst}}</span>
+          </div>
+          <div class="payment-total">
+            <span>Total:</span>
+            <span>${{total_amount}}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Amount Paid Highlight -->
+      <div class="amount-paid-box">
+        <div class="amount-paid-label">Amount Paid</div>
+        <div class="amount-paid">${{amount_paid}}</div>
+      </div>
+
+      <!-- Payment Method -->
+      <div class="payment-method-box">
+        <strong>Payment Method:</strong> {{payment_method}}<br>
+        {{#if payment_reference}}
+        <strong>Reference:</strong> {{payment_reference}}
+        {{/if}}
+      </div>
+
+      <!-- Service Summary -->
+      <div class="section-title">📋 Service Summary</div>
+      <div class="info-grid">
+        <div class="info-row">
+          <div class="info-label">Service:</div>
+          <div class="info-value">{{service_name}}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Event Date(s):</div>
+          <div class="info-value">{{event_dates}}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Location:</div>
+          <div class="info-value">{{event_address}}</div>
+        </div>
+      </div>
+
+      <!-- Tax Information -->
+      <div class="tax-note">
+        <strong>Tax Information:</strong> This receipt includes GST. Rejuvenators ABN: [Your ABN Number]. GST Registration: [Your GST Registration]. This document is a valid tax invoice for GST purposes.
+      </div>
+
+      <!-- Thank You Section -->
+      <div class="thank-you-section">
+        <h2>Thank You for Your Business!</h2>
+        <p style="color: #555; margin-bottom: 20px;">
+          We appreciate your trust in Rejuvenators for your corporate wellness needs. We hope your team enjoyed the experience and we look forward to serving you again.
+        </p>
+        <a href="mailto:admin@rejuvenators.com.au?subject=Feedback for {{quote_reference}}" class="cta-button">
+          Share Feedback
+        </a>
+        <a href="https://www.rejuvenators.com.au/book" class="cta-button" style="background-color: #007e8c;">
+          Book Again
+        </a>
+      </div>
+
+      <!-- Keep Records Note -->
+      <div class="intro-text" style="text-align: center; font-size: 13px; color: #999;">
+        Please keep this receipt for your records. If you need any additional documentation or have questions about this receipt, please contact us.
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-logo">Rejuvenators</div>
+      <p>
+        📧 admin@rejuvenators.com.au<br>
+        📞 0412 345 678<br>
+        🌐 www.rejuvenators.com.au
+      </p>
+      <p style="font-size: 12px; color: #999; margin-top: 15px;">
+        This is an automated receipt. For queries, please contact us directly.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+
+
+
+
+
+
+

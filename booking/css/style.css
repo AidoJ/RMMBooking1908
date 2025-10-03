@@ -1,0 +1,1635 @@
+/* ===== CLEAN MODERN DESIGN - BRAND FOCUSED (#007e8c) ===== */
+
+/* Duration Selection - Disabled Options */
+select option:disabled {
+  color: var(--gray-400) !important;
+  background-color: var(--gray-100) !important;
+  font-style: italic;
+}
+
+select option:disabled:hover {
+  background-color: var(--gray-100) !important;
+}
+
+/* Service Card Styles */
+.section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 1rem;
+}
+
+.services-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.service-card {
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.service-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.service-card.selected {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+}
+
+.service-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 10px;
+  background: var(--primary-pale);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.service-card.selected .service-icon {
+  background: var(--primary);
+}
+
+.service-card img.service-icon {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.service-info {
+  flex: 1;
+}
+
+.service-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--gray-800);
+  margin-bottom: 0.25rem;
+}
+
+.service-desc {
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+
+.show-more-btn {
+  width: 100%;
+  padding: 0.875rem;
+  background: var(--white);
+  border: 2px dashed var(--gray-300);
+  border-radius: 12px;
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 1.5rem;
+}
+
+.show-more-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+}
+
+.service-card.hidden {
+  display: none;
+}
+
+/* Step 0: Booking Method Selection Styles */
+.booking-method-container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.booking-options {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.booking-option {
+  flex: 1;
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.booking-option:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
+
+.booking-option.selected {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+}
+
+.option-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.option-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.option-description {
+  margin-bottom: 2rem;
+}
+
+.description-card {
+  background: var(--primary-pale);
+  border: 1px solid var(--primary-lighter);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: none;
+  transition: all 0.3s ease;
+}
+
+.description-card.show {
+  display: block;
+}
+
+.description-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.description-icon {
+  font-size: 1.5rem;
+}
+
+.description-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0;
+}
+
+.description-card p {
+  color: var(--gray-600);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Mobile Responsive for Step 0 */
+@media (max-width: 768px) {
+  .booking-method-container {
+    padding: 1rem;
+  }
+  
+  .booking-options {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  
+  .booking-option {
+    padding: 1rem;
+  }
+  
+  .option-icon {
+    font-size: 1.5rem;
+  }
+  
+  .description-card {
+    padding: 1rem;
+  }
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;500;600;700&display=swap');
+
+/* CSS Variables - Clean, No Gradients */
+:root {
+  /* Brand Colors - Based on #007e8c */
+  --primary: #007e8c;
+  --primary-dark: #005a66;
+  --primary-light: #4da1ab;
+  --primary-lighter: #80bdc4;
+  --primary-pale: #f0f8f9;
+  
+  /* Neutral Colors */
+  --white: #ffffff;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: #0f172a;
+  
+  /* State Colors */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  
+  /* Shadows - Subtle */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  /* Spacing System - Consistent */
+  --space-1: 0.25rem;   /* 4px */
+  --space-2: 0.5rem;    /* 8px */
+  --space-3: 0.75rem;   /* 12px */
+  --space-4: 1rem;      /* 16px */
+  --space-5: 1.25rem;   /* 20px */
+  --space-6: 1.5rem;    /* 24px */
+  --space-8: 2rem;      /* 32px */
+  --space-10: 2.5rem;   /* 40px */
+  --space-12: 3rem;     /* 48px */
+  
+  /* Border Radius */
+  --radius-sm: 0.375rem;  /* 6px */
+  --radius: 0.5rem;       /* 8px */
+  --radius-md: 0.75rem;   /* 12px */
+  --radius-lg: 1rem;      /* 16px */
+}
+
+/* Reset & Base */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Josefin Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  line-height: 1.5;
+  font-size: 16px;
+  min-height: 100vh;
+  font-weight: 400;
+}
+
+/* Container - Compact */
+#container {
+  max-width: 100%;
+  margin: 0 auto;
+  background: var(--white);
+  min-height: 100vh;
+  box-shadow: var(--shadow);
+}
+
+@media (min-width: 768px) {
+  #container {
+    max-width: 800px;
+    margin: var(--space-4) auto;
+    border-radius: var(--radius-lg);
+    min-height: auto;
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/* Header - Clean */
+h1 {
+  text-align: center;
+  margin: 0;
+  padding: var(--space-6) var(--space-4);
+  background: var(--primary);
+  color: var(--white);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+@media (min-width: 768px) {
+  h1 {
+    padding: var(--space-8) var(--space-6);
+    font-size: 1.75rem;
+  }
+}
+
+/* Progress Bar - Clean, Compact */
+.progress-container {
+  padding: var(--space-4);
+  background: var(--white);
+  border-bottom: 1px solid var(--gray-200);
+  overflow-x: auto;
+}
+
+.progress-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  min-width: 600px;
+  height: 60px;
+}
+
+.progress-bar::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: var(--space-4);
+  right: var(--space-4);
+  height: 2px;
+  background: var(--gray-200);
+  z-index: 0;
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+  flex: 1;
+}
+
+.progress-step .bubble {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 2px solid var(--gray-300);
+  color: var(--gray-500);
+  font-size: 0.75rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  margin-bottom: var(--space-2);
+}
+
+.progress-step.active .bubble {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--white);
+}
+
+.progress-step .progress-label {
+  font-size: 0.625rem;
+  color: var(--gray-500);
+  font-weight: 500;
+  text-align: center;
+  max-width: 50px;
+  line-height: 1.2;
+}
+
+.progress-step.active .progress-label {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* Steps - Compact */
+.step {
+  display: none;
+}
+
+.step.active {
+  display: block;
+}
+
+.step-header {
+  background: var(--white);
+  padding: var(--space-6) var(--space-4) var(--space-4);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.step-header h2 {
+  margin: 0 0 var(--space-2) 0;
+  color: var(--gray-800);
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.step-description {
+  margin: 0;
+  color: var(--gray-600);
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.step-content {
+  padding: var(--space-6) var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .step-header {
+    padding: var(--space-8) var(--space-6) var(--space-5);
+  }
+  
+  .step-header h2 {
+    font-size: 1.5rem;
+  }
+  
+  .step-content {
+    padding: var(--space-8) var(--space-6);
+  }
+}
+
+/* Form Elements - Consistent Sizing */
+.form-group {
+  margin-bottom: var(--space-5);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 600;
+  color: var(--gray-700);
+  font-size: 0.875rem;
+}
+
+/* Consistent Input Styling */
+input, select, textarea {
+  width: 100%;
+  height: 44px; /* Consistent height */
+  padding: 0 var(--space-3);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-family: inherit;
+  font-weight: 400;
+  transition: all 0.2s ease;
+  background: var(--white);
+  color: var(--gray-800);
+}
+
+textarea {
+  height: auto;
+  min-height: 88px; /* 2x input height */
+  padding: var(--space-3);
+  resize: vertical;
+  line-height: 1.4;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 126, 140, 0.1);
+}
+
+input::placeholder {
+  color: var(--gray-400);
+  font-weight: 400;
+}
+
+/* Horizontal Form Groups - Organized */
+.form-group.horizontal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+@media (min-width: 768px) {
+  .form-group.horizontal {
+    flex-direction: row;
+    align-items: end;
+    gap: var(--space-6);
+  }
+  
+  .form-group.horizontal > div {
+    flex: 1;
+  }
+  
+  .form-group.horizontal label {
+    margin-bottom: var(--space-2);
+  }
+}
+
+/* Radio Groups - Clean Cards */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.radio-group.horizontal {
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@media (min-width: 768px) {
+  .radio-group.horizontal {
+    flex-direction: row;
+    gap: var(--space-4);
+  }
+}
+
+.radio-inline {
+  display: flex;
+  align-items: center;
+  padding: var(--space-4);
+  background: var(--white);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+  min-height: 44px; /* Consistent with inputs */
+}
+
+.radio-inline:hover {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+}
+
+.radio-inline input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  margin: 0 var(--space-3) 0 0;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+.radio-inline:has(input[type="radio"]:checked) {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+  color: var(--gray-800);
+}
+
+/* Booking Type Wrapper */
+.booking-type-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+@media (min-width: 768px) {
+  .booking-type-wrapper {
+    flex-direction: row;
+    gap: var(--space-4);
+  }
+}
+
+.custom-radio {
+  display: flex;
+  align-items: center;
+  padding: var(--space-4);
+  background: var(--white);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.875rem;
+  font-weight: 500;
+  user-select: none;
+  min-height: 44px;
+  flex: 1;
+}
+
+.custom-radio:hover {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+}
+
+.custom-radio input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.custom-radio:has(input:checked) {
+  background: var(--primary-pale);
+  border-color: var(--primary);
+  color: var(--gray-800);
+}
+
+.checkmark {
+  display: none;
+}
+
+/* Buttons - Clean, Consistent */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px; /* Consistent with inputs */
+  padding: 0 var(--space-6);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-decoration: none;
+  white-space: nowrap;
+  min-width: 120px;
+}
+
+.btn.primary, .btn.next {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.btn.primary:hover, .btn.next:hover {
+  background: var(--primary-dark);
+}
+
+.btn:not(.primary):not(.next), .btn.prev {
+  background: var(--white);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn:not(.primary):not(.next):hover, .btn.prev:hover {
+  background: var(--primary-pale);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 768px) {
+  .button-group {
+    flex-direction: row;
+    justify-content: space-between;
+    gap: var(--space-4);
+  }
+  
+  .btn {
+    width: auto;
+    flex: 0 0 auto;
+  }
+}
+
+/* Price Display - Clean */
+.price-display {
+  background: var(--primary-pale);
+  border: 1px solid var(--primary-light);
+  padding: var(--space-5);
+  border-radius: var(--radius);
+  text-align: center;
+  margin: var(--space-5) 0;
+}
+
+.price-display strong {
+  font-size: 1.25rem;
+  color: var(--primary);
+  display: block;
+  margin-bottom: var(--space-2);
+  font-weight: 700;
+}
+
+.price-breakdown {
+  font-size: 0.75rem;
+  color: var(--gray-600);
+  line-height: 1.4;
+}
+
+/* New aligned pricing breakdown */
+.price-header {
+  text-align: center;
+  margin-bottom: var(--space-4);
+}
+
+.price-breakdown-aligned {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--gray-700);
+  line-height: 1.5;
+}
+
+.price-breakdown-aligned .pricing-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 300px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+}
+
+.price-breakdown-aligned .pricing-item .label {
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+.price-breakdown-aligned .pricing-item .value {
+  color: var(--gray-800);
+  font-weight: 600;
+}
+
+.price-breakdown-aligned .pricing-item.positive .value {
+  color: var(--success);
+}
+
+.price-breakdown-aligned .pricing-item.negative .value {
+  color: var(--error);
+}
+
+/* Time Slots - Organized Grid */
+#timeSlotsContainer {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+@media (min-width: 768px) {
+  #timeSlotsContainer {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: var(--space-4);
+  }
+}
+
+.time-slot-btn {
+  height: 44px; /* Consistent with inputs */
+  background: var(--white);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.time-slot-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+}
+
+.time-slot-btn.selected {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--white);
+}
+
+.time-slot-btn:disabled {
+  background: var(--gray-100);
+  border-color: var(--gray-200);
+  color: var(--gray-400);
+  cursor: not-allowed;
+}
+
+/* Therapist Cards - Organized */
+#therapistSelection {
+  margin: var(--space-4) 0;
+}
+
+.therapist-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-4);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: var(--white);
+}
+
+.therapist-card:hover {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+}
+
+.therapist-card.selected {
+  border-color: var(--primary);
+  background: var(--primary-pale);
+}
+
+.therapist-card.expanded {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.therapist-info {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  flex: 1;
+  min-width: 0;
+}
+
+.therapist-image {
+  flex-shrink: 0;
+}
+
+.therapist-profile-pic {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--gray-200);
+  transition: border-color 0.2s ease;
+}
+
+.therapist-card:hover .therapist-profile-pic {
+  border-color: var(--primary);
+}
+
+.therapist-card.selected .therapist-profile-pic {
+  border-color: var(--primary);
+  border-width: 3px;
+}
+
+.therapist-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.therapist-name {
+  font-weight: 600;
+  color: var(--gray-800);
+  margin: 0 0 var(--space-1) 0;
+  font-size: 1rem;
+}
+
+.therapist-bio {
+  color: var(--gray-600);
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  display: none;
+}
+
+.therapist-bio.expanded {
+  display: block;
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  background: var(--gray-50);
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--primary);
+}
+
+.therapist-experience {
+  color: var(--gray-500);
+  font-size: 0.75rem;
+  margin: 0 0 var(--space-1) 0;
+}
+
+.therapist-specialties {
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-2) 0;
+}
+
+.therapist-distance {
+  color: var(--primary);
+  font-size: 0.625rem;
+  font-weight: 600;
+  background: var(--primary-pale);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  display: inline-block;
+}
+
+.read-more-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: var(--space-2) 0;
+  text-decoration: underline;
+}
+
+.read-more-btn:hover {
+  color: var(--primary-dark);
+}
+
+/* Customer Details - Organized */
+#customerLookupResult {
+  background: var(--primary-pale);
+  border: 1px solid var(--primary-light);
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  margin: var(--space-4) 0;
+}
+
+#customerLookupResult div:first-child {
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: var(--space-2);
+}
+
+#registrationOption {
+  margin: var(--space-4) 0;
+}
+
+#customerCodeDisplay {
+  background: var(--gray-50);
+  border: 1px solid var(--gray-200);
+  padding: var(--space-4);
+  border-radius: var(--radius);
+  margin: var(--space-4) 0;
+}
+
+#customerCodeDisplay div:first-child {
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: var(--space-2);
+}
+
+#customerCodeText {
+  font-family: 'SF Mono', 'Monaco', monospace;
+  font-size: 0.875rem;
+  background: var(--white);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--gray-200);
+  margin-top: var(--space-2);
+}
+
+/* Booking Summary - Clean */
+.booking-summary {
+  background: var(--gray-50);
+  padding: var(--space-5);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-5);
+  border-left: 3px solid var(--primary);
+}
+
+.booking-summary h3 {
+  margin: 0 0 var(--space-4) 0;
+  color: var(--gray-800);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.booking-summary p {
+  margin: var(--space-2) 0;
+  line-height: 1.5;
+  font-size: 0.875rem;
+  color: var(--gray-600);
+}
+
+/* Card Element */
+.card-element {
+  background: var(--white);
+  padding: var(--space-4);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius);
+  margin: var(--space-4) 0;
+  min-height: 44px; /* Consistent height */
+}
+
+.card-element:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 126, 140, 0.1);
+}
+
+/* Status Messages */
+#emailStatus, #address-autocomplete-status, #gender-availability-status {
+  font-size: 0.75rem;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+  display: none; /* Hide by default */
+}
+
+/* Address verification states - simple text only */
+.address-status {
+  display: none;
+  font-size: 14px;
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+}
+
+.address-status.verified {
+  display: block;
+  color: #6b7280; /* Light grey */
+}
+
+.address-status.error {
+  display: block;
+  color: #dc2626; /* Red */
+}
+
+.address-status.loading {
+  display: block;
+  color: #6b7280; /* Light grey for loading */
+}
+
+/* Loading Spinner */
+.spinner-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-8);
+}
+
+.egg-timer {
+  animation: spin 1s linear infinite;
+  font-size: 1.5rem;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Success/Error/Warning States - Clean */
+.success-state {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--success);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin: var(--space-4) 0;
+  font-weight: 500;
+}
+
+.error-state {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--error);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin: var(--space-4) 0;
+  font-weight: 500;
+}
+
+.warning-state {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: var(--warning);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin: var(--space-4) 0;
+  font-weight: 500;
+}
+
+/* Debug Button */
+#debugBtn {
+  background: var(--primary);
+  color: var(--white);
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+#debugBtn:hover {
+  background: var(--primary-dark);
+}
+
+/* Specific Field Styling - Consistent Spacing */
+#businessNameGroup,
+#notes,
+#roomNumber,
+#bookerName,
+#address,
+#service,
+#duration,
+#date,
+#parking,
+#customerEmail,
+#customerPhone,
+#customerFirstName,
+#customerLastName {
+  margin: var(--space-3) 0;
+}
+
+/* Hide Stripe input fields except the card element */
+#step8 input {
+  display: none !important;
+}
+
+/* ===== QUOTE FORM STYLES ===== */
+
+/* Quote step specific styling */
+#quoteStep {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* Form sections for better organization */
+.form-section {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: var(--space-6);
+  margin: var(--space-4) 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.form-section h3 {
+  color: var(--primary);
+  margin: 0 0 var(--space-4) 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border-bottom: 2px solid var(--primary-pale);
+  padding-bottom: var(--space-2);
+}
+
+/* Service info highlight */
+.service-highlight {
+  background: var(--primary-pale);
+  border: 1px solid var(--primary-light);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin: var(--space-4) 0;
+  text-align: center;
+}
+
+.service-highlight h4 {
+  color: var(--primary);
+  margin: 0 0 var(--space-2) 0;
+}
+
+.service-highlight .quote-badge {
+  background: var(--primary);
+  color: var(--white);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  display: inline-block;
+  margin-top: var(--space-2);
+}
+
+/* Quote estimate styling */
+.quote-estimate {
+  background: linear-gradient(135deg, var(--primary-pale) 0%, var(--white) 100%);
+  border: 2px solid var(--primary-light);
+  border-radius: var(--radius);
+  padding: var(--space-6);
+  margin: var(--space-6) 0;
+  text-align: center;
+}
+
+.quote-estimate h3 {
+  color: var(--primary);
+  margin: 0 0 var(--space-4) 0;
+  font-size: 1.2rem;
+}
+
+.estimate-range {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  margin: var(--space-2) 0;
+}
+
+.estimate-note {
+  color: var(--gray-600);
+  font-size: 0.875rem;
+  margin: var(--space-3) 0 0 0;
+  font-style: italic;
+}
+
+/* Help text styling */
+.help-text {
+  color: var(--gray-500);
+  font-size: 0.8rem;
+  margin-top: var(--space-1);
+  display: block;
+}
+
+/* Quote form specific inputs */
+#quoteStep input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+#quoteStep input[type="number"]::-webkit-outer-spin-button,
+#quoteStep input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Quote address autocomplete */
+#quoteAddress {
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+  font-size: 1rem;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+#quoteAddress:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 126, 140, 0.1);
+}
+
+/* Quote button styling */
+#submitQuoteBtn {
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius);
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 200px;
+}
+
+#submitQuoteBtn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+#submitQuoteBtn:active {
+  transform: translateY(0);
+}
+
+#submitQuoteBtn:disabled {
+  background: var(--gray-400);
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Quote success/error states */
+.quote-success {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid var(--success);
+  color: var(--success);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin: var(--space-4) 0;
+  text-align: center;
+}
+
+.quote-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid var(--error);
+  color: var(--error);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin: var(--space-4) 0;
+  text-align: center;
+}
+
+/* ===== DISCOUNT & GIFT CARD STYLES ===== */
+
+/* Discount Section */
+.discount-section {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  margin: var(--space-5) 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.discount-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: var(--space-4);
+  text-align: center;
+}
+
+/* Input Groups */
+.input-group {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.input-group input {
+  flex: 1;
+  margin: 0;
+}
+
+.apply-button {
+  height: 44px;
+  padding: 0 var(--space-4);
+  background: var(--primary);
+  color: var(--white);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.apply-button:hover {
+  background: var(--primary-dark);
+}
+
+.apply-button:disabled {
+  background: var(--gray-400);
+  cursor: not-allowed;
+}
+
+/* Status Messages */
+.status-message {
+  font-size: 0.75rem;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.status-success {
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.status-error {
+  color: var(--error);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Final Pricing Breakdown */
+.final-pricing-breakdown {
+  background: var(--gray-50);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  border: 1px solid var(--gray-200);
+  margin: var(--space-6) 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.final-pricing-breakdown h3 {
+  text-align: center;
+  margin: 0 0 var(--space-4) 0;
+  color: var(--gray-900);
+  font-weight: 700;
+  font-size: 1.125rem;
+}
+
+.pricing-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-2);
+  font-size: 0.875rem;
+  color: var(--gray-700);
+}
+
+.pricing-line.discount-line {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.pricing-line.gift-card-line {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.pricing-divider {
+  border: none;
+  border-top: 1px solid var(--gray-300);
+  margin: var(--space-4) 0;
+}
+
+.pricing-line.total-line {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin-top: var(--space-4);
+  margin-bottom: 0;
+}
+
+/* ===== FORM SECTIONS ===== */
+
+.form-section {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+
+.form-section h3 {
+  color: var(--gray-800);
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 0 0 var(--space-4) 0;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.section-description {
+  color: var(--gray-600);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin: 0 0 var(--space-4) 0;
+}
+
+/* Payment Page Styling */
+.payment-info {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.payment-security {
+  background: var(--primary-pale);
+  border: 1px solid var(--primary-light);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+  margin-bottom: var(--space-6);
+  text-align: center;
+}
+
+.security-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.security-icon {
+  font-size: 1.25rem;
+}
+
+.security-text {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+.security-note {
+  color: var(--gray-600);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.card-input-container {
+  margin-bottom: var(--space-6);
+}
+
+.card-input-container label {
+  display: block;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: var(--space-2);
+}
+
+/* ===== ACKNOWLEDGEMENT SECTIONS ===== */
+
+.acknowledgement-section {
+  background: var(--white);
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius);
+  padding: var(--space-5);
+  margin: var(--space-5) 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.acknowledgement-section h3 {
+  color: var(--primary);
+  margin: 0 0 var(--space-4) 0;
+  font-weight: 700;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.acknowledgement-text {
+  color: var(--gray-700);
+  line-height: 1.6;
+  margin: 0 0 var(--space-4) 0;
+  font-size: 0.875rem;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--gray-800);
+  font-size: 0.875rem;
+}
+
+.checkbox-container input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 2px solid var(--gray-400);
+  border-radius: 3px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--white);
+  position: relative;
+}
+
+.checkbox-container input[type="checkbox"]:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.checkbox-container input[type="checkbox"]:checked::after {
+  content: '✓';
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.terms-link {
+  color: var(--primary);
+  text-decoration: underline;
+  font-weight: 700;
+}
+
+.terms-link:hover {
+  color: var(--primary-dark);
+}
+
+/* ===== CALCULATED FIELDS STYLING ===== */
+
+/* Calculated Field Input Styling */
+.calculated-field {
+  background-color: var(--primary-pale);
+  color: var(--primary-dark);
+  font-weight: 600;
+  border: 2px solid var(--primary-light);
+  cursor: not-allowed;
+  font-style: italic;
+}
+
+.calculated-field:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 126, 140, 0.1);
+}
+
+/* Calculated Field Help Text */
+.calculated-help {
+  display: block;
+  color: var(--primary);
+  font-size: 0.75rem;
+  font-style: italic;
+  margin-top: var(--space-1);
+  font-weight: 500;
+}
+
+/* Enhanced styling for calculated field labels */
+.form-group:has(.calculated-field) label {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.form-group:has(.calculated-field) label::after {
+  content: " 🧮";
+  font-size: 0.9rem;
+}

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quote Booking Confirmed - Client</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f5f5f5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #ffffff;
+    }
+    .header {
+      background-color: #007e8c;
+      padding: 30px 20px;
+      text-align: center;
+      color: white;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 600;
+    }
+    .header p {
+      margin: 8px 0 0 0;
+      font-size: 16px;
+      opacity: 0.95;
+    }
+    .success-badge {
+      background-color: #4caf50;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 25px;
+      display: inline-block;
+      margin: 20px 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .content {
+      padding: 40px 30px;
+    }
+    .greeting {
+      font-size: 18px;
+      color: #333;
+      margin-bottom: 20px;
+    }
+    .intro-text {
+      font-size: 15px;
+      color: #555;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #007e8c;
+      margin: 30px 0 15px 0;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #007e8c;
+    }
+    .info-grid {
+      display: table;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .info-row {
+      display: table-row;
+    }
+    .info-label {
+      display: table-cell;
+      padding: 8px 0;
+      font-weight: 600;
+      color: #555;
+      width: 40%;
+    }
+    .info-value {
+      display: table-cell;
+      padding: 8px 0;
+      color: #333;
+    }
+    .therapist-card {
+      background-color: #f8f9fa;
+      border-left: 4px solid #007e8c;
+      padding: 20px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+    }
+    .therapist-name {
+      font-size: 18px;
+      font-weight: 600;
+      color: #007e8c;
+      margin-bottom: 12px;
+    }
+    .schedule-item {
+      background-color: white;
+      padding: 12px;
+      margin: 8px 0;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+    .schedule-date {
+      font-size: 15px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 6px;
+    }
+    .schedule-time {
+      font-size: 14px;
+      color: #666;
+    }
+    .payment-summary {
+      background-color: #e8f4f5;
+      border: 2px solid #007e8c;
+      border-radius: 8px;
+      padding: 25px;
+      margin: 25px 0;
+    }
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 15px;
+      color: #555;
+    }
+    .payment-total {
+      display: flex;
+      justify-content: space-between;
+      padding: 15px 0 0 0;
+      margin-top: 10px;
+      border-top: 2px solid #007e8c;
+      font-size: 20px;
+      font-weight: 700;
+      color: #007e8c;
+    }
+    .important-note {
+      background-color: #fff9e6;
+      border-left: 4px solid #ffc107;
+      padding: 15px;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .important-note strong {
+      color: #f57c00;
+    }
+    .cta-section {
+      background-color: #f8f9fa;
+      padding: 30px;
+      text-align: center;
+      margin: 30px 0;
+      border-radius: 8px;
+    }
+    .cta-button {
+      display: inline-block;
+      background-color: #007e8c;
+      color: white !important;
+      text-decoration: none;
+      padding: 14px 32px;
+      border-radius: 6px;
+      font-size: 16px;
+      font-weight: 600;
+      margin: 10px;
+    }
+    .footer {
+      background-color: #f8f9fa;
+      padding: 30px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .footer-logo {
+      font-size: 20px;
+      font-weight: 700;
+      color: #007e8c;
+      margin-bottom: 10px;
+    }
+    @media only screen and (max-width: 600px) {
+      .content {
+        padding: 30px 20px;
+      }
+      .header h1 {
+        font-size: 24px;
+      }
+      .payment-row, .payment-total {
+        font-size: 14px;
+      }
+      .info-label, .info-value {
+        display: block;
+        width: 100%;
+        padding: 4px 0;
+      }
+      .info-label {
+        font-weight: 700;
+        margin-top: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="email-container">
+    <!-- Header -->
+    <div class="header">
+      <h1>🎉 Booking Confirmed!</h1>
+      <p>Your corporate wellness event is all set</p>
+      <div class="success-badge">✓ Confirmed</div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+      <div class="greeting">
+        Hi {{client_name}},
+      </div>
+
+      <div class="intro-text">
+        Fantastic news! Your booking for <strong>{{company_name}}</strong> has been confirmed. Our professional therapists are scheduled and ready to provide an exceptional wellness experience for your team.
+      </div>
+
+      <!-- Booking Summary -->
+      <div class="section-title">📋 Booking Summary</div>
+      <div class="info-grid">
+        <div class="info-row">
+          <div class="info-label">Quote Reference:</div>
+          <div class="info-value">{{quote_reference}}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Company:</div>
+          <div class="info-value">{{company_name}}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Service:</div>
+          <div class="info-value">{{service_name}}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Location:</div>
+          <div class="info-value">{{event_address}}</div>
+        </div>
+      </div>
+
+      <!-- Confirmed Therapist Schedule -->
+      <div class="section-title">👥 Your Confirmed Therapist Team</div>
+      {{therapist_schedule}}
+
+      <!-- Payment Summary -->
+      <div class="section-title">💰 Payment Summary</div>
+      <div class="payment-summary">
+        <div class="payment-row">
+          <span>Service Total:</span>
+          <span>${{subtotal}}</span>
+        </div>
+        {{#if discount}}
+        <div class="payment-row">
+          <span>Discount:</span>
+          <span>-${{discount}}</span>
+        </div>
+        {{/if}}
+        <div class="payment-row">
+          <span>GST (10%):</span>
+          <span>${{gst}}</span>
+        </div>
+        <div class="payment-total">
+          <span>Total Amount:</span>
+          <span>${{total_amount}}</span>
+        </div>
+      </div>
+
+      <!-- Payment Instructions -->
+      {{#if payment_method_invoice}}
+      <div class="important-note">
+        <strong>💳 Payment Details:</strong><br>
+        Invoice #{{invoice_number}} has been sent separately.<br>
+        Payment Due: {{payment_due_date}}<br>
+        Please arrange payment via bank transfer or contact us for alternative payment methods.
+      </div>
+      {{/if}}
+
+      <!-- What's Next -->
+      <div class="section-title">📌 What Happens Next?</div>
+      <div class="intro-text">
+        <strong>Before the Event:</strong><br>
+        • Our therapists will arrive 15 minutes early to set up<br>
+        • Ensure adequate space and parking as discussed<br>
+        • Notify building security if required<br>
+        <br>
+        <strong>On the Day:</strong><br>
+        • Direct therapists to the designated area<br>
+        • Provide access to facilities as needed<br>
+        • We'll take care of the rest!
+      </div>
+
+      <!-- Contact Section -->
+      <div class="cta-section">
+        <p style="margin-bottom: 20px; color: #555;">
+          <strong>Need to make changes or have questions?</strong>
+        </p>
+        <a href="mailto:admin@rejuvenators.com.au?subject=Query about {{quote_reference}}" class="cta-button">
+          Contact Us
+        </a>
+        <a href="tel:0412345678" class="cta-button" style="background-color: #4caf50;">
+          Call Now
+        </a>
+      </div>
+
+      <!-- Thank You -->
+      <div class="intro-text" style="text-align: center; margin-top: 30px;">
+        Thank you for choosing Rejuvenators for your corporate wellness needs. We look forward to providing an outstanding experience for your team!
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <div class="footer-logo">Rejuvenators</div>
+      <p>
+        📧 admin@rejuvenators.com.au<br>
+        📞 0412 345 678<br>
+        🌐 www.rejuvenators.com.au
+      </p>
+      <p style="font-size: 12px; color: #999; margin-top: 15px;">
+        This is an automated confirmation email. Your booking is confirmed and secured.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+
+
+
+
+
+
+
