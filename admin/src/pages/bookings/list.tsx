@@ -34,7 +34,8 @@ import {
   ClockCircleOutlined,
   ExclamationCircleOutlined,
   SwapOutlined,
-  FileTextOutlined
+  FileTextOutlined,
+  ExperimentOutlined
 } from '@ant-design/icons';
 import { useGetIdentity, useNavigation } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
@@ -823,7 +824,22 @@ export const EnhancedBookingList = () => {
               />
             </Tooltip>
           )}
-          
+
+          {/* Test New Edit Page Button */}
+          {(canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
+            <Tooltip title="🧪 Test New Edit Page (Beta)">
+              <Button
+                type="text"
+                icon={<ExperimentOutlined />}
+                style={{ color: '#722ed1' }}
+                onClick={() => {
+                  // Navigate to new edit page
+                  window.location.href = `/bookings/edit-new/${record.id}`;
+                }}
+              />
+            </Tooltip>
+          )}
+
           {/* Admin Status Menu */}
           {(canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
             <Dropdown

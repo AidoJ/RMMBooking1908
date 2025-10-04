@@ -31,6 +31,7 @@ import { EnhancedBookingList } from "./pages/bookings/list";
 import { CalendarBookingManagement } from "./pages/bookings/calendar";
 import { BookingShow } from "./pages/bookings/show";
 import { BookingEdit } from "./pages/bookings/edit";
+import { BookingEditNew } from "./pages/bookings/edit-new";
 import TherapistProfileManagement from "./pages/therapists/profile";
 
 // Import the service management components
@@ -284,6 +285,7 @@ function App() {
                       <Route index element={<EnhancedBookingList />} />
                       <Route path="calendar" element={<CalendarBookingManagement />} />
                       <Route path="edit/:id" element={<BookingEdit />} />
+                      <Route path="edit-new/:id" element={<BookingEditNew />} />
                       <Route path="show/:id" element={<BookingShowWrapper />} />
                     </Route>
                     
