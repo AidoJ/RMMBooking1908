@@ -41,6 +41,14 @@ interface Booking {
   gift_card_amount?: number;
   discount_code?: string;
   gift_card_code?: string;
+  confirmation_sent_at?: string;
+  payment_captured_at?: string;
+  payment_authorized_at?: string;
+  refunded_at?: string;
+  refund_amount?: number;
+  cancelled_at?: string;
+  completed_at?: string;
+  cancellation_reason?: string;
 
   // Joined data
   customer_details?: {
@@ -444,7 +452,7 @@ export const BookingEditNew: React.FC = () => {
   }
 
   return (
-    <RoleGuard allowedRoles={['admin', 'super_admin']}>
+    <RoleGuard requiredPermission="canEditAllBookings">
       <div className="booking-edit-container">
         {/* Header */}
         <div className="header">
