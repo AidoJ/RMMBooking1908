@@ -38,6 +38,7 @@ import {
   ExperimentOutlined
 } from '@ant-design/icons';
 import { useGetIdentity, useNavigation } from '@refinedev/core';
+import { useNavigate } from 'react-router';
 import { supabaseClient } from '../../utility';
 import dayjs, { Dayjs } from 'dayjs';
 
@@ -129,6 +130,7 @@ interface BookingRecord {
 export const EnhancedBookingList = () => {
   const { data: identity } = useGetIdentity<UserIdentity>();
   const { show, edit, create } = useNavigation();
+  const navigate = useNavigate();
   
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -833,8 +835,8 @@ export const EnhancedBookingList = () => {
                 icon={<ExperimentOutlined />}
                 style={{ color: '#722ed1' }}
                 onClick={() => {
-                  // Navigate to new edit page using Refine's push method
-                  window.location.href = `/admin/bookings/edit-new/${record.id}`;
+                  // Navigate to new edit page using React Router
+                  navigate(`/bookings/edit-new/${record.id}`);
                 }}
               />
             </Tooltip>
