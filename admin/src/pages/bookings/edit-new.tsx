@@ -248,6 +248,174 @@ export const BookingEditNew: React.FC = () => {
     // - GST
   };
 
+  // Quick Actions Handlers
+  const handleConfirmBooking = async () => {
+    try {
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update({
+          status: 'confirmed',
+          confirmation_sent_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Refresh booking data
+      await fetchBookingData();
+      alert('✅ Booking confirmed successfully!');
+    } catch (error) {
+      console.error('Error confirming booking:', error);
+      alert('❌ Failed to confirm booking. Please try again.');
+    }
+  };
+
+  const handleMarkAsPaid = async () => {
+    try {
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update({
+          payment_status: 'paid',
+          payment_captured_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setFormData(prev => ({ ...prev, paymentStatus: 'paid' }));
+      await fetchBookingData();
+      alert('✅ Payment marked as paid!');
+    } catch (error) {
+      console.error('Error marking as paid:', error);
+      alert('❌ Failed to update payment status. Please try again.');
+    }
+  };
+
+  const handleCancelBooking = async () => {
+    const confirmed = window.confirm(
+      '⚠️ Are you sure you want to cancel this booking? This action cannot be undone.'
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update({
+          status: 'cancelled',
+          cancellation_reason: 'Cancelled by admin',
+          cancelled_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await fetchBookingData();
+      alert('✅ Booking cancelled successfully.');
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      alert('❌ Failed to cancel booking. Please try again.');
+    }
+  };
+
+  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStatus = e.target.value;
+
+    try {
+      const updateData: any = { status: newStatus };
+
+      // Add timestamps for specific status changes
+      if (newStatus === 'confirmed' && !booking?.confirmation_sent_at) {
+        updateData.confirmation_sent_at = new Date().toISOString();
+      }
+      if (newStatus === 'completed') {
+        updateData.completed_at = new Date().toISOString();
+      }
+      if (newStatus === 'cancelled') {
+        updateData.cancelled_at = new Date().toISOString();
+      }
+
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      await fetchBookingData();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('❌ Failed to update status. Please try again.');
+    }
+  };
+
+  // Payment Actions Handlers
+  const handleAuthorizePayment = async () => {
+    try {
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update({
+          payment_status: 'authorized',
+          payment_authorized_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setFormData(prev => ({ ...prev, paymentStatus: 'authorized' }));
+      await fetchBookingData();
+      alert('✅ Payment authorized successfully!');
+    } catch (error) {
+      console.error('Error authorizing payment:', error);
+      alert('❌ Failed to authorize payment. Please try again.');
+    }
+  };
+
+  const handleRefund = async () => {
+    const refundAmount = prompt(
+      `Enter refund amount (max $${formData.totalAmount.toFixed(2)}):`
+    );
+
+    if (!refundAmount) return;
+
+    const amount = parseFloat(refundAmount);
+    if (isNaN(amount) || amount <= 0 || amount > formData.totalAmount) {
+      alert('❌ Invalid refund amount.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `⚠️ Are you sure you want to issue a refund of $${amount.toFixed(2)}?`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update({
+          payment_status: 'refunded',
+          refund_amount: amount,
+          refunded_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setFormData(prev => ({ ...prev, paymentStatus: 'refunded' }));
+      await fetchBookingData();
+      alert(`✅ Refund of $${amount.toFixed(2)} issued successfully!`);
+    } catch (error) {
+      console.error('Error issuing refund:', error);
+      alert('❌ Failed to issue refund. Please try again.');
+    }
+  };
+
+  const handleSendInvoice = async () => {
+    // TODO: Integrate with email service
+    alert('📧 Invoice email functionality coming soon...');
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -571,8 +739,47 @@ export const BookingEditNew: React.FC = () => {
                   <span>${formData.basePrice.toFixed(2)}</span>
                 </div>
                 <div className="summary-row">
-                  <span>Total</span>
+                  <span>Duration Uplift</span>
+                  <span>+${formData.durationUplift.toFixed(2)}</span>
+                </div>
+                <div className="summary-row">
+                  <span>Time Uplift</span>
+                  <span>+${formData.timeUplift.toFixed(2)}</span>
+                </div>
+                <div className="summary-row">
+                  <span>Subtotal</span>
+                  <span>${(formData.basePrice + formData.durationUplift + formData.timeUplift).toFixed(2)}</span>
+                </div>
+                {formData.discountAmount > 0 && (
+                  <div className="summary-row">
+                    <span>Discount {formData.discountCode && `(${formData.discountCode})`}</span>
+                    <span style={{ color: '#16a34a' }}>-${formData.discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="summary-row">
+                  <span>GST (10%)</span>
+                  <span>+${formData.gstAmount.toFixed(2)}</span>
+                </div>
+                <div className="summary-row">
+                  <span>Total Amount</span>
                   <span>${formData.totalAmount.toFixed(2)}</span>
+                </div>
+                <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #e5e7eb' }}>
+                  <div className="summary-row" style={{ fontSize: '12px', marginBottom: '4px' }}>
+                    <span>Payment Status</span>
+                    <span style={{
+                      color: formData.paymentStatus === 'paid' ? '#16a34a' :
+                             formData.paymentStatus === 'pending' ? '#f59e0b' : '#dc2626',
+                      fontWeight: 600,
+                      textTransform: 'uppercase'
+                    }}>
+                      {formData.paymentStatus}
+                    </span>
+                  </div>
+                  <div className="summary-row" style={{ fontSize: '12px' }}>
+                    <span>Payment Method</span>
+                    <span style={{ textTransform: 'capitalize' }}>{formData.paymentMethod}</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -582,10 +789,109 @@ export const BookingEditNew: React.FC = () => {
               <div className="card-header">⚡ Quick Actions</div>
               <div className="card-content">
                 <div className="action-buttons">
-                  <button className="action-btn primary">✅ Confirm Booking</button>
-                  <button className="action-btn secondary">💰 Mark as Paid</button>
-                  <button className="action-btn warning">📅 Reschedule</button>
-                  <button className="action-btn danger">❌ Cancel Booking</button>
+                  <button
+                    className="action-btn primary"
+                    onClick={handleConfirmBooking}
+                    disabled={booking?.status === 'confirmed'}
+                  >
+                    ✅ Confirm Booking
+                  </button>
+                  <button
+                    className="action-btn secondary"
+                    onClick={handleMarkAsPaid}
+                    disabled={formData.paymentStatus === 'paid'}
+                  >
+                    💰 Mark as Paid
+                  </button>
+                  <button
+                    className="action-btn warning"
+                    onClick={() => setActiveTab('scheduling')}
+                  >
+                    📅 Reschedule
+                  </button>
+                  <button
+                    className="action-btn danger"
+                    onClick={handleCancelBooking}
+                    disabled={booking?.status === 'cancelled'}
+                  >
+                    ❌ Cancel Booking
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Status Management Card */}
+            <div className="card">
+              <div className="card-header">📊 Status Management</div>
+              <div className="card-content">
+                <div className="form-group">
+                  <label>Booking Status</label>
+                  <select
+                    value={booking?.status || 'pending'}
+                    onChange={handleStatusChange}
+                    style={{ width: '100%' }}
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="no_show">No Show</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Booking Information Card */}
+            <div className="card">
+              <div className="card-header">ℹ️ Booking Info</div>
+              <div className="card-content" style={{ fontSize: '12px' }}>
+                <div className="summary-row" style={{ marginBottom: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Booking ID</span>
+                  <span style={{ fontFamily: 'monospace' }}>{booking?.id?.slice(0, 8)}</span>
+                </div>
+                <div className="summary-row" style={{ marginBottom: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Created</span>
+                  <span>{booking?.created_at ? dayjs(booking.created_at).format('DD/MM/YYYY HH:mm') : '-'}</span>
+                </div>
+                <div className="summary-row" style={{ marginBottom: '8px' }}>
+                  <span style={{ color: '#64748b' }}>Last Updated</span>
+                  <span>{booking?.updated_at ? dayjs(booking.updated_at).format('DD/MM/YYYY HH:mm') : '-'}</span>
+                </div>
+                {booking?.confirmation_sent_at && (
+                  <div className="summary-row">
+                    <span style={{ color: '#64748b' }}>Confirmation Sent</span>
+                    <span>{dayjs(booking.confirmation_sent_at).format('DD/MM/YYYY HH:mm')}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Payment Actions Card */}
+            <div className="card">
+              <div className="card-header">💳 Payment Actions</div>
+              <div className="card-content">
+                <div className="action-buttons">
+                  <button
+                    className="action-btn secondary"
+                    onClick={handleAuthorizePayment}
+                    disabled={formData.paymentStatus === 'authorized' || formData.paymentStatus === 'paid'}
+                  >
+                    🔐 Authorize Payment
+                  </button>
+                  <button
+                    className="action-btn warning"
+                    onClick={handleRefund}
+                    disabled={formData.paymentStatus !== 'paid'}
+                  >
+                    🔄 Issue Refund
+                  </button>
+                  <button
+                    className="action-btn secondary"
+                    onClick={handleSendInvoice}
+                  >
+                    📧 Send Invoice
+                  </button>
                 </div>
               </div>
             </div>
