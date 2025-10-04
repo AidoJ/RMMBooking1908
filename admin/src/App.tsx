@@ -31,6 +31,8 @@ import { EnhancedBookingList } from "./pages/bookings/list";
 import { CalendarBookingManagement } from "./pages/bookings/calendar";
 import { BookingShow } from "./pages/bookings/show";
 import { BookingEdit } from "./pages/bookings/edit";
+import { AdminBookingCreate } from "./pages/bookings/create-admin";
+import { AdminBookingEdit } from "./pages/bookings/edit-admin";
 import TherapistProfileManagement from "./pages/therapists/profile";
 
 // Import the service management components
@@ -75,6 +77,11 @@ const BookingShowWrapper = () => {
   return <BookingShow id={id || ''} />;
 };
 
+// Wrapper component for admin booking edit
+const AdminBookingEditWrapper = () => {
+  return <AdminBookingEdit />;
+};
+
 // Service components are now imported above
 
 // Super Admin only pages
@@ -107,6 +114,7 @@ function App() {
                   {
                     name: "bookings",
                     list: "/bookings",
+                    create: "/bookings/create-admin",
                     show: "/bookings/show/:id",
                     edit: "/bookings/edit/:id",
                     meta: {
@@ -283,7 +291,9 @@ function App() {
                     <Route path="/bookings">
                       <Route index element={<EnhancedBookingList />} />
                       <Route path="calendar" element={<CalendarBookingManagement />} />
+                      <Route path="create-admin" element={<AdminBookingCreate />} />
                       <Route path="edit/:id" element={<BookingEdit />} />
+                      <Route path="edit-admin/:id" element={<AdminBookingEditWrapper />} />
                       <Route path="show/:id" element={<BookingShowWrapper />} />
                     </Route>
                     
