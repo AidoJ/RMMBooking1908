@@ -833,8 +833,8 @@ export const EnhancedBookingList = () => {
                 icon={<ExperimentOutlined />}
                 style={{ color: '#722ed1' }}
                 onClick={() => {
-                  // Navigate to new edit page
-                  window.location.href = `/bookings/edit-new/${record.id}`;
+                  // Navigate to new edit page using Refine's push method
+                  window.location.href = `/admin/bookings/edit-new/${record.id}`;
                 }}
               />
             </Tooltip>
