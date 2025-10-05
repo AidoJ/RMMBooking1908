@@ -699,7 +699,12 @@ export const BookingEditPlatform: React.FC = () => {
                               ...prev, 
                               customer_details: { 
                                 ...prev.customer_details, 
-                                first_name: e.target.value 
+                                first_name: e.target.value || '',
+                                last_name: prev.customer_details?.last_name || '',
+                                email: prev.customer_details?.email || '',
+                                phone: prev.customer_details?.phone || '',
+                                address: prev.customer_details?.address || '',
+                                notes: prev.customer_details?.notes || ''
                               } 
                             } : null);
                           }}
@@ -719,7 +724,12 @@ export const BookingEditPlatform: React.FC = () => {
                               ...prev, 
                               customer_details: { 
                                 ...prev.customer_details, 
-                                last_name: e.target.value 
+                                first_name: prev.customer_details?.first_name || '',
+                                last_name: e.target.value || '',
+                                email: prev.customer_details?.email || '',
+                                phone: prev.customer_details?.phone || '',
+                                address: prev.customer_details?.address || '',
+                                notes: prev.customer_details?.notes || ''
                               } 
                             } : null);
                           }}
@@ -743,7 +753,12 @@ export const BookingEditPlatform: React.FC = () => {
                               ...prev, 
                               customer_details: { 
                                 ...prev.customer_details, 
-                                email: e.target.value 
+                                first_name: prev.customer_details?.first_name || '',
+                                last_name: prev.customer_details?.last_name || '',
+                                email: e.target.value || '',
+                                phone: prev.customer_details?.phone || '',
+                                address: prev.customer_details?.address || '',
+                                notes: prev.customer_details?.notes || ''
                               } 
                             } : null);
                           }}
@@ -764,7 +779,12 @@ export const BookingEditPlatform: React.FC = () => {
                               ...prev, 
                               customer_details: { 
                                 ...prev.customer_details, 
-                                phone: e.target.value 
+                                first_name: prev.customer_details?.first_name || '',
+                                last_name: prev.customer_details?.last_name || '',
+                                email: prev.customer_details?.email || '',
+                                phone: e.target.value || '',
+                                address: prev.customer_details?.address || '',
+                                notes: prev.customer_details?.notes || ''
                               } 
                             } : null);
                           }}
