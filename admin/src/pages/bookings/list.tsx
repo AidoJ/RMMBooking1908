@@ -35,7 +35,8 @@ import {
   ExclamationCircleOutlined,
   SwapOutlined,
   FileTextOutlined,
-  ExperimentOutlined
+  ExperimentOutlined,
+  RocketOutlined
 } from '@ant-design/icons';
 import { useGetIdentity, useNavigation } from '@refinedev/core';
 import { useNavigate } from 'react-router';
@@ -837,6 +838,21 @@ export const EnhancedBookingList = () => {
                 onClick={() => {
                   // Navigate to new edit page using React Router
                   navigate(`/bookings/edit-new/${record.id}`);
+                }}
+              />
+            </Tooltip>
+          )}
+
+          {/* Test Platform Edit Page Button */}
+          {(canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
+            <Tooltip title="🚀 Test Platform Edit (Phase 1)">
+              <Button
+                type="text"
+                icon={<RocketOutlined />}
+                style={{ color: '#007e8c' }}
+                onClick={() => {
+                  // Navigate to new platform edit page using React Router
+                  navigate(`/bookings/edit-platform/${record.id}`);
                 }}
               />
             </Tooltip>

@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Booking Management Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header Styles */
+        .header {
+            background: linear-gradient(135deg, #007e8c 0%, #005f6b 100%);
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(0, 126, 140, 0.15);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .booking-id {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-header {
+            padding: 8px 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-header:hover {
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.5);
+        }
+
+        /* Admin Alert Bar */
+        .admin-alert {
+            background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
+            border: 1px solid #007e8c;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .admin-alert .icon {
+            font-size: 20px;
+            color: #007e8c;
+        }
+
+        .admin-alert .text {
+            flex: 1;
+            font-weight: 500;
+            color: #005f6b;
+        }
+
+        /* Main Content Layout */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 24px;
+        }
+
+        /* Left Panel - Booking Platform Steps */
+        .booking-platform {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        /* Progress Bar - Enhanced for Admin */
+        .progress-container {
+            background: #f8fafc;
+            padding: 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .progress-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+        }
+
+        .progress-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            flex: 1;
+        }
+
+        .progress-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: calc(50% + 15px);
+            right: calc(-50% + 15px);
+            height: 2px;
+            background: #e5e7eb;
+            z-index: 1;
+        }
+
+        .progress-step.active:not(:last-child)::after,
+        .progress-step.completed:not(:last-child)::after {
+            background: #007e8c;
+        }
+
+        .bubble {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e5e7eb;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 14px;
+            position: relative;
+            z-index: 2;
+            transition: all 0.3s;
+        }
+
+        .progress-step.active .bubble,
+        .progress-step.completed .bubble {
+            background: #007e8c;
+            color: white;
+        }
+
+        .progress-label {
+            margin-top: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #6b7280;
+            text-align: center;
+        }
+
+        .progress-step.active .progress-label,
+        .progress-step.completed .progress-label {
+            color: #007e8c;
+            font-weight: 600;
+        }
+
+        /* Step Content */
+        .step {
+            display: none;
+            padding: 32px;
+        }
+
+        .step.active {
+            display: block;
+        }
+
+        .step-header {
+            margin-bottom: 24px;
+        }
+
+        .step-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .step-description {
+            color: #6b7280;
+            font-size: 16px;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group.horizontal {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #007e8c;
+            box-shadow: 0 0 0 3px rgba(0, 126, 140, 0.1);
+        }
+
+        /* Service Selection - Enhanced for Admin */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .service-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .service-card:hover {
+            border-color: #007e8c;
+            background: #f0fdfa;
+        }
+
+        .service-card.selected {
+            border-color: #007e8c;
+            background: #e0f7fa;
+        }
+
+        .service-card h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+
+        .service-card p {
+            color: #6b7280;
+            margin-bottom: 12px;
+        }
+
+        .service-price {
+            font-size: 20px;
+            font-weight: 700;
+            color: #007e8c;
+        }
+
+        /* Duration Selection */
+        .duration-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .duration-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .duration-card:hover {
+            border-color: #007e8c;
+            background: #f0fdfa;
+        }
+
+        .duration-card.selected {
+            border-color: #007e8c;
+            background: #e0f7fa;
+        }
+
+        /* Time Slots */
+        .time-slots {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
+            margin: 16px 0;
+        }
+
+        .time-slot {
+            padding: 12px 8px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .time-slot.available {
+            background: #dcfce7;
+            border-color: #16a34a;
+            color: #166534;
+        }
+
+        .time-slot.unavailable {
+            background: #fee2e2;
+            border-color: #dc2626;
+            color: #991b1b;
+        }
+
+        .time-slot.selected {
+            background: #007e8c;
+            border-color: #007e8c;
+            color: white;
+        }
+
+        /* Therapist Selection */
+        .therapist-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+            margin: 16px 0;
+        }
+
+        .therapist-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .therapist-card:hover {
+            border-color: #007e8c;
+            background: #f0fdfa;
+        }
+
+        .therapist-card.selected {
+            border-color: #007e8c;
+            background: #e0f7fa;
+        }
+
+        .therapist-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .therapist-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #007e8c;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .therapist-info h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .therapist-info p {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .therapist-rate {
+            font-size: 18px;
+            font-weight: 700;
+            color: #007e8c;
+            margin-top: 8px;
+        }
+
+        /* Pricing Display - Enhanced for Admin */
+        .price-display {
+            background: linear-gradient(135deg, #f0fdfa 0%, #e0f7fa 100%);
+            border: 2px solid #007e8c;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .price-header {
+            font-size: 20px;
+            font-weight: 700;
+            color: #007e8c;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .pricing-breakdown {
+            display: grid;
+            gap: 8px;
+        }
+
+        .pricing-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 126, 140, 0.1);
+        }
+
+        .pricing-line.total-line {
+            border-top: 2px solid #007e8c;
+            border-bottom: none;
+            font-weight: 700;
+            font-size: 18px;
+            color: #007e8c;
+            margin-top: 8px;
+            padding-top: 16px;
+        }
+
+        /* Navigation Buttons */
+        .button-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 32px;
+            padding-top: 24px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: #007e8c;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #005f6b;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 2px solid #e5e7eb;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        /* Right Panel - Admin Quick Actions */
+        .admin-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .admin-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .admin-card-header {
+            background: linear-gradient(135deg, #007e8c 0%, #005f6b 100%);
+            color: white;
+            padding: 16px 20px;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .admin-card-content {
+            padding: 20px;
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            gap: 12px;
+        }
+
+        .quick-action {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            color: #374151;
+        }
+
+        .quick-action:hover {
+            border-color: #007e8c;
+            background: #f0fdfa;
+            color: #007e8c;
+        }
+
+        .quick-action-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .quick-action-text {
+            font-weight: 500;
+        }
+
+        /* Status Management */
+        .status-options {
+            display: grid;
+            gap: 8px;
+        }
+
+        .status-option {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .status-option:hover {
+            border-color: #007e8c;
+            background: #f0fdfa;
+        }
+
+        .status-option.selected {
+            border-color: #007e8c;
+            background: #e0f7fa;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .status-dot.requested { background: #f59e0b; }
+        .status-dot.confirmed { background: #10b981; }
+        .status-dot.completed { background: #3b82f6; }
+        .status-dot.cancelled { background: #ef4444; }
+
+        /* Financial Summary */
+        .financial-summary {
+            font-size: 14px;
+        }
+
+        .financial-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .financial-line.total {
+            border-top: 2px solid #007e8c;
+            border-bottom: none;
+            font-weight: 700;
+            font-size: 16px;
+            color: #007e8c;
+            margin-top: 8px;
+            padding-top: 12px;
+        }
+
+        /* Booking Information */
+        .booking-info {
+            font-size: 14px;
+        }
+
+        .info-line {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .info-label {
+            font-weight: 500;
+            color: #6b7280;
+        }
+
+        .info-value {
+            color: #1f2937;
+        }
+
+        /* Admin Badges */
+        .admin-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: #e0f7fa;
+            color: #007e8c;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 4px 0;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .admin-sidebar {
+                order: -1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 12px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+            
+            .form-group.horizontal {
+                grid-template-columns: 1fr;
+            }
+            
+            .services-grid,
+            .therapist-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <h1>🏥 Admin Booking Management</h1>
+                <div class="booking-id">Booking ID: RMM2024120001</div>
+            </div>
+            <div class="header-actions">
+                <button class="btn-header">📊 View History</button>
+                <button class="btn-header">📧 Send Email</button>
+                <button class="btn-header">💾 Save Changes</button>
+            </div>
+        </div>
+
+        <!-- Admin Alert -->
+        <div class="admin-alert">
+            <div class="icon">⚡</div>
+            <div class="text">Admin Mode: Full editing capabilities enabled. All changes will be logged and notifications sent automatically.</div>
+            <button class="btn-header">Dismiss</button>
+        </div>
+
+        <div class="main-content">
+            <!-- Left Panel: Booking Platform Steps -->
+            <div class="booking-platform">
+                <!-- Progress Bar -->
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-step completed">
+                            <div class="bubble">✓</div>
+                            <div class="progress-label">Customer</div>
+                        </div>
+                        <div class="progress-step completed">
+                            <div class="bubble">✓</div>
+                            <div class="progress-label">Address</div>
+                        </div>
+                        <div class="progress-step active">
+                            <div class="bubble">3</div>
+                            <div class="progress-label">Service</div>
+                        </div>
+                        <div class="progress-step">
+                            <div class="bubble">4</div>
+                            <div class="progress-label">Gender</div>
+                        </div>
+                        <div class="progress-step">
+                            <div class="bubble">5</div>
+                            <div class="progress-label">Date/Time</div>
+                        </div>
+                        <div class="progress-step">
+                            <div class="bubble">6</div>
+                            <div class="progress-label">Therapist</div>
+                        </div>
+                        <div class="progress-step">
+                            <div class="bubble">7</div>
+                            <div class="progress-label">Details</div>
+                        </div>
+                        <div class="progress-step">
+                            <div class="bubble">8</div>
+                            <div class="progress-label">Payment</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Service Selection (Currently Active) -->
+                <div id="step3" class="step active">
+                    <div class="step-header">
+                        <h2>🛠️ Service & Duration</h2>
+                        <p class="step-description">Select the type of service and duration. Admin can modify pricing and availability.</p>
+                    </div>
+                    
+                    <div class="step-content">
+                        <div class="form-group">
+                            <label>Service Type</label>
+                            <div class="services-grid">
+                                <div class="service-card selected">
+                                    <h3>Deep Tissue Massage</h3>
+                                    <p>Targeted therapy for muscle tension and chronic pain relief</p>
+                                    <div class="service-price">$120/hour</div>
+                                    <div class="admin-badge">🔧 Admin: Can modify price</div>
+                                </div>
+                                <div class="service-card">
+                                    <h3>Swedish Relaxation</h3>
+                                    <p>Gentle, flowing strokes for complete relaxation</p>
+                                    <div class="service-price">$100/hour</div>
+                                    <div class="admin-badge">🔧 Admin: Can modify price</div>
+                                </div>
+                                <div class="service-card">
+                                    <h3>Hot Stone Therapy</h3>
+                                    <p>Heated stones combined with massage techniques</p>
+                                    <div class="service-price">$140/hour</div>
+                                    <div class="admin-badge">🔧 Admin: Can modify price</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Duration</label>
+                            <div class="duration-grid">
+                                <div class="duration-card selected">
+                                    <h3>60 mins</h3>
+                                    <p>$120</p>
+                                </div>
+                                <div class="duration-card">
+                                    <h3>90 mins</h3>
+                                    <p>$180</p>
+                                    <div class="admin-badge">+$60 uplift</div>
+                                </div>
+                                <div class="duration-card">
+                                    <h3>120 mins</h3>
+                                    <p>$240</p>
+                                    <div class="admin-badge">+$120 uplift</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Enhanced Pricing Display for Admin -->
+                        <div class="price-display">
+                            <div class="price-header">💰 Live Pricing Calculator</div>
+                            <div class="pricing-breakdown">
+                                <div class="pricing-line">
+                                    <span>Base Price (60 mins):</span>
+                                    <span>$120.00</span>
+                                </div>
+                                <div class="pricing-line">
+                                    <span>Duration Uplift:</span>
+                                    <span>$0.00</span>
+                                </div>
+                                <div class="pricing-line">
+                                    <span>Time Uplift (After Hours):</span>
+                                    <span>$20.00</span>
+                                </div>
+                                <div class="pricing-line">
+                                    <span>Discount (WELCOME10):</span>
+                                    <span>-$12.00</span>
+                                </div>
+                                <div class="pricing-line">
+                                    <span>GST (10%):</span>
+                                    <span>$12.80</span>
+                                </div>
+                                <div class="pricing-line total-line">
+                                    <span>Total Amount:</span>
+                                    <span>$140.80</span>
+                                </div>
+                            </div>
+                            <div style="margin-top: 16px; padding: 12px; background: #f0fdfa; border-radius: 8px; font-size: 14px;">
+                                <strong>🔧 Admin Tools:</strong> Click any pricing line to modify. Changes auto-calculate totals.
+                            </div>
+                        </div>
+
+                        <div class="button-group">
+                            <button class="btn btn-secondary">
+                                ← Back
+                            </button>
+                            <button class="btn btn-primary">
+                                Continue →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: Admin Quick Actions -->
+            <div class="admin-sidebar">
+                <!-- Quick Actions -->
+                <div class="admin-card">
+                    <div class="admin-card-header">⚡ Quick Actions</div>
+                    <div class="admin-card-content">
+                        <div class="quick-actions">
+                            <a href="#" class="quick-action">
+                                <div class="quick-action-icon">📅</div>
+                                <div class="quick-action-text">Reschedule</div>
+                            </a>
+                            <a href="#" class="quick-action">
+                                <div class="quick-action-icon">💳</div>
+                                <div class="quick-action-text">Mark as Paid</div>
+                            </a>
+                            <a href="#" class="quick-action">
+                                <div class="quick-action-icon">✅</div>
+                                <div class="quick-action-text">Confirm Booking</div>
+                            </a>
+                            <a href="#" class="quick-action">
+                                <div class="quick-action-icon">❌</div>
+                                <div class="quick-action-text">Cancel Booking</div>
+                            </a>
+                            <a href="#" class="quick-action">
+                                <div class="quick-action-icon">👨‍⚕️</div>
+                                <div class="quick-action-text">Reassign Therapist</div>
+                            </a>
+                            <a href="#" class="quick-action">
+                                <div class="quick-action-icon">📧</div>
+                                <div class="quick-action-text">Send Notification</div>
+                            </a>
+                            <a href="#" class="quick-action">
+                                <div class="quick-action-icon">🧾</div>
+                                <div class="quick-action-text">Generate Invoice</div>
+                            </a>
+                            <a href="#" class="quick-action">
+                                <div class="quick-action-icon">💰</div>
+                                <div class="quick-action-text">Apply Discount</div>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Management -->
+                <div class="admin-card">
+                    <div class="admin-card-header">📊 Status Management</div>
+                    <div class="admin-card-content">
+                        <div class="status-options">
+                            <div class="status-option">
+                                <div class="status-dot requested"></div>
+                                <span>Requested</span>
+                            </div>
+                            <div class="status-option selected">
+                                <div class="status-dot confirmed"></div>
+                                <span>Confirmed</span>
+                            </div>
+                            <div class="status-option">
+                                <div class="status-dot completed"></div>
+                                <span>Completed</span>
+                            </div>
+                            <div class="status-option">
+                                <div class="status-dot cancelled"></div>
+                                <span>Cancelled</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financial Summary -->
+                <div class="admin-card">
+                    <div class="admin-card-header">💰 Financial Summary</div>
+                    <div class="admin-card-content">
+                        <div class="financial-summary">
+                            <div class="financial-line">
+                                <span>Customer Price:</span>
+                                <span>$140.80</span>
+                            </div>
+                            <div class="financial-line">
+                                <span>Therapist Fee:</span>
+                                <span>$45.00</span>
+                            </div>
+                            <div class="financial-line">
+                                <span>Platform Fee:</span>
+                                <span>$95.80</span>
+                            </div>
+                            <div class="financial-line">
+                                <span>Payment Status:</span>
+                                <span style="color: #10b981;">✅ Paid</span>
+                            </div>
+                            <div class="financial-line total">
+                                <span>Net Profit:</span>
+                                <span>$95.80</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Booking Information -->
+                <div class="admin-card">
+                    <div class="admin-card-header">📋 Booking Info</div>
+                    <div class="admin-card-content">
+                        <div class="booking-info">
+                            <div class="info-line">
+                                <span class="info-label">Booking ID:</span>
+                                <span class="info-value">RMM2024120001</span>
+                            </div>
+                            <div class="info-line">
+                                <span class="info-label">Customer:</span>
+                                <span class="info-value">John Smith</span>
+                            </div>
+                            <div class="info-line">
+                                <span class="info-label">Therapist:</span>
+                                <span class="info-value">Sarah Johnson</span>
+                            </div>
+                            <div class="info-line">
+                                <span class="info-label">Date:</span>
+                                <span class="info-value">Dec 15, 2024</span>
+                            </div>
+                            <div class="info-line">
+                                <span class="info-label">Time:</span>
+                                <span class="info-value">2:00 PM</span>
+                            </div>
+                            <div class="info-line">
+                                <span class="info-label">Duration:</span>
+                                <span class="info-value">60 minutes</span>
+                            </div>
+                            <div class="info-line">
+                                <span class="info-label">Created:</span>
+                                <span class="info-value">Dec 10, 2024</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
