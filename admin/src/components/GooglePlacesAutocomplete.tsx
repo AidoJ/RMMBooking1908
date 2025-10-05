@@ -74,6 +74,7 @@ const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> = ({
       
       // Initialize autocomplete
       const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+        // types: ['geocode'], // Removed to allow hotels, POIs, etc.
         componentRestrictions: { country: 'au' },
         sessionToken: sessionToken,
         fields: ['formatted_address', 'geometry', 'name']

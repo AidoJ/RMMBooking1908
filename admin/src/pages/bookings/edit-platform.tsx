@@ -1009,8 +1009,7 @@ export const BookingEditPlatform: React.FC = () => {
                     <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Address</Text>
                     <GooglePlacesAutocomplete
                       value={booking.address || ''} 
-                      placeholder="Enter the full address where the service will be provided"
-                      rows={3}
+                      placeholder="Start typing your address..."
                       style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
                       onChange={(value) => {
                         form.setFieldsValue({ address: value });
