@@ -49,6 +49,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { EmailService, BookingData, TherapistData } from '../../utils/emailService';
 import { SMSService } from '../../utils/smsService';
 import { generateQuotePDF } from '../../utils/pdfGenerator';
+import GooglePlacesAutocomplete from '../../components/GooglePlacesAutocomplete';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -462,13 +463,48 @@ export const BookingEditPlatform: React.FC = () => {
     try {
       let coordinates = { lat: lat || 0, lng: lng || 0 };
       
-      // If no coordinates provided, try to geocode
+      // If no coordinates provided, try to geocode using Google Maps API
       if (!lat || !lng) {
-        // For now, we'll use a simple approach - in production, you'd integrate Google Maps API
-        console.log('🔍 Address verification for:', address);
-        // This would normally use Google Maps Geocoding API
-        // For now, we'll simulate with a basic check
-        coordinates = { lat: -37.8136, lng: 144.9631 }; // Melbourne coordinates as fallback
+        console.log('🔍 Geocoding address manually:', address);
+        
+        if (!window.google?.maps?.Geocoder) {
+          console.error('❌ Google Maps Geocoder not available');
+          setAddressStatus('Google Maps API not loaded');
+          setAddressVerified(false);
+          return;
+        }
+
+        try {
+          const geocoder = new window.google.maps.Geocoder();
+          const result = await new Promise<any>((resolve, reject) => {
+            geocoder.geocode(
+              { 
+                address: address, 
+                componentRestrictions: { country: 'au' } 
+              }, 
+              (results: any[], status: string) => {
+                if (status === 'OK' && results && results[0]) {
+                  resolve(results[0]);
+                } else {
+                  reject(new Error('Geocoding failed'));
+                }
+              }
+            );
+          });
+
+          if (result.geometry) {
+            coordinates = {
+              lat: result.geometry.location.lat(),
+              lng: result.geometry.location.lng()
+            };
+            console.log('✅ Address geocoded successfully:', coordinates);
+          }
+        } catch (geocodingError) {
+          console.error('❌ Geocoding failed:', geocodingError);
+          setAddressStatus('Unable to verify address location. Please try selecting from the dropdown suggestions.');
+          setAddressVerified(false);
+          return;
+        }
       }
 
       setAddressCoordinates(coordinates);
@@ -971,16 +1007,28 @@ export const BookingEditPlatform: React.FC = () => {
                   
                   <div style={{ marginBottom: '20px' }}>
                     <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Address</Text>
-                    <Input.TextArea 
+                    <GooglePlacesAutocomplete
                       value={booking.address || ''} 
                       placeholder="Enter the full address where the service will be provided"
                       rows={3}
                       style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
-                      onChange={(e) => {
-                        form.setFieldsValue({ address: e.target.value });
-                        setBooking(prev => prev ? { ...prev, address: e.target.value } : null);
-                        // Trigger address verification
-                        checkTherapistCoverageForAddress(e.target.value);
+                      onChange={(value) => {
+                        form.setFieldsValue({ address: value });
+                        setBooking(prev => prev ? { ...prev, address: value } : null);
+                      }}
+                      onPlaceSelect={(place) => {
+                        console.log('📍 Place selected:', place);
+                        // Update booking with the selected place
+                        setBooking(prev => prev ? { 
+                          ...prev, 
+                          address: place.address,
+                          // Store coordinates for later use
+                          latitude: place.lat,
+                          longitude: place.lng
+                        } : null);
+                        
+                        // Trigger address verification with real coordinates
+                        checkTherapistCoverageForAddress(place.address, place.lat, place.lng);
                       }}
                     />
                     {addressStatus && (
