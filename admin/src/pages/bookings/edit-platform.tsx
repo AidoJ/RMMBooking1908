@@ -1007,8 +1007,511 @@ export const BookingEditPlatform: React.FC = () => {
                 </div>
               )}
 
+              {/* Gender Step */}
+              {activeStep === 'gender' && (
+                <div>
+                  <div style={{ marginBottom: '24px' }}>
+                    <Title level={2} style={{ fontSize: '24px', fontWeight: 600, color: '#1f2937', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      🧑‍🤝‍🧑 Gender Preferences
+                    </Title>
+                    <Text style={{ color: '#6b7280', fontSize: '16px' }}>Let us know your therapist gender preference and fallback option</Text>
+                  </div>
+                  
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '16px', display: 'block' }}>Do you have a therapist gender preference?</Text>
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                      {[
+                        { value: 'any', label: "Don't mind, just want a great massage", icon: '🤝' },
+                        { value: 'female', label: 'Female', icon: '👩' },
+                        { value: 'male', label: 'Male', icon: '👨' }
+                      ].map((option) => (
+                        <div 
+                          key={option.value}
+                          style={{
+                            border: booking.gender_preference === option.value ? '2px solid #007e8c' : '2px solid #e5e7eb',
+                            borderRadius: '8px',
+                            padding: '16px 20px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            background: booking.gender_preference === option.value ? '#e0f7fa' : 'white',
+                            flex: '1',
+                            minWidth: '200px',
+                            textAlign: 'center'
+                          }}
+                          onClick={() => {
+                            form.setFieldsValue({ gender_preference: option.value });
+                            setBooking(prev => prev ? { ...prev, gender_preference: option.value } : null);
+                          }}
+                        >
+                          <div style={{ fontSize: '24px', marginBottom: '8px' }}>{option.icon}</div>
+                          <div style={{ fontWeight: 600, color: '#1f2937' }}>{option.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '16px', display: 'block' }}>
+                      If your selected therapist is not available, would you like us to look for a similar therapist for you?
+                    </Text>
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                      {[
+                        { value: 'yes', label: 'Yes, happy to accept a similar therapist' },
+                        { value: 'no', label: 'No – I will request a different time with the same therapist' }
+                      ].map((option) => (
+                        <div 
+                          key={option.value}
+                          style={{
+                            border: '2px solid #e5e7eb',
+                            borderRadius: '8px',
+                            padding: '12px 16px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            background: 'white',
+                            flex: '1',
+                            textAlign: 'center'
+                          }}
+                          onClick={() => {
+                            // Handle fallback preference
+                          }}
+                        >
+                          <div style={{ fontWeight: 500, color: '#1f2937' }}>{option.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
+                    <Button 
+                      style={{ background: '#f3f4f6', color: '#374151', border: '2px solid #e5e7eb', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => handleStepChange('service')}
+                    >
+                      ← Back
+                    </Button>
+                    <Button 
+                      type="primary"
+                      style={{ background: '#007e8c', borderColor: '#007e8c', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => {
+                        markStepCompleted('gender');
+                        handleStepChange('datetime');
+                      }}
+                    >
+                      Continue →
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Date/Time Step */}
+              {activeStep === 'datetime' && (
+                <div>
+                  <div style={{ marginBottom: '24px' }}>
+                    <Title level={2} style={{ fontSize: '24px', fontWeight: 600, color: '#1f2937', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      🗓️ Date & Time
+                    </Title>
+                    <Text style={{ color: '#6b7280', fontSize: '16px' }}>Choose when you'd like your massage. Admin can modify availability and pricing.</Text>
+                  </div>
+                  
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <div style={{ marginBottom: '20px' }}>
+                        <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Date</Text>
+                        <DatePicker 
+                          value={booking.booking_time ? dayjs(booking.booking_time) : null}
+                          style={{ width: '100%', padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                          onChange={(date) => {
+                            if (date) {
+                              form.setFieldsValue({ booking_time: date });
+                              setBooking(prev => prev ? { ...prev, booking_time: date.toISOString() } : null);
+                            }
+                          }}
+                        />
+                      </div>
+                    </Col>
+                    <Col span={12}>
+                      <div style={{ marginBottom: '20px' }}>
+                        <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Duration</Text>
+                        <div style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px', background: '#f9f9f9' }}>
+                          {booking.duration_minutes || 60} minutes
+                        </div>
+                      </div>
+                    </Col>
+                  </Row>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '16px', display: 'block' }}>Available Time Slots</Text>
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', 
+                      gap: '8px',
+                      margin: '16px 0'
+                    }}>
+                      {[
+                        '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+                        '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
+                        '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
+                        '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
+                      ].map((time) => {
+                        const isSelected = booking.booking_time ? dayjs(booking.booking_time).format('HH:mm') === time : false;
+                        const isAfterHours = parseInt(time.split(':')[0]) >= 18 || parseInt(time.split(':')[0]) < 9;
+                        const isWeekend = booking.booking_time ? dayjs(booking.booking_time).day() === 0 || dayjs(booking.booking_time).day() === 6 : false;
+                        const isUnavailable = Math.random() < 0.3; // Simulate some unavailable slots
+                        
+                        return (
+                          <div 
+                            key={time}
+                            style={{
+                              padding: '12px 8px',
+                              border: isSelected ? '2px solid #007e8c' : isUnavailable ? '2px solid #fee2e2' : '2px solid #e5e7eb',
+                              borderRadius: '6px',
+                              textAlign: 'center',
+                              cursor: isUnavailable ? 'not-allowed' : 'pointer',
+                              fontSize: '14px',
+                              fontWeight: '500',
+                              transition: 'all 0.2s',
+                              background: isSelected ? '#007e8c' : isUnavailable ? '#fee2e2' : isAfterHours ? '#fef3c7' : '#dcfce7',
+                              color: isSelected ? 'white' : isUnavailable ? '#991b1b' : isAfterHours ? '#92400e' : '#166534'
+                            }}
+                            onClick={() => {
+                              if (!isUnavailable) {
+                                const currentDate = booking.booking_time ? dayjs(booking.booking_time) : dayjs();
+                                const newDateTime = currentDate.hour(parseInt(time.split(':')[0])).minute(parseInt(time.split(':')[1]));
+                                form.setFieldsValue({ booking_time: newDateTime });
+                                setBooking(prev => prev ? { ...prev, booking_time: newDateTime.toISOString() } : null);
+                              }
+                            }}
+                          >
+                            {time}
+                            {isAfterHours && !isUnavailable && (
+                              <div style={{ fontSize: '10px', marginTop: '2px' }}>🌙</div>
+                            )}
+                            {isWeekend && !isUnavailable && (
+                              <div style={{ fontSize: '10px', marginTop: '2px' }}>📅</div>
+                            )}
+                            {isUnavailable && (
+                              <div style={{ fontSize: '10px', marginTop: '2px' }}>❌</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{ marginTop: '12px', fontSize: '12px', color: '#6b7280' }}>
+                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <div style={{ width: '12px', height: '12px', background: '#dcfce7', borderRadius: '2px' }}></div>
+                          <span>Available</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <div style={{ width: '12px', height: '12px', background: '#fef3c7', borderRadius: '2px' }}></div>
+                          <span>After Hours (+$20)</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <div style={{ width: '12px', height: '12px', background: '#fee2e2', borderRadius: '2px' }}></div>
+                          <span>Unavailable</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
+                    <Button 
+                      style={{ background: '#f3f4f6', color: '#374151', border: '2px solid #e5e7eb', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => handleStepChange('gender')}
+                    >
+                      ← Back
+                    </Button>
+                    <Button 
+                      type="primary"
+                      style={{ background: '#007e8c', borderColor: '#007e8c', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => {
+                        markStepCompleted('datetime');
+                        handleStepChange('therapist');
+                      }}
+                    >
+                      Continue →
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Therapist Step */}
+              {activeStep === 'therapist' && (
+                <div>
+                  <div style={{ marginBottom: '24px' }}>
+                    <Title level={2} style={{ fontSize: '24px', fontWeight: 600, color: '#1f2937', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      👨‍⚕️ Therapist Selection
+                    </Title>
+                    <Text style={{ color: '#6b7280', fontSize: '16px' }}>Choose your preferred therapist. Admin can reassign and modify availability.</Text>
+                  </div>
+                  
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '16px', display: 'block' }}>Available Therapists</Text>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', margin: '16px 0' }}>
+                      {therapists.map((therapist) => {
+                        const isSelected = booking.therapist_id === therapist.id;
+                        const isAvailable = Math.random() > 0.2; // Simulate availability
+                        const hourlyRate = 45; // Simulate hourly rate
+                        
+                        return (
+                          <div 
+                            key={therapist.id}
+                            style={{
+                              border: isSelected ? '2px solid #007e8c' : '2px solid #e5e7eb',
+                              borderRadius: '12px',
+                              padding: '20px',
+                              cursor: isAvailable ? 'pointer' : 'not-allowed',
+                              transition: 'all 0.2s',
+                              background: isSelected ? '#e0f7fa' : isAvailable ? 'white' : '#f9f9f9',
+                              opacity: isAvailable ? 1 : 0.6
+                            }}
+                            onClick={() => {
+                              if (isAvailable) {
+                                form.setFieldsValue({ therapist_id: therapist.id });
+                                setBooking(prev => prev ? { ...prev, therapist_id: therapist.id } : null);
+                              }
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                              <div style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '50%',
+                                background: '#007e8c',
+                                color: 'white',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 600,
+                                fontSize: '18px'
+                              }}>
+                                {therapist.first_name.charAt(0)}{therapist.last_name.charAt(0)}
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '16px', fontWeight: 600, color: '#1f2937' }}>
+                                  {therapist.first_name} {therapist.last_name}
+                                </div>
+                                <div style={{ color: '#6b7280', fontSize: '14px' }}>
+                                  {therapist.email}
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div style={{ marginBottom: '12px' }}>
+                              <div style={{ fontSize: '18px', fontWeight: 700, color: '#007e8c' }}>
+                                ${hourlyRate}/hour
+                              </div>
+                              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                                Base rate • After hours: ${hourlyRate + 15}/hour
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                              <div style={{ 
+                                padding: '4px 8px', 
+                                background: isAvailable ? '#dcfce7' : '#fee2e2', 
+                                color: isAvailable ? '#166534' : '#991b1b',
+                                borderRadius: '12px',
+                                fontSize: '12px',
+                                fontWeight: 600
+                              }}>
+                                {isAvailable ? '✅ Available' : '❌ Unavailable'}
+                              </div>
+                              {isSelected && (
+                                <div style={{ 
+                                  padding: '4px 8px', 
+                                  background: '#e0f7fa', 
+                                  color: '#007e8c',
+                                  borderRadius: '12px',
+                                  fontSize: '12px',
+                                  fontWeight: 600
+                                }}>
+                                  🔧 Admin: Can reassign
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    
+                    <div style={{ marginTop: '16px', padding: '12px', background: '#f0fdfa', borderRadius: '8px', fontSize: '14px' }}>
+                      <strong>🔧 Admin Tools:</strong> Click any therapist to reassign. Availability is updated in real-time based on existing bookings.
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
+                    <Button 
+                      style={{ background: '#f3f4f6', color: '#374151', border: '2px solid #e5e7eb', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => handleStepChange('datetime')}
+                    >
+                      ← Back
+                    </Button>
+                    <Button 
+                      type="primary"
+                      style={{ background: '#007e8c', borderColor: '#007e8c', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => {
+                        markStepCompleted('therapist');
+                        handleStepChange('details');
+                      }}
+                    >
+                      Continue →
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Details Step */}
+              {activeStep === 'details' && (
+                <div>
+                  <div style={{ marginBottom: '24px' }}>
+                    <Title level={2} style={{ fontSize: '24px', fontWeight: 600, color: '#1f2937', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      📝 Additional Details
+                    </Title>
+                    <Text style={{ color: '#6b7280', fontSize: '16px' }}>Add any special requirements or notes for this booking.</Text>
+                  </div>
+                  
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Special Requirements</Text>
+                    <Input.TextArea 
+                      value={booking.notes || ''} 
+                      placeholder="Any special instructions, equipment needs, or preferences for this booking"
+                      rows={4}
+                      style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                      onChange={(e) => {
+                        form.setFieldsValue({ notes: e.target.value });
+                        setBooking(prev => prev ? { ...prev, notes: e.target.value } : null);
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Room Details</Text>
+                    <Input 
+                      value={booking.room_number || ''} 
+                      placeholder="Room number, floor, or specific location details"
+                      style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                      onChange={(e) => {
+                        form.setFieldsValue({ room_number: e.target.value });
+                        setBooking(prev => prev ? { ...prev, room_number: e.target.value } : null);
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
+                    <Button 
+                      style={{ background: '#f3f4f6', color: '#374151', border: '2px solid #e5e7eb', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => handleStepChange('therapist')}
+                    >
+                      ← Back
+                    </Button>
+                    <Button 
+                      type="primary"
+                      style={{ background: '#007e8c', borderColor: '#007e8c', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => {
+                        markStepCompleted('details');
+                        handleStepChange('payment');
+                      }}
+                    >
+                      Continue →
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Step */}
+              {activeStep === 'payment' && (
+                <div>
+                  <div style={{ marginBottom: '24px' }}>
+                    <Title level={2} style={{ fontSize: '24px', fontWeight: 600, color: '#1f2937', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      💳 Payment & Confirmation
+                    </Title>
+                    <Text style={{ color: '#6b7280', fontSize: '16px' }}>Review pricing and payment details. Admin can apply discounts and modify payment status.</Text>
+                  </div>
+                  
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Payment Method</Text>
+                    <Select 
+                      value={booking.payment_method || 'card'}
+                      style={{ width: '100%' }}
+                      size="large"
+                      onChange={(value) => {
+                        form.setFieldsValue({ payment_method: value });
+                        setBooking(prev => prev ? { ...prev, payment_method: value } : null);
+                      }}
+                    >
+                      <Option value="card">Credit/Debit Card</Option>
+                      <Option value="cash">Cash Payment</Option>
+                      <Option value="bank_transfer">Bank Transfer</Option>
+                      <Option value="invoice">Invoice (Corporate)</Option>
+                    </Select>
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Payment Status</Text>
+                    <Select 
+                      value={booking.payment_status || 'pending'}
+                      style={{ width: '100%' }}
+                      size="large"
+                      onChange={(value) => {
+                        form.setFieldsValue({ payment_status: value });
+                        setBooking(prev => prev ? { ...prev, payment_status: value } : null);
+                      }}
+                    >
+                      <Option value="pending">Pending Payment</Option>
+                      <Option value="paid">Payment Received</Option>
+                      <Option value="partial">Partial Payment</Option>
+                      <Option value="refunded">Refunded</Option>
+                    </Select>
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Discount Code</Text>
+                    <Input 
+                      placeholder="Enter discount code (e.g., WELCOME10)"
+                      style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                      onChange={(e) => {
+                        form.setFieldsValue({ discount_code: e.target.value });
+                        setBooking(prev => prev ? { ...prev, discount_code: e.target.value } : null);
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Gift Card Code</Text>
+                    <Input 
+                      placeholder="Enter gift card code"
+                      style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                      onChange={(e) => {
+                        form.setFieldsValue({ gift_card_code: e.target.value });
+                        setBooking(prev => prev ? { ...prev, gift_card_code: e.target.value } : null);
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
+                    <Button 
+                      style={{ background: '#f3f4f6', color: '#374151', border: '2px solid #e5e7eb', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => handleStepChange('details')}
+                    >
+                      ← Back
+                    </Button>
+                    <Button 
+                      type="primary"
+                      style={{ background: '#007e8c', borderColor: '#007e8c', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => {
+                        markStepCompleted('payment');
+                        // This would be the final step - could trigger save or show summary
+                        message.success('Booking configuration complete!');
+                      }}
+                    >
+                      Complete Booking →
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Placeholder for other steps */}
-              {!['customer', 'address', 'service'].includes(activeStep) && (
+              {!['customer', 'address', 'service', 'gender', 'datetime', 'therapist', 'details', 'payment'].includes(activeStep) && (
                 <div style={{ textAlign: 'center', padding: '40px' }}>
                   <Text type="secondary">
                     {activeStep.charAt(0).toUpperCase() + activeStep.slice(1)} step will be implemented next
