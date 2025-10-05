@@ -1109,7 +1109,7 @@ export const BookingEditPlatform: React.FC = () => {
                     </Button>
                     <Button 
                       type="primary"
-                      disabled={!addressVerified && booking.address?.trim()}
+                      disabled={!addressVerified && !!booking.address?.trim()}
                       style={{ 
                         background: addressVerified || !booking.address?.trim() ? '#007e8c' : '#9ca3af', 
                         borderColor: addressVerified || !booking.address?.trim() ? '#007e8c' : '#9ca3af', 
