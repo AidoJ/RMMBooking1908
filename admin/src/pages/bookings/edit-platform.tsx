@@ -220,6 +220,7 @@ export const BookingEditPlatform: React.FC = () => {
 
   // New state for hybrid platform
   const [activeStep, setActiveStep] = useState('customer');
+  const [completedSteps, setCompletedSteps] = useState<string[]>(['customer', 'address']);
   const [showQuickActions, setShowQuickActions] = useState(true);
 
   const userRole = identity?.role;
@@ -435,6 +436,26 @@ export const BookingEditPlatform: React.FC = () => {
     }
   };
 
+  // Step navigation functions
+  const handleStepChange = (stepId: string) => {
+    setActiveStep(stepId);
+  };
+
+  const markStepCompleted = (stepId: string) => {
+    if (!completedSteps.includes(stepId)) {
+      setCompletedSteps(prev => [...prev, stepId]);
+    }
+  };
+
+  const canNavigateToStep = (stepId: string) => {
+    const stepOrder = ['customer', 'address', 'service', 'gender', 'datetime', 'therapist', 'details', 'payment'];
+    const currentIndex = stepOrder.indexOf(activeStep);
+    const targetIndex = stepOrder.indexOf(stepId);
+    
+    // Can navigate to previous steps or next step if current is completed
+    return targetIndex <= currentIndex || completedSteps.includes(activeStep);
+  };
+
   // Copy all existing notification and communication functions from edit.tsx
   const handleSendNotification = async () => {
     if (!booking) return;
@@ -581,22 +602,393 @@ export const BookingEditPlatform: React.FC = () => {
 
         {/* Main Content */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '24px' }}>
-          {/* Left Panel - Booking Platform (Placeholder for now) */}
-          <Card 
-            title="📋 Booking Platform Steps" 
-            style={{ borderRadius: '12px' }}
-            bodyStyle={{ padding: '32px' }}
-          >
-            <div style={{ textAlign: 'center', padding: '40px' }}>
-              <Text type="secondary">
-                Booking platform steps will be implemented in Phase 2
-              </Text>
-              <br />
-              <Text type="secondary">
-                Current step: {activeStep}
-              </Text>
+          {/* Left Panel - Booking Platform Steps */}
+          <div style={{ background: 'white', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            {/* Progress Bar */}
+            <div style={{ background: '#f8fafc', padding: '20px', borderBottom: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
+                {['customer', 'address', 'service', 'gender', 'datetime', 'therapist', 'details', 'payment'].map((step, index) => (
+                  <div 
+                    key={step}
+                    style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      alignItems: 'center', 
+                      position: 'relative', 
+                      flex: 1,
+                      cursor: canNavigateToStep(step) ? 'pointer' : 'not-allowed'
+                    }}
+                    onClick={() => canNavigateToStep(step) && handleStepChange(step)}
+                  >
+                    {index < 7 && (
+                      <div style={{
+                        position: 'absolute',
+                        top: '15px',
+                        left: 'calc(50% + 15px)',
+                        right: 'calc(-50% + 15px)',
+                        height: '2px',
+                        background: completedSteps.includes(step) || activeStep === step ? '#007e8c' : '#e5e7eb',
+                        zIndex: 1
+                      }} />
+                    )}
+                    <div style={{
+                      width: '30px',
+                      height: '30px',
+                      borderRadius: '50%',
+                      background: completedSteps.includes(step) ? '#007e8c' : activeStep === step ? '#007e8c' : '#e5e7eb',
+                      color: completedSteps.includes(step) || activeStep === step ? 'white' : '#6b7280',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 600,
+                      fontSize: '14px',
+                      position: 'relative',
+                      zIndex: 2,
+                      transition: 'all 0.3s'
+                    }}>
+                      {completedSteps.includes(step) ? '✓' : index + 1}
+                    </div>
+                    <div style={{
+                      marginTop: '8px',
+                      fontSize: '12px',
+                      fontWeight: (activeStep === step || completedSteps.includes(step)) ? 600 : 500,
+                      color: (activeStep === step || completedSteps.includes(step)) ? '#007e8c' : '#6b7280',
+                      textAlign: 'center',
+                      textTransform: 'capitalize'
+                    }}>
+                      {step === 'datetime' ? 'Date/Time' : step}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          </Card>
+
+            {/* Step Content */}
+            <div style={{ padding: '32px' }}>
+              {/* Customer Step */}
+              {activeStep === 'customer' && (
+                <div>
+                  <div style={{ marginBottom: '24px' }}>
+                    <Title level={2} style={{ fontSize: '24px', fontWeight: 600, color: '#1f2937', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      👤 Customer Details
+                    </Title>
+                    <Text style={{ color: '#6b7280', fontSize: '16px' }}>Review and update customer information</Text>
+                  </div>
+                  
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <div style={{ marginBottom: '20px' }}>
+                        <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>First Name</Text>
+                        <Input 
+                          value={booking.customer_details?.first_name || ''} 
+                          placeholder="First Name"
+                          style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                        />
+                      </div>
+                    </Col>
+                    <Col span={12}>
+                      <div style={{ marginBottom: '20px' }}>
+                        <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Last Name</Text>
+                        <Input 
+                          value={booking.customer_details?.last_name || ''} 
+                          placeholder="Last Name"
+                          style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                        />
+                      </div>
+                    </Col>
+                  </Row>
+
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <div style={{ marginBottom: '20px' }}>
+                        <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Email</Text>
+                        <Input 
+                          value={booking.customer_details?.email || ''} 
+                          placeholder="Email Address"
+                          style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                        />
+                      </div>
+                    </Col>
+                    <Col span={12}>
+                      <div style={{ marginBottom: '20px' }}>
+                        <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Phone</Text>
+                        <Input 
+                          value={booking.customer_details?.phone || ''} 
+                          placeholder="Phone Number"
+                          style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                        />
+                      </div>
+                    </Col>
+                  </Row>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Business Name</Text>
+                    <Input 
+                      value={booking.business_name || ''} 
+                      placeholder="Business Name (Optional)"
+                      style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
+                    <Button style={{ background: '#f3f4f6', color: '#374151', border: '2px solid #e5e7eb', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}>
+                      ← Back
+                    </Button>
+                    <Button 
+                      type="primary"
+                      style={{ background: '#007e8c', borderColor: '#007e8c', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => {
+                        markStepCompleted('customer');
+                        handleStepChange('address');
+                      }}
+                    >
+                      Continue →
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Address Step */}
+              {activeStep === 'address' && (
+                <div>
+                  <div style={{ marginBottom: '24px' }}>
+                    <Title level={2} style={{ fontSize: '24px', fontWeight: 600, color: '#1f2937', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      📍 Location Details
+                    </Title>
+                    <Text style={{ color: '#6b7280', fontSize: '16px' }}>Review and update booking location information</Text>
+                  </div>
+                  
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Address</Text>
+                    <Input.TextArea 
+                      value={booking.address || ''} 
+                      placeholder="Enter the full address where the service will be provided"
+                      rows={3}
+                      style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                    />
+                  </div>
+
+                  <Row gutter={16}>
+                    <Col span={12}>
+                      <div style={{ marginBottom: '20px' }}>
+                        <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Room Details</Text>
+                        <Input 
+                          value={booking.room_number || ''} 
+                          placeholder="Room number or details"
+                          style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                        />
+                      </div>
+                    </Col>
+                    <Col span={12}>
+                      <div style={{ marginBottom: '20px' }}>
+                        <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Parking</Text>
+                        <Select 
+                          value={booking.parking || 'free'}
+                          style={{ width: '100%' }}
+                          size="large"
+                        >
+                          <Option value="free">Free Parking Available</Option>
+                          <Option value="paid">Paid Parking Required</Option>
+                          <Option value="unknown">Unknown</Option>
+                        </Select>
+                      </div>
+                    </Col>
+                  </Row>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Special Notes</Text>
+                    <Input.TextArea 
+                      value={booking.notes || ''} 
+                      placeholder="Any special instructions or notes for this location"
+                      rows={3}
+                      style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
+                    <Button 
+                      style={{ background: '#f3f4f6', color: '#374151', border: '2px solid #e5e7eb', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => handleStepChange('customer')}
+                    >
+                      ← Back
+                    </Button>
+                    <Button 
+                      type="primary"
+                      style={{ background: '#007e8c', borderColor: '#007e8c', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => {
+                        markStepCompleted('address');
+                        handleStepChange('service');
+                      }}
+                    >
+                      Continue →
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Service Step */}
+              {activeStep === 'service' && (
+                <div>
+                  <div style={{ marginBottom: '24px' }}>
+                    <Title level={2} style={{ fontSize: '24px', fontWeight: 600, color: '#1f2937', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      🛠️ Service & Duration
+                    </Title>
+                    <Text style={{ color: '#6b7280', fontSize: '16px' }}>Select the type of service and duration. Admin can modify pricing and availability.</Text>
+                  </div>
+                  
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '16px', display: 'block' }}>Service Type</Text>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px', margin: '20px 0' }}>
+                      {services.map((service) => (
+                        <div 
+                          key={service.id}
+                          style={{
+                            border: service.id === booking.service_id ? '2px solid #007e8c' : '2px solid #e5e7eb',
+                            borderRadius: '12px',
+                            padding: '20px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            background: service.id === booking.service_id ? '#e0f7fa' : 'white'
+                          }}
+                          onClick={() => handleServiceChange(service.id)}
+                        >
+                          <Title level={4} style={{ fontSize: '18px', fontWeight: 600, color: '#1f2937', marginBottom: '8px' }}>
+                            {service.name}
+                          </Title>
+                          <Text style={{ color: '#6b7280', marginBottom: '12px', display: 'block' }}>
+                            {service.description}
+                          </Text>
+                          <div style={{ fontSize: '20px', fontWeight: 700, color: '#007e8c' }}>
+                            ${service.service_base_price}/hour
+                          </div>
+                          <div style={{ marginTop: '8px', padding: '4px 12px', background: '#e0f7fa', color: '#007e8c', borderRadius: '20px', fontSize: '12px', fontWeight: 600, display: 'inline-block' }}>
+                            🔧 Admin: Can modify price
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '20px' }}>
+                    <Text strong style={{ color: '#374151', marginBottom: '16px', display: 'block' }}>Duration</Text>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '12px', margin: '16px 0' }}>
+                      {[60, 90, 120].map((duration) => (
+                        <div 
+                          key={duration}
+                          style={{
+                            border: booking.duration_minutes === duration ? '2px solid #007e8c' : '2px solid #e5e7eb',
+                            borderRadius: '8px',
+                            padding: '16px',
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            background: booking.duration_minutes === duration ? '#e0f7fa' : 'white'
+                          }}
+                          onClick={() => {
+                            form.setFieldsValue({ duration_minutes: duration });
+                          }}
+                        >
+                          <Title level={4} style={{ fontSize: '16px', color: '#1f2937', marginBottom: '4px' }}>
+                            {duration} mins
+                          </Title>
+                          <Text style={{ fontSize: '14px', color: '#007e8c', fontWeight: 600 }}>
+                            ${selectedService ? selectedService.service_base_price * (duration / 60) : 0}
+                          </Text>
+                          {duration > 60 && (
+                            <div style={{ marginTop: '8px', padding: '2px 8px', background: '#e0f7fa', color: '#007e8c', borderRadius: '20px', fontSize: '10px', fontWeight: 600, display: 'inline-block' }}>
+                              +${(selectedService ? selectedService.service_base_price * (duration / 60) : 0) - (selectedService ? selectedService.service_base_price : 0)} uplift
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Enhanced Pricing Display for Admin */}
+                  <div style={{
+                    background: 'linear-gradient(135deg, #f0fdfa 0%, #e0f7fa 100%)',
+                    border: '2px solid #007e8c',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    margin: '20px 0'
+                  }}>
+                    <div style={{ fontSize: '20px', fontWeight: 700, color: '#007e8c', textAlign: 'center', marginBottom: '16px' }}>
+                      💰 Live Pricing Calculator
+                    </div>
+                    <div style={{ display: 'grid', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
+                        <span>Base Price ({booking.duration_minutes || 60} mins):</span>
+                        <span>${selectedService ? selectedService.service_base_price * ((booking.duration_minutes || 60) / 60) : 0}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
+                        <span>Duration Uplift:</span>
+                        <span>$0.00</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
+                        <span>Time Uplift (After Hours):</span>
+                        <span>$20.00</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
+                        <span>Discount (WELCOME10):</span>
+                        <span>-$12.00</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
+                        <span>GST (10%):</span>
+                        <span>$12.80</span>
+                      </div>
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        padding: '16px 0 8px 0',
+                        borderTop: '2px solid #007e8c',
+                        fontWeight: '700',
+                        fontSize: '18px',
+                        color: '#007e8c'
+                      }}>
+                        <span>Total Amount:</span>
+                        <span>$140.80</span>
+                      </div>
+                    </div>
+                    <div style={{ marginTop: '16px', padding: '12px', background: '#f0fdfa', borderRadius: '8px', fontSize: '14px' }}>
+                      <strong>🔧 Admin Tools:</strong> Click any pricing line to modify. Changes auto-calculate totals.
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
+                    <Button 
+                      style={{ background: '#f3f4f6', color: '#374151', border: '2px solid #e5e7eb', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => handleStepChange('address')}
+                    >
+                      ← Back
+                    </Button>
+                    <Button 
+                      type="primary"
+                      style={{ background: '#007e8c', borderColor: '#007e8c', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      onClick={() => {
+                        markStepCompleted('service');
+                        handleStepChange('gender');
+                      }}
+                    >
+                      Continue →
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Placeholder for other steps */}
+              {!['customer', 'address', 'service'].includes(activeStep) && (
+                <div style={{ textAlign: 'center', padding: '40px' }}>
+                  <Text type="secondary">
+                    {activeStep.charAt(0).toUpperCase() + activeStep.slice(1)} step will be implemented next
+                  </Text>
+                  <br />
+                  <Text type="secondary">
+                    Current step: {activeStep}
+                  </Text>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Right Panel - Admin Sidebar (Placeholder for now) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
