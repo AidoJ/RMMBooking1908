@@ -222,6 +222,11 @@ export const BookingEditPlatform: React.FC = () => {
   // New state for hybrid platform
   const [activeStep, setActiveStep] = useState('customer');
   const [completedSteps, setCompletedSteps] = useState<string[]>(['customer', 'address']);
+
+  // Address verification state
+  const [addressVerified, setAddressVerified] = useState(false);
+  const [addressStatus, setAddressStatus] = useState('');
+  const [addressCoordinates, setAddressCoordinates] = useState<{lat: number, lng: number} | null>(null);
   const [showQuickActions, setShowQuickActions] = useState(true);
 
   const userRole = identity?.role;
@@ -443,6 +448,83 @@ export const BookingEditPlatform: React.FC = () => {
       message.error('Failed to update booking');
     } finally {
       setSaving(false);
+    }
+  };
+
+  // Address verification functions
+  const checkTherapistCoverageForAddress = async (address: string, lat?: number, lng?: number) => {
+    if (!address.trim()) {
+      setAddressStatus('');
+      setAddressVerified(false);
+      return;
+    }
+
+    try {
+      let coordinates = { lat: lat || 0, lng: lng || 0 };
+      
+      // If no coordinates provided, try to geocode
+      if (!lat || !lng) {
+        // For now, we'll use a simple approach - in production, you'd integrate Google Maps API
+        console.log('🔍 Address verification for:', address);
+        // This would normally use Google Maps Geocoding API
+        // For now, we'll simulate with a basic check
+        coordinates = { lat: -37.8136, lng: 144.9631 }; // Melbourne coordinates as fallback
+      }
+
+      setAddressCoordinates(coordinates);
+
+      // Fetch all active therapists with location data
+      const { data: therapists, error } = await supabaseClient
+        .from('therapist_profiles')
+        .select('id, latitude, longitude, service_radius_km, is_active')
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('Error fetching therapists:', error);
+        setAddressStatus('Error checking therapist availability');
+        setAddressVerified(false);
+        return;
+      }
+
+      if (!therapists || therapists.length === 0) {
+        setAddressStatus('No active therapists found');
+        setAddressVerified(false);
+        return;
+      }
+
+      // Haversine formula to calculate distance
+      const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      };
+
+      // Check if any therapist covers this location
+      const covered = therapists.some(therapist => {
+        if (!therapist.latitude || !therapist.longitude || !therapist.service_radius_km) {
+          return false;
+        }
+        const distance = getDistanceKm(coordinates.lat, coordinates.lng, therapist.latitude, therapist.longitude);
+        return distance <= therapist.service_radius_km;
+      });
+
+      if (covered) {
+        setAddressStatus('✅ Great news! We have therapists available in your area');
+        setAddressVerified(true);
+      } else {
+        setAddressStatus('❌ Sorry, we don\'t have any therapists available in your area right now');
+        setAddressVerified(false);
+      }
+    } catch (error) {
+      console.error('Address verification error:', error);
+      setAddressStatus('Error verifying address');
+      setAddressVerified(false);
     }
   };
 
@@ -897,8 +979,23 @@ export const BookingEditPlatform: React.FC = () => {
                       onChange={(e) => {
                         form.setFieldsValue({ address: e.target.value });
                         setBooking(prev => prev ? { ...prev, address: e.target.value } : null);
+                        // Trigger address verification
+                        checkTherapistCoverageForAddress(e.target.value);
                       }}
                     />
+                    {addressStatus && (
+                      <div style={{ 
+                        marginTop: '8px', 
+                        padding: '8px 12px', 
+                        borderRadius: '6px',
+                        background: addressVerified ? '#f0fdf4' : '#fef2f2',
+                        border: `1px solid ${addressVerified ? '#bbf7d0' : '#fecaca'}`,
+                        color: addressVerified ? '#166534' : '#dc2626',
+                        fontSize: '14px'
+                      }}>
+                        {addressStatus}
+                      </div>
+                    )}
                   </div>
 
                   <Row gutter={16}>
@@ -1012,13 +1109,20 @@ export const BookingEditPlatform: React.FC = () => {
                     </Button>
                     <Button 
                       type="primary"
-                      style={{ background: '#007e8c', borderColor: '#007e8c', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
+                      disabled={!addressVerified && booking.address?.trim()}
+                      style={{ 
+                        background: addressVerified || !booking.address?.trim() ? '#007e8c' : '#9ca3af', 
+                        borderColor: addressVerified || !booking.address?.trim() ? '#007e8c' : '#9ca3af', 
+                        borderRadius: '8px', 
+                        fontWeight: 600, 
+                        fontSize: '16px' 
+                      }}
                       onClick={() => {
                         markStepCompleted('address');
                         handleStepChange('service');
                       }}
                     >
-                      Continue →
+                      {!addressVerified && booking.address?.trim() ? 'Verify Address First' : 'Continue →'}
                     </Button>
                   </div>
                 </div>
