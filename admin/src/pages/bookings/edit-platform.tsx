@@ -693,6 +693,16 @@ export const BookingEditPlatform: React.FC = () => {
                           value={booking.customer_details?.first_name || ''} 
                           placeholder="First Name"
                           style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                          onChange={(e) => {
+                            form.setFieldsValue({ 'customer_details.first_name': e.target.value });
+                            setBooking(prev => prev ? { 
+                              ...prev, 
+                              customer_details: { 
+                                ...prev.customer_details, 
+                                first_name: e.target.value 
+                              } 
+                            } : null);
+                          }}
                         />
                       </div>
                     </Col>
@@ -703,6 +713,16 @@ export const BookingEditPlatform: React.FC = () => {
                           value={booking.customer_details?.last_name || ''} 
                           placeholder="Last Name"
                           style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                          onChange={(e) => {
+                            form.setFieldsValue({ 'customer_details.last_name': e.target.value });
+                            setBooking(prev => prev ? { 
+                              ...prev, 
+                              customer_details: { 
+                                ...prev.customer_details, 
+                                last_name: e.target.value 
+                              } 
+                            } : null);
+                          }}
                         />
                       </div>
                     </Col>
@@ -713,9 +733,20 @@ export const BookingEditPlatform: React.FC = () => {
                       <div style={{ marginBottom: '20px' }}>
                         <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Email</Text>
                         <Input 
+                          type="email"
                           value={booking.customer_details?.email || ''} 
                           placeholder="Email Address"
                           style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                          onChange={(e) => {
+                            form.setFieldsValue({ 'customer_details.email': e.target.value });
+                            setBooking(prev => prev ? { 
+                              ...prev, 
+                              customer_details: { 
+                                ...prev.customer_details, 
+                                email: e.target.value 
+                              } 
+                            } : null);
+                          }}
                         />
                       </div>
                     </Col>
@@ -723,9 +754,20 @@ export const BookingEditPlatform: React.FC = () => {
                       <div style={{ marginBottom: '20px' }}>
                         <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Phone</Text>
                         <Input 
+                          type="tel"
                           value={booking.customer_details?.phone || ''} 
                           placeholder="Phone Number"
                           style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                          onChange={(e) => {
+                            form.setFieldsValue({ 'customer_details.phone': e.target.value });
+                            setBooking(prev => prev ? { 
+                              ...prev, 
+                              customer_details: { 
+                                ...prev.customer_details, 
+                                phone: e.target.value 
+                              } 
+                            } : null);
+                          }}
                         />
                       </div>
                     </Col>
@@ -737,7 +779,64 @@ export const BookingEditPlatform: React.FC = () => {
                       value={booking.business_name || ''} 
                       placeholder="Business Name (Optional)"
                       style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                      onChange={(e) => {
+                        form.setFieldsValue({ business_name: e.target.value });
+                        setBooking(prev => prev ? { ...prev, business_name: e.target.value } : null);
+                      }}
                     />
+                  </div>
+
+                  {/* Live Pricing Calculator - Always at bottom */}
+                  <div style={{ 
+                    background: '#f8fafc', 
+                    padding: '20px', 
+                    borderRadius: '12px', 
+                    border: '2px solid #e5e7eb',
+                    marginTop: '24px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                      <div style={{ fontSize: '20px' }}>💰</div>
+                      <Text strong style={{ fontSize: '18px', color: '#1f2937' }}>Live Pricing Calculator</Text>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                      <div style={{ padding: '12px', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                        <Text style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Base Price</Text>
+                        <Text strong style={{ fontSize: '16px', color: '#1f2937' }}>
+                          ${(() => {
+                            const currentService = selectedService || services.find(s => s.id === booking.service_id);
+                            const duration = booking.duration_minutes || 60;
+                            return currentService ? (currentService.service_base_price * (duration / 60)).toFixed(2) : '0.00';
+                          })()}
+                        </Text>
+                      </div>
+                      
+                      <div style={{ padding: '12px', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                        <Text style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Time Uplift</Text>
+                        <Text strong style={{ fontSize: '16px', color: '#1f2937' }}>$20.00</Text>
+                      </div>
+                      
+                      <div style={{ padding: '12px', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                        <Text style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Discount</Text>
+                        <Text strong style={{ fontSize: '16px', color: '#1f2937' }}>-$12.00</Text>
+                      </div>
+                      
+                      <div style={{ padding: '12px', background: '#007e8c', borderRadius: '8px', color: 'white' }}>
+                        <Text style={{ fontSize: '14px', color: 'white', marginBottom: '4px' }}>Total Amount</Text>
+                        <Text strong style={{ fontSize: '18px', color: 'white' }}>
+                          ${(() => {
+                            const currentService = selectedService || services.find(s => s.id === booking.service_id);
+                            const duration = booking.duration_minutes || 60;
+                            const basePrice = currentService ? currentService.service_base_price * (duration / 60) : 0;
+                            const timeUplift = 20.00;
+                            const discount = 12.00;
+                            const afterDiscount = basePrice + timeUplift - discount;
+                            const gst = afterDiscount * 0.1;
+                            return (afterDiscount + gst).toFixed(2);
+                          })()}
+                        </Text>
+                      </div>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
@@ -775,6 +874,10 @@ export const BookingEditPlatform: React.FC = () => {
                       placeholder="Enter the full address where the service will be provided"
                       rows={3}
                       style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                      onChange={(e) => {
+                        form.setFieldsValue({ address: e.target.value });
+                        setBooking(prev => prev ? { ...prev, address: e.target.value } : null);
+                      }}
                     />
                   </div>
 
@@ -786,6 +889,10 @@ export const BookingEditPlatform: React.FC = () => {
                           value={booking.room_number || ''} 
                           placeholder="Room number or details"
                           style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                          onChange={(e) => {
+                            form.setFieldsValue({ room_number: e.target.value });
+                            setBooking(prev => prev ? { ...prev, room_number: e.target.value } : null);
+                          }}
                         />
                       </div>
                     </Col>
@@ -796,6 +903,10 @@ export const BookingEditPlatform: React.FC = () => {
                           value={booking.parking || 'free'}
                           style={{ width: '100%' }}
                           size="large"
+                          onChange={(value) => {
+                            form.setFieldsValue({ parking: value });
+                            setBooking(prev => prev ? { ...prev, parking: value } : null);
+                          }}
                         >
                           <Option value="free">Free Parking Available</Option>
                           <Option value="paid">Paid Parking Required</Option>
@@ -812,7 +923,64 @@ export const BookingEditPlatform: React.FC = () => {
                       placeholder="Any special instructions or notes for this location"
                       rows={3}
                       style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                      onChange={(e) => {
+                        form.setFieldsValue({ notes: e.target.value });
+                        setBooking(prev => prev ? { ...prev, notes: e.target.value } : null);
+                      }}
                     />
+                  </div>
+
+                  {/* Live Pricing Calculator - Always at bottom */}
+                  <div style={{ 
+                    background: '#f8fafc', 
+                    padding: '20px', 
+                    borderRadius: '12px', 
+                    border: '2px solid #e5e7eb',
+                    marginTop: '24px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                      <div style={{ fontSize: '20px' }}>💰</div>
+                      <Text strong style={{ fontSize: '18px', color: '#1f2937' }}>Live Pricing Calculator</Text>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                      <div style={{ padding: '12px', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                        <Text style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Base Price</Text>
+                        <Text strong style={{ fontSize: '16px', color: '#1f2937' }}>
+                          ${(() => {
+                            const currentService = selectedService || services.find(s => s.id === booking.service_id);
+                            const duration = booking.duration_minutes || 60;
+                            return currentService ? (currentService.service_base_price * (duration / 60)).toFixed(2) : '0.00';
+                          })()}
+                        </Text>
+                      </div>
+                      
+                      <div style={{ padding: '12px', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                        <Text style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Time Uplift</Text>
+                        <Text strong style={{ fontSize: '16px', color: '#1f2937' }}>$20.00</Text>
+                      </div>
+                      
+                      <div style={{ padding: '12px', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                        <Text style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Discount</Text>
+                        <Text strong style={{ fontSize: '16px', color: '#1f2937' }}>-$12.00</Text>
+                      </div>
+                      
+                      <div style={{ padding: '12px', background: '#007e8c', borderRadius: '8px', color: 'white' }}>
+                        <Text style={{ fontSize: '14px', color: 'white', marginBottom: '4px' }}>Total Amount</Text>
+                        <Text strong style={{ fontSize: '18px', color: 'white' }}>
+                          ${(() => {
+                            const currentService = selectedService || services.find(s => s.id === booking.service_id);
+                            const duration = booking.duration_minutes || 60;
+                            const basePrice = currentService ? currentService.service_base_price * (duration / 60) : 0;
+                            const timeUplift = 20.00;
+                            const discount = 12.00;
+                            const afterDiscount = basePrice + timeUplift - discount;
+                            const gst = afterDiscount * 0.1;
+                            return (afterDiscount + gst).toFixed(2);
+                          })()}
+                        </Text>
+                      </div>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
