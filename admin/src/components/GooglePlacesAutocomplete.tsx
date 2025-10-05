@@ -68,12 +68,31 @@ const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> = ({
 
     try {
       console.log('🔍 Initializing Google Places Autocomplete...');
-      
+
+      // Resolve the underlying HTMLInputElement from Ant Design components
+      let htmlInput: any = null;
+      const refCurrent: any = inputRef.current;
+      if (refCurrent?.input) {
+        // AntD Input exposes the native input element at .input
+        htmlInput = refCurrent.input;
+      } else if (refCurrent?.resizableTextArea?.textArea) {
+        // AntD TextArea exposes the native textarea element here
+        // Note: Autocomplete requires an HTMLInputElement, so we will skip attaching to textarea
+        htmlInput = null;
+      } else if (refCurrent instanceof window.HTMLInputElement) {
+        htmlInput = refCurrent;
+      }
+
+      if (!htmlInput) {
+        console.warn('⚠️ Could not resolve HTMLInputElement for Google Autocomplete. Skipping initialization.');
+        return;
+      }
+
       // Create session token for better prediction quality
       const sessionToken = new window.google.maps.places.AutocompleteSessionToken();
-      
-      // Initialize autocomplete
-      const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+
+      // Initialize autocomplete on the HTMLInputElement
+      const autocomplete = new window.google.maps.places.Autocomplete(htmlInput, {
         // types: ['geocode'], // Removed to allow hotels, POIs, etc.
         componentRestrictions: { country: 'au' },
         sessionToken: sessionToken,
@@ -97,12 +116,12 @@ const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> = ({
           };
 
           console.log('✅ Address selected:', selectedPlace);
-          
+
           // Update the input value
           if (onChange) {
             onChange(selectedPlace.address);
           }
-          
+
           // Notify parent component
           if (onPlaceSelect) {
             onPlaceSelect(selectedPlace);
@@ -114,7 +133,6 @@ const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> = ({
 
       setIsInitialized(true);
       console.log('✅ Google Places Autocomplete initialized successfully');
-      
     } catch (error) {
       console.error('❌ Error initializing Google Places Autocomplete:', error);
     }
