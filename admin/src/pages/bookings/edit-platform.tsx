@@ -177,6 +177,7 @@ interface Service {
   id: string;
   name: string;
   description?: string;
+  short_description?: string;
   service_base_price: number;
   minimum_duration: number;
   quote_only?: boolean;
@@ -324,7 +325,7 @@ export const BookingEditPlatform: React.FC = () => {
     try {
       const { data, error } = await supabaseClient
         .from('services')
-        .select('id, name, description, service_base_price, minimum_duration, is_active, quote_only')
+        .select('id, name, description, short_description, service_base_price, minimum_duration, is_active, quote_only')
         .eq('is_active', true)
         .order('name');
 
@@ -369,9 +370,18 @@ export const BookingEditPlatform: React.FC = () => {
     
     if (service) {
       form.setFieldsValue({
+        service_id: serviceId,
         duration_minutes: service.minimum_duration
       });
+      // Update the booking state to reflect the change
+      setBooking(prev => prev ? { ...prev, service_id: serviceId } : null);
     }
+  };
+
+  const handleDurationChange = (duration: number) => {
+    form.setFieldsValue({ duration_minutes: duration });
+    // Update the booking state to reflect the change
+    setBooking(prev => prev ? { ...prev, duration_minutes: duration } : null);
   };
 
   const initializePricing = (bookingData: any) => {
@@ -855,9 +865,11 @@ export const BookingEditPlatform: React.FC = () => {
                           <Title level={4} style={{ fontSize: '18px', fontWeight: 600, color: '#1f2937', marginBottom: '8px' }}>
                             {service.name}
                           </Title>
-                          <Text style={{ color: '#6b7280', marginBottom: '12px', display: 'block' }}>
-                            {service.description}
-                          </Text>
+                          {service.short_description && (
+                            <Text style={{ color: '#6b7280', marginBottom: '12px', display: 'block' }}>
+                              {service.short_description}
+                            </Text>
+                          )}
                           <div style={{ fontSize: '20px', fontWeight: 700, color: '#007e8c' }}>
                             ${service.service_base_price}/hour
                           </div>
@@ -884,19 +896,26 @@ export const BookingEditPlatform: React.FC = () => {
                             transition: 'all 0.2s',
                             background: booking.duration_minutes === duration ? '#e0f7fa' : 'white'
                           }}
-                          onClick={() => {
-                            form.setFieldsValue({ duration_minutes: duration });
-                          }}
+                          onClick={() => handleDurationChange(duration)}
                         >
                           <Title level={4} style={{ fontSize: '16px', color: '#1f2937', marginBottom: '4px' }}>
                             {duration} mins
                           </Title>
                           <Text style={{ fontSize: '14px', color: '#007e8c', fontWeight: 600 }}>
-                            ${selectedService ? selectedService.service_base_price * (duration / 60) : 0}
+                            ${(() => {
+                              const currentService = selectedService || services.find(s => s.id === booking.service_id);
+                              return currentService ? (currentService.service_base_price * (duration / 60)).toFixed(0) : '0';
+                            })()}
                           </Text>
                           {duration > 60 && (
                             <div style={{ marginTop: '8px', padding: '2px 8px', background: '#e0f7fa', color: '#007e8c', borderRadius: '20px', fontSize: '10px', fontWeight: 600, display: 'inline-block' }}>
-                              +${(selectedService ? selectedService.service_base_price * (duration / 60) : 0) - (selectedService ? selectedService.service_base_price : 0)} uplift
+                              +${(() => {
+                                const currentService = selectedService || services.find(s => s.id === booking.service_id);
+                                if (!currentService) return '0';
+                                const basePrice = currentService.service_base_price;
+                                const durationPrice = currentService.service_base_price * (duration / 60);
+                                return (durationPrice - basePrice).toFixed(0);
+                              })()} uplift
                             </div>
                           )}
                         </div>
@@ -918,7 +937,11 @@ export const BookingEditPlatform: React.FC = () => {
                     <div style={{ display: 'grid', gap: '8px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
                         <span>Base Price ({booking.duration_minutes || 60} mins):</span>
-                        <span>${selectedService ? selectedService.service_base_price * ((booking.duration_minutes || 60) / 60) : 0}</span>
+                        <span>${(() => {
+                          const currentService = selectedService || services.find(s => s.id === booking.service_id);
+                          const duration = booking.duration_minutes || 60;
+                          return currentService ? (currentService.service_base_price * (duration / 60)).toFixed(2) : '0.00';
+                        })()}</span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
                         <span>Duration Uplift:</span>
@@ -946,7 +969,16 @@ export const BookingEditPlatform: React.FC = () => {
                         color: '#007e8c'
                       }}>
                         <span>Total Amount:</span>
-                        <span>$140.80</span>
+                        <span>${(() => {
+                          const currentService = selectedService || services.find(s => s.id === booking.service_id);
+                          const duration = booking.duration_minutes || 60;
+                          const basePrice = currentService ? currentService.service_base_price * (duration / 60) : 0;
+                          const timeUplift = 20.00;
+                          const discount = 12.00;
+                          const afterDiscount = basePrice + timeUplift - discount;
+                          const gst = afterDiscount * 0.1;
+                          return (afterDiscount + gst).toFixed(2);
+                        })()}</span>
                       </div>
                     </div>
                     <div style={{ marginTop: '16px', padding: '12px', background: '#f0fdfa', borderRadius: '8px', fontSize: '14px' }}>
