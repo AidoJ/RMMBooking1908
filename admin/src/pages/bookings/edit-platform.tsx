@@ -377,6 +377,7 @@ export const BookingEditPlatform: React.FC = () => {
         .order('first_name');
 
       if (error) throw error;
+      console.log('🔍 Fetched therapists:', data?.length || 0, 'therapists');
       setTherapists(data || []);
     } catch (error) {
       console.error('Error fetching therapists:', error);
@@ -656,6 +657,8 @@ export const BookingEditPlatform: React.FC = () => {
       }
 
       console.log('✅ Found', availableTherapists.length, 'therapists available for selected time slot');
+      console.log('🔍 Available therapists:', availableTherapists);
+      console.log('🔍 All therapists fallback:', therapists.length);
       setAvailableTherapists(availableTherapists as Therapist[]);
 
     } catch (error) {
@@ -2054,7 +2057,7 @@ export const BookingEditPlatform: React.FC = () => {
                       </div>
                     ) : (
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', margin: '16px 0' }}>
-                        {availableTherapists.map((therapist) => {
+                        {(availableTherapists.length > 0 ? availableTherapists : therapists).map((therapist) => {
                           const isSelected = booking.therapist_id === therapist.id;
                           const hourlyRate = therapist.hourly_rate || 45;
                         
