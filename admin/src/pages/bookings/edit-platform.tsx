@@ -253,6 +253,10 @@ export const BookingEditPlatform: React.FC = () => {
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
+  // Available therapists for selected time slot
+  const [availableTherapists, setAvailableTherapists] = useState<Therapist[]>([]);
+  const [loadingTherapists, setLoadingTherapists] = useState(false);
+
   // Therapist fee calculations
   const [therapistFeeBreakdown, setTherapistFeeBreakdown] = useState({
     baseRate: 0,
@@ -292,6 +296,11 @@ export const BookingEditPlatform: React.FC = () => {
   useEffect(() => {
     updateBusinessSummary();
   }, [therapistFeeBreakdown.totalFee, booking?.service_id, booking?.duration_minutes]);
+
+  // Update available therapists when time slot is selected
+  useEffect(() => {
+    updateAvailableTherapists();
+  }, [booking?.booking_time, booking?.service_id, booking?.gender_preference, booking?.duration_minutes]);
 
   // Copy all existing data fetching functions from edit.tsx
   const fetchBookingDetails = async () => {
@@ -588,6 +597,71 @@ export const BookingEditPlatform: React.FC = () => {
       if (!overlaps) slots.push(slotStart);
     }
     return slots;
+  };
+
+  // Update available therapists for selected time slot - EXACTLY like frontend
+  const updateAvailableTherapists = async () => {
+    if (!booking?.booking_time || !booking?.service_id || !booking?.gender_preference || !booking?.duration_minutes) {
+      setAvailableTherapists([]);
+      return;
+    }
+
+    try {
+      setLoadingTherapists(true);
+      console.log('🔍 Updating available therapists for selected time slot...');
+
+      const dateVal = dayjs(booking.booking_time).format('YYYY-MM-DD');
+      const timeVal = dayjs(booking.booking_time).format('HH:mm');
+      const serviceId = booking.service_id;
+      const genderVal = booking.gender_preference;
+      const durationVal = booking.duration_minutes;
+
+      console.log('📅 Filtering therapists for:', { dateVal, timeVal, serviceId, genderVal, durationVal });
+
+      // Get therapists who provide this service
+      const { data: therapistLinks } = await supabaseClient
+        .from('therapist_services')
+        .select(`
+          therapist_id,
+          therapist_profiles!therapist_id (id, first_name, last_name, gender, is_active, profile_pic, hourly_rate)
+        `)
+        .eq('service_id', serviceId);
+
+      let candidateTherapists = (therapistLinks || [])
+        .map(row => row.therapist_profiles)
+        .filter((t: any) => t && t.is_active);
+
+      // Filter by gender preference
+      if (genderVal !== 'any') {
+        candidateTherapists = candidateTherapists.filter((t: any) => t.gender === genderVal);
+      }
+
+      // Deduplicate therapists
+      const uniqueTherapists = Object.values(candidateTherapists.reduce((acc: any, t: any) => {
+        if (t && t.id) acc[t.id] = t;
+        return acc;
+      }, {}));
+
+      console.log('📊 Found', uniqueTherapists.length, 'therapists matching service and gender');
+
+      // For each therapist, check if they are available for the selected slot
+      const availableTherapists = [];
+      for (const therapist of uniqueTherapists) {
+        const slots = await getAvailableSlotsForTherapist(therapist, dateVal, durationVal);
+        if (slots.includes(timeVal)) {
+          availableTherapists.push(therapist);
+        }
+      }
+
+      console.log('✅ Found', availableTherapists.length, 'therapists available for selected time slot');
+      setAvailableTherapists(availableTherapists as Therapist[]);
+
+    } catch (error) {
+      console.error('❌ Error updating available therapists:', error);
+      setAvailableTherapists([]);
+    } finally {
+      setLoadingTherapists(false);
+    }
   };
 
   // Update available time slots - EXACTLY like frontend
@@ -1958,11 +2032,29 @@ export const BookingEditPlatform: React.FC = () => {
                   
                   <div style={{ marginBottom: '20px' }}>
                     <Text strong style={{ color: '#374151', marginBottom: '16px', display: 'block' }}>Available Therapists</Text>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', margin: '16px 0' }}>
-                      {therapists.map((therapist) => {
-                        const isSelected = booking.therapist_id === therapist.id;
-                        const isAvailable = Math.random() > 0.2; // Simulate availability
-                        const hourlyRate = 45; // Simulate hourly rate
+                    
+                    {loadingTherapists ? (
+                      <div style={{ textAlign: 'center', padding: '40px' }}>
+                        <Spin size="large" />
+                        <div style={{ marginTop: '16px', color: '#6b7280' }}>Finding available therapists...</div>
+                      </div>
+                    ) : availableTherapists.length === 0 ? (
+                      <div style={{ 
+                        padding: '20px', 
+                        border: '2px solid #e5e7eb', 
+                        borderRadius: '8px', 
+                        background: '#f9f9f9', 
+                        textAlign: 'center' 
+                      }}>
+                        <Text style={{ color: '#6b7280', fontSize: '16px' }}>
+                          No therapists available for the selected time slot. Please try a different time or date.
+                        </Text>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', margin: '16px 0' }}>
+                        {availableTherapists.map((therapist) => {
+                          const isSelected = booking.therapist_id === therapist.id;
+                          const hourlyRate = therapist.hourly_rate || 45;
                         
                         return (
                           <div 
@@ -1971,16 +2063,14 @@ export const BookingEditPlatform: React.FC = () => {
                               border: isSelected ? '2px solid #007e8c' : '2px solid #e5e7eb',
                               borderRadius: '12px',
                               padding: '20px',
-                              cursor: isAvailable ? 'pointer' : 'not-allowed',
+                              cursor: 'pointer',
                               transition: 'all 0.2s',
-                              background: isSelected ? '#e0f7fa' : isAvailable ? 'white' : '#f9f9f9',
-                              opacity: isAvailable ? 1 : 0.6
+                              background: isSelected ? '#e0f7fa' : 'white',
+                              opacity: 1
                             }}
                             onClick={() => {
-                              if (isAvailable) {
-                                form.setFieldsValue({ therapist_id: therapist.id });
-                                setBooking(prev => prev ? { ...prev, therapist_id: therapist.id } : null);
-                              }
+                              form.setFieldsValue({ therapist_id: therapist.id });
+                              setBooking(prev => prev ? { ...prev, therapist_id: therapist.id } : null);
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
@@ -2012,13 +2102,13 @@ export const BookingEditPlatform: React.FC = () => {
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                               <div style={{ 
                                 padding: '4px 8px', 
-                                background: isAvailable ? '#dcfce7' : '#fee2e2', 
-                                color: isAvailable ? '#166534' : '#991b1b',
+                                background: '#dcfce7', 
+                                color: '#166534',
                                 borderRadius: '12px',
                                 fontSize: '12px',
                                 fontWeight: 600
                               }}>
-                                {isAvailable ? '✅ Available' : '❌ Unavailable'}
+                                ✅ Available for Selected Time
                               </div>
                               {isSelected && (
                                 <div style={{ 
@@ -2035,8 +2125,9 @@ export const BookingEditPlatform: React.FC = () => {
                             </div>
                           </div>
                         );
-                      })}
-                    </div>
+                        })}
+                      </div>
+                    )}
                     
                     <div style={{ marginTop: '16px', padding: '12px', background: '#f0fdfa', borderRadius: '8px', fontSize: '14px' }}>
                       <strong>🔧 Admin Tools:</strong> Click any therapist to reassign. Availability is updated in real-time based on existing bookings.
