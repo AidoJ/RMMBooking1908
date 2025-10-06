@@ -152,6 +152,7 @@ interface Therapist {
   email: string;
   phone?: string;
   is_active: boolean;
+  hourly_rate?: number;
 }
 
 interface TherapistAssignment {
@@ -252,6 +253,21 @@ export const BookingEditPlatform: React.FC = () => {
   const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
+  // Therapist fee calculations
+  const [therapistFeeBreakdown, setTherapistFeeBreakdown] = useState({
+    baseRate: 0,
+    afterHoursUplift: 0,
+    weekendUplift: 0,
+    durationMultiplier: 1,
+    totalFee: 0
+  });
+
+  const [businessSummary, setBusinessSummary] = useState({
+    customerPayment: 0,
+    therapistFee: 0,
+    netProfit: 0
+  });
+
   useEffect(() => {
     if (id) {
       fetchBookingDetails();
@@ -266,6 +282,16 @@ export const BookingEditPlatform: React.FC = () => {
   useEffect(() => {
     updateAvailableTimeSlots();
   }, [booking?.booking_time, selectedService, booking?.duration_minutes, booking?.gender_preference, businessSettings]);
+
+  // Calculate therapist fees when booking, therapist, or business settings change
+  useEffect(() => {
+    calculateTherapistFees();
+  }, [booking?.therapist_id, booking?.duration_minutes, booking?.booking_time, businessSettings, therapists]);
+
+  // Update business summary when therapist fees or customer payment changes
+  useEffect(() => {
+    updateBusinessSummary();
+  }, [therapistFeeBreakdown.totalFee, booking?.service_id, booking?.duration_minutes]);
 
   // Copy all existing data fetching functions from edit.tsx
   const fetchBookingDetails = async () => {
@@ -337,7 +363,7 @@ export const BookingEditPlatform: React.FC = () => {
     try {
       const { data, error } = await supabaseClient
         .from('therapist_profiles')
-        .select('id, first_name, last_name, email, phone, is_active')
+        .select('id, first_name, last_name, email, phone, is_active, hourly_rate')
         .eq('is_active', true)
         .order('first_name');
 
@@ -796,6 +822,97 @@ export const BookingEditPlatform: React.FC = () => {
     
     // Can navigate to previous steps or next step if current is completed
     return targetIndex <= currentIndex || completedSteps.includes(activeStep);
+  };
+
+  // Therapist fee calculation functions
+  const calculateTherapistFees = () => {
+    if (!booking || !booking.therapist_id) {
+      setTherapistFeeBreakdown({
+        baseRate: 0,
+        afterHoursUplift: 0,
+        weekendUplift: 0,
+        durationMultiplier: 1,
+        totalFee: 0
+      });
+      return;
+    }
+
+    // Get therapist base rate
+    const therapist = therapists.find(t => t.id === booking.therapist_id);
+    const baseRate = therapist?.hourly_rate || businessSettings.therapistDaytimeRate || 45;
+
+    // Calculate duration multiplier
+    const duration = booking.duration_minutes || 60;
+    const durationMultiplier = duration / 60; // 60min = 1x, 90min = 1.5x, 120min = 2x
+
+    // Check if after hours
+    const bookingTime = booking.booking_time ? dayjs(booking.booking_time) : null;
+    const isAfterHours = bookingTime ? (
+      bookingTime.hour() < (businessSettings.businessOpeningHour || 8) ||
+      bookingTime.hour() >= (businessSettings.businessClosingHour || 18)
+    ) : false;
+
+    // Check if weekend
+    const isWeekend = bookingTime ? (bookingTime.day() === 0 || bookingTime.day() === 6) : false;
+
+    // Calculate uplifts
+    const afterHoursUplift = isAfterHours ? (businessSettings.therapistAfterhoursRate || 15) * durationMultiplier : 0;
+    const weekendUplift = isWeekend ? 10 * durationMultiplier : 0;
+
+    // Calculate total fee
+    const totalFee = (baseRate * durationMultiplier) + afterHoursUplift + weekendUplift;
+
+    setTherapistFeeBreakdown({
+      baseRate: baseRate * durationMultiplier,
+      afterHoursUplift,
+      weekendUplift,
+      durationMultiplier,
+      totalFee
+    });
+
+    console.log('💰 Therapist fee calculation:', {
+      baseRate,
+      duration,
+      durationMultiplier,
+      isAfterHours,
+      isWeekend,
+      afterHoursUplift,
+      weekendUplift,
+      totalFee
+    });
+  };
+
+  const updateBusinessSummary = () => {
+    if (!booking) {
+      setBusinessSummary({
+        customerPayment: 0,
+        therapistFee: 0,
+        netProfit: 0
+      });
+      return;
+    }
+
+    // Get customer payment (use existing pricing logic)
+    const service = services.find(s => s.id === booking.service_id);
+    const basePrice = service?.service_base_price || 0;
+    const duration = booking.duration_minutes || 60;
+    const durationMultiplier = duration / 60;
+    const customerPayment = basePrice * durationMultiplier;
+
+    const therapistFee = therapistFeeBreakdown.totalFee;
+    const netProfit = customerPayment - therapistFee;
+
+    setBusinessSummary({
+      customerPayment,
+      therapistFee,
+      netProfit
+    });
+
+    console.log('📊 Business summary:', {
+      customerPayment,
+      therapistFee,
+      netProfit
+    });
   };
 
   // Copy all existing notification and communication functions from edit.tsx
@@ -2073,6 +2190,109 @@ export const BookingEditPlatform: React.FC = () => {
                         setBooking(prev => prev ? { ...prev, gift_card_code: e.target.value } : null);
                       }}
                     />
+                  </div>
+
+                  {/* Therapist Fee Breakdown Section */}
+                  <div style={{ 
+                    marginBottom: '24px', 
+                    padding: '20px', 
+                    background: '#f8fafc', 
+                    border: '1px solid #e2e8f0', 
+                    borderRadius: '12px' 
+                  }}>
+                    <Title level={4} style={{ color: '#1e293b', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      💰 Therapist Fee Breakdown
+                    </Title>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                      <div>
+                        <Text style={{ color: '#64748b', fontSize: '14px' }}>Base Rate</Text>
+                        <Text strong style={{ color: '#1e293b', fontSize: '16px' }}>
+                          ${therapistFeeBreakdown.baseRate.toFixed(2)}
+                        </Text>
+                      </div>
+                      <div>
+                        <Text style={{ color: '#64748b', fontSize: '14px' }}>Duration</Text>
+                        <Text strong style={{ color: '#1e293b', fontSize: '16px' }}>
+                          {therapistFeeBreakdown.durationMultiplier}x
+                        </Text>
+                      </div>
+                    </div>
+
+                    {therapistFeeBreakdown.afterHoursUplift > 0 && (
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text style={{ color: '#64748b', fontSize: '14px' }}>After-hours Uplift</Text>
+                        <Text strong style={{ color: '#dc2626', fontSize: '16px' }}>
+                          +${therapistFeeBreakdown.afterHoursUplift.toFixed(2)}
+                        </Text>
+                      </div>
+                    )}
+
+                    {therapistFeeBreakdown.weekendUplift > 0 && (
+                      <div style={{ marginBottom: '8px' }}>
+                        <Text style={{ color: '#64748b', fontSize: '14px' }}>Weekend Uplift</Text>
+                        <Text strong style={{ color: '#dc2626', fontSize: '16px' }}>
+                          +${therapistFeeBreakdown.weekendUplift.toFixed(2)}
+                        </Text>
+                      </div>
+                    )}
+
+                    <div style={{ 
+                      paddingTop: '12px', 
+                      borderTop: '2px solid #e2e8f0', 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center' 
+                    }}>
+                      <Text strong style={{ color: '#1e293b', fontSize: '18px' }}>Total Therapist Fee</Text>
+                      <Text strong style={{ color: '#007e8c', fontSize: '20px' }}>
+                        ${therapistFeeBreakdown.totalFee.toFixed(2)}
+                      </Text>
+                    </div>
+                  </div>
+
+                  {/* Business Summary Section */}
+                  <div style={{ 
+                    marginBottom: '24px', 
+                    padding: '20px', 
+                    background: '#f0f9ff', 
+                    border: '1px solid #0ea5e9', 
+                    borderRadius: '12px' 
+                  }}>
+                    <Title level={4} style={{ color: '#0c4a6e', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      📊 Business Summary
+                    </Title>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
+                      <div>
+                        <Text style={{ color: '#0369a1', fontSize: '14px' }}>Customer Payment</Text>
+                        <Text strong style={{ color: '#0c4a6e', fontSize: '16px' }}>
+                          ${businessSummary.customerPayment.toFixed(2)}
+                        </Text>
+                      </div>
+                      <div>
+                        <Text style={{ color: '#0369a1', fontSize: '14px' }}>Therapist Fee</Text>
+                        <Text strong style={{ color: '#0c4a6e', fontSize: '16px' }}>
+                          ${businessSummary.therapistFee.toFixed(2)}
+                        </Text>
+                      </div>
+                    </div>
+
+                    <div style={{ 
+                      paddingTop: '12px', 
+                      borderTop: '2px solid #0ea5e9', 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center' 
+                    }}>
+                      <Text strong style={{ color: '#0c4a6e', fontSize: '18px' }}>Net Profit</Text>
+                      <Text strong style={{ 
+                        color: businessSummary.netProfit >= 0 ? '#059669' : '#dc2626', 
+                        fontSize: '20px' 
+                      }}>
+                        ${businessSummary.netProfit.toFixed(2)}
+                      </Text>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
