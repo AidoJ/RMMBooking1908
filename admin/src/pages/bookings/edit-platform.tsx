@@ -1835,88 +1835,17 @@ export const BookingEditPlatform: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Real Pricing Calculator - EXACTLY like frontend */}
+                  {/* Pricing preview note on Services step */}
                   <div style={{
-                    background: 'linear-gradient(135deg, #f0fdfa 0%, #e0f7fa 100%)',
-                    border: '2px solid #007e8c',
-                    borderRadius: '12px',
-                    padding: '20px',
-                    margin: '20px 0'
+                    margin: '12px 0 20px 0',
+                    padding: '12px',
+                    background: '#f9fafb',
+                    border: '1px dashed #cbd5e1',
+                    borderRadius: '8px',
+                    color: '#475569',
+                    fontSize: '14px'
                   }}>
-                    <div style={{ fontSize: '20px', fontWeight: 700, color: '#007e8c', textAlign: 'center', marginBottom: '16px' }}>
-                      💰 Live Pricing Calculator
-                    </div>
-                    {pricingDataLoaded ? (
-                      <div style={{ display: 'grid', gap: '8px' }}>
-                        {(() => {
-                          const pricing = calculatePrice();
-                          if (!pricing) {
-                            return (
-                              <div style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>
-                                Select service, duration, and date/time to see pricing
-                              </div>
-                            );
-                          }
-                          
-                          return (
-                            <>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
-                                <span>Base Price ({booking.duration_minutes || 60} mins):</span>
-                                <span>${pricing.basePrice.toFixed(2)}</span>
-                              </div>
-                              {pricing.durationUplift > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
-                                  <span>Duration Uplift ({pricing.durationUplift}%):</span>
-                                  <span>+${(pricing.basePrice * (pricing.durationUplift / 100)).toFixed(2)}</span>
-                                </div>
-                              )}
-                              {pricing.timeUplift > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
-                                  <span>Time Uplift ({pricing.timeUplift}%):</span>
-                                  <span>+${(pricing.basePrice * (pricing.timeUplift / 100)).toFixed(2)}</span>
-                                </div>
-                              )}
-                              {pricing.discountAmount > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
-                                  <span>Discount:</span>
-                                  <span style={{ color: '#dc2626' }}>-${pricing.discountAmount.toFixed(2)}</span>
-                                </div>
-                              )}
-                              {pricing.giftCardAmount > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
-                                  <span>Gift Card:</span>
-                                  <span style={{ color: '#dc2626' }}>-${pricing.giftCardAmount.toFixed(2)}</span>
-                                </div>
-                              )}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
-                                <span>GST (10%):</span>
-                                <span>${(pricing.finalPrice / 11).toFixed(2)}</span>
-                              </div>
-                              <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                padding: '16px 0 8px 0',
-                                borderTop: '2px solid #007e8c',
-                                fontWeight: '700',
-                                fontSize: '18px',
-                                color: '#007e8c'
-                              }}>
-                                <span>Total Amount:</span>
-                                <span>${pricing.finalPrice.toFixed(2)}</span>
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-                    ) : (
-                      <div style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>
-                        <Spin size="large" />
-                        <div style={{ marginTop: '12px' }}>Loading pricing data...</div>
-                      </div>
-                    )}
-                    <div style={{ marginTop: '16px', padding: '12px', background: '#f0fdfa', borderRadius: '8px', fontSize: '14px' }}>
-                      <strong>🔧 Admin Tools:</strong> Real-time pricing based on service, duration, date/time, and business rules.
-                    </div>
+                    Pricing preview updates after selecting date/time. Full live calculation is shown on Payment.
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
@@ -2353,6 +2282,90 @@ export const BookingEditPlatform: React.FC = () => {
                       💳 Payment & Confirmation
                     </Title>
                     <Text style={{ color: '#6b7280', fontSize: '16px' }}>Review pricing and payment details. Admin can apply discounts and modify payment status.</Text>
+                  </div>
+
+                  {/* Live Pricing Calculator moved here (after selections) */}
+                  <div style={{
+                    background: 'linear-gradient(135deg, #f0fdfa 0%, #e0f7fa 100%)',
+                    border: '2px solid #007e8c',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    margin: '0 0 20px 0'
+                  }}>
+                    <div style={{ fontSize: '20px', fontWeight: 700, color: '#007e8c', textAlign: 'center', marginBottom: '16px' }}>
+                      💰 Live Pricing Calculator
+                    </div>
+                    {pricingDataLoaded ? (
+                      <div style={{ display: 'grid', gap: '8px' }}>
+                        {(() => {
+                          const pricing = calculatePrice();
+                          if (!pricing) {
+                            return (
+                              <div style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>
+                                Select service, duration, and date/time to see pricing
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
+                                <span>Base Price ({booking.duration_minutes || 60} mins):</span>
+                                <span>${pricing.basePrice.toFixed(2)}</span>
+                              </div>
+                              {pricing.durationUplift > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
+                                  <span>Duration Uplift ({pricing.durationUplift}%):</span>
+                                  <span>+${(pricing.basePrice * (pricing.durationUplift / 100)).toFixed(2)}</span>
+                                </div>
+                              )}
+                              {pricing.timeUplift > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
+                                  <span>Time Uplift ({pricing.timeUplift}%):</span>
+                                  <span>+${(pricing.basePrice * (pricing.timeUplift / 100)).toFixed(2)}</span>
+                                </div>
+                              )}
+                              {pricing.discountAmount > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
+                                  <span>Discount:</span>
+                                  <span style={{ color: '#dc2626' }}>-${pricing.discountAmount.toFixed(2)}</span>
+                                </div>
+                              )}
+                              {pricing.giftCardAmount > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
+                                  <span>Gift Card:</span>
+                                  <span style={{ color: '#dc2626' }}>-${pricing.giftCardAmount.toFixed(2)}</span>
+                                </div>
+                              )}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
+                                <span>GST (10%):</span>
+                                <span>${(pricing.finalPrice / 11).toFixed(2)}</span>
+                              </div>
+                              <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                padding: '16px 0 8px 0',
+                                borderTop: '2px solid #007e8c',
+                                fontWeight: '700',
+                                fontSize: '18px',
+                                color: '#007e8c'
+                              }}>
+                                <span>Total Amount:</span>
+                                <span>${pricing.finalPrice.toFixed(2)}</span>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>
+                        <Spin size="large" />
+                        <div style={{ marginTop: '12px' }}>Loading pricing data...</div>
+                      </div>
+                    )}
+                    <div style={{ marginTop: '16px', padding: '12px', background: '#f0fdfa', borderRadius: '8px', fontSize: '14px' }}>
+                      <strong>🔧 Admin Tools:</strong> Real-time pricing based on service, duration, date/time, and business rules.
+                    </div>
                   </div>
                   
                   <div style={{ marginBottom: '20px' }}>
