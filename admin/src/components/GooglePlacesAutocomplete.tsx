@@ -101,30 +101,30 @@ const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> = ({
 
       autocompleteRef.current = autocomplete;
 
-      // Add place_changed listener
+      // Add place_changed listener - EXACTLY like frontend
       autocomplete.addListener('place_changed', () => {
         console.log('📍 Place selection triggered');
         const place = autocomplete.getPlace();
         console.log('Selected place:', place);
 
         if (place && place.geometry) {
-          const selectedPlace = {
+          const selected = {
+            name: place.name || '',
             address: place.formatted_address || value,
             lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
-            name: place.name || ''
+            lng: place.geometry.location.lng()
           };
-
-          console.log('✅ Address selected:', selectedPlace);
-
+          
+          console.log('✅ Address selected:', selected);
+          
           // Update the input value
           if (onChange) {
-            onChange(selectedPlace.address);
+            onChange(selected.address);
           }
-
-          // Notify parent component
+          
+          // Notify parent component with coordinates
           if (onPlaceSelect) {
-            onPlaceSelect(selectedPlace);
+            onPlaceSelect(selected);
           }
         } else {
           console.warn('⚠️ Place selected but no geometry available');
@@ -146,47 +146,10 @@ const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> = ({
     }
   };
 
-  // Handle blur event for manual geocoding
-  const handleBlur = async () => {
-    if (!value.trim() || !window.google?.maps?.Geocoder) return;
-
-    try {
-      console.log('🔍 Manual geocoding for:', value);
-      const geocoder = new window.google.maps.Geocoder();
-      
-      const result = await new Promise<any>((resolve, reject) => {
-        geocoder.geocode(
-          { 
-            address: value, 
-            componentRestrictions: { country: 'au' } 
-          }, 
-          (results: any[], status: string) => {
-            if (status === 'OK' && results && results[0]) {
-              resolve(results[0]);
-            } else {
-              reject(new Error('Geocoding failed'));
-            }
-          }
-        );
-      });
-
-      if (result.geometry) {
-        const selectedPlace = {
-          address: result.formatted_address || value,
-          lat: result.geometry.location.lat(),
-          lng: result.geometry.location.lng(),
-          name: ''
-        };
-
-        console.log('✅ Address geocoded successfully:', selectedPlace);
-        
-        if (onPlaceSelect) {
-          onPlaceSelect(selectedPlace);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Manual geocoding failed:', error);
-    }
+  // Handle blur event - frontend doesn't do manual geocoding on blur
+  const handleBlur = () => {
+    // Frontend only geocodes when no coordinates are available from autocomplete
+    // This is handled in the parent component's checkTherapistCoverageForAddress
   };
 
   if (rows && rows > 1) {
