@@ -1891,14 +1891,6 @@ export const BookingEditPlatform: React.FC = () => {
                               </div>
                             </div>
                             
-                            <div style={{ marginBottom: '12px' }}>
-                              <div style={{ fontSize: '18px', fontWeight: 700, color: '#007e8c' }}>
-                                ${hourlyRate}/hour
-                              </div>
-                              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                                Base rate • After hours: ${hourlyRate + 15}/hour
-                              </div>
-                            </div>
 
                             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                               <div style={{ 
