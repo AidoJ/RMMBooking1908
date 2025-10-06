@@ -624,7 +624,7 @@ export const BookingEditPlatform: React.FC = () => {
         .from('therapist_services')
         .select(`
           therapist_id,
-          therapist_profiles!therapist_id (id, first_name, last_name, gender, is_active, profile_pic, hourly_rate)
+          therapist_profiles!therapist_id (id, first_name, last_name, gender, is_active, profile_pic)
         `)
         .eq('service_id', serviceId);
 
