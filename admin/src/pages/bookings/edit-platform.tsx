@@ -489,28 +489,33 @@ export const BookingEditPlatform: React.FC = () => {
 
       setAddressCoordinates(coordinates);
 
-      // Fetch all active therapists with location data
-      const { data: therapists, error } = await supabaseClient
+      // Now check therapist coverage using real coordinates - EXACTLY like frontend
+      console.log('🔍 Checking therapist coverage for coordinates:', coordinates);
+      
+      const { data, error } = await supabaseClient
         .from('therapist_profiles')
         .select('id, latitude, longitude, service_radius_km, is_active')
         .eq('is_active', true);
 
       if (error) {
-        console.error('Error fetching therapists:', error);
+        console.error('❌ Error fetching therapists:', error);
         setAddressStatus('Error checking therapist availability');
         setAddressVerified(false);
         return;
       }
 
-      if (!therapists || therapists.length === 0) {
-        setAddressStatus('No active therapists found');
+      console.log('📊 Found therapists:', data?.length || 0);
+
+      if (!data || data.length === 0) {
+        console.log('❌ No active therapists found in database');
+        setAddressStatus("Sorry... we don't have any therapists available in your area right now.");
         setAddressVerified(false);
         return;
       }
 
-      // Haversine formula to calculate distance
-      const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-        const R = 6371;
+      // Haversine formula for distance calculation - EXACTLY like frontend
+      function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+        const R = 6371; // Earth's radius in kilometers
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLng = (lng2 - lng1) * Math.PI / 180;
         const a =
@@ -519,23 +524,27 @@ export const BookingEditPlatform: React.FC = () => {
           Math.sin(dLng / 2) * Math.sin(dLng / 2);
         const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
-      };
+      }
 
-      // Check if any therapist covers this location
-      const covered = therapists.some(therapist => {
-        if (!therapist.latitude || !therapist.longitude || !therapist.service_radius_km) {
+      // Check if any therapist covers this location - EXACTLY like frontend
+      const covered = data.some(t => {
+        if (t.latitude == null || t.longitude == null || t.service_radius_km == null) {
+          console.log('⚠️ Therapist missing location data:', t.id);
           return false;
         }
-        const distance = getDistanceKm(coordinates.lat, coordinates.lng, therapist.latitude, therapist.longitude);
-        return distance <= therapist.service_radius_km;
+        const dist = getDistanceKm(coordinates.lat, coordinates.lng, t.latitude, t.longitude);
+        console.log(`📍 Therapist ${t.id}: distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km`);
+        return dist <= t.service_radius_km;
       });
 
-      if (covered) {
-        setAddressStatus('✅ Great news! We have therapists available in your area');
-        setAddressVerified(true);
-      } else {
-        setAddressStatus('❌ Sorry, we don\'t have any therapists available in your area right now');
+      console.log('✅ Coverage check result:', covered);
+
+      if (!covered) {
+        setAddressStatus("Sorry... we don't have any therapists available in your area right now.");
         setAddressVerified(false);
+      } else {
+        setAddressStatus('Great News we have therapists available in your area');
+        setAddressVerified(true);
       }
     } catch (error) {
       console.error('Address verification error:', error);
