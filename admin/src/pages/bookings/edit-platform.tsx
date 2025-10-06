@@ -628,7 +628,9 @@ export const BookingEditPlatform: React.FC = () => {
         .eq('service_id', serviceId);
 
       let candidateTherapists = (therapistLinks || [])
-        .map(row => row.therapist_profiles)
+        .map(row => ({
+          ...row.therapist_profiles
+        }))
         .filter((t: any) => t && t.is_active);
 
       // Filter by gender preference
