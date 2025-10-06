@@ -895,7 +895,7 @@ export const BookingEditPlatform: React.FC = () => {
   };
 
   const canNavigateToStep = (stepId: string) => {
-    const stepOrder = ['customer', 'address', 'service', 'gender', 'datetime', 'therapist', 'details', 'payment'];
+    const stepOrder = ['customer', 'address', 'service', 'gender', 'datetime', 'therapist', 'payment'];
     const currentIndex = stepOrder.indexOf(activeStep);
     const targetIndex = stepOrder.indexOf(stepId);
     
@@ -2151,64 +2151,6 @@ export const BookingEditPlatform: React.FC = () => {
                       style={{ background: '#007e8c', borderColor: '#007e8c', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
                       onClick={() => {
                         markStepCompleted('therapist');
-                        handleStepChange('details');
-                      }}
-                    >
-                      Continue →
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Details Step */}
-              {activeStep === 'details' && (
-                <div>
-                  <div style={{ marginBottom: '24px' }}>
-                    <Title level={2} style={{ fontSize: '24px', fontWeight: 600, color: '#1f2937', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      📝 Additional Details
-                    </Title>
-                    <Text style={{ color: '#6b7280', fontSize: '16px' }}>Add any special requirements or notes for this booking.</Text>
-                  </div>
-                  
-                  <div style={{ marginBottom: '20px' }}>
-                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Special Requirements</Text>
-                    <Input.TextArea 
-                      value={booking.notes || ''} 
-                      placeholder="Any special instructions, equipment needs, or preferences for this booking"
-                      rows={4}
-                      style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
-                      onChange={(e) => {
-                        form.setFieldsValue({ notes: e.target.value });
-                        setBooking(prev => prev ? { ...prev, notes: e.target.value } : null);
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: '20px' }}>
-                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Room Details</Text>
-                    <Input 
-                      value={booking.room_number || ''} 
-                      placeholder="Room number, floor, or specific location details"
-                      style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
-                      onChange={(e) => {
-                        form.setFieldsValue({ room_number: e.target.value });
-                        setBooking(prev => prev ? { ...prev, room_number: e.target.value } : null);
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
-                    <Button 
-                      style={{ background: '#f3f4f6', color: '#374151', border: '2px solid #e5e7eb', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
-                      onClick={() => handleStepChange('therapist')}
-                    >
-                      ← Back
-                    </Button>
-                    <Button 
-                      type="primary"
-                      style={{ background: '#007e8c', borderColor: '#007e8c', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
-                      onClick={() => {
-                        markStepCompleted('details');
                         handleStepChange('payment');
                       }}
                     >
@@ -2217,6 +2159,7 @@ export const BookingEditPlatform: React.FC = () => {
                   </div>
                 </div>
               )}
+
 
               {/* Payment Step */}
               {activeStep === 'payment' && (
@@ -2548,15 +2491,17 @@ export const BookingEditPlatform: React.FC = () => {
               <div style={{ fontSize: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
                   <span>Customer Price:</span>
-                  <span>${booking.price || 0}</span>
+                  <span>${businessSummary.customerPayment.toFixed(2)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
                   <span>Therapist Fee:</span>
-                  <span>${booking.therapist_fee || 0}</span>
+                  <span>${businessSummary.therapistFee.toFixed(2)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
-                  <span>Platform Fee:</span>
-                  <span>${(booking.price || 0) - (booking.therapist_fee || 0)}</span>
+                  <span>Net Profit:</span>
+                  <span style={{ color: businessSummary.netProfit >= 0 ? '#059669' : '#dc2626', fontWeight: 600 }}>
+                    ${businessSummary.netProfit.toFixed(2)}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
                   <span>Payment Status:</span>
@@ -2574,7 +2519,9 @@ export const BookingEditPlatform: React.FC = () => {
                   color: '#007e8c'
                 }}>
                   <span>Net Profit:</span>
-                  <span>${(booking.price || 0) - (booking.therapist_fee || 0)}</span>
+                  <span style={{ color: businessSummary.netProfit >= 0 ? '#059669' : '#dc2626' }}>
+                    ${businessSummary.netProfit.toFixed(2)}
+                  </span>
                 </div>
               </div>
             </Card>
