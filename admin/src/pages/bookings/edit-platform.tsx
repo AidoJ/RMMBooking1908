@@ -1890,7 +1890,7 @@ export const BookingEditPlatform: React.FC = () => {
                               )}
                               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
                                 <span>GST (10%):</span>
-                                <span>${(pricing.finalPrice / 11 * 1).toFixed(2)}</span>
+                                <span>${(pricing.finalPrice / 11).toFixed(2)}</span>
                               </div>
                               <div style={{ 
                                 display: 'flex', 
@@ -1902,7 +1902,7 @@ export const BookingEditPlatform: React.FC = () => {
                                 color: '#007e8c'
                               }}>
                                 <span>Total Amount:</span>
-                                <span>${(pricing.finalPrice + (pricing.finalPrice / 11 * 1)).toFixed(2)}</span>
+                                <span>${pricing.finalPrice.toFixed(2)}</span>
                               </div>
                             </>
                           );
