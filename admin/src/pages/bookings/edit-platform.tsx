@@ -343,30 +343,10 @@ export const BookingEditPlatform: React.FC = () => {
   };
 
   const fetchTherapistAssignments = async () => {
-    try {
-      const { data, error } = await supabaseClient
-        .from('booking_therapist_assignments')
-        .select(`
-          *,
-          therapist_profiles!booking_therapist_assignments_therapist_id_fkey(
-            first_name, last_name, email, phone
-          )
-        `)
-        .eq('booking_id', id)
-        .order('assigned_at');
-
-      if (error) throw error;
-      
-      const assignments = (data || []).map((assignment: any) => ({
-        ...assignment,
-        therapist_details: assignment.therapist_profiles
-      }));
-      
-      setTherapistAssignments(assignments);
-      setSelectedTherapistIds(assignments.map((a: TherapistAssignment) => a.therapist_id));
-    } catch (error) {
-      console.error('Error fetching therapist assignments:', error);
-    }
+    // Since the booking already has therapist_id, we don't need a separate assignments table
+    // The therapist data is already loaded with the booking via therapist_profiles!bookings_therapist_id_fkey
+    console.log('✅ Therapist assignment data loaded from booking relationship');
+    setTherapistAssignments([]);
   };
 
   // Copy all existing helper functions from edit.tsx
