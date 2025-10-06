@@ -1068,7 +1068,8 @@ export const BookingEditPlatform: React.FC = () => {
 
   // Therapist fee calculation functions
   const calculateTherapistFees = () => {
-    if (!booking || !booking.therapist_id) {
+    // Mirror FE: only compute when we have service, duration, date/time
+    if (!booking || !booking.booking_time || !booking.duration_minutes) {
       setTherapistFeeBreakdown({
         baseRate: 0,
         afterHoursUplift: 0,
@@ -1078,49 +1079,49 @@ export const BookingEditPlatform: React.FC = () => {
       });
       return;
     }
+    // FE logic: determine after-hours/weekend
+    const bookingTime = dayjs(booking.booking_time);
+    const dayOfWeek = bookingTime.day();
+    const hour = bookingTime.hour();
+    const opening = businessSettings.businessOpeningHour ?? 9;
+    const closing = businessSettings.businessClosingHour ?? 17;
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isAfterHours = isWeekend || hour < opening || hour >= closing;
 
-    // Get therapist base rate
-    const therapist = therapists.find(t => t.id === booking.therapist_id);
-    const baseRate = therapist?.hourly_rate || businessSettings.therapistDaytimeRate || 45;
+    // Choose hourly rate based on after-hours (from settings)
+    const daytimeRate = businessSettings.therapistDaytimeRate ?? 45;
+    const afterhoursRate = businessSettings.therapistAfterhoursRate ?? 55;
+    const hourlyRate = isAfterHours ? afterhoursRate : daytimeRate;
 
-    // Calculate duration multiplier
-    const duration = booking.duration_minutes || 60;
-    const durationMultiplier = duration / 60; // 60min = 1x, 90min = 1.5x, 120min = 2x
+    // Duration uplift from duration_pricing (percentage applied to hourly rate)
+    const duration = Number(booking.duration_minutes);
+    const durationRule = durationsCache.find((d: any) => Number(d.duration_minutes) === duration);
+    const upliftPct = durationRule?.uplift_percentage ? Number(durationRule.uplift_percentage) : 0;
+    const durationUpliftAmount = hourlyRate * (upliftPct / 100);
 
-    // Check if after hours
-    const bookingTime = booking.booking_time ? dayjs(booking.booking_time) : null;
-    const isAfterHours = bookingTime ? (
-      bookingTime.hour() < (businessSettings.businessOpeningHour || 8) ||
-      bookingTime.hour() >= (businessSettings.businessClosingHour || 18)
-    ) : false;
-
-    // Check if weekend
-    const isWeekend = bookingTime ? (bookingTime.day() === 0 || bookingTime.day() === 6) : false;
-
-    // Calculate uplifts
-    const afterHoursUplift = isAfterHours ? (businessSettings.therapistAfterhoursRate || 15) * durationMultiplier : 0;
-    const weekendUplift = isWeekend ? 10 * durationMultiplier : 0;
-
-    // Calculate total fee
-    const totalFee = (baseRate * durationMultiplier) + afterHoursUplift + weekendUplift;
+    // FE rule: therapist fee is hourly rate plus duration uplift (not multiplied by hours)
+    const fee = Math.round((hourlyRate + durationUpliftAmount) * 100) / 100;
 
     setTherapistFeeBreakdown({
-      baseRate: baseRate * durationMultiplier,
-      afterHoursUplift,
-      weekendUplift,
-      durationMultiplier,
-      totalFee
+      baseRate: hourlyRate,
+      afterHoursUplift: 0, // incorporated by selecting afterhoursRate
+      weekendUplift: 0,    // FE does not add separate weekend uplift beyond rate
+      durationMultiplier: 1,
+      totalFee: fee
     });
 
-    console.log('💰 Therapist fee calculation:', {
-      baseRate,
-      duration,
-      durationMultiplier,
-      isAfterHours,
+    console.log('💰 Therapist fee (FE parity):', {
       isWeekend,
-      afterHoursUplift,
-      weekendUplift,
-      totalFee
+      isAfterHours,
+      opening,
+      closing,
+      hour,
+      daytimeRate,
+      afterhoursRate,
+      hourlyRate,
+      upliftPct,
+      durationUpliftAmount,
+      fee
     });
   };
 
