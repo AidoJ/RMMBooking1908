@@ -237,14 +237,35 @@ export const BookingEditPlatform: React.FC = () => {
     return booking.service_details?.quote_only || booking.booking_type === 'quote';
   };
 
+  // Business settings state
+  const [businessSettings, setBusinessSettings] = useState({
+    businessOpeningHour: undefined as number | undefined,
+    businessClosingHour: undefined as number | undefined,
+    beforeServiceBuffer: undefined as number | undefined,
+    afterServiceBuffer: undefined as number | undefined,
+    minBookingAdvanceHours: undefined as number | undefined,
+    therapistDaytimeRate: undefined as number | undefined,
+    therapistAfterhoursRate: undefined as number | undefined
+  });
+
+  // Available time slots state
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
   useEffect(() => {
     if (id) {
       fetchBookingDetails();
       fetchTherapists();
       fetchServices();
       fetchTherapistAssignments();
+      fetchBusinessSettings(); // Load business settings
     }
   }, [id]);
+
+  // Update time slots when date, service, duration, or gender changes - EXACTLY like frontend
+  useEffect(() => {
+    updateAvailableTimeSlots();
+  }, [booking?.booking_time, selectedService, booking?.duration_minutes, booking?.gender_preference, businessSettings]);
 
   // Copy all existing data fetching functions from edit.tsx
   const fetchBookingDetails = async () => {
@@ -430,6 +451,210 @@ export const BookingEditPlatform: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  // Load business settings from database - EXACTLY like frontend
+  const fetchBusinessSettings = async () => {
+    try {
+      console.log('🔧 Loading business settings...');
+      const { data: settings } = await supabaseClient
+        .from('system_settings')
+        .select('key, value');
+      
+      if (settings) {
+        const newSettings = { ...businessSettings };
+        for (const s of settings) {
+          if (s.key === 'business_opening_time') newSettings.businessOpeningHour = Number(s.value);
+          if (s.key === 'business_closing_time') newSettings.businessClosingHour = Number(s.value);
+          if (s.key === 'before_service_buffer_time') newSettings.beforeServiceBuffer = Number(s.value);
+          if (s.key === 'after_service_buffer_time') newSettings.afterServiceBuffer = Number(s.value);
+          if (s.key === 'min_booking_advance_hours') newSettings.minBookingAdvanceHours = Number(s.value);
+          if (s.key === 'therapist_daytime_hourly_rate') newSettings.therapistDaytimeRate = Number(s.value);
+          if (s.key === 'therapist_afterhours_hourly_rate') newSettings.therapistAfterhoursRate = Number(s.value);
+        }
+        setBusinessSettings(newSettings);
+        console.log('✅ Business settings loaded:', newSettings);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching business settings:', error);
+      // Use fallback settings - EXACTLY like frontend
+      setBusinessSettings({
+        businessOpeningHour: 9,
+        businessClosingHour: 17,
+        beforeServiceBuffer: 15,
+        afterServiceBuffer: 15,
+        minBookingAdvanceHours: 2,
+        therapistDaytimeRate: 45,
+        therapistAfterhoursRate: 55
+      });
+    }
+  };
+
+  // Get available time slots for a therapist on a given day - EXACTLY like frontend
+  const getAvailableSlotsForTherapist = async (therapist: any, date: string, durationMinutes: number) => {
+    if (
+      businessSettings.businessOpeningHour === undefined ||
+      businessSettings.businessClosingHour === undefined ||
+      businessSettings.beforeServiceBuffer === undefined ||
+      businessSettings.afterServiceBuffer === undefined ||
+      businessSettings.minBookingAdvanceHours === undefined
+    ) {
+      console.warn('Business hours, buffer times, or advance booking hours are not set! Check system_settings.');
+      return [];
+    }
+
+    console.log('getAvailableSlotsForTherapist called for therapist:', therapist, 'date:', date, 'duration:', durationMinutes);
+
+    // 1. Get working hours for the day
+    const dayOfWeek = new Date(date).getDay();
+    const { data: availabilities } = await supabaseClient
+      .from('therapist_availability')
+      .select('start_time, end_time')
+      .eq('therapist_id', therapist.id)
+      .eq('day_of_week', dayOfWeek);
+
+    if (!availabilities || availabilities.length === 0) return [];
+    const { start_time, end_time } = availabilities[0];
+
+    // 2. Get existing bookings for the day
+    const { data: bookings } = await supabaseClient
+      .from('bookings')
+      .select('booking_time, service_id')
+      .eq('therapist_id', therapist.id)
+      .gte('booking_time', date + 'T00:00:00')
+      .lt('booking_time', date + 'T23:59:59');
+
+    // 3. Build all possible slots (hourly, businessOpeningHour to businessClosingHour)
+    const slots = [];
+    for (let hour = businessSettings.businessOpeningHour!; hour <= businessSettings.businessClosingHour!; hour++) {
+      const slotStart = `${hour.toString().padStart(2, '0')}:00`;
+      // Check if slot is within working hours
+      if (slotStart < start_time || slotStart >= end_time) continue;
+      
+      // Check for overlap with existing bookings (including before/after buffer)
+      const slotStartDate = new Date(date + 'T' + slotStart);
+      const slotEndDate = new Date(slotStartDate.getTime() + durationMinutes * 60000 + businessSettings.afterServiceBuffer! * 60000);
+      let overlaps = false;
+      
+      for (const booking of bookings || []) {
+        const bookingStart = new Date(booking.booking_time);
+        // Get buffer for this booking's service
+        let bookingBufferBefore = businessSettings.beforeServiceBuffer!;
+        let bookingBufferAfter = businessSettings.afterServiceBuffer!;
+        
+        // Check if service has custom buffer time
+        if (booking.service_id && services.length > 0) {
+          const svc = services.find(s => s.id === booking.service_id);
+          if (svc && (svc as any).buffer_time) bookingBufferAfter = Number((svc as any).buffer_time);
+        }
+        
+        const bookingEnd = new Date(bookingStart.getTime() + durationMinutes * 60000 + bookingBufferAfter * 60000);
+        const bookingStartWithBuffer = new Date(bookingStart.getTime() - bookingBufferBefore * 60000);
+        
+        if (
+          (slotStartDate < bookingEnd && slotEndDate > bookingStartWithBuffer)
+        ) {
+          overlaps = true;
+          break;
+        }
+      }
+      
+      if (!overlaps) slots.push(slotStart);
+    }
+    return slots;
+  };
+
+  // Update available time slots - EXACTLY like frontend
+  const updateAvailableTimeSlots = async () => {
+    const dateVal = booking?.booking_time ? dayjs(booking.booking_time).format('YYYY-MM-DD') : null;
+    
+    if (!dateVal) {
+      setAvailableTimeSlots([]);
+      return;
+    }
+
+    setLoadingSlots(true);
+    console.log('updateAvailableTimeSlots called, globals:', businessSettings);
+
+    if (
+      businessSettings.businessOpeningHour === undefined ||
+      businessSettings.businessClosingHour === undefined ||
+      businessSettings.beforeServiceBuffer === undefined ||
+      businessSettings.afterServiceBuffer === undefined ||
+      businessSettings.minBookingAdvanceHours === undefined
+    ) {
+      console.warn('Business hours or buffer times are not set! Waiting for settings to load.');
+      setLoadingSlots(false);
+      return;
+    }
+
+    // Define these variables first - updated for card-based selection:
+    const serviceId = selectedService?.id || booking?.service_id;
+    const durationVal = booking?.duration_minutes;
+    const genderVal = booking?.gender_preference || 'any';
+
+    console.log('Selected serviceId:', serviceId, 'Selected genderVal:', genderVal);
+    if (!serviceId || !durationVal || !dateVal || !genderVal) {
+      setLoadingSlots(false);
+      return;
+    }
+
+    // 1. Get buffer_time for selected service (not used here, but could be for after buffer)
+    const durationMinutes = Number(durationVal);
+
+    // 2. Get all therapists who match service and gender
+    const { data: therapistLinks } = await supabaseClient
+      .from('therapist_services')
+      .select('therapist_id, therapist:therapist_id (id, gender, is_active)')
+      .eq('service_id', serviceId);
+
+    console.log('Raw therapistLinks from Supabase:', therapistLinks);
+    let therapists = (therapistLinks || []).map((row: any) => row.therapist).filter((t: any) => t && t.is_active);
+    if (genderVal !== 'any') therapists = therapists.filter((t: any) => t.gender === genderVal);
+
+    // Deduplicate therapists to avoid redundant checks
+    const uniqueTherapists = [...new Map(therapists.map((t: any) => [t.id, t])).values()];
+    console.log('Therapists after filtering & deduplication:', uniqueTherapists);
+
+    // 3. For each therapist, get available slots
+    let allSlots: string[] = [];
+    for (const therapist of uniqueTherapists) {
+      const slots = await getAvailableSlotsForTherapist(therapist, dateVal, durationMinutes);
+      allSlots = allSlots.concat(slots);
+    }
+    console.log('All slots before deduplication:', allSlots);
+
+    // 4. Deduplicate and sort
+    const uniqueSlots = Array.from(new Set(allSlots)).sort();
+    console.log('Unique available slots:', uniqueSlots);
+
+    // 5. Filter out past slots if the selected date is today
+    const today = new Date();
+    const selectedDate = new Date(dateVal + 'T00:00:00'); // Use T00:00:00 to avoid timezone issues
+    let finalSlots = uniqueSlots;
+
+    if (selectedDate.getFullYear() === today.getFullYear() &&
+      selectedDate.getMonth() === today.getMonth() &&
+      selectedDate.getDate() === today.getDate()) {
+
+      const now = new Date();
+      now.setHours(now.getHours() + (businessSettings.minBookingAdvanceHours || 0));
+
+      let earliestBookingHour = now.getHours();
+      // If there are any minutes, round up to the next hour
+      if (now.getMinutes() > 0 || now.getSeconds() > 0 || now.getMilliseconds() > 0) {
+        earliestBookingHour++;
+      }
+
+      finalSlots = uniqueSlots.filter(slot => {
+        const slotHour = parseInt(slot.split(':')[0], 10);
+        return slotHour >= earliestBookingHour;
+      });
+      console.log(`Today's slots filtered. Earliest hour: ${earliestBookingHour}. Final slots:`, finalSlots);
+    }
+
+    setAvailableTimeSlots(finalSlots);
+    setLoadingSlots(false);
   };
 
   // Address verification functions
@@ -1468,61 +1693,103 @@ export const BookingEditPlatform: React.FC = () => {
 
                   <div style={{ marginBottom: '20px' }}>
                     <Text strong style={{ color: '#374151', marginBottom: '16px', display: 'block' }}>Available Time Slots</Text>
-                    <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', 
-                      gap: '8px',
-                      margin: '16px 0'
-                    }}>
-                      {[
-                        '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-                        '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
-                        '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-                        '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
-                      ].map((time) => {
-                        const isSelected = booking.booking_time ? dayjs(booking.booking_time).format('HH:mm') === time : false;
-                        const isAfterHours = parseInt(time.split(':')[0]) >= 18 || parseInt(time.split(':')[0]) < 9;
-                        const isWeekend = booking.booking_time ? dayjs(booking.booking_time).day() === 0 || dayjs(booking.booking_time).day() === 6 : false;
-                        const isUnavailable = Math.random() < 0.3; // Simulate some unavailable slots
-                        
-                        return (
-                          <div 
-                            key={time}
-                            style={{
-                              padding: '12px 8px',
-                              border: isSelected ? '2px solid #007e8c' : isUnavailable ? '2px solid #fee2e2' : '2px solid #e5e7eb',
-                              borderRadius: '6px',
-                              textAlign: 'center',
-                              cursor: isUnavailable ? 'not-allowed' : 'pointer',
-                              fontSize: '14px',
-                              fontWeight: '500',
-                              transition: 'all 0.2s',
-                              background: isSelected ? '#007e8c' : isUnavailable ? '#fee2e2' : isAfterHours ? '#fef3c7' : '#dcfce7',
-                              color: isSelected ? 'white' : isUnavailable ? '#991b1b' : isAfterHours ? '#92400e' : '#166534'
-                            }}
-                            onClick={() => {
-                              if (!isUnavailable) {
+                    
+                    {loadingSlots ? (
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        alignItems: 'center', 
+                        padding: '40px',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '8px',
+                        background: '#f9f9f9'
+                      }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <div style={{ 
+                            width: '40px', 
+                            height: '40px', 
+                            border: '3px solid #e5e7eb',
+                            borderTop: '3px solid #007e8c',
+                            borderRadius: '50%',
+                            animation: 'spin 1s linear infinite',
+                            margin: '0 auto 16px'
+                          }}></div>
+                          <Text style={{ color: '#6b7280' }}>Loading available slots...</Text>
+                        </div>
+                      </div>
+                    ) : availableTimeSlots.length > 0 ? (
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', 
+                        gap: '8px',
+                        margin: '16px 0'
+                      }}>
+                        {availableTimeSlots.map((time) => {
+                          const isSelected = booking.booking_time ? dayjs(booking.booking_time).format('HH:mm') === time : false;
+                          const isAfterHours = parseInt(time.split(':')[0]) >= (businessSettings.businessClosingHour || 17) || parseInt(time.split(':')[0]) < (businessSettings.businessOpeningHour || 9);
+                          const isWeekend = booking.booking_time ? dayjs(booking.booking_time).day() === 0 || dayjs(booking.booking_time).day() === 6 : false;
+                          
+                          return (
+                            <div 
+                              key={time}
+                              style={{
+                                padding: '12px 8px',
+                                border: isSelected ? '2px solid #007e8c' : '2px solid #e5e7eb',
+                                borderRadius: '6px',
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: '500',
+                                transition: 'all 0.2s',
+                                background: isSelected ? '#007e8c' : isAfterHours ? '#fef3c7' : '#dcfce7',
+                                color: isSelected ? 'white' : isAfterHours ? '#92400e' : '#166534'
+                              }}
+                              onClick={() => {
                                 const currentDate = booking.booking_time ? dayjs(booking.booking_time) : dayjs();
                                 const newDateTime = currentDate.hour(parseInt(time.split(':')[0])).minute(parseInt(time.split(':')[1]));
                                 form.setFieldsValue({ booking_time: newDateTime });
                                 setBooking(prev => prev ? { ...prev, booking_time: newDateTime.toISOString() } : null);
-                              }
-                            }}
-                          >
-                            {time}
-                            {isAfterHours && !isUnavailable && (
-                              <div style={{ fontSize: '10px', marginTop: '2px' }}>🌙</div>
-                            )}
-                            {isWeekend && !isUnavailable && (
-                              <div style={{ fontSize: '10px', marginTop: '2px' }}>📅</div>
-                            )}
-                            {isUnavailable && (
-                              <div style={{ fontSize: '10px', marginTop: '2px' }}>❌</div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
+                              }}
+                            >
+                              {time}
+                              {isAfterHours && (
+                                <div style={{ fontSize: '10px', marginTop: '2px' }}>🌙</div>
+                              )}
+                              {isWeekend && (
+                                <div style={{ fontSize: '10px', marginTop: '2px' }}>📅</div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : booking.booking_time ? (
+                      <div style={{ 
+                        padding: '20px',
+                        border: '2px solid #fee2e2',
+                        borderRadius: '8px',
+                        background: '#fef2f2',
+                        textAlign: 'center'
+                      }}>
+                        <Text style={{ color: '#991b1b', fontSize: '16px', fontWeight: '500' }}>
+                          No available time slots for this date
+                        </Text>
+                        <Text style={{ color: '#6b7280', fontSize: '14px', marginTop: '8px', display: 'block' }}>
+                          Try selecting a different date or service
+                        </Text>
+                      </div>
+                    ) : (
+                      <div style={{ 
+                        padding: '20px',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '8px',
+                        background: '#f9f9f9',
+                        textAlign: 'center'
+                      }}>
+                        <Text style={{ color: '#6b7280', fontSize: '16px' }}>
+                          Please select a date to see available time slots
+                        </Text>
+                      </div>
+                    )}
                     <div style={{ marginTop: '12px', fontSize: '12px', color: '#6b7280' }}>
                       <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
