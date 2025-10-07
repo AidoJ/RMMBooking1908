@@ -279,6 +279,13 @@ export const BookingEditPlatform: React.FC = () => {
   const [discountStatus, setDiscountStatus] = useState('');
   const [giftCardStatus, setGiftCardStatus] = useState('');
 
+  // Stripe payment processing
+  const [stripeLoaded, setStripeLoaded] = useState(false);
+  const [stripeElements, setStripeElements] = useState<any>(null);
+  const [stripeCard, setStripeCard] = useState<any>(null);
+  const [processingPayment, setProcessingPayment] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
   // Therapist fee calculations
   const [therapistFeeBreakdown, setTherapistFeeBreakdown] = useState({
     baseRate: 0,
@@ -345,6 +352,13 @@ export const BookingEditPlatform: React.FC = () => {
       }
     }
   }, [pricingDataLoaded, originalBooking, booking?.service_id, booking?.duration_minutes, booking?.booking_time, appliedDiscount, appliedGiftCard]);
+
+  // Mount Stripe when payment method is card and delta > 0
+  useEffect(() => {
+    if (priceDelta > 0 && booking?.payment_method === 'card' && !stripeLoaded) {
+      mountStripeCardElement();
+    }
+  }, [priceDelta, booking?.payment_method]);
 
   // Fetch pricing data - EXACTLY like frontend
   const fetchPricingData = async () => {
@@ -1000,6 +1014,133 @@ export const BookingEditPlatform: React.FC = () => {
     
     // Can navigate to previous steps or next step if current is completed
     return targetIndex <= currentIndex || completedSteps.includes(activeStep);
+  };
+
+  // Load Stripe key and initialize - EXACTLY like frontend
+  const loadStripeKey = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/get-stripe-key');
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load Stripe key');
+      }
+      
+      return data.publishableKey;
+    } catch (error) {
+      console.error('❌ Error loading Stripe key:', error);
+      throw error;
+    }
+  };
+
+  // Mount Stripe card element
+  const mountStripeCardElement = async () => {
+    if (!(window as any).Stripe) {
+      console.error('Stripe.js not loaded');
+      return;
+    }
+
+    try {
+      const publishableKey = await loadStripeKey();
+      const stripeInstance = (window as any).Stripe(publishableKey);
+      const elements = stripeInstance.elements();
+      const cardElement = elements.create('card', {
+        hidePostalCode: true, // No Zip for AU
+        style: {
+          base: {
+            fontSize: '16px',
+            color: '#333',
+            fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+            '::placeholder': { color: '#888' },
+          },
+          invalid: { color: '#dc2626' }
+        }
+      });
+
+      setStripeElements(elements);
+      setStripeCard(cardElement);
+      setStripeLoaded(true);
+
+      // Mount to DOM after short delay to ensure element exists
+      setTimeout(() => {
+        const cardContainer = document.getElementById('stripe-card-element');
+        if (cardContainer) {
+          cardElement.mount('#stripe-card-element');
+        }
+      }, 100);
+    } catch (error) {
+      console.error('Error mounting Stripe:', error);
+      message.error('Failed to load payment form');
+    }
+  };
+
+  // Process additional payment via Stripe
+  const processAdditionalPayment = async () => {
+    if (!stripeCard || !booking) {
+      message.error('Payment form not ready');
+      return false;
+    }
+
+    setProcessingPayment(true);
+
+    try {
+      // Step 1: Create payment intent for additional charge
+      const authorizationData = {
+        amount: priceDelta,
+        currency: 'aud',
+        bookingData: {
+          booking_id: booking.booking_id,
+          customer_email: booking.customer_email,
+          service_name: services.find(s => s.id === booking.service_id)?.name,
+          booking_time: booking.booking_time,
+          additional_payment: true
+        }
+      };
+
+      const authResponse = await fetch('/.netlify/functions/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(authorizationData)
+      });
+
+      if (!authResponse.ok) {
+        const errorData = await authResponse.json();
+        throw new Error(`Payment authorization failed: ${errorData.error || 'Unknown error'}`);
+      }
+
+      const { client_secret } = await authResponse.json();
+
+      // Step 2: Confirm card payment
+      const stripe = (window as any).Stripe(await loadStripeKey());
+      const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
+        payment_method: {
+          card: stripeCard,
+          billing_details: {
+            name: `${booking.first_name} ${booking.last_name}`,
+            email: booking.customer_email,
+            phone: booking.customer_phone,
+          }
+        }
+      });
+
+      if (stripeError) {
+        throw new Error(stripeError.message);
+      }
+
+      if (paymentIntent.status === 'requires_capture') {
+        message.success('✅ Additional payment authorized successfully');
+        setPaymentSuccess(true);
+        return true;
+      } else {
+        throw new Error('Payment authorization failed');
+      }
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      message.error(error.message || 'Payment failed');
+      return false;
+    } finally {
+      setProcessingPayment(false);
+    }
   };
 
   // Apply discount code - EXACTLY like frontend
@@ -2643,7 +2784,7 @@ export const BookingEditPlatform: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Credit Card Fields - Show when card selected and payment required */}
+                  {/* Credit Card Fields - Stripe Element */}
                   {priceDelta > 0 && booking.payment_method === 'card' && (
                     <div style={{ 
                       marginBottom: '20px', 
@@ -2658,29 +2799,48 @@ export const BookingEditPlatform: React.FC = () => {
                       </Text>
                       
                       <div style={{ marginBottom: '12px' }}>
-                        <Text style={{ color: '#374151', fontSize: '13px', marginBottom: '6px', display: 'block' }}>Card Number</Text>
-                        <Input 
-                          placeholder="1234 5678 9012 3456"
-                          style={{ padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '6px' }}
-                        />
+                        <Text style={{ color: '#374151', fontSize: '13px', marginBottom: '6px', display: 'block' }}>Card Information</Text>
+                        <div 
+                          id="stripe-card-element"
+                          style={{ 
+                            padding: '12px 14px', 
+                            border: '2px solid #e5e7eb', 
+                            borderRadius: '6px',
+                            background: 'white'
+                          }}
+                        ></div>
                       </div>
-                      
-                      <Row gutter={12}>
-                        <Col span={12}>
-                          <Text style={{ color: '#374151', fontSize: '13px', marginBottom: '6px', display: 'block' }}>Expiry Date</Text>
-                          <Input 
-                            placeholder="MM/YY"
-                            style={{ padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '6px' }}
-                          />
-                        </Col>
-                        <Col span={12}>
-                          <Text style={{ color: '#374151', fontSize: '13px', marginBottom: '6px', display: 'block' }}>CVC</Text>
-                          <Input 
-                            placeholder="123"
-                            style={{ padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '6px' }}
-                          />
-                        </Col>
-                      </Row>
+
+                      {paymentSuccess && (
+                        <div style={{ 
+                          padding: '12px', 
+                          background: '#f0fdf4', 
+                          border: '1px solid #86efac', 
+                          borderRadius: '6px',
+                          color: '#166534',
+                          fontSize: '14px'
+                        }}>
+                          ✅ Payment authorized successfully! You can now save changes.
+                        </div>
+                      )}
+
+                      {!paymentSuccess && (
+                        <Button 
+                          type="primary"
+                          size="large"
+                          loading={processingPayment}
+                          onClick={processAdditionalPayment}
+                          style={{ 
+                            width: '100%', 
+                            marginTop: '12px',
+                            background: '#0891b2', 
+                            borderColor: '#0891b2',
+                            fontWeight: 600
+                          }}
+                        >
+                          {processingPayment ? 'Processing Payment...' : `Authorize Payment $${priceDelta.toFixed(2)}`}
+                        </Button>
+                      )}
                     </div>
                   )}
 
@@ -2863,20 +3023,23 @@ export const BookingEditPlatform: React.FC = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
                     <Button 
                       style={{ background: '#f3f4f6', color: '#374151', border: '2px solid #e5e7eb', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
-                      onClick={() => handleStepChange('details')}
+                      onClick={() => handleStepChange('therapist')}
                     >
                       ← Back
                     </Button>
                     <Button 
                       type="primary"
+                      loading={saving}
+                      disabled={
+                        // Gate Save based on payment requirements
+                        (priceDelta > 0 && booking.payment_method === 'card' && !paymentSuccess) ||
+                        (priceDelta > 0 && !booking.payment_method) ||
+                        (booking.payment_status === 'refunded' && !booking.payment_notes?.trim())
+                      }
                       style={{ background: '#007e8c', borderColor: '#007e8c', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
-                      onClick={() => {
-                        markStepCompleted('payment');
-                        // This would be the final step - could trigger save or show summary
-                        message.success('Booking configuration complete!');
-                      }}
+                      onClick={handleSave}
                     >
-                      Complete Booking →
+                      💾 Save All Changes
                     </Button>
                   </div>
                 </div>
