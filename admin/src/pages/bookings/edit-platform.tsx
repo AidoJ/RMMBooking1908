@@ -2623,23 +2623,81 @@ export const BookingEditPlatform: React.FC = () => {
                     </div>
                   )}
                   
-                  <div style={{ marginBottom: '20px' }}>
-                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Payment Method</Text>
-                    <Select 
-                      value={booking.payment_method || 'card'}
-                      style={{ width: '100%' }}
-                      size="large"
-                      onChange={(value) => {
-                        form.setFieldsValue({ payment_method: value });
-                        setBooking(prev => prev ? { ...prev, payment_method: value } : null);
-                      }}
-                    >
-                      <Option value="card">Credit/Debit Card</Option>
-                      <Option value="cash">Cash Payment</Option>
-                      <Option value="bank_transfer">Bank Transfer</Option>
-                      <Option value="invoice">Invoice (Corporate)</Option>
-                    </Select>
-                  </div>
+                  {/* Payment Method - Show only when additional payment required */}
+                  {priceDelta > 0 && (
+                    <div style={{ marginBottom: '20px' }}>
+                      <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Payment Method</Text>
+                      <Select 
+                        value={booking.payment_method || undefined}
+                        placeholder="Select payment method"
+                        style={{ width: '100%' }}
+                        size="large"
+                        onChange={(value) => {
+                          form.setFieldsValue({ payment_method: value });
+                          setBooking(prev => prev ? { ...prev, payment_method: value } : null);
+                        }}
+                      >
+                        <Option value="card">Credit/Debit Card</Option>
+                        <Option value="bank_transfer">Bank Transfer (EFT)</Option>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Credit Card Fields - Show when card selected and payment required */}
+                  {priceDelta > 0 && booking.payment_method === 'card' && (
+                    <div style={{ 
+                      marginBottom: '20px', 
+                      padding: '20px', 
+                      background: '#f8fafc', 
+                      border: '2px solid #cbd5e1', 
+                      borderRadius: '8px' 
+                    }}>
+                      <Text strong style={{ color: '#374151', marginBottom: '12px', display: 'block' }}>💳 Credit Card Details</Text>
+                      <Text style={{ color: '#6b7280', fontSize: '14px', marginBottom: '16px', display: 'block' }}>
+                        Additional payment required: ${priceDelta.toFixed(2)}
+                      </Text>
+                      
+                      <div style={{ marginBottom: '12px' }}>
+                        <Text style={{ color: '#374151', fontSize: '13px', marginBottom: '6px', display: 'block' }}>Card Number</Text>
+                        <Input 
+                          placeholder="1234 5678 9012 3456"
+                          style={{ padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '6px' }}
+                        />
+                      </div>
+                      
+                      <Row gutter={12}>
+                        <Col span={12}>
+                          <Text style={{ color: '#374151', fontSize: '13px', marginBottom: '6px', display: 'block' }}>Expiry Date</Text>
+                          <Input 
+                            placeholder="MM/YY"
+                            style={{ padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '6px' }}
+                          />
+                        </Col>
+                        <Col span={12}>
+                          <Text style={{ color: '#374151', fontSize: '13px', marginBottom: '6px', display: 'block' }}>CVC</Text>
+                          <Input 
+                            placeholder="123"
+                            style={{ padding: '10px 14px', border: '2px solid #e5e7eb', borderRadius: '6px' }}
+                          />
+                        </Col>
+                      </Row>
+                    </div>
+                  )}
+
+                  {/* EFT Note - Show when bank_transfer selected */}
+                  {priceDelta > 0 && booking.payment_method === 'bank_transfer' && (
+                    <div style={{ 
+                      marginBottom: '20px', 
+                      padding: '16px', 
+                      background: '#eff6ff', 
+                      border: '2px solid #3b82f6', 
+                      borderRadius: '8px' 
+                    }}>
+                      <Text style={{ color: '#1e40af', fontSize: '14px' }}>
+                        ℹ️ Bank transfer selected. Manually update Payment Status to "Payment Received" after confirming payment.
+                      </Text>
+                    </div>
+                  )}
 
                   <div style={{ marginBottom: '20px' }}>
                     <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Payment Status</Text>
@@ -2659,13 +2717,35 @@ export const BookingEditPlatform: React.FC = () => {
                     </Select>
                   </div>
 
+                  {/* Refund Prompt - Show when 'refunded' selected */}
+                  {booking.payment_status === 'refunded' && (
+                    <div style={{ 
+                      marginBottom: '20px', 
+                      padding: '16px', 
+                      background: '#fef3c7', 
+                      border: '2px solid #f59e0b', 
+                      borderRadius: '8px' 
+                    }}>
+                      <Text strong style={{ color: '#92400e', fontSize: '14px', display: 'block', marginBottom: '8px' }}>
+                        ⚠️ Refund Processing Required
+                      </Text>
+                      <Text style={{ color: '#78350f', fontSize: '13px' }}>
+                        Please add the Stripe refund ID and refund details in the Payment Notes field below.
+                      </Text>
+                    </div>
+                  )}
+
                   {/* Payment Notes - Show when payment_status is 'paid' or 'refunded' */}
                   {(booking.payment_status === 'paid' || booking.payment_status === 'refunded') && (
                     <div style={{ marginBottom: '20px' }}>
-                      <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Payment Notes</Text>
+                      <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>
+                        Payment Notes {booking.payment_status === 'refunded' && <span style={{ color: '#dc2626' }}>*</span>}
+                      </Text>
                       <Input.TextArea 
                         value={booking.payment_notes || ''}
-                        placeholder="Enter payment or refund details..."
+                        placeholder={booking.payment_status === 'refunded' 
+                          ? "Enter Stripe refund ID and refund details..." 
+                          : "Enter payment details..."}
                         rows={3}
                         style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
                         onChange={(e) => {
