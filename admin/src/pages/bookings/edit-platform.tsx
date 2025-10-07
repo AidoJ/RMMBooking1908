@@ -265,6 +265,12 @@ export const BookingEditPlatform: React.FC = () => {
   const [timePricingRulesCache, setTimePricingRulesCache] = useState<any[]>([]);
   const [pricingDataLoaded, setPricingDataLoaded] = useState(false);
 
+  // Current vs Estimated pricing
+  const [originalBooking, setOriginalBooking] = useState<Booking | null>(null);
+  const [currentPricing, setCurrentPricing] = useState<any>(null);
+  const [estimatedPricing, setEstimatedPricing] = useState<any>(null);
+  const [priceDelta, setPriceDelta] = useState(0);
+
   // Therapist fee calculations
   const [therapistFeeBreakdown, setTherapistFeeBreakdown] = useState({
     baseRate: 0,
@@ -310,6 +316,27 @@ export const BookingEditPlatform: React.FC = () => {
   useEffect(() => {
     updateAvailableTherapists();
   }, [booking?.booking_time, booking?.service_id, booking?.gender_preference, booking?.duration_minutes]);
+
+  // Calculate Current vs Estimated pricing and delta
+  useEffect(() => {
+    if (pricingDataLoaded && originalBooking) {
+      const current = calculateCurrentPrice();
+      const estimated = calculatePrice();
+      
+      setCurrentPricing(current);
+      setEstimatedPricing(estimated);
+      
+      if (current && estimated) {
+        const delta = estimated.finalPrice - current.finalPrice;
+        setPriceDelta(delta);
+        console.log('💰 Price delta:', {
+          current: current.finalPrice,
+          estimated: estimated.finalPrice,
+          delta: delta.toFixed(2)
+        });
+      }
+    }
+  }, [pricingDataLoaded, originalBooking, booking?.service_id, booking?.duration_minutes, booking?.booking_time, booking?.discount_code, booking?.gift_card_code]);
 
   // Fetch pricing data - EXACTLY like frontend
   const fetchPricingData = async () => {
@@ -401,6 +428,7 @@ export const BookingEditPlatform: React.FC = () => {
 
       setBooking(transformedBooking);
       setOriginalBookingData(transformedBooking);
+      setOriginalBooking(transformedBooking); // Store original for Current pricing
 
       // Populate form with existing data
       form.setFieldsValue({
@@ -966,7 +994,95 @@ export const BookingEditPlatform: React.FC = () => {
     return targetIndex <= currentIndex || completedSteps.includes(activeStep);
   };
 
-  // Real pricing calculation - EXACTLY like frontend
+  // Calculate Current pricing from original DB booking
+  const calculateCurrentPrice = () => {
+    if (!originalBooking || !pricingDataLoaded) {
+      return null;
+    }
+
+    const serviceId = originalBooking.service_id;
+    const durationVal = originalBooking.duration_minutes;
+    const bookingTime = originalBooking.booking_time;
+
+    if (!serviceId || !durationVal || !bookingTime) {
+      return null;
+    }
+
+    // Get service data from cache
+    const service = servicesCache.find(s => s.id === serviceId);
+    if (!service) {
+      return null;
+    }
+
+    let price = Number(service.service_base_price);
+    let breakdown = [`Hourly Rate: $${price.toFixed(2)}`];
+
+    // Get duration uplift
+    const duration = durationsCache.find(d => d.duration_minutes === Number(durationVal));
+    if (duration && duration.uplift_percentage) {
+      const durationUplift = price * (Number(duration.uplift_percentage) / 100);
+      price += durationUplift;
+      breakdown.push(`Time Uplift (${duration.uplift_percentage}%): +$${durationUplift.toFixed(2)}`);
+    }
+
+    // Get day of week and time
+    const bookingTimeObj = dayjs(bookingTime);
+    const dayOfWeek = bookingTimeObj.day();
+    const timeVal = bookingTimeObj.format('HH:mm');
+    
+    // Find matching time pricing rule from table
+    let timeUplift = 0;
+    for (const rule of timePricingRulesCache) {
+      if (Number(rule.day_of_week) === dayOfWeek) {
+        if (timeVal >= rule.start_time && timeVal < rule.end_time) {
+          timeUplift = Number(rule.uplift_percentage);
+          break;
+        }
+      }
+    }
+    if (timeUplift) {
+      const timeUpliftAmount = price * (timeUplift / 100);
+      price += timeUpliftAmount;
+      breakdown.push(`Weekend/Afterhours Uplift (${timeUplift}%): +$${timeUpliftAmount.toFixed(2)}`);
+    }
+
+    // Apply discounts if available (from original booking)
+    let finalPrice = price;
+    let discountAmount = 0;
+    
+    if (originalBooking.discount_code) {
+      // For now, placeholder - will fetch real discount later
+      discountAmount = price * 0.1;
+      finalPrice = price - discountAmount;
+      breakdown.push(`Discount (${originalBooking.discount_code}): -$${discountAmount.toFixed(2)}`);
+    }
+    
+    // Apply gift card if available (from original booking)
+    let giftCardAmount = 0;
+    if (originalBooking.gift_card_code) {
+      // For now, placeholder - will fetch real gift card later
+      giftCardAmount = Math.min(50, finalPrice);
+      finalPrice = finalPrice - giftCardAmount;
+      breakdown.push(`Gift Card (${originalBooking.gift_card_code}): -$${giftCardAmount.toFixed(2)}`);
+    }
+    
+    // GST component
+    const gstAmount = finalPrice / 11;
+    breakdown.push(`GST (10%): $${gstAmount.toFixed(2)}`);
+
+    return {
+      basePrice: service.service_base_price,
+      durationUplift: duration?.uplift_percentage || 0,
+      timeUplift,
+      discountAmount,
+      giftCardAmount,
+      gstAmount,
+      finalPrice,
+      breakdown
+    };
+  };
+
+  // Calculate Estimated pricing from current form selections - EXACTLY like frontend
   const calculatePrice = () => {
     if (!booking?.service_id || !booking?.duration_minutes || !booking?.booking_time) {
       console.log('💰 Missing required data for price calculation');
@@ -2285,89 +2401,138 @@ export const BookingEditPlatform: React.FC = () => {
                     <Text style={{ color: '#6b7280', fontSize: '16px' }}>Review pricing and payment details. Admin can apply discounts and modify payment status.</Text>
                   </div>
 
-                  {/* Live Pricing Calculator moved here (after selections) */}
-                  <div style={{
-                    background: 'linear-gradient(135deg, #f0fdfa 0%, #e0f7fa 100%)',
-                    border: '2px solid #007e8c',
-                    borderRadius: '12px',
-                    padding: '20px',
-                    margin: '0 0 20px 0'
-                  }}>
-                    <div style={{ fontSize: '20px', fontWeight: 700, color: '#007e8c', textAlign: 'center', marginBottom: '16px' }}>
-                      💰 Live Pricing Calculator
+                  {/* Current vs Estimated Pricing Panels - Side by Side */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+                    
+                    {/* Current Price Panel */}
+                    <div style={{
+                      background: '#f8fafc',
+                      border: '2px solid #cbd5e1',
+                      borderRadius: '12px',
+                      padding: '20px'
+                    }}>
+                      <div style={{ fontSize: '18px', fontWeight: 700, color: '#475569', marginBottom: '16px' }}>
+                        Current Price: {currentPricing ? `$${currentPricing.finalPrice.toFixed(2)}` : '—'}
+                      </div>
+                      {currentPricing ? (
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
+                            <span>Hourly Rate</span>
+                            <span style={{ fontWeight: 600, color: '#1e293b' }}>${currentPricing.basePrice.toFixed(2)}</span>
+                          </div>
+                          {currentPricing.durationUplift > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
+                              <span>Time Uplift ({currentPricing.durationUplift}%)</span>
+                              <span style={{ fontWeight: 600, color: '#1e293b' }}>${(currentPricing.basePrice * (currentPricing.durationUplift / 100)).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {currentPricing.timeUplift > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
+                              <span>Weekend/Afterhours Uplift ({currentPricing.timeUplift}%)</span>
+                              <span style={{ fontWeight: 600, color: '#1e293b' }}>${(currentPricing.basePrice * (currentPricing.timeUplift / 100)).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {currentPricing.discountAmount > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
+                              <span>Discount {originalBooking?.discount_code ? `(${originalBooking.discount_code})` : ''}</span>
+                              <span style={{ fontWeight: 600, color: '#dc2626' }}>-${currentPricing.discountAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {currentPricing.giftCardAmount > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
+                              <span>Gift Card {originalBooking?.gift_card_code ? `(${originalBooking.gift_card_code})` : ''}</span>
+                              <span style={{ fontWeight: 600, color: '#dc2626' }}>-${currentPricing.giftCardAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
+                            <span>GST (10%)</span>
+                            <span style={{ fontWeight: 600, color: '#1e293b' }}>${(currentPricing.finalPrice / 11).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: '#94a3b8', padding: '20px', fontSize: '14px' }}>
+                          Loading original pricing...
+                        </div>
+                      )}
                     </div>
-                    {pricingDataLoaded ? (
-                      <div style={{ display: 'grid', gap: '8px' }}>
-                        {(() => {
-                          const pricing = calculatePrice();
-                          if (!pricing) {
-                            return (
-                              <div style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>
-                                Select service, duration, and date/time to see pricing
-                              </div>
-                            );
-                          }
-                          
-                          return (
-                            <>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
-                                <span>Base Price ({booking.duration_minutes || 60} mins):</span>
-                                <span>${pricing.basePrice.toFixed(2)}</span>
-                              </div>
-                              {pricing.durationUplift > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
-                                  <span>Duration Uplift ({pricing.durationUplift}%):</span>
-                                  <span>+${(pricing.basePrice * (pricing.durationUplift / 100)).toFixed(2)}</span>
-                                </div>
-                              )}
-                              {pricing.timeUplift > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
-                                  <span>Time Uplift ({pricing.timeUplift}%):</span>
-                                  <span>+${(pricing.basePrice * (pricing.timeUplift / 100)).toFixed(2)}</span>
-                                </div>
-                              )}
-                              {pricing.discountAmount > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
-                                  <span>Discount:</span>
-                                  <span style={{ color: '#dc2626' }}>-${pricing.discountAmount.toFixed(2)}</span>
-                                </div>
-                              )}
-                              {pricing.giftCardAmount > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
-                                  <span>Gift Card:</span>
-                                  <span style={{ color: '#dc2626' }}>-${pricing.giftCardAmount.toFixed(2)}</span>
-                                </div>
-                              )}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(0, 126, 140, 0.1)' }}>
-                                <span>GST (10%):</span>
-                                <span>${(pricing.finalPrice / 11).toFixed(2)}</span>
-                              </div>
-                              <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'space-between', 
-                                padding: '16px 0 8px 0',
-                                borderTop: '2px solid #007e8c',
-                                fontWeight: '700',
-                                fontSize: '18px',
-                                color: '#007e8c'
-                              }}>
-                                <span>Total Amount:</span>
-                                <span>${pricing.finalPrice.toFixed(2)}</span>
-                              </div>
-                            </>
-                          );
-                        })()}
+
+                    {/* Estimated Price Panel */}
+                    <div style={{
+                      background: 'linear-gradient(135deg, #f0fdfa 0%, #e0f7fa 100%)',
+                      border: '2px solid #007e8c',
+                      borderRadius: '12px',
+                      padding: '20px'
+                    }}>
+                      <div style={{ fontSize: '18px', fontWeight: 700, color: '#007e8c', marginBottom: '16px' }}>
+                        Estimated Price: {estimatedPricing ? `$${estimatedPricing.finalPrice.toFixed(2)}` : '—'}
                       </div>
-                    ) : (
-                      <div style={{ textAlign: 'center', color: '#6b7280', padding: '20px' }}>
-                        <Spin size="large" />
-                        <div style={{ marginTop: '12px' }}>Loading pricing data...</div>
-                      </div>
-                    )}
-                    <div style={{ marginTop: '16px', padding: '12px', background: '#f0fdfa', borderRadius: '8px', fontSize: '14px' }}>
-                      <strong>🔧 Admin Tools:</strong> Real-time pricing based on service, duration, date/time, and business rules.
+                      {estimatedPricing ? (
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#0f766e' }}>
+                            <span>Hourly Rate</span>
+                            <span style={{ fontWeight: 600, color: '#115e59' }}>${estimatedPricing.basePrice.toFixed(2)}</span>
+                          </div>
+                          {estimatedPricing.durationUplift > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#0f766e' }}>
+                              <span>Time Uplift ({estimatedPricing.durationUplift}%)</span>
+                              <span style={{ fontWeight: 600, color: '#059669' }}>+${(estimatedPricing.basePrice * (estimatedPricing.durationUplift / 100)).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {estimatedPricing.timeUplift > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#0f766e' }}>
+                              <span>Weekend/Afterhours Uplift ({estimatedPricing.timeUplift}%)</span>
+                              <span style={{ fontWeight: 600, color: '#059669' }}>+${(estimatedPricing.basePrice * (estimatedPricing.timeUplift / 100)).toFixed(2)}</span>
+                            </div>
+                          )}
+                          {estimatedPricing.discountAmount > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#0f766e' }}>
+                              <span>Discount {booking?.discount_code ? `(${booking.discount_code})` : ''}</span>
+                              <span style={{ fontWeight: 600, color: '#dc2626' }}>-${estimatedPricing.discountAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {estimatedPricing.giftCardAmount > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#0f766e' }}>
+                              <span>Gift Card {booking?.gift_card_code ? `(${booking.gift_card_code})` : ''}</span>
+                              <span style={{ fontWeight: 600, color: '#dc2626' }}>-${estimatedPricing.giftCardAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#0f766e' }}>
+                            <span>GST (10%)</span>
+                            <span style={{ fontWeight: 600, color: '#115e59' }}>${(estimatedPricing.finalPrice / 11).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: '#5eead4', padding: '20px', fontSize: '14px' }}>
+                          Select service, duration, and date/time to see estimated pricing
+                        </div>
+                      )}
                     </div>
                   </div>
+
+                  {/* Price Delta Banner */}
+                  {currentPricing && estimatedPricing && (
+                    <div style={{
+                      padding: '16px',
+                      marginBottom: '24px',
+                      borderRadius: '8px',
+                      background: priceDelta > 0 ? '#fef3c7' : priceDelta < 0 ? '#dbeafe' : '#f0fdf4',
+                      border: `2px solid ${priceDelta > 0 ? '#f59e0b' : priceDelta < 0 ? '#3b82f6' : '#10b981'}`,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}>
+                      <div>
+                        <Text strong style={{ fontSize: '16px', color: priceDelta > 0 ? '#92400e' : priceDelta < 0 ? '#1e3a8a' : '#065f46' }}>
+                          {priceDelta > 0 ? '⚠️ Additional Payment Required' : priceDelta < 0 ? '💰 Price Decrease - Refund Required' : '✅ No Price Change'}
+                        </Text>
+                        {priceDelta !== 0 && (
+                          <div style={{ marginTop: '4px', fontSize: '14px', color: priceDelta > 0 ? '#78350f' : '#1e40af' }}>
+                            Delta: {priceDelta > 0 ? '+' : ''}${priceDelta.toFixed(2)}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   
                   <div style={{ marginBottom: '20px' }}>
                     <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Payment Method</Text>
