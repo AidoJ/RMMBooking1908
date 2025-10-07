@@ -1790,59 +1790,6 @@ export const BookingEditPlatform: React.FC = () => {
                     />
                   </div>
 
-                  {/* Live Pricing Calculator - Always at bottom */}
-                  <div style={{ 
-                    background: '#f8fafc', 
-                    padding: '20px', 
-                    borderRadius: '12px', 
-                    border: '2px solid #e5e7eb',
-                    marginTop: '24px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                      <div style={{ fontSize: '20px' }}>💰</div>
-                      <Text strong style={{ fontSize: '18px', color: '#1f2937' }}>Live Pricing Calculator</Text>
-                    </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                      <div style={{ padding: '12px', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                        <Text style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Base Price</Text>
-                        <Text strong style={{ fontSize: '16px', color: '#1f2937' }}>
-                          ${(() => {
-                            const currentService = selectedService || services.find(s => s.id === booking.service_id);
-                            const duration = booking.duration_minutes || 60;
-                            return currentService ? (currentService.service_base_price * (duration / 60)).toFixed(2) : '0.00';
-                          })()}
-                        </Text>
-                      </div>
-                      
-                      <div style={{ padding: '12px', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                        <Text style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Time Uplift</Text>
-                        <Text strong style={{ fontSize: '16px', color: '#1f2937' }}>$20.00</Text>
-                      </div>
-                      
-                      <div style={{ padding: '12px', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                        <Text style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Discount</Text>
-                        <Text strong style={{ fontSize: '16px', color: '#1f2937' }}>-$12.00</Text>
-                      </div>
-                      
-                      <div style={{ padding: '12px', background: '#007e8c', borderRadius: '8px', color: 'white' }}>
-                        <Text style={{ fontSize: '14px', color: 'white', marginBottom: '4px' }}>Total Amount</Text>
-                        <Text strong style={{ fontSize: '18px', color: 'white' }}>
-                          ${(() => {
-                            const currentService = selectedService || services.find(s => s.id === booking.service_id);
-                            const duration = booking.duration_minutes || 60;
-                            const basePrice = currentService ? currentService.service_base_price * (duration / 60) : 0;
-                            const timeUplift = 20.00;
-                            const discount = 12.00;
-                            const afterDiscount = basePrice + timeUplift - discount;
-                            const gst = afterDiscount * 0.1;
-                            return (afterDiscount + gst).toFixed(2);
-                          })()}
-                        </Text>
-                      </div>
-                    </div>
-                  </div>
-
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
                     <Button style={{ background: '#f3f4f6', color: '#374151', border: '2px solid #e5e7eb', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}>
                       ← Back
@@ -1960,59 +1907,6 @@ export const BookingEditPlatform: React.FC = () => {
                     />
                   </div>
 
-                  {/* Live Pricing Calculator - Always at bottom */}
-                  <div style={{ 
-                    background: '#f8fafc', 
-                    padding: '20px', 
-                    borderRadius: '12px', 
-                    border: '2px solid #e5e7eb',
-                    marginTop: '24px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                      <div style={{ fontSize: '20px' }}>💰</div>
-                      <Text strong style={{ fontSize: '18px', color: '#1f2937' }}>Live Pricing Calculator</Text>
-                    </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                      <div style={{ padding: '12px', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                        <Text style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Base Price</Text>
-                        <Text strong style={{ fontSize: '16px', color: '#1f2937' }}>
-                          ${(() => {
-                            const currentService = selectedService || services.find(s => s.id === booking.service_id);
-                            const duration = booking.duration_minutes || 60;
-                            return currentService ? (currentService.service_base_price * (duration / 60)).toFixed(2) : '0.00';
-                          })()}
-                        </Text>
-                      </div>
-                      
-                      <div style={{ padding: '12px', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                        <Text style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Time Uplift</Text>
-                        <Text strong style={{ fontSize: '16px', color: '#1f2937' }}>$20.00</Text>
-                      </div>
-                      
-                      <div style={{ padding: '12px', background: 'white', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
-                        <Text style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>Discount</Text>
-                        <Text strong style={{ fontSize: '16px', color: '#1f2937' }}>-$12.00</Text>
-                      </div>
-                      
-                      <div style={{ padding: '12px', background: '#007e8c', borderRadius: '8px', color: 'white' }}>
-                        <Text style={{ fontSize: '14px', color: 'white', marginBottom: '4px' }}>Total Amount</Text>
-                        <Text strong style={{ fontSize: '18px', color: 'white' }}>
-                          ${(() => {
-                            const currentService = selectedService || services.find(s => s.id === booking.service_id);
-                            const duration = booking.duration_minutes || 60;
-                            const basePrice = currentService ? currentService.service_base_price * (duration / 60) : 0;
-                            const timeUplift = 20.00;
-                            const discount = 12.00;
-                            const afterDiscount = basePrice + timeUplift - discount;
-                            const gst = afterDiscount * 0.1;
-                            return (afterDiscount + gst).toFixed(2);
-                          })()}
-                        </Text>
-                      </div>
-                    </div>
-                  </div>
-
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #e5e7eb' }}>
                     <Button 
                       style={{ background: '#f3f4f6', color: '#374151', border: '2px solid #e5e7eb', borderRadius: '8px', fontWeight: 600, fontSize: '16px' }}
@@ -2022,10 +1916,9 @@ export const BookingEditPlatform: React.FC = () => {
                     </Button>
                     <Button 
                       type="primary"
-                      disabled={!addressVerified && !!booking.address?.trim()}
                       style={{ 
-                        background: addressVerified || !booking.address?.trim() ? '#007e8c' : '#9ca3af', 
-                        borderColor: addressVerified || !booking.address?.trim() ? '#007e8c' : '#9ca3af', 
+                        background: '#007e8c', 
+                        borderColor: '#007e8c', 
                         borderRadius: '8px', 
                         fontWeight: 600, 
                         fontSize: '16px' 
@@ -2328,8 +2221,9 @@ export const BookingEditPlatform: React.FC = () => {
                       }}>
                         {availableTimeSlots.map((time) => {
                           const isSelected = booking.booking_time ? dayjs(booking.booking_time).format('HH:mm') === time : false;
-                          const isAfterHours = parseInt(time.split(':')[0]) >= (businessSettings.businessClosingHour || 17) || parseInt(time.split(':')[0]) < (businessSettings.businessOpeningHour || 9);
+                          const hour = parseInt(time.split(':')[0]);
                           const isWeekend = booking.booking_time ? dayjs(booking.booking_time).day() === 0 || dayjs(booking.booking_time).day() === 6 : false;
+                          const isAfterHours = isWeekend || hour >= 18; // After 18:00 or weekend
                           
                           return (
                             <div 
@@ -2481,7 +2375,17 @@ export const BookingEditPlatform: React.FC = () => {
                             }}
                             onClick={() => {
                               form.setFieldsValue({ therapist_id: therapist.id });
-                              setBooking(prev => prev ? { ...prev, therapist_id: therapist.id } : null);
+                              setBooking(prev => prev ? { 
+                                ...prev, 
+                                therapist_id: therapist.id,
+                                therapist_name: `${therapist.first_name} ${therapist.last_name}`,
+                                therapist_details: {
+                                  first_name: therapist.first_name,
+                                  last_name: therapist.last_name,
+                                  email: therapist.email,
+                                  phone: therapist.phone
+                                }
+                              } : null);
                             }}
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
