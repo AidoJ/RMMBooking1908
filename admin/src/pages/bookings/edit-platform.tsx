@@ -1033,10 +1033,11 @@ export const BookingEditPlatform: React.FC = () => {
     }
   };
 
-  // Mount Stripe card element
+  // Mount Stripe card element - EXACTLY like booking platform
   const mountStripeCardElement = async () => {
     if (!(window as any).Stripe) {
       console.error('Stripe.js not loaded');
+      setTimeout(mountStripeCardElement, 500); // Retry if Stripe not loaded yet
       return;
     }
 
@@ -1044,8 +1045,9 @@ export const BookingEditPlatform: React.FC = () => {
       const publishableKey = await loadStripeKey();
       const stripeInstance = (window as any).Stripe(publishableKey);
       const elements = stripeInstance.elements();
+      
+      // Create card element exactly like frontend
       const cardElement = elements.create('card', {
-        hidePostalCode: true, // No Zip for AU
         style: {
           base: {
             fontSize: '16px',
@@ -1059,15 +1061,21 @@ export const BookingEditPlatform: React.FC = () => {
 
       setStripeElements(elements);
       setStripeCard(cardElement);
-      setStripeLoaded(true);
 
-      // Mount to DOM after short delay to ensure element exists
-      setTimeout(() => {
+      // Wait for DOM element to exist, then mount
+      const checkAndMount = () => {
         const cardContainer = document.getElementById('stripe-card-element');
         if (cardContainer) {
+          console.log('💳 Mounting Stripe card element...');
           cardElement.mount('#stripe-card-element');
+          setStripeLoaded(true);
+        } else {
+          console.log('⏳ Waiting for card element container...');
+          setTimeout(checkAndMount, 100);
         }
-      }, 100);
+      };
+      
+      checkAndMount();
     } catch (error) {
       console.error('Error mounting Stripe:', error);
       message.error('Failed to load payment form');
