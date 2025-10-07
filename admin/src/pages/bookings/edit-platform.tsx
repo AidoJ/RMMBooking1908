@@ -86,6 +86,7 @@ interface Booking {
   booking_type?: string;
   discount_code?: string;
   gift_card_code?: string;
+  payment_notes?: string;
   
   // Quote-specific fields
   event_type?: string;
@@ -2346,21 +2347,25 @@ export const BookingEditPlatform: React.FC = () => {
                   {/* Current vs Estimated Pricing Panels - Side by Side */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
                     
-                    {/* Current Price Panel */}
+                    {/* Current Booking Panel */}
                     <div style={{
                       background: '#f8fafc',
                       border: '2px solid #cbd5e1',
                       borderRadius: '12px',
                       padding: '20px'
                     }}>
-                      <div style={{ fontSize: '18px', fontWeight: 700, color: '#475569', marginBottom: '16px' }}>
-                        Current Price: {currentPricing ? `$${currentPricing.finalPrice.toFixed(2)}` : '—'}
+                      <div style={{ fontSize: '16px', fontWeight: 600, color: '#0891b2', marginBottom: '20px' }}>
+                        Current Booking
                       </div>
                       {currentPricing ? (
-                        <div style={{ display: 'grid', gap: '8px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
+                        <div style={{ display: 'grid', gap: '12px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '15px', color: '#475569' }}>
+                            <span>Current Price</span>
+                            <span style={{ fontWeight: 700, color: '#1e293b', fontSize: '18px' }}>${currentPricing.finalPrice.toFixed(2)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#64748b' }}>
                             <span>GST (10%)</span>
-                            <span style={{ fontWeight: 600, color: '#1e293b' }}>${currentPricing.gstAmount.toFixed(2)}</span>
+                            <span style={{ fontWeight: 600, color: '#475569' }}>${currentPricing.gstAmount.toFixed(2)}</span>
                           </div>
                         </div>
                       ) : (
@@ -2370,49 +2375,60 @@ export const BookingEditPlatform: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Estimated Price Panel */}
+                    {/* Revised Booking Panel */}
                     <div style={{
                       background: 'linear-gradient(135deg, #f0fdfa 0%, #e0f7fa 100%)',
-                      border: '2px solid #007e8c',
+                      border: '2px solid #0891b2',
                       borderRadius: '12px',
                       padding: '20px'
                     }}>
-                      <div style={{ fontSize: '18px', fontWeight: 700, color: '#007e8c', marginBottom: '16px' }}>
-                        Estimated Price: {estimatedPricing ? `$${estimatedPricing.finalPrice.toFixed(2)}` : '—'}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <div style={{ fontSize: '16px', fontWeight: 600, color: '#0891b2' }}>
+                          Revised Booking
+                        </div>
+                        {estimatedPricing && (
+                          <div style={{ fontSize: '18px', fontWeight: 700, color: '#0891b2' }}>
+                            Revised Price: ${estimatedPricing.finalPrice.toFixed(2)}
+                          </div>
+                        )}
                       </div>
                       {estimatedPricing ? (
-                        <div style={{ display: 'grid', gap: '8px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#0f766e' }}>
+                        <div style={{ display: 'grid', gap: '10px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e' }}>
                             <span>Hourly Rate</span>
                             <span style={{ fontWeight: 600, color: '#115e59' }}>${estimatedPricing.basePrice.toFixed(2)}</span>
                           </div>
                           {estimatedPricing.durationUplift > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#0f766e' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e' }}>
                               <span>Time Uplift ({estimatedPricing.durationUplift}%)</span>
                               <span style={{ fontWeight: 600, color: '#059669' }}>+${(estimatedPricing.basePrice * (estimatedPricing.durationUplift / 100)).toFixed(2)}</span>
                             </div>
                           )}
                           {estimatedPricing.timeUplift > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#0f766e' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e' }}>
                               <span>Weekend/Afterhours Uplift ({estimatedPricing.timeUplift}%)</span>
                               <span style={{ fontWeight: 600, color: '#059669' }}>+${(estimatedPricing.basePrice * (estimatedPricing.timeUplift / 100)).toFixed(2)}</span>
                             </div>
                           )}
                           {estimatedPricing.discountAmount > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#0f766e' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e' }}>
                               <span>Discount {booking?.discount_code ? `(${booking.discount_code})` : ''}</span>
                               <span style={{ fontWeight: 600, color: '#dc2626' }}>-${estimatedPricing.discountAmount.toFixed(2)}</span>
                             </div>
                           )}
                           {estimatedPricing.giftCardAmount > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#0f766e' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e' }}>
                               <span>Gift Card {booking?.gift_card_code ? `(${booking.gift_card_code})` : ''}</span>
                               <span style={{ fontWeight: 600, color: '#dc2626' }}>-${estimatedPricing.giftCardAmount.toFixed(2)}</span>
                             </div>
                           )}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#0f766e' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e', fontWeight: 600 }}>
+                            <span>Net Price</span>
+                            <span style={{ fontWeight: 700, color: '#0891b2' }}>${(estimatedPricing.finalPrice - (estimatedPricing.finalPrice / 11)).toFixed(2)}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#64748b' }}>
                             <span>GST (10%)</span>
-                            <span style={{ fontWeight: 600, color: '#115e59' }}>${(estimatedPricing.finalPrice / 11).toFixed(2)}</span>
+                            <span style={{ fontWeight: 600, color: '#475569' }}>${(estimatedPricing.finalPrice / 11).toFixed(2)}</span>
                           </div>
                         </div>
                       ) : (
@@ -2421,16 +2437,16 @@ export const BookingEditPlatform: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Discount & Gift Card fields under Estimated panel */}
-                      <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #99f6e4' }}>
-                        <Text strong style={{ color: '#0f766e', marginBottom: '12px', display: 'block', fontSize: '14px' }}>🎁 Apply Discounts & Gift Cards</Text>
+                      {/* Discount & Gift Card fields under Revised panel */}
+                      <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #5eead4' }}>
+                        <Text strong style={{ color: '#0891b2', marginBottom: '16px', display: 'block', fontSize: '15px' }}>🎁 Apply Discounts & Gift Cards</Text>
                         
-                        <div style={{ marginBottom: '12px' }}>
-                          <Text style={{ color: '#0f766e', fontSize: '13px', marginBottom: '6px', display: 'block' }}>📝 Promo Code</Text>
+                        <div style={{ marginBottom: '14px' }}>
+                          <Text style={{ color: '#0f766e', fontSize: '13px', marginBottom: '6px', display: 'block', fontWeight: 500 }}>Promo Code</Text>
                           <Input 
                             value={booking?.discount_code || ''}
-                            placeholder="Enter discount code (e.g., WELCOME10)"
-                            style={{ padding: '10px 14px', border: '1px solid #5eead4', borderRadius: '6px' }}
+                            placeholder="Welcome10"
+                            style={{ padding: '10px 14px', border: '2px solid #99f6e4', borderRadius: '6px', fontSize: '14px' }}
                             onChange={(e) => {
                               form.setFieldsValue({ discount_code: e.target.value });
                               setBooking(prev => prev ? { ...prev, discount_code: e.target.value } : null);
@@ -2439,11 +2455,11 @@ export const BookingEditPlatform: React.FC = () => {
                         </div>
 
                         <div>
-                          <Text style={{ color: '#0f766e', fontSize: '13px', marginBottom: '6px', display: 'block' }}>💳 Gift Card</Text>
+                          <Text style={{ color: '#0f766e', fontSize: '13px', marginBottom: '6px', display: 'block', fontWeight: 500 }}>Gift Card</Text>
                           <Input 
                             value={booking?.gift_card_code || ''}
                             placeholder="Enter gift card code"
-                            style={{ padding: '10px 14px', border: '1px solid #5eead4', borderRadius: '6px' }}
+                            style={{ padding: '10px 14px', border: '2px solid #99f6e4', borderRadius: '6px', fontSize: '14px' }}
                             onChange={(e) => {
                               form.setFieldsValue({ gift_card_code: e.target.value });
                               setBooking(prev => prev ? { ...prev, gift_card_code: e.target.value } : null);
@@ -2514,6 +2530,23 @@ export const BookingEditPlatform: React.FC = () => {
                       <Option value="refunded">Refunded</Option>
                     </Select>
                   </div>
+
+                  {/* Payment Notes - Show when payment_status is 'paid' or 'refunded' */}
+                  {(booking.payment_status === 'paid' || booking.payment_status === 'refunded') && (
+                    <div style={{ marginBottom: '20px' }}>
+                      <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Payment Notes</Text>
+                      <Input.TextArea 
+                        value={booking.payment_notes || ''}
+                        placeholder="Enter payment or refund details..."
+                        rows={3}
+                        style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
+                        onChange={(e) => {
+                          form.setFieldsValue({ payment_notes: e.target.value });
+                          setBooking(prev => prev ? { ...prev, payment_notes: e.target.value } : null);
+                        }}
+                      />
+                    </div>
+                  )}
 
 
                   {/* Therapist Fee Breakdown Section */}
