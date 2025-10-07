@@ -1017,6 +1017,7 @@ export const BookingEditPlatform: React.FC = () => {
   };
 
   // Load Stripe key and initialize - EXACTLY like frontend
+  const [stripeInstanceRef, setStripeInstanceRef] = useState<any>(null);
   const loadStripeKey = async () => {
     try {
       const response = await fetch('/.netlify/functions/get-stripe-key');
@@ -1044,6 +1045,7 @@ export const BookingEditPlatform: React.FC = () => {
     try {
       const publishableKey = await loadStripeKey();
       const stripeInstance = (window as any).Stripe(publishableKey);
+      setStripeInstanceRef(stripeInstance);
       const elements = stripeInstance.elements();
       
       // Create card element exactly like frontend
@@ -1067,6 +1069,10 @@ export const BookingEditPlatform: React.FC = () => {
         const cardContainer = document.getElementById('stripe-card-element');
         if (cardContainer) {
           console.log('💳 Mounting Stripe card element...');
+          // Ensure the container is empty before mounting to avoid child nodes warning
+          while (cardContainer.firstChild) {
+            cardContainer.removeChild(cardContainer.firstChild);
+          }
           cardElement.mount('#stripe-card-element');
           setStripeLoaded(true);
         } else {
@@ -1118,8 +1124,11 @@ export const BookingEditPlatform: React.FC = () => {
 
       const { client_secret } = await authResponse.json();
 
-      // Step 2: Confirm card payment
-      const stripe = (window as any).Stripe(await loadStripeKey());
+      // Step 2: Confirm card payment with the SAME Stripe instance used to create the Element
+      const stripe = stripeInstanceRef;
+      if (!stripe) {
+        throw new Error('Stripe is not initialized');
+      }
       const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
         payment_method: {
           card: stripeCard,
