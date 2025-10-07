@@ -994,91 +994,33 @@ export const BookingEditPlatform: React.FC = () => {
     return targetIndex <= currentIndex || completedSteps.includes(activeStep);
   };
 
-  // Calculate Current pricing from original DB booking
+  // Calculate Current pricing from original DB booking - USE DB PRICE FIELD
   const calculateCurrentPrice = () => {
-    if (!originalBooking || !pricingDataLoaded) {
+    if (!originalBooking) {
       return null;
     }
 
-    const serviceId = originalBooking.service_id;
-    const durationVal = originalBooking.duration_minutes;
-    const bookingTime = originalBooking.booking_time;
+    // Use the actual price from the DB, not recalculate
+    const dbPrice = Number(originalBooking.price) || 0;
+    const gstAmount = dbPrice / 11;
 
-    if (!serviceId || !durationVal || !bookingTime) {
-      return null;
-    }
-
-    // Get service data from cache
-    const service = servicesCache.find(s => s.id === serviceId);
-    if (!service) {
-      return null;
-    }
-
-    let price = Number(service.service_base_price);
-    let breakdown = [`Hourly Rate: $${price.toFixed(2)}`];
-
-    // Get duration uplift
-    const duration = durationsCache.find(d => d.duration_minutes === Number(durationVal));
-    if (duration && duration.uplift_percentage) {
-      const durationUplift = price * (Number(duration.uplift_percentage) / 100);
-      price += durationUplift;
-      breakdown.push(`Time Uplift (${duration.uplift_percentage}%): +$${durationUplift.toFixed(2)}`);
-    }
-
-    // Get day of week and time
-    const bookingTimeObj = dayjs(bookingTime);
-    const dayOfWeek = bookingTimeObj.day();
-    const timeVal = bookingTimeObj.format('HH:mm');
-    
-    // Find matching time pricing rule from table
-    let timeUplift = 0;
-    for (const rule of timePricingRulesCache) {
-      if (Number(rule.day_of_week) === dayOfWeek) {
-        if (timeVal >= rule.start_time && timeVal < rule.end_time) {
-          timeUplift = Number(rule.uplift_percentage);
-          break;
-        }
-      }
-    }
-    if (timeUplift) {
-      const timeUpliftAmount = price * (timeUplift / 100);
-      price += timeUpliftAmount;
-      breakdown.push(`Weekend/Afterhours Uplift (${timeUplift}%): +$${timeUpliftAmount.toFixed(2)}`);
-    }
-
-    // Apply discounts if available (from original booking)
-    let finalPrice = price;
-    let discountAmount = 0;
-    
-    if (originalBooking.discount_code) {
-      // For now, placeholder - will fetch real discount later
-      discountAmount = price * 0.1;
-      finalPrice = price - discountAmount;
-      breakdown.push(`Discount (${originalBooking.discount_code}): -$${discountAmount.toFixed(2)}`);
-    }
-    
-    // Apply gift card if available (from original booking)
-    let giftCardAmount = 0;
-    if (originalBooking.gift_card_code) {
-      // For now, placeholder - will fetch real gift card later
-      giftCardAmount = Math.min(50, finalPrice);
-      finalPrice = finalPrice - giftCardAmount;
-      breakdown.push(`Gift Card (${originalBooking.gift_card_code}): -$${giftCardAmount.toFixed(2)}`);
-    }
-    
-    // GST component
-    const gstAmount = finalPrice / 11;
-    breakdown.push(`GST (10%): $${gstAmount.toFixed(2)}`);
+    console.log('💰 Current Price from DB:', {
+      bookingId: originalBooking.id,
+      dbPrice,
+      gstAmount,
+      discountCode: originalBooking.discount_code,
+      giftCardCode: originalBooking.gift_card_code
+    });
 
     return {
-      basePrice: service.service_base_price,
-      durationUplift: duration?.uplift_percentage || 0,
-      timeUplift,
-      discountAmount,
-      giftCardAmount,
+      basePrice: dbPrice,
+      durationUplift: 0,
+      timeUplift: 0,
+      discountAmount: 0,
+      giftCardAmount: 0,
       gstAmount,
-      finalPrice,
-      breakdown
+      finalPrice: dbPrice,
+      breakdown: []
     };
   };
 
@@ -2417,36 +2359,8 @@ export const BookingEditPlatform: React.FC = () => {
                       {currentPricing ? (
                         <div style={{ display: 'grid', gap: '8px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
-                            <span>Hourly Rate</span>
-                            <span style={{ fontWeight: 600, color: '#1e293b' }}>${currentPricing.basePrice.toFixed(2)}</span>
-                          </div>
-                          {currentPricing.durationUplift > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
-                              <span>Time Uplift ({currentPricing.durationUplift}%)</span>
-                              <span style={{ fontWeight: 600, color: '#1e293b' }}>${(currentPricing.basePrice * (currentPricing.durationUplift / 100)).toFixed(2)}</span>
-                            </div>
-                          )}
-                          {currentPricing.timeUplift > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
-                              <span>Weekend/Afterhours Uplift ({currentPricing.timeUplift}%)</span>
-                              <span style={{ fontWeight: 600, color: '#1e293b' }}>${(currentPricing.basePrice * (currentPricing.timeUplift / 100)).toFixed(2)}</span>
-                            </div>
-                          )}
-                          {currentPricing.discountAmount > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
-                              <span>Discount {originalBooking?.discount_code ? `(${originalBooking.discount_code})` : ''}</span>
-                              <span style={{ fontWeight: 600, color: '#dc2626' }}>-${currentPricing.discountAmount.toFixed(2)}</span>
-                            </div>
-                          )}
-                          {currentPricing.giftCardAmount > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
-                              <span>Gift Card {originalBooking?.gift_card_code ? `(${originalBooking.gift_card_code})` : ''}</span>
-                              <span style={{ fontWeight: 600, color: '#dc2626' }}>-${currentPricing.giftCardAmount.toFixed(2)}</span>
-                            </div>
-                          )}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', fontSize: '14px', color: '#64748b' }}>
                             <span>GST (10%)</span>
-                            <span style={{ fontWeight: 600, color: '#1e293b' }}>${(currentPricing.finalPrice / 11).toFixed(2)}</span>
+                            <span style={{ fontWeight: 600, color: '#1e293b' }}>${currentPricing.gstAmount.toFixed(2)}</span>
                           </div>
                         </div>
                       ) : (
@@ -2506,6 +2420,37 @@ export const BookingEditPlatform: React.FC = () => {
                           Select service, duration, and date/time to see estimated pricing
                         </div>
                       )}
+
+                      {/* Discount & Gift Card fields under Estimated panel */}
+                      <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #99f6e4' }}>
+                        <Text strong style={{ color: '#0f766e', marginBottom: '12px', display: 'block', fontSize: '14px' }}>🎁 Apply Discounts & Gift Cards</Text>
+                        
+                        <div style={{ marginBottom: '12px' }}>
+                          <Text style={{ color: '#0f766e', fontSize: '13px', marginBottom: '6px', display: 'block' }}>📝 Promo Code</Text>
+                          <Input 
+                            value={booking?.discount_code || ''}
+                            placeholder="Enter discount code (e.g., WELCOME10)"
+                            style={{ padding: '10px 14px', border: '1px solid #5eead4', borderRadius: '6px' }}
+                            onChange={(e) => {
+                              form.setFieldsValue({ discount_code: e.target.value });
+                              setBooking(prev => prev ? { ...prev, discount_code: e.target.value } : null);
+                            }}
+                          />
+                        </div>
+
+                        <div>
+                          <Text style={{ color: '#0f766e', fontSize: '13px', marginBottom: '6px', display: 'block' }}>💳 Gift Card</Text>
+                          <Input 
+                            value={booking?.gift_card_code || ''}
+                            placeholder="Enter gift card code"
+                            style={{ padding: '10px 14px', border: '1px solid #5eead4', borderRadius: '6px' }}
+                            onChange={(e) => {
+                              form.setFieldsValue({ gift_card_code: e.target.value });
+                              setBooking(prev => prev ? { ...prev, gift_card_code: e.target.value } : null);
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -2515,18 +2460,18 @@ export const BookingEditPlatform: React.FC = () => {
                       padding: '16px',
                       marginBottom: '24px',
                       borderRadius: '8px',
-                      background: priceDelta > 0 ? '#fef3c7' : priceDelta < 0 ? '#dbeafe' : '#f0fdf4',
-                      border: `2px solid ${priceDelta > 0 ? '#f59e0b' : priceDelta < 0 ? '#3b82f6' : '#10b981'}`,
+                      background: priceDelta !== 0 ? '#dc2626' : '#f0fdf4',
+                      border: `2px solid ${priceDelta !== 0 ? '#991b1b' : '#10b981'}`,
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'center'
                     }}>
                       <div>
-                        <Text strong style={{ fontSize: '16px', color: priceDelta > 0 ? '#92400e' : priceDelta < 0 ? '#1e3a8a' : '#065f46' }}>
+                        <Text strong style={{ fontSize: '16px', fontWeight: 700, color: priceDelta !== 0 ? '#ffffff' : '#065f46' }}>
                           {priceDelta > 0 ? '⚠️ Additional Payment Required' : priceDelta < 0 ? '💰 Price Decrease - Refund Required' : '✅ No Price Change'}
                         </Text>
                         {priceDelta !== 0 && (
-                          <div style={{ marginTop: '4px', fontSize: '14px', color: priceDelta > 0 ? '#78350f' : '#1e40af' }}>
+                          <div style={{ marginTop: '4px', fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>
                             Delta: {priceDelta > 0 ? '+' : ''}${priceDelta.toFixed(2)}
                           </div>
                         )}
@@ -2570,29 +2515,6 @@ export const BookingEditPlatform: React.FC = () => {
                     </Select>
                   </div>
 
-                  <div style={{ marginBottom: '20px' }}>
-                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Discount Code</Text>
-                    <Input 
-                      placeholder="Enter discount code (e.g., WELCOME10)"
-                      style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
-                      onChange={(e) => {
-                        form.setFieldsValue({ discount_code: e.target.value });
-                        setBooking(prev => prev ? { ...prev, discount_code: e.target.value } : null);
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: '20px' }}>
-                    <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Gift Card Code</Text>
-                    <Input 
-                      placeholder="Enter gift card code"
-                      style={{ padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
-                      onChange={(e) => {
-                        form.setFieldsValue({ gift_card_code: e.target.value });
-                        setBooking(prev => prev ? { ...prev, gift_card_code: e.target.value } : null);
-                      }}
-                    />
-                  </div>
 
                   {/* Therapist Fee Breakdown Section */}
                   <div style={{ 
