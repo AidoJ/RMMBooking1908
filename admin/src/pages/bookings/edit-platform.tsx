@@ -211,7 +211,6 @@ export const BookingEditPlatform: React.FC = () => {
   const [sendingNotifications, setSendingNotifications] = useState(false);
   const [taxRate, setTaxRate] = useState<number>(10.00); // Default fallback
   const [estimatePrice, setEstimatePrice] = useState<number>(0);
-  const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
   const [gstAmount, setGstAmount] = useState<number>(0);
   const [finalQuotePrice, setFinalQuotePrice] = useState<number>(0);
   const [notificationOptions, setNotificationOptions] = useState({
@@ -271,6 +270,14 @@ export const BookingEditPlatform: React.FC = () => {
   const [currentPricing, setCurrentPricing] = useState<any>(null);
   const [estimatedPricing, setEstimatedPricing] = useState<any>(null);
   const [priceDelta, setPriceDelta] = useState(0);
+
+  // Discount and Gift Card verification
+  const [appliedDiscount, setAppliedDiscount] = useState<any>(null);
+  const [appliedGiftCard, setAppliedGiftCard] = useState<any>(null);
+  const [discountInput, setDiscountInput] = useState('');
+  const [giftCardInput, setGiftCardInput] = useState('');
+  const [discountStatus, setDiscountStatus] = useState('');
+  const [giftCardStatus, setGiftCardStatus] = useState('');
 
   // Therapist fee calculations
   const [therapistFeeBreakdown, setTherapistFeeBreakdown] = useState({
@@ -337,7 +344,7 @@ export const BookingEditPlatform: React.FC = () => {
         });
       }
     }
-  }, [pricingDataLoaded, originalBooking, booking?.service_id, booking?.duration_minutes, booking?.booking_time, booking?.discount_code, booking?.gift_card_code]);
+  }, [pricingDataLoaded, originalBooking, booking?.service_id, booking?.duration_minutes, booking?.booking_time, appliedDiscount, appliedGiftCard]);
 
   // Fetch pricing data - EXACTLY like frontend
   const fetchPricingData = async () => {
@@ -995,6 +1002,78 @@ export const BookingEditPlatform: React.FC = () => {
     return targetIndex <= currentIndex || completedSteps.includes(activeStep);
   };
 
+  // Apply discount code - EXACTLY like frontend
+  const applyDiscount = async () => {
+    const code = discountInput.trim().toUpperCase();
+    if (!code) return;
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('discount_codes')
+        .select('*')
+        .eq('code', code)
+        .eq('is_active', true)
+        .single();
+
+      if (!error && data) {
+        setAppliedDiscount(data);
+        setDiscountStatus('applied');
+        message.success('✅ Discount applied!');
+      } else {
+        setDiscountStatus('invalid');
+        message.error('Invalid discount code');
+      }
+    } catch (error) {
+      console.error('Discount error:', error);
+      setDiscountStatus('invalid');
+      message.error('Error applying discount');
+    }
+  };
+
+  // Remove discount
+  const removeDiscount = () => {
+    setAppliedDiscount(null);
+    setDiscountInput('');
+    setDiscountStatus('');
+    message.info('Discount removed');
+  };
+
+  // Apply gift card - EXACTLY like frontend
+  const applyGiftCard = async () => {
+    const code = giftCardInput.trim().toUpperCase();
+    if (!code) return;
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('gift_cards')
+        .select('*')
+        .eq('code', code)
+        .eq('is_active', true)
+        .single();
+
+      if (!error && data && data.current_balance > 0) {
+        setAppliedGiftCard(data);
+        setGiftCardStatus('applied');
+        message.success('✅ Gift card applied!');
+      } else {
+        setGiftCardStatus('invalid');
+        message.error('Invalid or expired gift card');
+      }
+    } catch (error) {
+      console.error('Gift card error:', error);
+      setGiftCardStatus('invalid');
+      message.error('Error applying gift card');
+    }
+  };
+
+  // Remove gift card
+  const removeGiftCard = () => {
+    setAppliedGiftCard(null);
+    setGiftCardInput('');
+    setGiftCardStatus('');
+    message.info('Gift card removed');
+  };
+
   // Calculate Current pricing from original DB booking - USE DB PRICE FIELD
   const calculateCurrentPrice = () => {
     if (!originalBooking) {
@@ -1077,40 +1156,42 @@ export const BookingEditPlatform: React.FC = () => {
       breakdown.push(`Weekend/Afterhours Uplift (${timeUplift}%): +$${timeUpliftAmount.toFixed(2)}`);
     }
 
-    // Apply discounts if available
-    let finalPrice = price;
+    // Revised Price = Base + Uplifts (before discounts)
+    const revisedPrice = price;
+
+    // Apply VERIFIED discounts only
     let discountAmount = 0;
-    
-    // Check for applied discount
-    if (booking.discount_code) {
-      // This would need to fetch discount details from database
-      // For now, using placeholder logic
-      discountAmount = price * 0.1; // 10% discount placeholder
-      finalPrice = price - discountAmount;
-      breakdown.push(`Discount (${booking.discount_code}): -$${discountAmount.toFixed(2)}`);
+    if (appliedDiscount) {
+      if (appliedDiscount.discount_type === 'percentage') {
+        discountAmount = (revisedPrice * appliedDiscount.discount_value) / 100;
+      } else if (appliedDiscount.discount_type === 'fixed_amount') {
+        discountAmount = Math.min(appliedDiscount.discount_value, revisedPrice);
+      }
+      breakdown.push(`Discount (${appliedDiscount.code}): -$${discountAmount.toFixed(2)}`);
     }
     
-    // Apply gift card if available
+    // Apply VERIFIED gift card only
     let giftCardAmount = 0;
-    if (booking.gift_card_code) {
-      // This would need to fetch gift card details from database
-      // For now, using placeholder logic
-      giftCardAmount = Math.min(50, finalPrice); // $50 gift card placeholder
-      finalPrice = finalPrice - giftCardAmount;
-      breakdown.push(`Gift Card (${booking.gift_card_code}): -$${giftCardAmount.toFixed(2)}`);
+    if (appliedGiftCard) {
+      giftCardAmount = Math.min(appliedGiftCard.current_balance, revisedPrice - discountAmount);
+      breakdown.push(`Gift Card (${appliedGiftCard.code}): -$${giftCardAmount.toFixed(2)}`);
     }
     
-    // Show GST as percentage breakdown only (already included in price)
-    const gstAmount = finalPrice / 11 * 1; // GST component of final price
-    breakdown.push(`GST (10%): $${gstAmount.toFixed(2)}`);
+    // Net Price = Revised Price - Discount - Gift Card (GST inclusive)
+    const netPrice = revisedPrice - discountAmount - giftCardAmount;
+    
+    // GST is component within Net Price
+    const gstAmount = netPrice / 11;
 
     console.log('💰 Price calculation result:', {
       basePrice: service.service_base_price,
       durationUplift: duration?.uplift_percentage || 0,
       timeUplift,
+      revisedPrice,
       discountAmount,
       giftCardAmount,
-      finalPrice,
+      netPrice,
+      gstAmount,
       breakdown
     });
 
@@ -1118,9 +1199,12 @@ export const BookingEditPlatform: React.FC = () => {
       basePrice: service.service_base_price,
       durationUplift: duration?.uplift_percentage || 0,
       timeUplift,
+      revisedPrice,
       discountAmount,
       giftCardAmount,
-      finalPrice,
+      netPrice,
+      gstAmount,
+      finalPrice: netPrice,
       breakdown
     };
   };
@@ -2388,7 +2472,7 @@ export const BookingEditPlatform: React.FC = () => {
                         </div>
                         {estimatedPricing && (
                           <div style={{ fontSize: '18px', fontWeight: 700, color: '#0891b2' }}>
-                            Revised Price: ${estimatedPricing.finalPrice.toFixed(2)}
+                            Revised Price: ${estimatedPricing.revisedPrice.toFixed(2)}
                           </div>
                         )}
                       </div>
@@ -2424,11 +2508,11 @@ export const BookingEditPlatform: React.FC = () => {
                           )}
                           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e', fontWeight: 600 }}>
                             <span>Net Price</span>
-                            <span style={{ fontWeight: 700, color: '#0891b2' }}>${(estimatedPricing.finalPrice - (estimatedPricing.finalPrice / 11)).toFixed(2)}</span>
+                            <span style={{ fontWeight: 700, color: '#0891b2' }}>${estimatedPricing.netPrice.toFixed(2)}</span>
                           </div>
                           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#64748b' }}>
                             <span>GST (10%)</span>
-                            <span style={{ fontWeight: 600, color: '#475569' }}>${(estimatedPricing.finalPrice / 11).toFixed(2)}</span>
+                            <span style={{ fontWeight: 600, color: '#475569' }}>${estimatedPricing.gstAmount.toFixed(2)}</span>
                           </div>
                         </div>
                       ) : (
@@ -2437,34 +2521,78 @@ export const BookingEditPlatform: React.FC = () => {
                         </div>
                       )}
 
-                      {/* Discount & Gift Card fields under Revised panel */}
+                      {/* Discount & Gift Card fields under Revised panel - EXACTLY like frontend */}
                       <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '2px solid #5eead4' }}>
                         <Text strong style={{ color: '#0891b2', marginBottom: '16px', display: 'block', fontSize: '15px' }}>🎁 Apply Discounts & Gift Cards</Text>
                         
                         <div style={{ marginBottom: '14px' }}>
                           <Text style={{ color: '#0f766e', fontSize: '13px', marginBottom: '6px', display: 'block', fontWeight: 500 }}>Promo Code</Text>
-                          <Input 
-                            value={booking?.discount_code || ''}
-                            placeholder="Welcome10"
-                            style={{ padding: '10px 14px', border: '2px solid #99f6e4', borderRadius: '6px', fontSize: '14px' }}
-                            onChange={(e) => {
-                              form.setFieldsValue({ discount_code: e.target.value });
-                              setBooking(prev => prev ? { ...prev, discount_code: e.target.value } : null);
-                            }}
-                          />
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <Input 
+                              value={discountInput}
+                              placeholder="Enter promo code"
+                              disabled={discountStatus === 'applied'}
+                              style={{ padding: '10px 14px', border: '2px solid #99f6e4', borderRadius: '6px', fontSize: '14px', flex: 1 }}
+                              onChange={(e) => setDiscountInput(e.target.value)}
+                              onPressEnter={applyDiscount}
+                            />
+                            {discountStatus !== 'applied' ? (
+                              <Button 
+                                type="primary" 
+                                onClick={applyDiscount}
+                                style={{ background: '#0891b2', borderColor: '#0891b2' }}
+                              >
+                                Apply
+                              </Button>
+                            ) : (
+                              <Button 
+                                danger
+                                onClick={removeDiscount}
+                              >
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                          {discountStatus === 'applied' && (
+                            <Text style={{ color: '#059669', fontSize: '13px', marginTop: '4px', display: 'block' }}>
+                              ✅ Discount applied!
+                            </Text>
+                          )}
                         </div>
 
                         <div>
                           <Text style={{ color: '#0f766e', fontSize: '13px', marginBottom: '6px', display: 'block', fontWeight: 500 }}>Gift Card</Text>
-                          <Input 
-                            value={booking?.gift_card_code || ''}
-                            placeholder="Enter gift card code"
-                            style={{ padding: '10px 14px', border: '2px solid #99f6e4', borderRadius: '6px', fontSize: '14px' }}
-                            onChange={(e) => {
-                              form.setFieldsValue({ gift_card_code: e.target.value });
-                              setBooking(prev => prev ? { ...prev, gift_card_code: e.target.value } : null);
-                            }}
-                          />
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <Input 
+                              value={giftCardInput}
+                              placeholder="Enter gift card code"
+                              disabled={giftCardStatus === 'applied'}
+                              style={{ padding: '10px 14px', border: '2px solid #99f6e4', borderRadius: '6px', fontSize: '14px', flex: 1 }}
+                              onChange={(e) => setGiftCardInput(e.target.value)}
+                              onPressEnter={applyGiftCard}
+                            />
+                            {giftCardStatus !== 'applied' ? (
+                              <Button 
+                                type="primary" 
+                                onClick={applyGiftCard}
+                                style={{ background: '#0891b2', borderColor: '#0891b2' }}
+                              >
+                                Apply
+                              </Button>
+                            ) : (
+                              <Button 
+                                danger
+                                onClick={removeGiftCard}
+                              >
+                                Remove
+                              </Button>
+                            )}
+                          </div>
+                          {giftCardStatus === 'applied' && (
+                            <Text style={{ color: '#059669', fontSize: '13px', marginTop: '4px', display: 'block' }}>
+                              ✅ Gift card applied!
+                            </Text>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2797,49 +2925,6 @@ export const BookingEditPlatform: React.FC = () => {
                     background: booking.status === 'cancelled' ? '#ef4444' : '#e5e7eb' 
                   }} />
                   <span>Cancelled</span>
-                </div>
-              </div>
-            </Card>
-
-            <Card 
-              title="💰 Financial Summary" 
-              style={{ borderRadius: '12px' }}
-              bodyStyle={{ padding: '20px' }}
-            >
-              <div style={{ fontSize: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
-                  <span>Customer Price:</span>
-                  <span>${businessSummary.customerPayment.toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
-                  <span>Therapist Fee:</span>
-                  <span>${businessSummary.therapistFee.toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
-                  <span>Net Profit:</span>
-                  <span style={{ color: businessSummary.netProfit >= 0 ? '#059669' : '#dc2626', fontWeight: 600 }}>
-                    ${businessSummary.netProfit.toFixed(2)}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
-                  <span>Payment Status:</span>
-                  <span style={{ color: booking.payment_status === 'paid' ? '#10b981' : '#f59e0b' }}>
-                    {booking.payment_status === 'paid' ? '✅ Paid' : '⏳ Pending'}
-                  </span>
-                </div>
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  padding: '16px 0 6px 0',
-                  borderTop: '2px solid #007e8c',
-                  fontWeight: '700',
-                  fontSize: '16px',
-                  color: '#007e8c'
-                }}>
-                  <span>Net Profit:</span>
-                  <span style={{ color: businessSummary.netProfit >= 0 ? '#059669' : '#dc2626' }}>
-                    ${businessSummary.netProfit.toFixed(2)}
-                  </span>
                 </div>
               </div>
             </Card>
