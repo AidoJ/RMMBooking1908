@@ -704,11 +704,12 @@ input::placeholder {
 .btn.primary, .btn.next, .btn-continue {
   background: var(--white);
   color: var(--primary);
-  border: 2px solid var(--primary);
+  border: 1px solid #007e8c;
 }
 
 .btn.primary:hover, .btn.next:hover, .btn-continue:hover {
   background: var(--primary-pale);
+  border: 1px solid #007e8c;
 }
 
 .btn:not(.primary):not(.next), .btn.prev, .btn-back {
