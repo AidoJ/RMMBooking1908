@@ -473,9 +473,27 @@
         <p class="step-description">Thank you! Your booking request has been submitted.</p>
       </div>
       <div class="step-content">
-        <div id="confirmationDetails" class="booking-summary"></div>
-        <div class="button-group">
-          <button class="btn prev" data-prev="step9">Back</button>
+        <!-- Loading state while waiting for confirmation -->
+        <div id="confirmationLoading" class="confirmation-loading">
+          <div class="spinner"></div>
+          <p>Processing your booking request...</p>
+          <p class="loading-subtext">Please wait while we confirm your booking details. This page will update automatically.</p>
+        </div>
+
+        <!-- Confirmation details (hidden initially) -->
+        <div id="confirmationDetails" class="booking-summary" style="display: none;"></div>
+
+        <!-- Success message and next steps -->
+        <div id="confirmationSuccess" class="confirmation-success" style="display: none;">
+          <div class="success-icon">✓</div>
+          <h3>Booking Request Confirmed!</h3>
+          <div id="confirmationMessages" class="confirmation-messages"></div>
+
+          <div class="button-group" style="margin-top: 2rem;">
+            <button class="btn btn-continue" onclick="window.location.href='https://rejuvenators.com'">
+              Visit Our Website →
+            </button>
+          </div>
         </div>
       </div>
     </div>

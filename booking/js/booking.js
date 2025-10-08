@@ -2693,9 +2693,60 @@ observer9.observe(step9, { attributes: true, attributeFilter: ['class'] });
 
 // Handle booking confirmation on Step 10
 const step10 = document.getElementById('step10');
+let bookingConfirmationData = null; // Store confirmation data globally
+
 const observer10 = new MutationObserver(() => {
   if (step10.classList.contains('active')) {
-    document.getElementById('confirmationDetails').innerHTML = '<h3>Booking Request Submitted</h3><p>Your booking request has been submitted. You will receive an update by email once a therapist accepts or declines your request.</p>';
+    // Show loading state initially
+    const loadingDiv = document.getElementById('confirmationLoading');
+    const successDiv = document.getElementById('confirmationSuccess');
+    const detailsDiv = document.getElementById('confirmationDetails');
+
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (successDiv) successDiv.style.display = 'none';
+    if (detailsDiv) detailsDiv.style.display = 'none';
+
+    // Update progress bar to 100%
+    const progressFill = document.getElementById('progressFill');
+    const progressIcon = document.getElementById('progressIcon');
+    if (progressFill) progressFill.style.width = '100%';
+    if (progressIcon) progressIcon.style.left = '100%';
+
+    // Display confirmation after short delay (simulate processing)
+    setTimeout(() => {
+      if (loadingDiv) loadingDiv.style.display = 'none';
+      if (successDiv) successDiv.style.display = 'block';
+
+      // Display confirmation messages
+      const messagesDiv = document.getElementById('confirmationMessages');
+      if (messagesDiv && bookingConfirmationData) {
+        let messagesHTML = '';
+
+        if (bookingConfirmationData.therapistEmailSent) {
+          messagesHTML = `
+            <p><strong>✓</strong> Card authorized - no charge yet</p>
+            <p><strong>✓</strong> Confirmation email sent to you</p>
+            <p><strong>✓</strong> Request sent to your selected therapist</p>
+            <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
+            <p><strong>You will receive an update within 60 minutes.</strong></p>
+          `;
+        } else if (bookingConfirmationData.success) {
+          messagesHTML = `
+            <p><strong>✓</strong> Card authorized - no charge yet</p>
+            <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
+            <p>You will receive a confirmation email shortly.</p>
+          `;
+        } else {
+          messagesHTML = `
+            <p><strong>✓</strong> Card authorized - no charge yet</p>
+            <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
+            <p>However, there was an issue sending email notifications. We will contact you directly.</p>
+          `;
+        }
+
+        messagesDiv.innerHTML = messagesHTML;
+      }
+    }, 1500); // 1.5 second delay for loading animation
   }
 });
 observer10.observe(step10, { attributes: true, attributeFilter: ['class'] });
@@ -3400,29 +3451,10 @@ if (confirmBtn) {
     const emailResult = await sendBookingNotifications(emailData, bookingIdFormatted);
     console.log('📧 Enhanced email notification result:', emailResult);
     
-    // Show appropriate success message based on email results
-    if (emailResult.success) {
-      if (emailResult.therapistEmailSent) {
-        alert('Your booking request has been submitted successfully!\n\n' +
-              '✅ Card authorized - no charge yet\n' +
-              '✅ Confirmation email sent to you\n' +
-              '✅ Request sent to your selected therapist\n\n' +
-              'Payment will only be taken when your therapist completes the service.\n' +
-              'You will receive an update within 60 minutes.');
-      } else {
-        alert('Your booking request has been submitted successfully!\n\n' +
-              '✅ Card authorized - no charge yet\n' +
-              'Payment will only be taken when your therapist completes the service.\n' +
-              'You will receive a confirmation email shortly.');
-      }
-    } else {
-      alert('Your booking request has been submitted successfully!\n\n' +
-            '✅ Card authorized - no charge yet\n' +
-            'Payment will only be taken when your therapist completes the service.\n' +
-            'However, there was an issue sending email notifications. We will contact you directly.');
-    }
-    
-    // Move to confirmation step
+    // Store confirmation data for Step 10 display
+    bookingConfirmationData = emailResult;
+
+    // Move to confirmation step (no alert needed - Step 10 will display messages)
     showStep('step10');
         
       } catch (error) {
