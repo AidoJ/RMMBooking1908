@@ -94,6 +94,14 @@ function showStep(stepId) {
         ps.classList.remove('active');
       }
     });
+
+    // Update simple progress bar
+    const totalSteps = steps.length;
+    const progressPercent = (idx / (totalSteps - 1)) * 100;
+    const progressFill = document.getElementById('progressFill');
+    const progressIcon = document.getElementById('progressIcon');
+    if (progressFill) progressFill.style.width = progressPercent + '%';
+    if (progressIcon) progressIcon.style.left = progressPercent + '%';
   }
 
 // Step 0: Booking Method Selection Functions

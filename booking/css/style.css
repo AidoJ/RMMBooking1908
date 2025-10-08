@@ -406,6 +406,55 @@ h1 {
   font-weight: 600;
 }
 
+/* Logo Header */
+.logo-header {
+  background: linear-gradient(135deg, #007e8c 0%, #005f6b 100%);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+
+.header-logo {
+  height: 60px;
+  width: auto;
+  margin-bottom: var(--space-3);
+}
+
+.logo-header h1 {
+  color: var(--white);
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Simple Progress Bar with Logo */
+.simple-progress-bar {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  background: var(--gray-200);
+  border-radius: 10px;
+  overflow: visible;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #007e8c 0%, #00a99d 100%);
+  border-radius: 10px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.progress-icon {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  height: 32px;
+  width: auto;
+  transition: left 0.3s ease;
+  left: 0%;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
 /* Steps - Compact */
 .step {
   display: none;
