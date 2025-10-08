@@ -640,7 +640,7 @@ export const BookingEditPlatform: React.FC = () => {
   };
 
   // Get available time slots for a therapist on a given day - EXACTLY like frontend
-  const getAvailableSlotsForTherapist = async (therapist: any, date: string, durationMinutes: number) => {
+  const getAvailableSlotsForTherapist = async (therapist: any, date: string, durationMinutes: number, currentBookingId?: string) => {
     if (
       businessSettings.businessOpeningHour === undefined ||
       businessSettings.businessClosingHour === undefined ||
@@ -665,13 +665,21 @@ export const BookingEditPlatform: React.FC = () => {
     if (!availabilities || availabilities.length === 0) return [];
     const { start_time, end_time } = availabilities[0];
 
-    // 2. Get existing bookings for the day
-    const { data: bookings } = await supabaseClient
+    // 2. Get existing bookings for the day (excluding current booking if editing)
+    let bookingsQuery = supabaseClient
       .from('bookings')
       .select('booking_time, service_id')
       .eq('therapist_id', therapist.id)
       .gte('booking_time', date + 'T00:00:00')
       .lt('booking_time', date + 'T23:59:59');
+    
+    // Exclude current booking if editing same-day time/duration changes
+    if (currentBookingId && currentBookingId.trim() && currentBookingId !== 'undefined') {
+      bookingsQuery = bookingsQuery.neq('id', currentBookingId);
+      console.log('🔄 Excluding current booking from availability check:', currentBookingId);
+    }
+    
+    const { data: bookings } = await bookingsQuery;
 
     // 3. Build all possible slots (hourly, businessOpeningHour to businessClosingHour)
     const slots = [];
@@ -763,7 +771,7 @@ export const BookingEditPlatform: React.FC = () => {
       // For each therapist, check if they are available for the selected slot
       const availableTherapists = [];
       for (const therapist of uniqueTherapists) {
-        const slots = await getAvailableSlotsForTherapist(therapist, dateVal, durationVal);
+        const slots = await getAvailableSlotsForTherapist(therapist, dateVal, durationVal, booking?.id);
         if (slots.includes(timeVal)) {
           availableTherapists.push(therapist);
         }
@@ -837,7 +845,7 @@ export const BookingEditPlatform: React.FC = () => {
     // 3. For each therapist, get available slots
     let allSlots: string[] = [];
     for (const therapist of uniqueTherapists) {
-      const slots = await getAvailableSlotsForTherapist(therapist, dateVal, durationMinutes);
+      const slots = await getAvailableSlotsForTherapist(therapist, dateVal, durationMinutes, booking?.id);
       allSlots = allSlots.concat(slots);
     }
     console.log('All slots before deduplication:', allSlots);
