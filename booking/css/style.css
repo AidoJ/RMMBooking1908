@@ -335,9 +335,10 @@ h1 {
 
 /* Progress Bar - Clean, Compact */
 .progress-container {
-  padding: var(--space-3) var(--space-6);
-  background: var(--white);
+  padding: var(--space-4) var(--space-6);
+  background: #f5f5f5;
   overflow-x: auto;
+  margin-bottom: var(--space-4);
 }
 
 .progress-bar {
@@ -408,13 +409,15 @@ h1 {
 /* Logo Header */
 .logo-header {
   background: #007e8c;
-  padding: var(--space-4) var(--space-6);
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
 }
 
 .header-content {
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  justify-content: center;
+  gap: var(--space-3);
 }
 
 .header-logo {
@@ -424,7 +427,7 @@ h1 {
 
 .logo-header h1 {
   color: var(--white);
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 600;
   margin: 0;
 }
@@ -698,22 +701,23 @@ input::placeholder {
   min-width: 120px;
 }
 
-.btn.primary, .btn.next {
-  background: var(--primary);
-  color: var(--white);
-}
-
-.btn.primary:hover, .btn.next:hover {
-  background: var(--primary-dark);
-}
-
-.btn:not(.primary):not(.next), .btn.prev {
+.btn.primary, .btn.next, .btn-continue {
   background: var(--white);
   color: var(--primary);
-  border-color: var(--primary);
+  border: 2px solid var(--primary);
 }
 
-.btn:not(.primary):not(.next):hover, .btn.prev:hover {
+.btn.primary:hover, .btn.next:hover, .btn-continue:hover {
+  background: var(--primary-pale);
+}
+
+.btn:not(.primary):not(.next), .btn.prev, .btn-back {
+  background: transparent;
+  color: var(--primary);
+  border: none;
+}
+
+.btn:not(.primary):not(.next):hover, .btn.prev:hover, .btn-back:hover {
   background: var(--primary-pale);
 }
 
