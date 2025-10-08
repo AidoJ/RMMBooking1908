@@ -714,11 +714,12 @@ input::placeholder {
 .btn:not(.primary):not(.next), .btn.prev, .btn-back {
   background: transparent;
   color: var(--primary);
-  border: none;
+  border: 1px solid #007e8c;
 }
 
 .btn:not(.primary):not(.next):hover, .btn.prev:hover, .btn-back:hover {
   background: var(--primary-pale);
+  border: 1px solid #007e8c;
 }
 
 .btn:disabled {
