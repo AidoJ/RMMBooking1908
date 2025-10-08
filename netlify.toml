@@ -40,12 +40,7 @@
   to = "/admin/index.html"
   status = 200
 
-# API proxy (optional)
-[[redirects]]
-  from = "/api/*"
-  to = "https://dcukfurezlkagvvwgsgr.supabase.co/rest/v1/:splat"
-  status = 200
-  headers = {Authorization = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjdWtmdXJlemxrYWd2dndnc2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5MjM0NjQsImV4cCI6MjA2NzQ5OTQ2NH0.ThXQKNHj0XpSkPa--ghmuRXFJ7nfcf0YVlH0liHofFw"}
+# API proxy removed - not needed as we use Supabase client directly
 
 # Ensure root serves booking platform (index.html should be at root)
 # No redirect needed - Netlify serves index.html by default at root
