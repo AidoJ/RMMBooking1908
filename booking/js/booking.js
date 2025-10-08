@@ -2582,12 +2582,13 @@ async function populateBookingSummary() {
   const addressInput = document.getElementById('address');
   const bookingType = document.querySelector('input[name="bookingType"]:checked')?.value || null;
   let businessName = '';
+  let businessLabel = 'Business Name';
   if (bookingType === 'Corporate Event/Office') {
     businessName = document.getElementById('businessName').value;
+    businessLabel = 'Business Name';
   } else if (bookingType === 'Hotel/Accommodation') {
     businessName = addressInput.dataset.businessName || '';
-  } else {
-    businessName = 'N/A';
+    businessLabel = 'Hotel Name';
   }
   const address = addressInput.value;
   const service = window.selectedService?.name || 'Selected Service';
@@ -2624,7 +2625,7 @@ async function populateBookingSummary() {
     <h3>Booking Details</h3>
     ${booking_id ? `<p><strong>Booking ID:</strong> ${booking_id}</p>` : ''}
     ${customer_code ? `<p><strong>Customer Code:</strong> ${customer_code}</p>` : ''}
-    ${businessName && businessName !== 'N/A' ? `<p><strong>Business Name:</strong> ${businessName}</p>` : ''}
+    ${businessName ? `<p><strong>${businessLabel}:</strong> ${businessName}</p>` : ''}
     <p><strong>Address:</strong> ${address}</p>
     <p><strong>Service:</strong> ${service}</p>
     <p><strong>Duration:</strong> ${duration} minutes</p>
