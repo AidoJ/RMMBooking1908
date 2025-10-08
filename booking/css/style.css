@@ -407,7 +407,7 @@ h1 {
 
 /* Logo Header */
 .logo-header {
-  background: linear-gradient(135deg, #007e8c 0%, #005f6b 100%);
+  background: #007e8c;
   padding: var(--space-4) var(--space-6);
 }
 
@@ -451,11 +451,10 @@ h1 {
   position: absolute;
   top: 50%;
   transform: translate(-50%, -50%);
-  height: 32px;
+  height: 40px;
   width: auto;
   transition: left 0.3s ease;
   left: 0%;
-  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
 /* Steps - Compact */
