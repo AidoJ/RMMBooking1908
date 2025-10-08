@@ -2543,6 +2543,7 @@ async function mountStripeCardElement() {
   stripe = window.Stripe(STRIPE_PUBLISHABLE_KEY);
   elements = stripe.elements();
   card = elements.create('card', {
+    hidePostalCode: true,
     style: {
       base: {
         fontSize: '16px',
