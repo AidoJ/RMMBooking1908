@@ -335,9 +335,8 @@ h1 {
 
 /* Progress Bar - Clean, Compact */
 .progress-container {
-  padding: var(--space-4);
+  padding: var(--space-3) var(--space-6);
   background: var(--white);
-  border-bottom: 1px solid var(--gray-200);
   overflow-x: auto;
 }
 
@@ -409,14 +408,18 @@ h1 {
 /* Logo Header */
 .logo-header {
   background: linear-gradient(135deg, #007e8c 0%, #005f6b 100%);
-  padding: var(--space-6) var(--space-4);
-  text-align: center;
+  padding: var(--space-4) var(--space-6);
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
 }
 
 .header-logo {
-  height: 60px;
+  height: 50px;
   width: auto;
-  margin-bottom: var(--space-3);
 }
 
 .logo-header h1 {
