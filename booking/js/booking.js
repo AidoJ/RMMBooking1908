@@ -2712,7 +2712,7 @@ const observer10 = new MutationObserver(() => {
     if (progressFill) progressFill.style.width = '100%';
     if (progressIcon) progressIcon.style.left = '100%';
 
-    // Display confirmation after short delay (simulate processing)
+    // Display confirmation after short delay (just enough to show the spinner briefly)
     setTimeout(() => {
       if (loadingDiv) loadingDiv.style.display = 'none';
       if (successDiv) successDiv.style.display = 'block';
@@ -2746,7 +2746,7 @@ const observer10 = new MutationObserver(() => {
 
         messagesDiv.innerHTML = messagesHTML;
       }
-    }, 1500); // 1.5 second delay for loading animation
+    }, 300); // 300ms delay - just enough to show spinner briefly
   }
 });
 observer10.observe(step10, { attributes: true, attributeFilter: ['class'] });
