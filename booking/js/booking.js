@@ -78,7 +78,7 @@ function showStep(stepId) {
       const addressInput = document.getElementById('address');
       if (addressInput && addressInput.value.trim()) {
         if (isAddressVerified()) {
-          updateAddressStatus('Great News we have therapists available in your area', 'verified');
+          updateAddressStatus('Great news, we have therapists available in your area. Choose your service next.', 'verified');
         } else {
           updateAddressStatus("Sorry... we don't have any therapists available in your area right now.", 'error');
         }
@@ -2046,7 +2046,7 @@ async function checkTherapistCoverageForAddress() {
     updateAddressStatus("Sorry... we don't have any therapists available in your area right now.", 'error');
     disableContinueFromAddress();
   } else {
-    updateAddressStatus('Great News we have therapists available in your area', 'verified');
+    updateAddressStatus('Great news, we have therapists available in your area. Choose your service next.', 'verified');
     enableContinueFromAddress();
   }
 }
