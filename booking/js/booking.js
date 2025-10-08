@@ -2697,13 +2697,13 @@ let bookingConfirmationData = null; // Store confirmation data globally
 
 const observer10 = new MutationObserver(() => {
   if (step10.classList.contains('active')) {
-    // Show loading state initially
+    // Hide loading, show success immediately - no delay
     const loadingDiv = document.getElementById('confirmationLoading');
     const successDiv = document.getElementById('confirmationSuccess');
     const detailsDiv = document.getElementById('confirmationDetails');
 
-    if (loadingDiv) loadingDiv.style.display = 'block';
-    if (successDiv) successDiv.style.display = 'none';
+    if (loadingDiv) loadingDiv.style.display = 'none';
+    if (successDiv) successDiv.style.display = 'block';
     if (detailsDiv) detailsDiv.style.display = 'none';
 
     // Update progress bar to 100%
@@ -2712,41 +2712,35 @@ const observer10 = new MutationObserver(() => {
     if (progressFill) progressFill.style.width = '100%';
     if (progressIcon) progressIcon.style.left = '100%';
 
-    // Display confirmation after short delay (just enough to show the spinner briefly)
-    setTimeout(() => {
-      if (loadingDiv) loadingDiv.style.display = 'none';
-      if (successDiv) successDiv.style.display = 'block';
+    // Display confirmation messages immediately
+    const messagesDiv = document.getElementById('confirmationMessages');
+    if (messagesDiv && bookingConfirmationData) {
+      let messagesHTML = '';
 
-      // Display confirmation messages
-      const messagesDiv = document.getElementById('confirmationMessages');
-      if (messagesDiv && bookingConfirmationData) {
-        let messagesHTML = '';
-
-        if (bookingConfirmationData.therapistEmailSent) {
-          messagesHTML = `
-            <p><strong>✓</strong> Card authorized - no charge yet</p>
-            <p><strong>✓</strong> Confirmation email sent to you</p>
-            <p><strong>✓</strong> Request sent to your selected therapist</p>
-            <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
-            <p><strong>You will receive an update within 60 minutes.</strong></p>
-          `;
-        } else if (bookingConfirmationData.success) {
-          messagesHTML = `
-            <p><strong>✓</strong> Card authorized - no charge yet</p>
-            <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
-            <p>You will receive a confirmation email shortly.</p>
-          `;
-        } else {
-          messagesHTML = `
-            <p><strong>✓</strong> Card authorized - no charge yet</p>
-            <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
-            <p>However, there was an issue sending email notifications. We will contact you directly.</p>
-          `;
-        }
-
-        messagesDiv.innerHTML = messagesHTML;
+      if (bookingConfirmationData.therapistEmailSent) {
+        messagesHTML = `
+          <p><strong>✓</strong> Card authorized - no charge yet</p>
+          <p><strong>✓</strong> Confirmation email sent to you</p>
+          <p><strong>✓</strong> Request sent to your selected therapist</p>
+          <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
+          <p><strong>You will receive an update within 60 minutes.</strong></p>
+        `;
+      } else if (bookingConfirmationData.success) {
+        messagesHTML = `
+          <p><strong>✓</strong> Card authorized - no charge yet</p>
+          <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
+          <p>You will receive a confirmation email shortly.</p>
+        `;
+      } else {
+        messagesHTML = `
+          <p><strong>✓</strong> Card authorized - no charge yet</p>
+          <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
+          <p>However, there was an issue sending email notifications. We will contact you directly.</p>
+        `;
       }
-    }, 300); // 300ms delay - just enough to show spinner briefly
+
+      messagesDiv.innerHTML = messagesHTML;
+    }
   }
 });
 observer10.observe(step10, { attributes: true, attributeFilter: ['class'] });
