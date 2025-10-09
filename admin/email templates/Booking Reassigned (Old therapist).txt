@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+  <html>
+  <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Booking Reassigned - Rejuvenators</title>
+      <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+          .container { max-width: 600px; margin: 0 auto; background-color: white; }
+          .header { background-color: #8e7cc3; color: white; padding: 30px 20px; text-align: center; }
+          .content { padding: 30px 20px; }
+          .booking-details { background-color: #f8f7fc; padding: 20px; border-radius: 8px; margin: 20px 0;
+  border-left: 4px solid #8e7cc3; }
+          .reassign-info { background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0;
+  border-left: 4px solid #ffc107; }
+          .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px;
+  }
+          .highlight { color: #8e7cc3; font-weight: bold; }
+      </style>
+  </head>
+  <body>
+      <div class="container">
+          <div class="header">
+              <h1>📋 Booking Reassigned</h1>
+              <p>Assignment has been transferred</p>
+          </div>
+
+          <div class="content">
+              <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                  Dear <span class="highlight">{{old_therapist_name}}</span>,
+              </p>
+
+              <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                  Booking <strong>{{booking_id}}</strong> has been reassigned to another therapist.
+                  You are no longer required to attend this appointment.
+              </p>
+
+              <div class="reassign-info">
+                  <h3 style="color: #856404; margin-top: 0;">🔄 Reassignment Details</h3>
+                  <p style="color: #856404;">
+                      <strong>Reassigned to:</strong> {{new_therapist_name}}<br>
+                      <strong>Reason:</strong> {{reassignment_reason}}
+                  </p>
+              </div>
+
+              <div class="booking-details">
+                  <h3 style="color: #8e7cc3; margin-top: 0;">📋 Original Booking Details</h3>
+                  <table style="width: 100%; border-collapse: collapse;">
+                      <tr><td style="padding: 8px 0;"><strong>Booking ID:</strong></td><td style="padding: 8px
+  0;">{{booking_id}}</td></tr>
+                      <tr><td style="padding: 8px 0;"><strong>Service:</strong></td><td style="padding: 8px
+  0;">{{service_name}}</td></tr>
+                      <tr><td style="padding: 8px 0;"><strong>Date:</strong></td><td style="padding: 8px
+  0;">{{booking_date}}</td></tr>
+                      <tr><td style="padding: 8px 0;"><strong>Time:</strong></td><td style="padding: 8px
+  0;">{{booking_time}}</td></tr>
+                      <tr><td style="padding: 8px 0;"><strong>Client:</strong></td><td style="padding: 8px
+  0;">{{client_name}}</td></tr>
+                  </table>
+              </div>
+
+              <p style="font-size: 14px; color: #6c757d; text-align: center; margin-top: 20px;">
+                  <strong>Questions?</strong> Contact us at 1300 302542 or email info@rejuvenators.com
+              </p>
+          </div>
+
+          <div class="footer">
+              <p>Thank you for your understanding!</p>
+              <p>We appreciate your flexibility and continued partnership.</p>
+          </div>
+      </div>
+  </body>
+  </html>

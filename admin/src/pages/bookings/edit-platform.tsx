@@ -140,6 +140,16 @@ interface Booking {
   };
 }
 
+// Interface for tracking changes in summary
+interface BookingChange {
+  field: string;
+  fieldLabel: string;
+  originalValue: any;
+  newValue: any;
+  changeType: 'modified' | 'added' | 'removed';
+  category: 'customer' | 'booking' | 'pricing' | 'location' | 'preferences';
+}
+
 interface Customer {
   id: string;
   first_name: string;
@@ -285,6 +295,11 @@ export const BookingEditPlatform: React.FC = () => {
   const [stripeCard, setStripeCard] = useState<any>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  // Summary modal state
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [summaryChanges, setSummaryChanges] = useState<any[]>([]);
+  const [proceedingWithChanges, setProceedingWithChanges] = useState(false);
 
   // Therapist fee calculations
   const [therapistFeeBreakdown, setTherapistFeeBreakdown] = useState({
@@ -1465,6 +1480,354 @@ export const BookingEditPlatform: React.FC = () => {
       therapistFee,
       netProfit
     });
+  };
+
+  // Change detection function for summary
+  const detectDetailedChanges = (original: Booking, current: any): BookingChange[] => {
+    const changes: BookingChange[] = [];
+    const formValues = form.getFieldsValue();
+
+    // Customer details changes
+    if (original.customer_details) {
+      if (formValues.customer_first_name !== original.customer_details.first_name) {
+        changes.push({
+          field: 'customer_first_name',
+          fieldLabel: 'First Name',
+          originalValue: original.customer_details.first_name,
+          newValue: formValues.customer_first_name,
+          changeType: 'modified',
+          category: 'customer'
+        });
+      }
+      if (formValues.customer_last_name !== original.customer_details.last_name) {
+        changes.push({
+          field: 'customer_last_name',
+          fieldLabel: 'Last Name',
+          originalValue: original.customer_details.last_name,
+          newValue: formValues.customer_last_name,
+          changeType: 'modified',
+          category: 'customer'
+        });
+      }
+      if (formValues.customer_email !== original.customer_details.email) {
+        changes.push({
+          field: 'customer_email',
+          fieldLabel: 'Email',
+          originalValue: original.customer_details.email,
+          newValue: formValues.customer_email,
+          changeType: 'modified',
+          category: 'customer'
+        });
+      }
+      if (formValues.customer_phone !== original.customer_details.phone) {
+        changes.push({
+          field: 'customer_phone',
+          fieldLabel: 'Phone',
+          originalValue: original.customer_details.phone,
+          newValue: formValues.customer_phone,
+          changeType: 'modified',
+          category: 'customer'
+        });
+      }
+    }
+
+    // Booking details changes
+    if (formValues.service_id !== original.service_id) {
+      const originalService = services.find(s => s.id === original.service_id);
+      const newService = services.find(s => s.id === formValues.service_id);
+      changes.push({
+        field: 'service_id',
+        fieldLabel: 'Service',
+        originalValue: originalService?.name || 'Unknown',
+        newValue: newService?.name || 'Unknown',
+        changeType: 'modified',
+        category: 'booking'
+      });
+    }
+
+    if (formValues.duration_minutes !== original.duration_minutes) {
+      changes.push({
+        field: 'duration_minutes',
+        fieldLabel: 'Duration',
+        originalValue: `${original.duration_minutes || 0} minutes`,
+        newValue: `${formValues.duration_minutes || 0} minutes`,
+        changeType: 'modified',
+        category: 'booking'
+      });
+    }
+
+    if (formValues.booking_time && dayjs(formValues.booking_time).format('YYYY-MM-DD HH:mm') !== dayjs(original.booking_time).format('YYYY-MM-DD HH:mm')) {
+      changes.push({
+        field: 'booking_time',
+        fieldLabel: 'Date & Time',
+        originalValue: dayjs(original.booking_time).format('ddd, MMM D, YYYY [at] h:mm A'),
+        newValue: dayjs(formValues.booking_time).format('ddd, MMM D, YYYY [at] h:mm A'),
+        changeType: 'modified',
+        category: 'booking'
+      });
+    }
+
+    if (formValues.therapist_id !== original.therapist_id) {
+      const originalTherapist = therapists.find(t => t.id === original.therapist_id);
+      const newTherapist = therapists.find(t => t.id === formValues.therapist_id);
+      changes.push({
+        field: 'therapist_id',
+        fieldLabel: 'Therapist',
+        originalValue: originalTherapist ? `${originalTherapist.first_name} ${originalTherapist.last_name}` : 'No Therapist',
+        newValue: newTherapist ? `${newTherapist.first_name} ${newTherapist.last_name}` : 'No Therapist',
+        changeType: 'modified',
+        category: 'booking'
+      });
+    }
+
+    // Location changes
+    if (formValues.address !== original.address) {
+      changes.push({
+        field: 'address',
+        fieldLabel: 'Address',
+        originalValue: original.address || 'Not specified',
+        newValue: formValues.address || 'Not specified',
+        changeType: 'modified',
+        category: 'location'
+      });
+    }
+
+    if (formValues.business_name !== original.business_name) {
+      changes.push({
+        field: 'business_name',
+        fieldLabel: 'Business/Hotel Name',
+        originalValue: original.business_name || 'Not specified',
+        newValue: formValues.business_name || 'Not specified',
+        changeType: 'modified',
+        category: 'location'
+      });
+    }
+
+    if (formValues.room_number !== original.room_number) {
+      changes.push({
+        field: 'room_number',
+        fieldLabel: 'Room Number',
+        originalValue: original.room_number || 'Not specified',
+        newValue: formValues.room_number || 'Not specified',
+        changeType: 'modified',
+        category: 'location'
+      });
+    }
+
+    // Pricing changes
+    if (formValues.price !== original.price) {
+      changes.push({
+        field: 'price',
+        fieldLabel: 'Price',
+        originalValue: `$${original.price?.toFixed(2) || '0.00'}`,
+        newValue: `$${formValues.price?.toFixed(2) || '0.00'}`,
+        changeType: 'modified',
+        category: 'pricing'
+      });
+    }
+
+    // Preferences changes
+    if (formValues.gender_preference !== original.gender_preference) {
+      changes.push({
+        field: 'gender_preference',
+        fieldLabel: 'Gender Preference',
+        originalValue: original.gender_preference || 'No preference',
+        newValue: formValues.gender_preference || 'No preference',
+        changeType: 'modified',
+        category: 'preferences'
+      });
+    }
+
+    if (formValues.notes !== original.notes) {
+      changes.push({
+        field: 'notes',
+        fieldLabel: 'Notes',
+        originalValue: original.notes || 'No notes',
+        newValue: formValues.notes || 'No notes',
+        changeType: 'modified',
+        category: 'preferences'
+      });
+    }
+
+    return changes;
+  };
+
+  // Handle show summary
+  const handleShowSummary = () => {
+    if (!originalBooking || !booking) return;
+    
+    const changes = detectDetailedChanges(originalBooking, booking);
+    setSummaryChanges(changes);
+    setShowSummaryModal(true);
+  };
+
+  // Handle proceed with changes
+  const handleProceedWithChanges = async () => {
+    if (!booking || !originalBooking) return;
+
+    setProceedingWithChanges(true);
+    
+    try {
+      const formValues = form.getFieldsValue();
+      
+      // 1. Update customer information if changed
+      if (originalBooking.customer_details) {
+        const customerChanges = summaryChanges.filter(change => change.category === 'customer');
+        if (customerChanges.length > 0) {
+          const { error: customerError } = await supabaseClient
+            .from('customers')
+            .update({
+              first_name: formValues.customer_first_name,
+              last_name: formValues.customer_last_name,
+              email: formValues.customer_email,
+              phone: formValues.customer_phone,
+            })
+            .eq('id', booking.customer_id);
+
+          if (customerError) throw customerError;
+        }
+      }
+
+      // 2. Update booking record
+      const updateData: any = {
+        updated_at: new Date().toISOString(),
+      };
+
+      // Core booking fields
+      if (formValues.therapist_id) updateData.therapist_id = formValues.therapist_id;
+      if (formValues.service_id) updateData.service_id = formValues.service_id;
+      if (formValues.booking_time) updateData.booking_time = formValues.booking_time.format('YYYY-MM-DD HH:mm:ss');
+      if (formValues.address !== undefined) updateData.address = formValues.address;
+      if (formValues.business_name !== undefined) updateData.business_name = formValues.business_name;
+      if (formValues.notes !== undefined) updateData.notes = formValues.notes;
+      if (formValues.duration_minutes) updateData.duration_minutes = formValues.duration_minutes;
+      if (formValues.gender_preference !== undefined) updateData.gender_preference = formValues.gender_preference;
+      if (formValues.room_number !== undefined) updateData.room_number = formValues.room_number;
+      if (formValues.price !== undefined) updateData.price = formValues.price;
+
+      const { error: bookingError } = await supabaseClient
+        .from('bookings')
+        .update(updateData)
+        .eq('id', booking.id);
+
+      if (bookingError) throw bookingError;
+
+      // 3. Send notifications
+      await sendUpdateNotifications(summaryChanges);
+
+      // 4. Success feedback
+      message.success('✅ Booking updated successfully! Notifications sent to relevant parties.');
+      setShowSummaryModal(false);
+      
+      // 5. Refresh booking data
+      await fetchBookingDetails();
+
+    } catch (error: any) {
+      console.error('Error updating booking:', error);
+      message.error('Failed to update booking: ' + error.message);
+    } finally {
+      setProceedingWithChanges(false);
+    }
+  };
+
+  // Send update notifications
+  const sendUpdateNotifications = async (changes: BookingChange[]) => {
+    if (!booking || !originalBooking) return;
+
+    try {
+      const formValues = form.getFieldsValue();
+      const therapistChanged = changes.some(change => change.field === 'therapist_id');
+      
+      // Prepare booking data for emails
+      const bookingData: BookingData = {
+        id: booking.id,
+        customer_name: `${formValues.customer_first_name || ''} ${formValues.customer_last_name || ''}`.trim(),
+        customer_email: formValues.customer_email || '',
+        customer_phone: formValues.customer_phone || '',
+        therapist_name: booking.therapist_name || 'No Therapist Assigned',
+        therapist_email: booking.therapist_details?.email || '',
+        service_name: booking.service_name || 'Unknown Service',
+        booking_time: formValues.booking_time ? dayjs(formValues.booking_time).format('YYYY-MM-DD HH:mm:ss') : booking.booking_time,
+        duration_minutes: formValues.duration_minutes || booking.duration_minutes || 60,
+        address: formValues.address || booking.address,
+        business_name: formValues.business_name || booking.business_name,
+        room_number: formValues.room_number || booking.room_number,
+        price: formValues.price || booking.price,
+        booking_id: booking.booking_id || booking.id,
+        created_at: booking.created_at
+      };
+
+      // Send customer notification using admin-specific function
+      const customerResult = await EmailService.sendAdminEditCustomerNotification(bookingData, changes);
+      console.log('Customer email result:', customerResult);
+
+      if (therapistChanged) {
+        // Therapist was changed - send notifications to both original and new therapist
+        const originalTherapist = therapists.find(t => t.id === originalBooking.therapist_id);
+        const newTherapist = therapists.find(t => t.id === formValues.therapist_id);
+
+        if (originalTherapist && newTherapist) {
+          const originalTherapistData: TherapistData = {
+            id: originalTherapist.id,
+            first_name: originalTherapist.first_name,
+            last_name: originalTherapist.last_name,
+            email: originalTherapist.email,
+            phone: originalTherapist.phone || ''
+          };
+
+          const newTherapistData: TherapistData = {
+            id: newTherapist.id,
+            first_name: newTherapist.first_name,
+            last_name: newTherapist.last_name,
+            email: newTherapist.email,
+            phone: newTherapist.phone || ''
+          };
+          
+          // Send reassignment notification to original therapist
+          const reassignmentResult = await EmailService.sendAdminEditTherapistReassignmentOriginal(
+            bookingData, 
+            originalTherapistData, 
+            newTherapistData
+          );
+          console.log('Original therapist reassignment email result:', reassignmentResult);
+          
+          // Send assignment notification to new therapist with fee
+          const newTherapistFee = therapistFeeBreakdown.totalFee;
+          const assignmentResult = await EmailService.sendAdminEditTherapistReassignmentNew(
+            bookingData, 
+            newTherapistData,
+            newTherapistFee
+          );
+          console.log('New therapist assignment email result:', assignmentResult);
+        }
+      } else {
+        // Therapist unchanged - send update to existing therapist
+        const currentTherapist = therapists.find(t => t.id === formValues.therapist_id);
+        if (currentTherapist) {
+          const therapistData: TherapistData = {
+            id: currentTherapist.id,
+            first_name: currentTherapist.first_name,
+            last_name: currentTherapist.last_name,
+            email: currentTherapist.email,
+            phone: currentTherapist.phone || ''
+          };
+          
+          const therapistFee = therapistFeeBreakdown.totalFee;
+          const updateResult = await EmailService.sendAdminEditTherapistNotification(
+            bookingData, 
+            therapistData, 
+            changes,
+            therapistFee
+          );
+          console.log('Therapist update email result:', updateResult);
+        }
+      }
+
+    } catch (error: any) {
+      console.error('Error sending notifications:', error);
+      // Don't throw error here - booking was saved successfully
+      message.warning('Booking updated successfully, but some notifications may not have been sent.');
+    }
   };
 
   // Copy all existing notification and communication functions from edit.tsx
@@ -2747,9 +3110,33 @@ export const BookingEditPlatform: React.FC = () => {
                           border: '1px solid #86efac', 
                           borderRadius: '6px',
                           color: '#166534',
-                          fontSize: '14px'
+                          fontSize: '14px',
+                          marginBottom: '16px'
                         }}>
                           ✅ Payment authorized successfully! You can now save changes.
+                        </div>
+                      )}
+
+                      {paymentSuccess && (
+                        <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                          <Button 
+                            type="primary"
+                            size="large"
+                            icon={<FileTextOutlined />}
+                            onClick={handleShowSummary}
+                            style={{ 
+                              background: '#059669', 
+                              borderColor: '#059669', 
+                              borderRadius: '8px', 
+                              fontWeight: 600, 
+                              fontSize: '16px',
+                              height: '48px',
+                              paddingLeft: '24px',
+                              paddingRight: '24px'
+                            }}
+                          >
+                            📋 Show Summary of Changes
+                          </Button>
                         </div>
                       )}
 
@@ -3139,6 +3526,149 @@ export const BookingEditPlatform: React.FC = () => {
             </Card>
           </div>
         </div>
+
+        {/* Summary Modal */}
+        <Modal
+          title={
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <FileTextOutlined style={{ fontSize: '20px', color: '#059669' }} />
+              <span style={{ fontSize: '18px', fontWeight: '600' }}>Booking Changes Summary</span>
+            </div>
+          }
+          open={showSummaryModal}
+          onCancel={() => setShowSummaryModal(false)}
+          width={800}
+          footer={null}
+          style={{ top: 20 }}
+        >
+          <div style={{ marginBottom: '20px' }}>
+            <Alert
+              message="Review all changes before proceeding"
+              description="Please review the changes below. Click 'Proceed with Changes' to save all modifications, or 'Cancel All Changes' to revert everything."
+              type="info"
+              showIcon
+              style={{ marginBottom: '20px' }}
+            />
+            
+            {summaryChanges.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+                <Text>No changes detected</Text>
+              </div>
+            ) : (
+              <div>
+                <Title level={5} style={{ marginBottom: '16px', color: '#374151' }}>
+                  📝 Changes Detected ({summaryChanges.length})
+                </Title>
+                
+                {/* Group changes by category */}
+                {['customer', 'booking', 'location', 'pricing', 'preferences'].map(category => {
+                  const categoryChanges = summaryChanges.filter(change => change.category === category);
+                  if (categoryChanges.length === 0) return null;
+                  
+                  const categoryLabels = {
+                    customer: '👤 Customer Details',
+                    booking: '📅 Booking Details', 
+                    location: '📍 Location Details',
+                    pricing: '💰 Pricing',
+                    preferences: '⚙️ Preferences'
+                  };
+                  
+                  return (
+                    <Card key={category} size="small" style={{ marginBottom: '16px' }}>
+                      <Title level={5} style={{ marginBottom: '12px', color: '#059669' }}>
+                        {categoryLabels[category as keyof typeof categoryLabels]}
+                      </Title>
+                      
+                      {categoryChanges.map((change, index) => (
+                        <div key={index} style={{ 
+                          marginBottom: '12px', 
+                          padding: '12px', 
+                          background: '#f8fafc', 
+                          borderRadius: '6px',
+                          border: '1px solid #e2e8f0'
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                            <Text strong style={{ color: '#374151', minWidth: '120px' }}>
+                              {change.fieldLabel}:
+                            </Text>
+                            <div style={{ flex: 1, textAlign: 'right' }}>
+                              <div style={{ 
+                                background: '#fef2f2', 
+                                color: '#dc2626', 
+                                padding: '4px 8px', 
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                marginBottom: '4px',
+                                textDecoration: 'line-through'
+                              }}>
+                                {change.originalValue}
+                              </div>
+                              <div style={{ 
+                                background: '#f0fdf4', 
+                                color: '#059669', 
+                                padding: '4px 8px', 
+                                borderRadius: '4px',
+                                fontSize: '12px',
+                                fontWeight: '600'
+                              }}>
+                                → {change.newValue}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            paddingTop: '20px', 
+            borderTop: '1px solid #e5e7eb' 
+          }}>
+            <Button 
+              size="large"
+              onClick={() => setShowSummaryModal(false)}
+              style={{ 
+                background: '#f3f4f6', 
+                color: '#374151', 
+                border: '2px solid #e5e7eb', 
+                borderRadius: '8px', 
+                fontWeight: '600', 
+                fontSize: '16px',
+                height: '48px',
+                paddingLeft: '24px',
+                paddingRight: '24px'
+              }}
+            >
+              Cancel All Changes
+            </Button>
+            
+            <Button 
+              type="primary"
+              size="large"
+              loading={proceedingWithChanges}
+              onClick={handleProceedWithChanges}
+              style={{ 
+                background: '#059669', 
+                borderColor: '#059669', 
+                borderRadius: '8px', 
+                fontWeight: '600', 
+                fontSize: '16px',
+                height: '48px',
+                paddingLeft: '24px',
+                paddingRight: '24px'
+              }}
+            >
+              {proceedingWithChanges ? 'Processing...' : '✅ Proceed with Changes'}
+            </Button>
+          </div>
+        </Modal>
 
         {/* Hidden Form for Data Management */}
         <Form form={form} layout="vertical" style={{ display: 'none' }}>

@@ -1,0 +1,100 @@
+ <!DOCTYPE html>
+  <html>
+  <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>New Booking Assignment - Rejuvenators</title>
+      <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+          .container { max-width: 600px; margin: 0 auto; background-color: white; }
+          .header { background-color: #8e7cc3; color: white; padding: 30px 20px; text-align: center; }
+          .content { padding: 30px 20px; }
+          .booking-details { background-color: #f8f7fc; padding: 20px; border-radius: 8px; margin: 20px 0;
+  border-left: 4px solid #8e7cc3; }
+          .client-info { background-color: #f8f7fc; padding: 20px; border-radius: 8px; margin: 20px 0; border-left:
+   4px solid #8e7cc3; }
+          .fee-details { background-color: #f0edff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left:
+   4px solid #8e7cc3; }
+          .urgent-info { background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left:
+   4px solid #ffc107; }
+          .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px;
+  }
+          .highlight { color: #8e7cc3; font-weight: bold; }
+      </style>
+  </head>
+  <body>
+      <div class="container">
+          <div class="header">
+              <h1>✅ New Booking Assignment</h1>
+              <p>You have been assigned a booking</p>
+          </div>
+
+          <div class="content">
+              <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                  Dear <span class="highlight">{{new_therapist_name}}</span>,
+              </p>
+
+              <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                  You have been assigned booking <strong>{{booking_id}}</strong>.
+                  This booking was previously assigned to another therapist but has been transferred to you.
+              </p>
+
+              <div class="urgent-info">
+                  <h3 style="color: #856404; margin-top: 0;">⚡ Assignment Notice</h3>
+                  <p style="color: #856404;">
+                      <strong>Previously assigned to:</strong> {{old_therapist_name}}<br>
+                      <strong>Reassignment reason:</strong> {{reassignment_reason}}<br>
+                      <strong>Please confirm availability immediately!</strong>
+                  </p>
+              </div>
+
+              <div class="booking-details">
+                  <h3 style="color: #8e7cc3; margin-top: 0;">📋 Booking Details</h3>
+                  <table style="width: 100%; border-collapse: collapse;">
+                      <tr><td style="padding: 8px 0;"><strong>Booking ID:</strong></td><td style="padding: 8px
+  0;">{{booking_id}}</td></tr>
+                      <tr><td style="padding: 8px 0;"><strong>Service:</strong></td><td style="padding: 8px
+  0;">{{service_name}}</td></tr>
+                      <tr><td style="padding: 8px 0;"><strong>Duration:</strong></td><td style="padding: 8px
+  0;">{{duration}}</td></tr>
+                      <tr><td style="padding: 8px 0;"><strong>Date:</strong></td><td style="padding: 8px
+  0;">{{booking_date}}</td></tr>
+                      <tr><td style="padding: 8px 0;"><strong>Time:</strong></td><td style="padding: 8px
+  0;">{{booking_time}}</td></tr>
+                      <tr><td style="padding: 8px 0;"><strong>Delivery Address:</strong></td><td style="padding:
+  8px 0;">{{address}}</td></tr>
+                  </table>
+              </div>
+
+              <div class="client-info">
+                  <h3 style="color: #8e7cc3; margin-top: 0;">👤 Client Information</h3>
+                  <p style="font-size: 18px; font-weight: bold; color: #8e7cc3; text-align: center; margin: 10px
+  0;">
+                      {{client_name}}
+                  </p>
+                  <p style="text-align: center; margin: 10px 0;">
+                      Phone: {{client_phone}}<br>
+                      Email: {{client_email}}
+                  </p>
+              </div>
+
+              <div class="fee-details">
+                  <h3 style="color: #8e7cc3; margin-top: 0;">💰 Your Earnings</h3>
+                  <p style="font-size: 24px; font-weight: bold; color: #8e7cc3; text-align: center; margin: 10px
+  0;">
+                      {{therapist_fee}}
+                  </p>
+              </div>
+
+              <p style="font-size: 14px; color: #6c757d; text-align: center; margin-top: 20px;">
+                  <strong>Need support?</strong> Contact us at 1300 302542 or email info@rejuvenators.com
+              </p>
+          </div>
+
+          <div class="footer">
+              <p>Thank you for your flexibility!</p>
+              <p>We appreciate your willingness to help.</p>
+          </div>
+      </div>
+  </body>
+  </html>

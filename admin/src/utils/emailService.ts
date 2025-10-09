@@ -12,7 +12,12 @@ const TEMPLATE_IDS = {
   INVOICE: 'template_invoice',
   QUOTE_CONFIRMED_CLIENT: 'quoteconfirmed_client',
   QUOTE_CONFIRMED_THERAPIST: 'quoteconfirmed_therapist',
-  OFFICIAL_RECEIPT: 'official_receipt'
+  OFFICIAL_RECEIPT: 'official_receipt',
+  // Admin Edit Page specific templates
+  ADMIN_EDIT_CUSTOMER_UPDATE: 'Booking Update-Customer',
+  ADMIN_EDIT_THERAPIST_UPDATE: 'Booking Update-Therapist',
+  ADMIN_EDIT_THERAPIST_REASSIGN_ORIGINAL: 'Booking Reassign - old',
+  ADMIN_EDIT_THERAPIST_REASSIGN_NEW: 'Booking Reassign - new'
 };
 
 // Declare emailjs as global variable (loaded via CDN)
@@ -174,6 +179,79 @@ export const EmailService = {
       return { success: true };
     } catch (error) {
       console.error('❌ Error sending therapist update email:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  // Send booking reassignment notification to original therapist
+  async sendBookingReassignmentToOriginalTherapist(bookingData: BookingData, originalTherapistData: TherapistData): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      const templateParams = {
+        to_email: originalTherapistData.email,
+        to_name: `${originalTherapistData.first_name} ${originalTherapistData.last_name}`,
+        therapist_name: `${originalTherapistData.first_name} ${originalTherapistData.last_name}`,
+        customer_name: bookingData.customer_name,
+        booking_id: bookingData.booking_id || bookingData.id,
+        service_name: bookingData.service_name,
+        booking_date: new Date(bookingData.booking_time).toLocaleDateString(),
+        booking_time: new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+        address: bookingData.address,
+        business_name: bookingData.business_name,
+        room_number: bookingData.room_number,
+        reason: 'Administrative reassignment'
+      };
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.THERAPIST_REASSIGNED_OLD,
+        templateParams
+      );
+
+      console.log('✅ Original therapist reassignment email sent:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending original therapist reassignment email:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  // Send booking assignment notification to new therapist
+  async sendBookingAssignmentToNewTherapist(bookingData: BookingData, newTherapistData: TherapistData): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      const templateParams = {
+        to_email: newTherapistData.email,
+        to_name: `${newTherapistData.first_name} ${newTherapistData.last_name}`,
+        therapist_name: `${newTherapistData.first_name} ${newTherapistData.last_name}`,
+        customer_name: bookingData.customer_name,
+        booking_id: bookingData.booking_id || bookingData.id,
+        service_name: bookingData.service_name,
+        booking_date: new Date(bookingData.booking_time).toLocaleDateString(),
+        booking_time: new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+        address: bookingData.address,
+        business_name: bookingData.business_name,
+        room_number: bookingData.room_number,
+        duration_minutes: bookingData.duration_minutes,
+        price: bookingData.price
+      };
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.THERAPIST_REASSIGNED_NEW,
+        templateParams
+      );
+
+      console.log('✅ New therapist assignment email sent:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending new therapist assignment email:', error);
       return { success: false, error: (error as Error).message };
     }
   },
@@ -926,6 +1004,181 @@ export const EmailService = {
 
     } catch (error) {
       console.error('❌ Error sending receipt:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  // ====== ADMIN EDIT PAGE SPECIFIC FUNCTIONS ======
+
+  /**
+   * Send booking modification notification to customer (Admin Edit Page)
+   * This is specific to admin-initiated changes, different from booking platform updates
+   */
+  async sendAdminEditCustomerNotification(bookingData: BookingData, changes: any[]): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      // Format changes for email display
+      const changesList = changes.map(change => {
+        return `${change.fieldLabel}: ${change.originalValue} → ${change.newValue}`;
+      }).join('\n• ');
+
+      const templateParams = {
+        to_email: bookingData.customer_email,
+        to_name: bookingData.customer_name,
+        customer_name: bookingData.customer_name,
+        booking_id: bookingData.booking_id || bookingData.id,
+        service_name: bookingData.service_name,
+        duration: `${bookingData.duration_minutes || 60} minutes`,
+        booking_date: new Date(bookingData.booking_time).toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        booking_time: new Date(bookingData.booking_time).toLocaleTimeString('en-AU', {hour: '2-digit', minute:'2-digit'}),
+        address: bookingData.address,
+        business_name: bookingData.business_name || 'N/A',
+        room_number: bookingData.room_number || 'N/A',
+        therapist_name: bookingData.therapist_name || 'To be assigned',
+        price: bookingData.price ? `$${bookingData.price.toFixed(2)}` : 'TBD',
+        changes_list: changesList,
+        changes_count: changes.length
+      };
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.ADMIN_EDIT_CUSTOMER_UPDATE,
+        templateParams
+      );
+
+      console.log('✅ Admin edit customer notification sent:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending admin edit customer notification:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  /**
+   * Send booking modification notification to therapist (Admin Edit Page)
+   * This is specific to admin-initiated changes for the assigned therapist
+   */
+  async sendAdminEditTherapistNotification(bookingData: BookingData, therapistData: TherapistData, changes: any[], therapistFee?: number): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      // Format changes for email display
+      const changesList = changes.map(change => {
+        return `${change.fieldLabel}: ${change.originalValue} → ${change.newValue}`;
+      }).join('\n• ');
+
+      const templateParams = {
+        to_email: therapistData.email,
+        to_name: `${therapistData.first_name} ${therapistData.last_name}`,
+        therapist_name: `${therapistData.first_name} ${therapistData.last_name}`,
+        customer_name: bookingData.customer_name,
+        customer_phone: bookingData.customer_phone || 'Not provided',
+        booking_id: bookingData.booking_id || bookingData.id,
+        service_name: bookingData.service_name,
+        duration: `${bookingData.duration_minutes || 60} minutes`,
+        booking_date: new Date(bookingData.booking_time).toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        booking_time: new Date(bookingData.booking_time).toLocaleTimeString('en-AU', {hour: '2-digit', minute:'2-digit'}),
+        address: bookingData.address,
+        business_name: bookingData.business_name || 'N/A',
+        room_number: bookingData.room_number || 'N/A',
+        therapist_fee: therapistFee ? `$${therapistFee.toFixed(2)}` : 'TBD',
+        changes_list: changesList,
+        changes_count: changes.length
+      };
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.ADMIN_EDIT_THERAPIST_UPDATE,
+        templateParams
+      );
+
+      console.log('✅ Admin edit therapist notification sent:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending admin edit therapist notification:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  /**
+   * Send notification to original therapist when booking is reassigned (Admin Edit Page)
+   */
+  async sendAdminEditTherapistReassignmentOriginal(bookingData: BookingData, originalTherapistData: TherapistData, newTherapistData: TherapistData): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      const templateParams = {
+        to_email: originalTherapistData.email,
+        to_name: `${originalTherapistData.first_name} ${originalTherapistData.last_name}`,
+        therapist_name: `${originalTherapistData.first_name} ${originalTherapistData.last_name}`,
+        customer_name: bookingData.customer_name,
+        booking_id: bookingData.booking_id || bookingData.id,
+        service_name: bookingData.service_name,
+        booking_date: new Date(bookingData.booking_time).toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        booking_time: new Date(bookingData.booking_time).toLocaleTimeString('en-AU', {hour: '2-digit', minute:'2-digit'}),
+        address: bookingData.address,
+        new_therapist_name: `${newTherapistData.first_name} ${newTherapistData.last_name}`,
+        reason: 'Administrative reassignment due to scheduling requirements'
+      };
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.ADMIN_EDIT_THERAPIST_REASSIGN_ORIGINAL,
+        templateParams
+      );
+
+      console.log('✅ Admin edit original therapist reassignment notification sent:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending admin edit original therapist reassignment:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  /**
+   * Send notification to new therapist when they are assigned to a booking (Admin Edit Page)
+   */
+  async sendAdminEditTherapistReassignmentNew(bookingData: BookingData, newTherapistData: TherapistData, therapistFee?: number): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      const templateParams = {
+        to_email: newTherapistData.email,
+        to_name: `${newTherapistData.first_name} ${newTherapistData.last_name}`,
+        therapist_name: `${newTherapistData.first_name} ${newTherapistData.last_name}`,
+        customer_name: bookingData.customer_name,
+        customer_phone: bookingData.customer_phone || 'Not provided',
+        booking_id: bookingData.booking_id || bookingData.id,
+        service_name: bookingData.service_name,
+        duration: `${bookingData.duration_minutes || 60} minutes`,
+        booking_date: new Date(bookingData.booking_time).toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        booking_time: new Date(bookingData.booking_time).toLocaleTimeString('en-AU', {hour: '2-digit', minute:'2-digit'}),
+        address: bookingData.address,
+        business_name: bookingData.business_name || 'N/A',
+        room_number: bookingData.room_number || 'N/A',
+        therapist_fee: therapistFee ? `$${therapistFee.toFixed(2)}` : 'TBD',
+        notes: bookingData.notes || 'None'
+      };
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.ADMIN_EDIT_THERAPIST_REASSIGN_NEW,
+        templateParams
+      );
+
+      console.log('✅ Admin edit new therapist assignment notification sent:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending admin edit new therapist assignment:', error);
       return { success: false, error: (error as Error).message };
     }
   }
