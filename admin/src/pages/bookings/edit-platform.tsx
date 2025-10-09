@@ -1568,8 +1568,21 @@ export const BookingEditPlatform: React.FC = () => {
     }
 
     if (current.therapist_id !== original.therapist_id) {
+      console.log('🔍 Therapist change detected:', {
+        originalId: original.therapist_id,
+        currentId: current.therapist_id,
+        therapistsCount: therapists.length,
+        therapistIds: therapists.map(t => t.id)
+      });
+
       const originalTherapist = therapists.find(t => t.id === original.therapist_id);
       const newTherapist = therapists.find(t => t.id === current.therapist_id);
+
+      console.log('🔍 Found therapists:', {
+        originalTherapist: originalTherapist ? `${originalTherapist.first_name} ${originalTherapist.last_name}` : null,
+        newTherapist: newTherapist ? `${newTherapist.first_name} ${newTherapist.last_name}` : null
+      });
+
       changes.push({
         field: 'therapist_id',
         fieldLabel: 'Therapist',
@@ -3754,8 +3767,8 @@ export const BookingEditPlatform: React.FC = () => {
               onClick={handleProceedWithChanges}
               style={{
                 flex: '1',
-                background: '#dbeafe',
-                color: '#1e40af',
+                background: '#f9f5ff',
+                color: '#7234FE',
                 border: '3px solid #7234FE',
                 borderRadius: '12px',
                 fontWeight: '700',
