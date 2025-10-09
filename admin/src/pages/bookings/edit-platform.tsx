@@ -75,6 +75,7 @@ interface Booking {
   gender_preference?: string;
   parking?: string;
   room_number?: string;
+  booker_name?: string;
   booking_id?: string;
   customer_code?: string;
   first_name?: string;
