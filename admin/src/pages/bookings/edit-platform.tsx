@@ -1483,48 +1483,47 @@ export const BookingEditPlatform: React.FC = () => {
   };
 
   // Change detection function for summary
-  const detectDetailedChanges = (original: Booking, current: any): BookingChange[] => {
+  const detectDetailedChanges = (original: Booking, current: Booking): BookingChange[] => {
     const changes: BookingChange[] = [];
-    const formValues = form.getFieldsValue();
 
     // Customer details changes
-    if (original.customer_details) {
-      if (formValues.customer_first_name !== original.customer_details.first_name) {
+    if (original.customer_details && current.customer_details) {
+      if (current.customer_details.first_name !== original.customer_details.first_name) {
         changes.push({
           field: 'customer_first_name',
           fieldLabel: 'First Name',
           originalValue: original.customer_details.first_name,
-          newValue: formValues.customer_first_name,
+          newValue: current.customer_details.first_name,
           changeType: 'modified',
           category: 'customer'
         });
       }
-      if (formValues.customer_last_name !== original.customer_details.last_name) {
+      if (current.customer_details.last_name !== original.customer_details.last_name) {
         changes.push({
           field: 'customer_last_name',
           fieldLabel: 'Last Name',
           originalValue: original.customer_details.last_name,
-          newValue: formValues.customer_last_name,
+          newValue: current.customer_details.last_name,
           changeType: 'modified',
           category: 'customer'
         });
       }
-      if (formValues.customer_email !== original.customer_details.email) {
+      if (current.customer_details.email !== original.customer_details.email) {
         changes.push({
           field: 'customer_email',
           fieldLabel: 'Email',
           originalValue: original.customer_details.email,
-          newValue: formValues.customer_email,
+          newValue: current.customer_details.email,
           changeType: 'modified',
           category: 'customer'
         });
       }
-      if (formValues.customer_phone !== original.customer_details.phone) {
+      if (current.customer_details.phone !== original.customer_details.phone) {
         changes.push({
           field: 'customer_phone',
           fieldLabel: 'Phone',
           originalValue: original.customer_details.phone,
-          newValue: formValues.customer_phone,
+          newValue: current.customer_details.phone,
           changeType: 'modified',
           category: 'customer'
         });
@@ -1532,9 +1531,9 @@ export const BookingEditPlatform: React.FC = () => {
     }
 
     // Booking details changes
-    if (formValues.service_id !== original.service_id) {
+    if (current.service_id !== original.service_id) {
       const originalService = services.find(s => s.id === original.service_id);
-      const newService = services.find(s => s.id === formValues.service_id);
+      const newService = services.find(s => s.id === current.service_id);
       changes.push({
         field: 'service_id',
         fieldLabel: 'Service',
@@ -1545,31 +1544,31 @@ export const BookingEditPlatform: React.FC = () => {
       });
     }
 
-    if (formValues.duration_minutes !== original.duration_minutes) {
+    if (current.duration_minutes !== original.duration_minutes) {
       changes.push({
         field: 'duration_minutes',
         fieldLabel: 'Duration',
         originalValue: `${original.duration_minutes || 0} minutes`,
-        newValue: `${formValues.duration_minutes || 0} minutes`,
+        newValue: `${current.duration_minutes || 0} minutes`,
         changeType: 'modified',
         category: 'booking'
       });
     }
 
-    if (formValues.booking_time && dayjs(formValues.booking_time).format('YYYY-MM-DD HH:mm') !== dayjs(original.booking_time).format('YYYY-MM-DD HH:mm')) {
+    if (current.booking_time && dayjs(current.booking_time).format('YYYY-MM-DD HH:mm') !== dayjs(original.booking_time).format('YYYY-MM-DD HH:mm')) {
       changes.push({
         field: 'booking_time',
         fieldLabel: 'Date & Time',
         originalValue: dayjs(original.booking_time).format('ddd, MMM D, YYYY [at] h:mm A'),
-        newValue: dayjs(formValues.booking_time).format('ddd, MMM D, YYYY [at] h:mm A'),
+        newValue: dayjs(current.booking_time).format('ddd, MMM D, YYYY [at] h:mm A'),
         changeType: 'modified',
         category: 'booking'
       });
     }
 
-    if (formValues.therapist_id !== original.therapist_id) {
+    if (current.therapist_id !== original.therapist_id) {
       const originalTherapist = therapists.find(t => t.id === original.therapist_id);
-      const newTherapist = therapists.find(t => t.id === formValues.therapist_id);
+      const newTherapist = therapists.find(t => t.id === current.therapist_id);
       changes.push({
         field: 'therapist_id',
         fieldLabel: 'Therapist',
@@ -1581,69 +1580,69 @@ export const BookingEditPlatform: React.FC = () => {
     }
 
     // Location changes
-    if (formValues.address !== original.address) {
+    if (current.address !== original.address) {
       changes.push({
         field: 'address',
         fieldLabel: 'Address',
         originalValue: original.address || 'Not specified',
-        newValue: formValues.address || 'Not specified',
+        newValue: current.address || 'Not specified',
         changeType: 'modified',
         category: 'location'
       });
     }
 
-    if (formValues.business_name !== original.business_name) {
+    if (current.business_name !== original.business_name) {
       changes.push({
         field: 'business_name',
         fieldLabel: 'Business/Hotel Name',
         originalValue: original.business_name || 'Not specified',
-        newValue: formValues.business_name || 'Not specified',
+        newValue: current.business_name || 'Not specified',
         changeType: 'modified',
         category: 'location'
       });
     }
 
-    if (formValues.room_number !== original.room_number) {
+    if (current.room_number !== original.room_number) {
       changes.push({
         field: 'room_number',
         fieldLabel: 'Room Number',
         originalValue: original.room_number || 'Not specified',
-        newValue: formValues.room_number || 'Not specified',
+        newValue: current.room_number || 'Not specified',
         changeType: 'modified',
         category: 'location'
       });
     }
 
     // Pricing changes
-    if (formValues.price !== original.price) {
+    if (current.price !== original.price) {
       changes.push({
         field: 'price',
         fieldLabel: 'Price',
         originalValue: `$${original.price?.toFixed(2) || '0.00'}`,
-        newValue: `$${formValues.price?.toFixed(2) || '0.00'}`,
+        newValue: `$${current.price?.toFixed(2) || '0.00'}`,
         changeType: 'modified',
         category: 'pricing'
       });
     }
 
     // Preferences changes
-    if (formValues.gender_preference !== original.gender_preference) {
+    if (current.gender_preference !== original.gender_preference) {
       changes.push({
         field: 'gender_preference',
         fieldLabel: 'Gender Preference',
         originalValue: original.gender_preference || 'No preference',
-        newValue: formValues.gender_preference || 'No preference',
+        newValue: current.gender_preference || 'No preference',
         changeType: 'modified',
         category: 'preferences'
       });
     }
 
-    if (formValues.notes !== original.notes) {
+    if (current.notes !== original.notes) {
       changes.push({
         field: 'notes',
         fieldLabel: 'Notes',
         originalValue: original.notes || 'No notes',
-        newValue: formValues.notes || 'No notes',
+        newValue: current.notes || 'No notes',
         changeType: 'modified',
         category: 'preferences'
       });
@@ -3531,7 +3530,7 @@ export const BookingEditPlatform: React.FC = () => {
         <Modal
           title={
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <FileTextOutlined style={{ fontSize: '20px', color: '#059669' }} />
+              <FileTextOutlined style={{ fontSize: '20px', color: '#7234FE' }} />
               <span style={{ fontSize: '18px', fontWeight: '600' }}>Booking Changes Summary</span>
             </div>
           }
@@ -3555,71 +3554,47 @@ export const BookingEditPlatform: React.FC = () => {
                 <Text>No changes detected</Text>
               </div>
             ) : (
-              <div>
-                <Title level={5} style={{ marginBottom: '16px', color: '#374151' }}>
-                  📝 Changes Detected ({summaryChanges.length})
-                </Title>
+              <div className="booking-summary" style={{ 
+                background: '#f8f9fa',
+                padding: '24px',
+                borderRadius: '8px',
+                marginBottom: '24px',
+                borderLeft: '4px solid #007e8c'
+              }}>
+                <h3 style={{ 
+                  margin: '0 0 20px 0',
+                  color: '#1f2937',
+                  fontSize: '18px',
+                  fontWeight: '600'
+                }}>
+                  Booking Details
+                </h3>
                 
-                {/* Group changes by category */}
-                {['customer', 'booking', 'location', 'pricing', 'preferences'].map(category => {
-                  const categoryChanges = summaryChanges.filter(change => change.category === category);
-                  if (categoryChanges.length === 0) return null;
-                  
-                  const categoryLabels = {
-                    customer: '👤 Customer Details',
-                    booking: '📅 Booking Details', 
-                    location: '📍 Location Details',
-                    pricing: '💰 Pricing',
-                    preferences: '⚙️ Preferences'
-                  };
-                  
-                  return (
-                    <Card key={category} size="small" style={{ marginBottom: '16px' }}>
-                      <Title level={5} style={{ marginBottom: '12px', color: '#059669' }}>
-                        {categoryLabels[category as keyof typeof categoryLabels]}
-                      </Title>
-                      
-                      {categoryChanges.map((change, index) => (
-                        <div key={index} style={{ 
-                          marginBottom: '12px', 
-                          padding: '12px', 
-                          background: '#f8fafc', 
-                          borderRadius: '6px',
-                          border: '1px solid #e2e8f0'
-                        }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                            <Text strong style={{ color: '#374151', minWidth: '120px' }}>
-                              {change.fieldLabel}:
-                            </Text>
-                            <div style={{ flex: 1, textAlign: 'right' }}>
-                              <div style={{ 
-                                background: '#fef2f2', 
-                                color: '#dc2626', 
-                                padding: '4px 8px', 
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                marginBottom: '4px',
-                                textDecoration: 'line-through'
-                              }}>
-                                {change.originalValue}
-                              </div>
-                              <div style={{ 
-                                background: '#f0fdf4', 
-                                color: '#059669', 
-                                padding: '4px 8px', 
-                                borderRadius: '4px',
-                                fontSize: '12px',
-                                fontWeight: '600'
-                              }}>
-                                → {change.newValue}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </Card>
-                  );
-                })}
+                {summaryChanges.map((change, index) => (
+                  <div key={index} style={{ 
+                    marginBottom: '16px',
+                    lineHeight: '1.5',
+                    fontSize: '14px',
+                    color: '#374151',
+                    padding: '12px',
+                    borderRadius: '6px',
+                    backgroundColor: '#f1eafe',
+                    border: '1px solid #7234fe',
+                    borderLeft: '3px solid #7234fe'
+                  }}>
+                    <strong style={{ color: '#7234fe', minWidth: '140px', display: 'inline-block' }}>
+                      {change.fieldLabel}:
+                    </strong>
+                    <span style={{ marginLeft: '8px' }}>
+                      <span style={{ color: '#dc2626', textDecoration: 'line-through', marginRight: '8px' }}>
+                        {change.originalValue}
+                      </span>
+                      <span style={{ color: '#059669', fontWeight: '600' }}>
+                        → {change.newValue}
+                      </span>
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
