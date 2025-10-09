@@ -2542,13 +2542,37 @@ async function mountStripeCardElement() {
   if (!window.Stripe) {
     return;
   }
-  
+
+  console.log('💳 Mounting Stripe card element...');
+
+  // Clean up existing card element if it exists
+  if (card) {
+    console.log('🧹 Unmounting existing card element');
+    try {
+      card.unmount();
+      card.destroy();
+    } catch (e) {
+      console.warn('Error unmounting card:', e);
+    }
+    card = null;
+  }
+
+  // Clear the container
+  const cardContainer = document.getElementById('card-element');
+  if (cardContainer) {
+    cardContainer.innerHTML = '';
+  }
+
   // Load Stripe key if not already loaded
   if (!STRIPE_PUBLISHABLE_KEY) {
     await loadStripeKey();
   }
-  
-  stripe = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+
+  // Reuse Stripe instance, only create elements and card
+  if (!stripe) {
+    stripe = window.Stripe(STRIPE_PUBLISHABLE_KEY);
+  }
+
   elements = stripe.elements();
   card = elements.create('card', {
     hidePostalCode: true,
@@ -2562,7 +2586,9 @@ async function mountStripeCardElement() {
       invalid: { color: '#b00' }
     }
   });
+
   card.mount('#card-element');
+  console.log('✅ Stripe card element mounted successfully');
 }
 
 // Mount Stripe card when Step 8 is shown
