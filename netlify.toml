@@ -12,6 +12,10 @@
   [build.environment]
     NODE_VERSION = "18"
 
+# Scheduled function for booking timeouts
+[functions."booking-timeout-handler"]
+  schedule = "*/5 * * * *"  # Run every 5 minutes
+
 # Headers for security and performance
 [[headers]]
   for = "/*"
