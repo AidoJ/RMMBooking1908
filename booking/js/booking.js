@@ -1899,11 +1899,19 @@ function initAutocomplete() {
       console.log('📍 Place selection triggered');
       const place = autocomplete.getPlace();
       console.log('Selected place:', place);
-      
+
       if (place && place.geometry) {
+        let cleanAddress = place.formatted_address || addressInput.value;
+        const businessName = place.name || '';
+
+        // If the formatted address starts with the business name, remove it
+        if (businessName && cleanAddress.startsWith(businessName)) {
+          cleanAddress = cleanAddress.substring(businessName.length).replace(/^[,\s]+/, '');
+        }
+
         const selected = {
-          name: place.name || '',
-          address: place.formatted_address || addressInput.value,
+          name: businessName,
+          address: cleanAddress,
           lat: place.geometry.location.lat(),
           lng: place.geometry.location.lng()
         };
