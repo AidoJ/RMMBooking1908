@@ -1665,10 +1665,16 @@ export const BookingEditPlatform: React.FC = () => {
     if (!booking || !originalBooking) return;
 
     setProceedingWithChanges(true);
-    
+
     try {
       const formValues = form.getFieldsValue();
-      
+
+      // Debug logging
+      console.log('🔍 Form values:', formValues);
+      console.log('🔍 Current booking state:', booking);
+      console.log('🔍 Therapist fee breakdown:', therapistFeeBreakdown);
+      console.log('🔍 Business summary:', businessSummary);
+
       // 1. Update customer information if changed
       if (originalBooking.customer_details) {
         const customerChanges = summaryChanges.filter(change => change.category === 'customer');
@@ -1692,24 +1698,44 @@ export const BookingEditPlatform: React.FC = () => {
         updated_at: new Date().toISOString(),
       };
 
-      // Core booking fields
+      // Core booking fields - use state values for calculated fields
       if (formValues.therapist_id) updateData.therapist_id = formValues.therapist_id;
       if (formValues.service_id) updateData.service_id = formValues.service_id;
-      if (formValues.booking_time) updateData.booking_time = formValues.booking_time.format('YYYY-MM-DD HH:mm:ss');
-      if (formValues.address !== undefined) updateData.address = formValues.address;
-      if (formValues.business_name !== undefined) updateData.business_name = formValues.business_name;
-      if (formValues.notes !== undefined) updateData.notes = formValues.notes;
-      if (formValues.duration_minutes) updateData.duration_minutes = formValues.duration_minutes;
-      if (formValues.gender_preference !== undefined) updateData.gender_preference = formValues.gender_preference;
-      if (formValues.room_number !== undefined) updateData.room_number = formValues.room_number;
-      if (formValues.price !== undefined) updateData.price = formValues.price;
+
+      // Handle booking_time safely
+      if (formValues.booking_time) {
+        updateData.booking_time = dayjs(formValues.booking_time).format('YYYY-MM-DD HH:mm:ss');
+      }
+
+      if ('address' in formValues) updateData.address = formValues.address;
+      if ('business_name' in formValues) updateData.business_name = formValues.business_name;
+      if ('notes' in formValues) updateData.notes = formValues.notes;
+      if ('gender_preference' in formValues) updateData.gender_preference = formValues.gender_preference;
+      if ('room_number' in formValues) updateData.room_number = formValues.room_number;
+      if ('parking' in formValues) updateData.parking = formValues.parking;
+
+      // Use state values for duration, price, and therapist fee (not form values)
+      if ('duration_minutes' in formValues || booking.duration_minutes !== originalBooking.duration_minutes) {
+        updateData.duration_minutes = booking.duration_minutes;
+      }
+
+      // Always update calculated values from state
+      updateData.price = businessSummary.customerPayment;
+      updateData.therapist_fee = therapistFeeBreakdown.totalFee;
+
+      console.log('🔍 Update data being sent:', updateData);
 
       const { error: bookingError } = await supabaseClient
         .from('bookings')
         .update(updateData)
         .eq('id', booking.id);
 
-      if (bookingError) throw bookingError;
+      if (bookingError) {
+        console.error('❌ Database update error:', bookingError);
+        throw bookingError;
+      }
+
+      console.log('✅ Database updated successfully');
 
       // 3. Send notifications
       await sendUpdateNotifications(summaryChanges);
@@ -1717,12 +1743,12 @@ export const BookingEditPlatform: React.FC = () => {
       // 4. Success feedback
       message.success('✅ Booking updated successfully! Notifications sent to relevant parties.');
       setShowSummaryModal(false);
-      
+
       // 5. Refresh booking data
       await fetchBookingDetails();
 
     } catch (error: any) {
-      console.error('Error updating booking:', error);
+      console.error('❌ Error updating booking:', error);
       message.error('Failed to update booking: ' + error.message);
     } finally {
       setProceedingWithChanges(false);
@@ -3529,118 +3555,214 @@ export const BookingEditPlatform: React.FC = () => {
         {/* Summary Modal */}
         <Modal
           title={
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <FileTextOutlined style={{ fontSize: '20px', color: '#7234FE' }} />
-              <span style={{ fontSize: '18px', fontWeight: '600' }}>Booking Changes Summary</span>
+            <div style={{
+              textAlign: 'center',
+              padding: '16px 0 8px 0',
+              borderBottom: '2px solid #7234FE'
+            }}>
+              <h2 style={{
+                margin: '0',
+                fontSize: '24px',
+                fontWeight: '700',
+                color: '#7234FE',
+                letterSpacing: '0.5px'
+              }}>
+                BOOKING SUMMARY CHANGES
+              </h2>
+              <p style={{
+                margin: '8px 0 0 0',
+                fontSize: '14px',
+                color: '#7234FE',
+                fontWeight: '400'
+              }}>
+                Review these booking detail changes before confirming
+              </p>
             </div>
           }
           open={showSummaryModal}
           onCancel={() => setShowSummaryModal(false)}
-          width={800}
+          width={700}
           footer={null}
-          style={{ top: 20 }}
+          style={{ top: 40 }}
+          bodyStyle={{ padding: '24px' }}
         >
-          <div style={{ marginBottom: '20px' }}>
-            <Alert
-              message="Review all changes before proceeding"
-              description="Please review the changes below. Click 'Proceed with Changes' to save all modifications, or 'Cancel All Changes' to revert everything."
-              type="info"
-              showIcon
-              style={{ marginBottom: '20px' }}
-            />
-            
-            {summaryChanges.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
-                <Text>No changes detected</Text>
-              </div>
-            ) : (
-              <div className="booking-summary" style={{ 
-                background: '#f8f9fa',
-                padding: '24px',
-                borderRadius: '8px',
-                marginBottom: '24px',
-                borderLeft: '4px solid #007e8c'
+          {summaryChanges.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#6b7280' }}>
+              <Text>No changes detected</Text>
+            </div>
+          ) : (
+            <div style={{
+              background: '#ffffff',
+              padding: '24px',
+              borderRadius: '12px',
+              border: '3px solid #007e8c',
+              marginBottom: '24px'
+            }}>
+              <h3 style={{
+                margin: '0 0 20px 0',
+                color: '#1f2937',
+                fontSize: '20px',
+                fontWeight: '600'
               }}>
-                <h3 style={{ 
-                  margin: '0 0 20px 0',
-                  color: '#1f2937',
-                  fontSize: '18px',
-                  fontWeight: '600'
-                }}>
-                  Booking Details
-                </h3>
-                
-                {summaryChanges.map((change, index) => (
-                  <div key={index} style={{ 
-                    marginBottom: '16px',
-                    lineHeight: '1.5',
-                    fontSize: '14px',
-                    color: '#374151',
-                    padding: '12px',
-                    borderRadius: '6px',
-                    backgroundColor: '#f1eafe',
-                    border: '1px solid #7234fe',
-                    borderLeft: '3px solid #7234fe'
-                  }}>
-                    <strong style={{ color: '#7234fe', minWidth: '140px', display: 'inline-block' }}>
-                      {change.fieldLabel}:
-                    </strong>
-                    <span style={{ marginLeft: '8px' }}>
-                      <span style={{ color: '#dc2626', textDecoration: 'line-through', marginRight: '8px' }}>
-                        {change.originalValue}
-                      </span>
-                      <span style={{ color: '#059669', fontWeight: '600' }}>
-                        → {change.newValue}
-                      </span>
-                    </span>
-                  </div>
-                ))}
+                Booking Details
+              </h3>
+
+              <div style={{ marginBottom: '16px' }}>
+                <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
+                  <strong>Booking ID:</strong> {booking.booking_id || 'N/A'}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
+                  <strong>Address:</strong> {booking.address}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
+                  <strong>Service:</strong> {booking.service_name}
+                </p>
               </div>
-            )}
-          </div>
+
+              {summaryChanges.map((change, index) => (
+                <div key={index} style={{
+                  marginBottom: '12px',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  backgroundColor: '#f1eafe',
+                  border: '2px solid #7234fe'
+                }}>
+                  <p style={{
+                    margin: '0',
+                    fontSize: '15px',
+                    lineHeight: '1.6'
+                  }}>
+                    <strong style={{ color: '#7234fe' }}>* {change.fieldLabel}:</strong>{' '}
+                    <span style={{ color: '#374151' }}>{change.newValue}</span>
+                    {change.originalValue && (
+                      <span style={{ color: '#6b7280', fontSize: '14px' }}>
+                        {' '}– was {change.originalValue}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              ))}
+
+              <div style={{
+                marginTop: '20px',
+                padding: '16px',
+                backgroundColor: '#f1eafe',
+                border: '2px solid #7234fe',
+                borderRadius: '8px'
+              }}>
+                <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
+                  <strong>Your Service Fees:</strong> ${businessSummary.customerPayment?.toFixed(2) || '0.00'}
+                  {originalBooking && originalBooking.price !== businessSummary.customerPayment && (
+                    <span style={{ color: '#6b7280', fontSize: '14px' }}>
+                      {' '}was ${originalBooking.price?.toFixed(2)}
+                    </span>
+                  )}
+                </p>
+                {priceDelta > 0 && (
+                  <>
+                    <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
+                      <strong>Time Uplift 50%</strong>
+                      <span style={{ marginLeft: '12px' }}>: ${(priceDelta * 0.5).toFixed(2)}</span>
+                    </p>
+                    <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
+                      <strong>GST (10%)</strong>
+                      <span style={{ marginLeft: '12px' }}>: ${(businessSummary.customerPayment * 0.1).toFixed(2)}</span>
+                      {originalBooking && originalBooking.price !== businessSummary.customerPayment && (
+                        <span style={{ color: '#6b7280', fontSize: '14px' }}>
+                          {' '}was ${(originalBooking.price * 0.1).toFixed(2)}
+                        </span>
+                      )}
+                    </p>
+                  </>
+                )}
+              </div>
+
+              <div style={{
+                marginTop: '16px',
+                padding: '12px',
+                backgroundColor: '#ffffff',
+                border: 'none'
+              }}>
+                <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                  <strong>Therapist Gender Preference:</strong> {booking.gender_preference || 'any'}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                  <strong>Date & Time:</strong> {dayjs(booking.booking_time).format('YYYY-MM-DD [at] HH:mm')}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                  <strong>Parking:</strong> {booking.parking || 'N/A'}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                  <strong>Therapist:</strong> {booking.therapist_name || 'Unassigned'}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                  <strong>Name:</strong> {booking.first_name} {booking.last_name}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                  <strong>Email:</strong> {booking.customer_email}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                  <strong>Phone:</strong> {booking.customer_phone}
+                </p>
+                {booking.room_number && (
+                  <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                    <strong>Room Number:</strong> {booking.room_number}
+                  </p>
+                )}
+                {booking.booker_name && (
+                  <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                    <strong>Booker Name:</strong> {booking.booker_name}
+                  </p>
+                )}
+                {booking.notes && (
+                  <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                    <strong>Notes:</strong> {booking.notes}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            paddingTop: '20px', 
-            borderTop: '1px solid #e5e7eb' 
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: '16px'
           }}>
-            <Button 
+            <Button
               size="large"
               onClick={() => setShowSummaryModal(false)}
-              style={{ 
-                background: '#f3f4f6', 
-                color: '#374151', 
-                border: '2px solid #e5e7eb', 
-                borderRadius: '8px', 
-                fontWeight: '600', 
+              style={{
+                flex: '1',
+                background: '#fee2e2',
+                color: '#991b1b',
+                border: '3px solid #dc2626',
+                borderRadius: '12px',
+                fontWeight: '700',
                 fontSize: '16px',
-                height: '48px',
-                paddingLeft: '24px',
-                paddingRight: '24px'
+                height: '56px'
               }}
             >
-              Cancel All Changes
+              Cancel Changes
             </Button>
-            
-            <Button 
+
+            <Button
               type="primary"
               size="large"
               loading={proceedingWithChanges}
               onClick={handleProceedWithChanges}
-              style={{ 
-                background: '#059669', 
-                borderColor: '#059669', 
-                borderRadius: '8px', 
-                fontWeight: '600', 
+              style={{
+                flex: '1',
+                background: '#dbeafe',
+                color: '#1e40af',
+                border: '3px solid #7234FE',
+                borderRadius: '12px',
+                fontWeight: '700',
                 fontSize: '16px',
-                height: '48px',
-                paddingLeft: '24px',
-                paddingRight: '24px'
+                height: '56px'
               }}
             >
-              {proceedingWithChanges ? 'Processing...' : '✅ Proceed with Changes'}
+              {proceedingWithChanges ? 'Processing...' : 'Confirm Changes and Save'}
             </Button>
           </div>
         </Modal>
