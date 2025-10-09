@@ -79,14 +79,13 @@ async function findBookingsNeedingTimeout(timeoutMinutes) {
     console.log('📅 Second timeout cutoff:', secondTimeoutCutoff.toISOString());
 
     // FIXED: Find bookings for FIRST timeout (status = 'requested' and past first timeout AND no therapist response)
-    // EXCLUDE quote-based bookings (those with parent_quote_id) as they follow quote workflow
+    // EXCLUDE quote-based bookings (BK-Q pattern) as they follow quote workflow
     const { data: firstTimeoutBookings, error: error1 } = await supabase
       .from('bookings')
       .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
       .eq('status', 'requested')
       .is('therapist_response_time', null) // IMPORTANT: Only if therapist hasn't responded yet
-      .is('parent_quote_id', null) // EXCLUDE quote-based bookings
-      .not('booking_id', 'like', 'BK-%') // Extra safety: exclude BK- pattern quote bookings
+      .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
       .lt('created_at', firstTimeoutCutoff.toISOString());
 
     if (error1) {
@@ -96,13 +95,12 @@ async function findBookingsNeedingTimeout(timeoutMinutes) {
     }
 
     // Find bookings for SECOND timeout (status = 'timeout_reassigned' or 'seeking_alternate' and past second timeout)
-    // EXCLUDE quote-based bookings (those with parent_quote_id) as they follow quote workflow
+    // EXCLUDE quote-based bookings (BK-Q pattern) as they follow quote workflow
     const { data: secondTimeoutBookings, error: error2 } = await supabase
       .from('bookings')
       .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
       .in('status', ['timeout_reassigned', 'seeking_alternate'])
-      .is('parent_quote_id', null) // EXCLUDE quote-based bookings
-      .not('booking_id', 'like', 'BK-%') // Extra safety: exclude BK- pattern quote bookings
+      .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
       .lt('created_at', secondTimeoutCutoff.toISOString());
 
     if (error2) {
