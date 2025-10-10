@@ -3869,13 +3869,13 @@ export const BookingEditPlatform: React.FC = () => {
                     </span>
                   )}
                 </p>
-                {estimatedPricing && estimatedPricing.durationUplift > 0 && (
+                {estimatedPricing && estimatedPricing.basePrice && estimatedPricing.durationUplift > 0 && (
                   <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
                     <strong>Duration Uplift ({estimatedPricing.durationUplift}%)</strong>
                     <span style={{ marginLeft: '12px' }}>: ${(estimatedPricing.basePrice * (estimatedPricing.durationUplift / 100)).toFixed(2)}</span>
                   </p>
                 )}
-                {estimatedPricing && estimatedPricing.timeUplift > 0 && (
+                {estimatedPricing && estimatedPricing.basePrice && estimatedPricing.timeUplift > 0 && (
                   <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
                     <strong>Weekend/Afterhours Uplift ({estimatedPricing.timeUplift}%)</strong>
                     <span style={{ marginLeft: '12px' }}>: ${(estimatedPricing.basePrice * (estimatedPricing.timeUplift / 100)).toFixed(2)}</span>
