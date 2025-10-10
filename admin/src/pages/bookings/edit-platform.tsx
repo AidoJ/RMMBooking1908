@@ -1329,6 +1329,41 @@ export const BookingEditPlatform: React.FC = () => {
       date: booking.booking_time 
     });
 
+    // Check if time/duration changed from original booking
+    const originalTime = originalBooking ? dayjs(originalBooking.booking_time).format('YYYY-MM-DD HH:mm') : null;
+    const newTime = dayjs(booking.booking_time).format('YYYY-MM-DD HH:mm');
+    const originalDuration = originalBooking?.duration_minutes;
+    const newDuration = booking.duration_minutes;
+    
+    const timeChanged = originalTime !== newTime;
+    const durationChanged = originalDuration !== newDuration;
+    
+    console.log('🔍 Change detection:', {
+      originalTime,
+      newTime,
+      timeChanged,
+      originalDuration,
+      newDuration,
+      durationChanged
+    });
+
+    // If no time or duration changes, return original price
+    if (!timeChanged && !durationChanged) {
+      console.log('💰 No time/duration changes detected, returning original price');
+      const originalPrice = Number(originalBooking?.price) || 0;
+      return {
+        basePrice: originalPrice,
+        durationUplift: 0,
+        timeUplift: 0,
+        revisedPrice: originalPrice,
+        discountAmount: 0,
+        giftCardAmount: 0,
+        gstAmount: originalPrice / 11,
+        finalPrice: originalPrice,
+        breakdown: [`Original Price: $${originalPrice.toFixed(2)}`]
+      };
+    }
+
     // Get service data from cache
     const service = servicesCache.find(s => s.id === booking.service_id);
     if (!service) {
@@ -1363,13 +1398,43 @@ export const BookingEditPlatform: React.FC = () => {
       }
     }
 
-    // Apply the FULL time uplift to the new price (which includes duration uplift)
-    // This ensures time uplift is calculated on the correct base (base + duration uplift)
-    if (newTimeUplift > 0) {
-      const timeUpliftAmount = price * (newTimeUplift / 100);
-      price += timeUpliftAmount;
-      breakdown.push(`Weekend/Afterhours Uplift (${newTimeUplift}%): +$${timeUpliftAmount.toFixed(2)}`);
+    // Calculate ORIGINAL booking's time uplift for delta calculation
+    let originalTimeUplift = 0;
+    if (originalBooking?.booking_time) {
+      const originalBookingTime = dayjs(originalBooking.booking_time);
+      const originalDayOfWeek = originalBookingTime.day();
+      const originalTimeVal = originalBookingTime.format('HH:mm');
+
+      for (const rule of timePricingRulesCache) {
+        if (Number(rule.day_of_week) === originalDayOfWeek) {
+          if (originalTimeVal >= rule.start_time && originalTimeVal < rule.end_time) {
+            originalTimeUplift = Number(rule.uplift_percentage);
+            break;
+          }
+        }
+      }
     }
+
+    // Calculate the DIFFERENCE between original and new time uplifts
+    const timeUpliftDifference = newTimeUplift - originalTimeUplift;
+    
+    // Only apply the DIFFERENCE in time uplift
+    if (timeUpliftDifference !== 0) {
+      const timeUpliftAmount = price * (timeUpliftDifference / 100);
+      price += timeUpliftAmount;
+      
+      if (timeUpliftDifference > 0) {
+        breakdown.push(`Weekend/Afterhours Uplift (+${timeUpliftDifference}%): +$${timeUpliftAmount.toFixed(2)}`);
+      } else {
+        breakdown.push(`Weekend/Afterhours Adjustment (${timeUpliftDifference}%): $${timeUpliftAmount.toFixed(2)}`);
+      }
+    }
+
+    console.log('💰 Time uplift calculation:', {
+      original: { day: originalBooking?.booking_time ? dayjs(originalBooking.booking_time).day() : 'N/A', uplift: originalTimeUplift },
+      new: { day: dayOfWeek, uplift: newTimeUplift },
+      difference: timeUpliftDifference
+    });
 
     // Revised Price = Base + Uplifts (before discounts)
     const revisedPrice = price;
@@ -1651,16 +1716,81 @@ export const BookingEditPlatform: React.FC = () => {
       });
     }
 
-    // Pricing changes
+    // Pricing changes - calculate the actual price difference
     if (current.price !== original.price) {
+      const originalPrice = Number(original.price) || 0;
+      const newPrice = Number(current.price) || 0;
+      const priceDifference = newPrice - originalPrice;
+      
       changes.push({
         field: 'price',
-        fieldLabel: 'Price',
-        originalValue: `$${original.price?.toFixed(2) || '0.00'}`,
-        newValue: `$${current.price?.toFixed(2) || '0.00'}`,
+        fieldLabel: 'Your Service Fees',
+        originalValue: `$${originalPrice.toFixed(2)}`,
+        newValue: `$${newPrice.toFixed(2)}`,
         changeType: 'modified',
         category: 'pricing'
       });
+
+      // Add breakdown of price changes if there are uplifts
+      if (priceDifference !== 0) {
+        // Check if duration changed
+        if (current.duration_minutes !== original.duration_minutes) {
+          const originalDuration = original.duration_minutes || 0;
+          const newDuration = current.duration_minutes || 0;
+          const durationDiff = newDuration - originalDuration;
+          
+          if (durationDiff > 0) {
+            const durationUplift = (durationDiff / originalDuration) * 100;
+            changes.push({
+              field: 'duration_uplift',
+              fieldLabel: `Time Uplift ${durationUplift.toFixed(0)}%`,
+              originalValue: `$0.00`,
+              newValue: `$${((originalPrice * durationUplift) / 100).toFixed(2)}`,
+              changeType: 'modified',
+              category: 'pricing'
+            });
+          }
+        }
+
+        // Check if time-based uplift changed
+        const originalTime = original.booking_time ? dayjs(original.booking_time) : null;
+        const newTime = current.booking_time ? dayjs(current.booking_time) : null;
+        
+        if (originalTime && newTime) {
+          const originalDay = originalTime.day();
+          const newDay = newTime.day();
+          const originalTimeStr = originalTime.format('HH:mm');
+          const newTimeStr = newTime.format('HH:mm');
+          
+          // Check if weekend/after-hours status changed
+          const originalIsWeekend = originalDay === 0 || originalDay === 6;
+          const newIsWeekend = newDay === 0 || newDay === 6;
+          const originalIsAfterHours = originalTimeStr >= '18:00';
+          const newIsAfterHours = newTimeStr >= '18:00';
+          
+          if (originalIsWeekend !== newIsWeekend || originalIsAfterHours !== newIsAfterHours) {
+            let upliftLabel = '';
+            if (newIsWeekend && newIsAfterHours) {
+              upliftLabel = 'Weekend After Hours Uplift';
+            } else if (newIsWeekend) {
+              upliftLabel = 'Weekend Uplift';
+            } else if (newIsAfterHours) {
+              upliftLabel = 'After Hours Uplift';
+            }
+            
+            if (upliftLabel) {
+              changes.push({
+                field: 'time_uplift',
+                fieldLabel: upliftLabel,
+                originalValue: `$0.00`,
+                newValue: `$${(priceDifference * 0.1).toFixed(2)}`, // Approximate uplift amount
+                changeType: 'modified',
+                category: 'pricing'
+              });
+            }
+          }
+        }
+      }
     }
 
     // Preferences changes
