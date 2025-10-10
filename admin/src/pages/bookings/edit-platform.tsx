@@ -1598,26 +1598,17 @@ export const BookingEditPlatform: React.FC = () => {
     }
 
     if (current.therapist_id !== original.therapist_id) {
-      console.log('🔍 Therapist change detected:', {
-        originalId: original.therapist_id,
-        currentId: current.therapist_id,
-        therapistsCount: therapists.length,
-        therapistIds: therapists.map(t => t.id)
-      });
-
-      const originalTherapist = therapists.find(t => t.id === original.therapist_id);
-      const newTherapist = therapists.find(t => t.id === current.therapist_id);
-
-      console.log('🔍 Found therapists:', {
-        originalTherapist: originalTherapist ? `${originalTherapist.first_name} ${originalTherapist.last_name}` : null,
-        newTherapist: newTherapist ? `${newTherapist.first_name} ${newTherapist.last_name}` : null
-      });
+      // Use therapist names from the booking objects (already loaded with the booking)
+      const originalTherapistName = original.therapist_name ||
+        (original.therapist_details ? `${original.therapist_details.first_name} ${original.therapist_details.last_name}` : 'No Therapist');
+      const currentTherapistName = current.therapist_name ||
+        (current.therapist_details ? `${current.therapist_details.first_name} ${current.therapist_details.last_name}` : 'No Therapist');
 
       changes.push({
         field: 'therapist_id',
         fieldLabel: 'Therapist',
-        originalValue: originalTherapist ? `${originalTherapist.first_name} ${originalTherapist.last_name}` : 'No Therapist',
-        newValue: newTherapist ? `${newTherapist.first_name} ${newTherapist.last_name}` : 'No Therapist',
+        originalValue: originalTherapistName,
+        newValue: currentTherapistName,
         changeType: 'modified',
         category: 'booking'
       });
