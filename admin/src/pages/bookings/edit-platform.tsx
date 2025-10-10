@@ -1067,11 +1067,30 @@ export const BookingEditPlatform: React.FC = () => {
     }
 
     try {
-      const publishableKey = await loadStripeKey();
-      const stripeInstance = (window as any).Stripe(publishableKey);
-      setStripeInstanceRef(stripeInstance);
+      console.log('💳 Mounting Stripe card element...');
+
+      // Clean up existing card element if it exists
+      if (stripeCard) {
+        console.log('🧹 Unmounting existing card element');
+        try {
+          stripeCard.unmount();
+          stripeCard.destroy();
+        } catch (e) {
+          console.warn('Error unmounting card:', e);
+        }
+        setStripeCard(null);
+      }
+
+      // Reuse Stripe instance if it exists, otherwise create new one
+      let stripeInstance = stripeInstanceRef;
+      if (!stripeInstance) {
+        const publishableKey = await loadStripeKey();
+        stripeInstance = (window as any).Stripe(publishableKey);
+        setStripeInstanceRef(stripeInstance);
+      }
+
       const elements = stripeInstance.elements();
-      
+
       // Create card element exactly like frontend
       const cardElement = elements.create('card', {
         style: {
@@ -1092,19 +1111,17 @@ export const BookingEditPlatform: React.FC = () => {
       const checkAndMount = () => {
         const cardContainer = document.getElementById('stripe-card-element');
         if (cardContainer) {
-          console.log('💳 Mounting Stripe card element...');
           // Ensure the container is empty before mounting to avoid child nodes warning
-          while (cardContainer.firstChild) {
-            cardContainer.removeChild(cardContainer.firstChild);
-          }
+          cardContainer.innerHTML = '';
           cardElement.mount('#stripe-card-element');
           setStripeLoaded(true);
+          console.log('✅ Stripe card element mounted successfully');
         } else {
           console.log('⏳ Waiting for card element container...');
           setTimeout(checkAndMount, 100);
         }
       };
-      
+
       checkAndMount();
     } catch (error) {
       console.error('Error mounting Stripe:', error);
