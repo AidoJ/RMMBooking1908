@@ -371,8 +371,15 @@ export const BookingEditPlatform: React.FC = () => {
 
   // Mount Stripe when payment method is card and delta > 0
   useEffect(() => {
-    if (priceDelta > 0 && booking?.payment_method === 'card' && !stripeLoaded) {
-      mountStripeCardElement();
+    if (priceDelta > 0 && booking?.payment_method === 'card') {
+      if (!stripeLoaded) {
+        mountStripeCardElement();
+      }
+    } else {
+      // Reset if conditions no longer met
+      if (stripeLoaded) {
+        setStripeLoaded(false);
+      }
     }
   }, [priceDelta, booking?.payment_method]);
 
@@ -1066,6 +1073,12 @@ export const BookingEditPlatform: React.FC = () => {
       return;
     }
 
+    // Prevent multiple simultaneous mounts
+    if (stripeLoaded) {
+      console.log('⚠️ Stripe already loaded, skipping mount');
+      return;
+    }
+
     try {
       console.log('💳 Mounting Stripe card element...');
 
@@ -1078,7 +1091,6 @@ export const BookingEditPlatform: React.FC = () => {
         } catch (e) {
           console.warn('Error unmounting card:', e);
         }
-        setStripeCard(null);
       }
 
       // Reuse Stripe instance if it exists, otherwise create new one
@@ -1104,9 +1116,6 @@ export const BookingEditPlatform: React.FC = () => {
         }
       });
 
-      setStripeElements(elements);
-      setStripeCard(cardElement);
-
       // Wait for DOM element to exist, then mount
       const checkAndMount = () => {
         const cardContainer = document.getElementById('stripe-card-element');
@@ -1114,6 +1123,10 @@ export const BookingEditPlatform: React.FC = () => {
           // Ensure the container is empty before mounting to avoid child nodes warning
           cardContainer.innerHTML = '';
           cardElement.mount('#stripe-card-element');
+
+          // Only set state AFTER successful mount
+          setStripeElements(elements);
+          setStripeCard(cardElement);
           setStripeLoaded(true);
           console.log('✅ Stripe card element mounted successfully');
         } else {
