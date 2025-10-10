@@ -3113,17 +3113,19 @@ export const BookingEditPlatform: React.FC = () => {
                       </div>
                       {estimatedPricing ? (
                         <div style={{ display: 'grid', gap: '10px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e' }}>
-                            <span>Hourly Rate</span>
-                            <span style={{ fontWeight: 600, color: '#115e59' }}>${estimatedPricing.basePrice.toFixed(2)}</span>
-                          </div>
-                          {estimatedPricing.durationUplift > 0 && (
+                          {estimatedPricing.basePrice && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e' }}>
+                              <span>Hourly Rate</span>
+                              <span style={{ fontWeight: 600, color: '#115e59' }}>${estimatedPricing.basePrice.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {estimatedPricing.basePrice && estimatedPricing.durationUplift > 0 && (
                             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e' }}>
                               <span>Time Uplift ({estimatedPricing.durationUplift}%)</span>
                               <span style={{ fontWeight: 600, color: '#059669' }}>+${(estimatedPricing.basePrice * (estimatedPricing.durationUplift / 100)).toFixed(2)}</span>
                             </div>
                           )}
-                          {estimatedPricing.timeUplift > 0 && (
+                          {estimatedPricing.basePrice && estimatedPricing.timeUplift > 0 && (
                             <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e' }}>
                               <span>Weekend/Afterhours Uplift ({estimatedPricing.timeUplift}%)</span>
                               <span style={{ fontWeight: 600, color: '#059669' }}>+${(estimatedPricing.basePrice * (estimatedPricing.timeUplift / 100)).toFixed(2)}</span>
@@ -3141,14 +3143,18 @@ export const BookingEditPlatform: React.FC = () => {
                               <span style={{ fontWeight: 600, color: '#dc2626' }}>-${estimatedPricing.giftCardAmount.toFixed(2)}</span>
                             </div>
                           )}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e', fontWeight: 600 }}>
-                            <span>Net Price</span>
-                            <span style={{ fontWeight: 700, color: '#0891b2' }}>${estimatedPricing.netPrice.toFixed(2)}</span>
-                          </div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#64748b' }}>
-                            <span>GST (10%)</span>
-                            <span style={{ fontWeight: 600, color: '#475569' }}>${estimatedPricing.gstAmount.toFixed(2)}</span>
-                          </div>
+                          {estimatedPricing.netPrice !== undefined && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#0f766e', fontWeight: 600 }}>
+                              <span>Net Price</span>
+                              <span style={{ fontWeight: 700, color: '#0891b2' }}>${estimatedPricing.netPrice.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {estimatedPricing.gstAmount !== undefined && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#64748b' }}>
+                              <span>GST (10%)</span>
+                              <span style={{ fontWeight: 600, color: '#475569' }}>${estimatedPricing.gstAmount.toFixed(2)}</span>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div style={{ textAlign: 'center', color: '#5eead4', padding: '20px', fontSize: '14px' }}>
@@ -3319,7 +3325,7 @@ export const BookingEditPlatform: React.FC = () => {
                         </div>
                       )}
 
-                      {hasAnyChanges() && (
+                      {(hasAnyChanges() || priceDelta < 0) && (
                         <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                           <Button
                             type="primary"
@@ -3854,43 +3860,66 @@ export const BookingEditPlatform: React.FC = () => {
                 </div>
               ))}
 
-              <div style={{
-                marginTop: '20px',
-                padding: '16px',
-                backgroundColor: '#f1eafe',
-                border: '2px solid #7234fe',
-                borderRadius: '8px'
-              }}>
-                <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
-                  <strong>Your Service Fees:</strong> ${businessSummary.customerPayment?.toFixed(2) || '0.00'}
-                  {originalBooking && originalBooking.price !== businessSummary.customerPayment && (
-                    <span style={{ color: '#6b7280', fontSize: '14px' }}>
-                      {' '}was ${originalBooking.price?.toFixed(2)}
-                    </span>
+              {/* Pricing section - only show purple box if price changed */}
+              {originalBooking && originalBooking.price !== businessSummary.customerPayment ? (
+                <div style={{
+                  marginTop: '20px',
+                  padding: '16px',
+                  backgroundColor: '#f1eafe',
+                  border: '2px solid #7234fe',
+                  borderRadius: '8px'
+                }}>
+                  {estimatedPricing && estimatedPricing.basePrice ? (
+                    <>
+                      <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
+                        <strong>Hourly Rate:</strong> ${estimatedPricing.basePrice.toFixed(2)}
+                      </p>
+                      {estimatedPricing.durationUplift > 0 && (
+                        <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
+                          <strong>Time Uplift ({estimatedPricing.durationUplift}%)</strong>
+                          <span style={{ marginLeft: '12px' }}>: ${(estimatedPricing.basePrice * (estimatedPricing.durationUplift / 100)).toFixed(2)}</span>
+                        </p>
+                      )}
+                      {estimatedPricing.timeUplift > 0 && (
+                        <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
+                          <strong>Weekend/Afterhours Uplift ({estimatedPricing.timeUplift}%)</strong>
+                          <span style={{ marginLeft: '12px' }}>: ${(estimatedPricing.basePrice * (estimatedPricing.timeUplift / 100)).toFixed(2)}</span>
+                        </p>
+                      )}
+                      {estimatedPricing.netPrice !== undefined && (
+                        <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151', fontWeight: 600 }}>
+                          <strong>Net Price:</strong> ${estimatedPricing.netPrice.toFixed(2)}
+                        </p>
+                      )}
+                      {estimatedPricing.gstAmount !== undefined && (
+                        <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
+                          <strong>GST (10%)</strong>
+                          <span style={{ marginLeft: '12px' }}>: ${estimatedPricing.gstAmount.toFixed(2)}</span>
+                        </p>
+                      )}
+                      <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280', fontStyle: 'italic' }}>
+                        was ${originalBooking.price?.toFixed(2)}
+                      </p>
+                    </>
+                  ) : (
+                    <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
+                      <strong>Your Service Fees:</strong> ${businessSummary.customerPayment?.toFixed(2) || '0.00'}
+                      <span style={{ color: '#6b7280', fontSize: '14px' }}> was ${originalBooking.price?.toFixed(2)}</span>
+                    </p>
                   )}
-                </p>
-                {estimatedPricing && estimatedPricing.basePrice && estimatedPricing.durationUplift > 0 && (
-                  <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
-                    <strong>Duration Uplift ({estimatedPricing.durationUplift}%)</strong>
-                    <span style={{ marginLeft: '12px' }}>: ${(estimatedPricing.basePrice * (estimatedPricing.durationUplift / 100)).toFixed(2)}</span>
+                </div>
+              ) : (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px',
+                  backgroundColor: '#ffffff',
+                  border: 'none'
+                }}>
+                  <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                    <strong>Price:</strong> ${businessSummary.customerPayment?.toFixed(2) || originalBooking?.price?.toFixed(2) || '0.00'}
                   </p>
-                )}
-                {estimatedPricing && estimatedPricing.basePrice && estimatedPricing.timeUplift > 0 && (
-                  <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
-                    <strong>Weekend/Afterhours Uplift ({estimatedPricing.timeUplift}%)</strong>
-                    <span style={{ marginLeft: '12px' }}>: ${(estimatedPricing.basePrice * (estimatedPricing.timeUplift / 100)).toFixed(2)}</span>
-                  </p>
-                )}
-                <p style={{ margin: '4px 0', fontSize: '15px', color: '#374151' }}>
-                  <strong>GST (10%)</strong>
-                  <span style={{ marginLeft: '12px' }}>: ${(businessSummary.customerPayment * 0.1).toFixed(2)}</span>
-                  {originalBooking && originalBooking.price !== businessSummary.customerPayment && (
-                    <span style={{ color: '#6b7280', fontSize: '14px' }}>
-                      {' '}was ${(originalBooking.price * 0.1).toFixed(2)}
-                    </span>
-                  )}
-                </p>
-              </div>
+                </div>
+              )}
 
               <div style={{
                 marginTop: '16px',
@@ -3906,6 +3935,9 @@ export const BookingEditPlatform: React.FC = () => {
                 </p>
                 <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
                   <strong>Parking:</strong> {booking.parking || 'N/A'}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                  <strong>Room Number:</strong> {booking.room_number || 'N/A'}
                 </p>
                 <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
                   <strong>Therapist:</strong> {booking.therapist_name || 'Unassigned'}
