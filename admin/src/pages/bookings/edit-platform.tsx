@@ -1870,29 +1870,47 @@ export const BookingEditPlatform: React.FC = () => {
         }
       }
 
-      // 2. Update booking record
+      // 2. Update booking record - use booking state directly (form values are empty for non-Form.Item fields)
       const updateData: any = {
         updated_at: new Date().toISOString(),
       };
 
-      // Core booking fields - use state values for calculated fields
-      if (formValues.therapist_id) updateData.therapist_id = formValues.therapist_id;
-      if (formValues.service_id) updateData.service_id = formValues.service_id;
-
-      // Handle booking_time safely
-      if (formValues.booking_time) {
-        updateData.booking_time = dayjs(formValues.booking_time).format('YYYY-MM-DD HH:mm:ss');
+      // Core booking fields - use booking state values
+      if (booking.therapist_id !== originalBooking.therapist_id) {
+        updateData.therapist_id = booking.therapist_id;
       }
 
-      if ('address' in formValues) updateData.address = formValues.address;
-      if ('business_name' in formValues) updateData.business_name = formValues.business_name;
-      if ('notes' in formValues) updateData.notes = formValues.notes;
-      if ('gender_preference' in formValues) updateData.gender_preference = formValues.gender_preference;
-      if ('room_number' in formValues) updateData.room_number = formValues.room_number;
-      if ('parking' in formValues) updateData.parking = formValues.parking;
+      if (booking.service_id !== originalBooking.service_id) {
+        updateData.service_id = booking.service_id;
+      }
 
-      // Use state values for duration, price, and therapist fee (not form values)
-      if ('duration_minutes' in formValues || booking.duration_minutes !== originalBooking.duration_minutes) {
+      // Handle booking_time safely
+      if (booking.booking_time !== originalBooking.booking_time) {
+        updateData.booking_time = dayjs(booking.booking_time).format('YYYY-MM-DD HH:mm:ss');
+      }
+
+      // Other booking fields from state
+      if (booking.address !== originalBooking.address) {
+        updateData.address = booking.address;
+      }
+      if (booking.business_name !== originalBooking.business_name) {
+        updateData.business_name = booking.business_name;
+      }
+      if (booking.notes !== originalBooking.notes) {
+        updateData.notes = booking.notes;
+      }
+      if (booking.gender_preference !== originalBooking.gender_preference) {
+        updateData.gender_preference = booking.gender_preference;
+      }
+      if (booking.room_number !== originalBooking.room_number) {
+        updateData.room_number = booking.room_number;
+      }
+      if (booking.parking !== originalBooking.parking) {
+        updateData.parking = booking.parking;
+      }
+
+      // Duration, price, and therapist fee
+      if (booking.duration_minutes !== originalBooking.duration_minutes) {
         updateData.duration_minutes = booking.duration_minutes;
       }
 
