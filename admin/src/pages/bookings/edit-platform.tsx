@@ -1347,25 +1347,51 @@ export const BookingEditPlatform: React.FC = () => {
       breakdown.push(`Time Uplift (${duration.uplift_percentage}%): +$${durationUplift.toFixed(2)}`);
     }
 
-    // Get day of week and time
+    // Get day of week and time for NEW booking
     const bookingTime = dayjs(booking.booking_time);
     const dayOfWeek = bookingTime.day(); // 0=Sunday, 6=Saturday
     const timeVal = bookingTime.format('HH:mm');
-    
-    // Find matching time pricing rule from table
-    let timeUplift = 0;
+
+    // Find matching time pricing rule for NEW booking
+    let newTimeUplift = 0;
     for (const rule of timePricingRulesCache) {
       if (Number(rule.day_of_week) === dayOfWeek) {
         if (timeVal >= rule.start_time && timeVal < rule.end_time) {
-          timeUplift = Number(rule.uplift_percentage);
+          newTimeUplift = Number(rule.uplift_percentage);
           break;
         }
       }
     }
-    if (timeUplift) {
-      const timeUpliftAmount = price * (timeUplift / 100);
+
+    // Find matching time pricing rule for ORIGINAL booking
+    let originalTimeUplift = 0;
+    if (originalBooking) {
+      const originalTime = dayjs(originalBooking.booking_time);
+      const originalDayOfWeek = originalTime.day();
+      const originalTimeVal = originalTime.format('HH:mm');
+
+      for (const rule of timePricingRulesCache) {
+        if (Number(rule.day_of_week) === originalDayOfWeek) {
+          if (originalTimeVal >= rule.start_time && originalTimeVal < rule.end_time) {
+            originalTimeUplift = Number(rule.uplift_percentage);
+            break;
+          }
+        }
+      }
+    }
+
+    // Calculate the DELTA between new and original uplifts
+    // The DB price already has the original uplift baked in, so only apply the difference
+    const upliftDelta = newTimeUplift - originalTimeUplift;
+
+    if (upliftDelta !== 0) {
+      const timeUpliftAmount = price * (upliftDelta / 100);
       price += timeUpliftAmount;
-      breakdown.push(`Weekend/Afterhours Uplift (${timeUplift}%): +$${timeUpliftAmount.toFixed(2)}`);
+      if (upliftDelta > 0) {
+        breakdown.push(`Additional Time Uplift (+${upliftDelta}%): +$${timeUpliftAmount.toFixed(2)}`);
+      } else {
+        breakdown.push(`Reduced Time Uplift (${upliftDelta}%): $${timeUpliftAmount.toFixed(2)}`);
+      }
     }
 
     // Revised Price = Base + Uplifts (before discounts)
