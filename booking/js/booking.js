@@ -3335,10 +3335,30 @@ if (confirmBtn) {
     // Get simple pricing information
     const discountCode = window.appliedDiscount?.code || null;
     const giftCardCode = window.appliedGiftCard?.code || null;
-    
+
     // Get the final calculated price from the display
     const finalPrice = parseFloat(document.getElementById('priceAmount').textContent) || price;
     const netPrice = finalPrice;
+
+    // Calculate discount amount
+    let discountAmount = 0;
+    if (window.appliedDiscount) {
+      if (window.appliedDiscount.discount_type === 'percentage') {
+        discountAmount = (price * window.appliedDiscount.discount_value) / 100;
+      } else if (window.appliedDiscount.discount_type === 'fixed_amount') {
+        discountAmount = Math.min(window.appliedDiscount.discount_value, price);
+      }
+    }
+
+    // Calculate gift card amount
+    let giftCardAmount = 0;
+    if (window.appliedGiftCard) {
+      const priceAfterDiscount = price - discountAmount;
+      giftCardAmount = Math.min(window.appliedGiftCard.current_balance, priceAfterDiscount);
+    }
+
+    // Calculate GST (10% of final price)
+    const taxRateAmount = netPrice / 11 * 1; // GST component of final price
 
     // Build payload
     const payload = {
@@ -3367,6 +3387,9 @@ if (confirmBtn) {
       net_price: netPrice,
       discount_code: discountCode,
       gift_card_code: giftCardCode,
+      discount_amount: discountAmount,
+      gift_card_amount: giftCardAmount,
+      tax_rate_amount: taxRateAmount,
       // Acknowledgement fields
       service_acknowledgement: document.getElementById('serviceAcknowledgement').value === 'yes',
       terms_acceptance: document.getElementById('termsAcceptance').value === 'yes',
