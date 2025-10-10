@@ -1363,35 +1363,12 @@ export const BookingEditPlatform: React.FC = () => {
       }
     }
 
-    // Find matching time pricing rule for ORIGINAL booking
-    let originalTimeUplift = 0;
-    if (originalBooking) {
-      const originalTime = dayjs(originalBooking.booking_time);
-      const originalDayOfWeek = originalTime.day();
-      const originalTimeVal = originalTime.format('HH:mm');
-
-      for (const rule of timePricingRulesCache) {
-        if (Number(rule.day_of_week) === originalDayOfWeek) {
-          if (originalTimeVal >= rule.start_time && originalTimeVal < rule.end_time) {
-            originalTimeUplift = Number(rule.uplift_percentage);
-            break;
-          }
-        }
-      }
-    }
-
-    // Calculate the DELTA between new and original uplifts
-    // The DB price already has the original uplift baked in, so only apply the difference
-    const upliftDelta = newTimeUplift - originalTimeUplift;
-
-    if (upliftDelta !== 0) {
-      const timeUpliftAmount = price * (upliftDelta / 100);
+    // Apply the FULL time uplift to the new price (which includes duration uplift)
+    // This ensures time uplift is calculated on the correct base (base + duration uplift)
+    if (newTimeUplift > 0) {
+      const timeUpliftAmount = price * (newTimeUplift / 100);
       price += timeUpliftAmount;
-      if (upliftDelta > 0) {
-        breakdown.push(`Additional Time Uplift (+${upliftDelta}%): +$${timeUpliftAmount.toFixed(2)}`);
-      } else {
-        breakdown.push(`Reduced Time Uplift (${upliftDelta}%): $${timeUpliftAmount.toFixed(2)}`);
-      }
+      breakdown.push(`Weekend/Afterhours Uplift (${newTimeUplift}%): +$${timeUpliftAmount.toFixed(2)}`);
     }
 
     // Revised Price = Base + Uplifts (before discounts)
