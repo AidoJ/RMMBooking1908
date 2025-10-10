@@ -1735,17 +1735,18 @@ export const BookingEditPlatform: React.FC = () => {
       if (priceDifference !== 0) {
         // Check if duration changed
         if (current.duration_minutes !== original.duration_minutes) {
-          const originalDuration = original.duration_minutes || 0;
-          const newDuration = current.duration_minutes || 0;
+          const originalDuration = Number(original.duration_minutes) || 0;
+          const newDuration = Number(current.duration_minutes) || 0;
           const durationDiff = newDuration - originalDuration;
           
-          if (durationDiff > 0) {
+          if (durationDiff > 0 && originalDuration > 0) {
             const durationUplift = (durationDiff / originalDuration) * 100;
+            const upliftAmount = (originalPrice * durationUplift) / 100;
             changes.push({
               field: 'duration_uplift',
               fieldLabel: `Time Uplift ${durationUplift.toFixed(0)}%`,
               originalValue: `$0.00`,
-              newValue: `$${((originalPrice * durationUplift) / 100).toFixed(2)}`,
+              newValue: `$${upliftAmount.toFixed(2)}`,
               changeType: 'modified',
               category: 'pricing'
             });
@@ -1817,6 +1818,14 @@ export const BookingEditPlatform: React.FC = () => {
     }
 
     return changes;
+  };
+
+  // Check if there are any changes (not just price changes)
+  const hasAnyChanges = () => {
+    if (!originalBooking || !booking) return false;
+    
+    const changes = detectDetailedChanges(originalBooking, booking);
+    return changes.length > 0;
   };
 
   // Handle show summary
@@ -3310,7 +3319,7 @@ export const BookingEditPlatform: React.FC = () => {
                         </div>
                       )}
 
-                      {paymentSuccess && (
+                      {(paymentSuccess || (priceDelta === 0 && hasAnyChanges())) && (
                         <div style={{ textAlign: 'center', marginBottom: '16px' }}>
                           <Button 
                             type="primary"
@@ -3365,6 +3374,40 @@ export const BookingEditPlatform: React.FC = () => {
                       <Text style={{ color: '#1e40af', fontSize: '14px' }}>
                         ℹ️ Bank transfer selected. Manually update Payment Status to "Payment Received" after confirming payment.
                       </Text>
+                    </div>
+                  )}
+
+                  {/* Show Summary Button for non-payment changes */}
+                  {priceDelta === 0 && hasAnyChanges() && (
+                    <div style={{ 
+                      marginBottom: '20px', 
+                      padding: '20px', 
+                      background: '#f8fafc', 
+                      border: '2px solid #059669', 
+                      borderRadius: '8px',
+                      textAlign: 'center'
+                    }}>
+                      <Text strong style={{ color: '#059669', marginBottom: '16px', display: 'block', fontSize: '16px' }}>
+                        ✅ Changes Detected - No Payment Required
+                      </Text>
+                      <Button 
+                        type="primary"
+                        size="large"
+                        icon={<FileTextOutlined />}
+                        onClick={handleShowSummary}
+                        style={{ 
+                          background: '#059669', 
+                          borderColor: '#059669', 
+                          borderRadius: '8px', 
+                          fontWeight: 600, 
+                          fontSize: '16px',
+                          height: '48px',
+                          paddingLeft: '24px',
+                          paddingRight: '24px'
+                        }}
+                      >
+                        📋 Show Summary of Changes
+                      </Button>
                     </div>
                   )}
 
