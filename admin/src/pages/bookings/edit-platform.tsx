@@ -1294,24 +1294,30 @@ export const BookingEditPlatform: React.FC = () => {
 
     // Use the actual price from the DB, not recalculate
     const dbPrice = Number(originalBooking.price) || 0;
-    const gstAmount = dbPrice / 11;
+    const netPrice = Number(originalBooking.net_price) || dbPrice;
+    const discountAmount = Number(originalBooking.discount_amount) || 0;
+    const giftCardAmount = Number(originalBooking.gift_card_amount) || 0;
+    const gstAmount = Number(originalBooking.tax_rate_amount) || (netPrice / 11);
 
     console.log('💰 Current Price from DB:', {
       bookingId: originalBooking.id,
       dbPrice,
+      netPrice,
       gstAmount,
       discountCode: originalBooking.discount_code,
-      giftCardCode: originalBooking.gift_card_code
+      discountAmount,
+      giftCardCode: originalBooking.gift_card_code,
+      giftCardAmount
     });
 
     return {
       basePrice: dbPrice,
       durationUplift: 0,
       timeUplift: 0,
-      discountAmount: 0,
-      giftCardAmount: 0,
+      discountAmount,
+      giftCardAmount,
       gstAmount,
-      finalPrice: dbPrice,
+      finalPrice: netPrice,
       breakdown: []
     };
   };
@@ -1915,8 +1921,22 @@ export const BookingEditPlatform: React.FC = () => {
       }
 
       // Always update calculated values from state
-      updateData.price = businessSummary.customerPayment;
+      updateData.price = estimatedPricing?.revisedPrice || businessSummary.customerPayment;
+      updateData.net_price = businessSummary.customerPayment;
       updateData.therapist_fee = therapistFeeBreakdown.totalFee;
+
+      // Update discount/gift card fields if NEW ones were applied
+      if (appliedDiscount) {
+        updateData.discount_code = appliedDiscount.code;
+        updateData.discount_amount = estimatedPricing?.discountAmount || 0;
+      }
+      if (appliedGiftCard) {
+        updateData.gift_card_code = appliedGiftCard.code;
+        updateData.gift_card_amount = estimatedPricing?.giftCardAmount || 0;
+      }
+
+      // Always update GST
+      updateData.tax_rate_amount = estimatedPricing?.gstAmount || (businessSummary.customerPayment / 11);
 
       console.log('🔍 Update data being sent:', updateData);
 
@@ -3097,6 +3117,22 @@ export const BookingEditPlatform: React.FC = () => {
                       {currentPricing ? (
                         <div style={{ display: 'grid', gap: '12px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '15px', color: '#475569' }}>
+                            <span>Gross Price</span>
+                            <span style={{ fontWeight: 600, color: '#1e293b' }}>${currentPricing.basePrice.toFixed(2)}</span>
+                          </div>
+                          {currentPricing.discountAmount > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#64748b' }}>
+                              <span>Discount {originalBooking?.discount_code ? `(${originalBooking.discount_code})` : ''}</span>
+                              <span style={{ fontWeight: 600, color: '#10b981' }}>-${currentPricing.discountAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          {currentPricing.giftCardAmount > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '14px', color: '#64748b' }}>
+                              <span>Gift Card {originalBooking?.gift_card_code ? `(${originalBooking.gift_card_code})` : ''}</span>
+                              <span style={{ fontWeight: 600, color: '#10b981' }}>-${currentPricing.giftCardAmount.toFixed(2)}</span>
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0', fontSize: '15px', color: '#475569', borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
                             <span>Current Price</span>
                             <span style={{ fontWeight: 700, color: '#1e293b', fontSize: '18px' }}>${currentPricing.finalPrice.toFixed(2)}</span>
                           </div>
