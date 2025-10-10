@@ -1401,7 +1401,7 @@ export const BookingEditPlatform: React.FC = () => {
     console.log('💰 Price calculation result:', {
       basePrice: service.service_base_price,
       durationUplift: duration?.uplift_percentage || 0,
-      timeUplift,
+      timeUplift: newTimeUplift,
       revisedPrice,
       discountAmount,
       giftCardAmount,
@@ -1413,7 +1413,7 @@ export const BookingEditPlatform: React.FC = () => {
     return {
       basePrice: service.service_base_price,
       durationUplift: duration?.uplift_percentage || 0,
-      timeUplift,
+      timeUplift: newTimeUplift,
       revisedPrice,
       discountAmount,
       giftCardAmount,
