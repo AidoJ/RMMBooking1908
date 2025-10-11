@@ -2012,7 +2012,7 @@ export const BookingEditPlatform: React.FC = () => {
         address: booking.address,
         business_name: booking.business_name,
         room_number: booking.room_number,
-        price: booking.price,
+        price: estimatedPricing?.finalPrice || booking.price,
         booking_id: booking.booking_id || booking.id,
         created_at: booking.created_at
       };
@@ -2027,6 +2027,14 @@ export const BookingEditPlatform: React.FC = () => {
         // Therapist was changed - send notifications to both original and new therapist
         const originalTherapist = therapists.find(t => t.id === originalBooking.therapist_id);
         const newTherapist = therapists.find(t => t.id === booking.therapist_id);
+
+        console.log('📧 Therapist change detected:', {
+          originalTherapistId: originalBooking.therapist_id,
+          newTherapistId: booking.therapist_id,
+          originalTherapistFound: !!originalTherapist,
+          newTherapistFound: !!newTherapist,
+          therapistsAvailable: therapists.length
+        });
 
         if (originalTherapist && newTherapist) {
           const originalTherapistData: TherapistData = {
@@ -2061,6 +2069,11 @@ export const BookingEditPlatform: React.FC = () => {
             newTherapistFee
           );
           console.log('New therapist assignment email result:', assignmentResult);
+        } else {
+          console.warn('⚠️ Cannot send therapist reassignment emails: One or both therapists not found', {
+            originalTherapist: originalTherapist ? 'Found' : 'NOT FOUND',
+            newTherapist: newTherapist ? 'Found' : 'NOT FOUND'
+          });
         }
       } else {
         // Therapist unchanged - send update to existing therapist
@@ -3937,7 +3950,7 @@ export const BookingEditPlatform: React.FC = () => {
               ))}
 
               {/* Pricing section - only show purple box if price changed */}
-              {originalBooking && originalBooking.price !== businessSummary.customerPayment ? (
+              {originalBooking && estimatedPricing && originalBooking.net_price !== estimatedPricing.finalPrice ? (
                 <div style={{
                   marginTop: '20px',
                   padding: '16px',
@@ -3992,7 +4005,7 @@ export const BookingEditPlatform: React.FC = () => {
                   border: 'none'
                 }}>
                   <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
-                    <strong>Price:</strong> ${businessSummary.customerPayment?.toFixed(2) || originalBooking?.price?.toFixed(2) || '0.00'}
+                    <strong>Price:</strong> ${estimatedPricing?.finalPrice?.toFixed(2) || originalBooking?.net_price?.toFixed(2) || originalBooking?.price?.toFixed(2) || '0.00'}
                   </p>
                 </div>
               )}
