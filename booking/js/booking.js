@@ -2635,17 +2635,21 @@ async function populateBookingSummary() {
   
   // Gather details
   const addressInput = document.getElementById('address');
-  const bookingType = document.querySelector('input[name="bookingType"]:checked')?.value || null;
-  let businessName = '';
-  let businessLabel = 'Business Name';
-  if (bookingType === 'Corporate Event/Office') {
-    businessName = document.getElementById('businessName').value;
-    businessLabel = 'Business Name';
-  } else if (bookingType === 'Hotel/Accommodation') {
-    businessName = addressInput.dataset.businessName || window.selectedBusinessName || '';
-    businessLabel = 'Hotel Name';
-    console.log('📍 DEBUG: Retrieved hotel name:', businessName, 'from dataset:', addressInput.dataset.businessName, 'backup:', window.selectedBusinessName);
+
+  // Get business name from Google Places
+  let businessName = addressInput.dataset.businessName || window.selectedBusinessName || '';
+
+  // Determine booking type based on presence of business name
+  let bookingType;
+  if (businessName) {
+    bookingType = 'Hotel/Accommodation';
+  } else {
+    bookingType = 'In-home Private Residence';
   }
+
+  let businessLabel = businessName ? 'Hotel Name' : '';
+
+  console.log('📍 DEBUG: Business name:', businessName, '| Booking type:', bookingType);
   const address = addressInput.value;
   const service = window.selectedService?.name || 'Selected Service';
   const duration = document.getElementById('duration').value;
@@ -3286,14 +3290,19 @@ if (confirmBtn) {
       try {
     // Gather all booking details
     const addressInput = document.getElementById('address');
-    const bookingType = document.querySelector('input[name="bookingType"]:checked')?.value || null;
-    let businessName = '';
-    if (bookingType === 'Corporate Event/Office') {
-      businessName = document.getElementById('businessName').value;
-    } else if (bookingType === 'Hotel/Accommodation') {
-      businessName = addressInput.dataset.businessName || window.selectedBusinessName || '';
-      console.log('📍 DEBUG (booking creation): Hotel name:', businessName);
+
+    // Get business name from Google Places
+    let businessName = addressInput.dataset.businessName || window.selectedBusinessName || '';
+
+    // Determine booking type based on presence of business name
+    let bookingType;
+    if (businessName) {
+      bookingType = 'Hotel/Accommodation';
+    } else {
+      bookingType = 'In-home Private Residence';
     }
+
+    console.log('📍 DEBUG (booking creation): Business name:', businessName, '| Booking type:', bookingType);
         
         const lat = addressInput.dataset.lat ? Number(addressInput.dataset.lat) : null;
         const lng = addressInput.dataset.lng ? Number(addressInput.dataset.lng) : null;
