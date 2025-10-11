@@ -443,12 +443,28 @@
           <div class="card-input-container">
             <label for="card-element">Card Details</label>
             <div id="card-element" class="card-element"></div>
+            <div id="card-errors" style="color: #dc2626; font-size: 14px; margin-top: 8px;"></div>
+          </div>
+
+          <!-- Card Authorization Button -->
+          <div style="margin-top: 24px; text-align: center;">
+            <button id="authorizeCardBtn" class="btn primary" style="min-width: 250px; font-weight: 600; font-size: 16px;">
+              🔒 Authorize Card
+            </button>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">
+              We'll hold the funds but won't charge until your booking is confirmed
+            </p>
+          </div>
+
+          <!-- Card Authorization Status -->
+          <div id="cardAuthStatus" style="display: none; margin-top: 20px; padding: 16px; border-radius: 8px; text-align: center;">
+            <!-- Status will be populated by JavaScript -->
           </div>
         </div>
         
         <div class="button-group">
           <button class="btn prev" data-prev="step7">Back</button>
-          <button class="btn next primary" data-next="step9">Proceed to Booking Request</button>
+          <button id="proceedToSummaryBtn" class="btn next primary" data-next="step9" disabled style="opacity: 0.5; cursor: not-allowed;">Proceed to Booking Request</button>
         </div>
       </div>
     </div>

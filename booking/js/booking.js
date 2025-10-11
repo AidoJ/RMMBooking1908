@@ -550,11 +550,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         break;
       case 'step8': // Payment
-        // Payment validation is handled by Stripe, so we just check if card element exists
-        const cardElement = document.getElementById('card-element');
-        if (!cardElement) {
+        // Check if card has been authorized
+        if (!cardAuthorized) {
           isValid = false;
-          showError(document.querySelector('.card-input-container'), 'Payment form not loaded. Please refresh the page.');
+          const statusDiv = document.getElementById('cardAuthStatus');
+          if (statusDiv) {
+            statusDiv.innerHTML = `
+              <div style="background: #fef2f2; border: 2px solid #fecaca; color: #991b1b;">
+                <div style="font-size: 16px; font-weight: 600;">⚠️ Please authorize your card first</div>
+                <div style="font-size: 14px; margin-top: 4px;">Click the "Authorize Card" button to secure your payment method.</div>
+              </div>
+            `;
+            statusDiv.style.display = 'block';
+          }
         }
         break;
     }
@@ -2539,6 +2547,8 @@ async function toggleTherapistBio(therapistId) {
 // STRIPE INTEGRATION
 let stripe, elements, card;
 let STRIPE_PUBLISHABLE_KEY = null;
+let cardAuthorized = false;
+let authorizedPaymentIntentId = null;
 
 // Fetch Stripe publishable key from environment
 async function loadStripeKey() {
@@ -2609,6 +2619,142 @@ async function mountStripeCardElement() {
 
   card.mount('#card-element');
   console.log('✅ Stripe card element mounted successfully');
+
+  // Listen for card validation errors
+  card.addEventListener('change', function(event) {
+    const displayError = document.getElementById('card-errors');
+    if (event.error) {
+      displayError.textContent = event.error.message;
+    } else {
+      displayError.textContent = '';
+    }
+  });
+}
+
+// Authorize card function - moved from step 9
+async function authorizeCard() {
+  const authorizeBtn = document.getElementById('authorizeCardBtn');
+  const statusDiv = document.getElementById('cardAuthStatus');
+  const proceedBtn = document.getElementById('proceedToSummaryBtn');
+
+  if (!card) {
+    alert('Payment form not ready. Please refresh the page.');
+    return false;
+  }
+
+  // Disable button and show processing state
+  authorizeBtn.disabled = true;
+  authorizeBtn.textContent = 'Authorizing Card...';
+  statusDiv.style.display = 'none';
+
+  try {
+    // Gather customer details for billing
+    const customerFirstName = document.getElementById('customerFirstName')?.value || '';
+    const customerLastName = document.getElementById('customerLastName')?.value || '';
+    const customerEmail = document.getElementById('customerEmail')?.value || '';
+    const customerPhone = document.getElementById('customerPhone')?.value || '';
+    const addressInput = document.getElementById('address');
+    const price = document.getElementById('priceAmount').textContent ? parseFloat(document.getElementById('priceAmount').textContent) : null;
+
+    if (!customerEmail || !customerFirstName || !customerLastName || !price) {
+      throw new Error('Missing customer information. Please go back and complete all fields.');
+    }
+
+    // Step 1: Create payment intent (authorize card)
+    console.log('💳 Step 1: Creating payment intent...');
+    const authResponse = await fetch('/.netlify/functions/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: price,
+        currency: 'aud',
+        bookingData: {
+          customer_email: customerEmail,
+          customer_name: `${customerFirstName} ${customerLastName}`,
+          service_name: window.selectedService?.name || 'Massage Service',
+        }
+      })
+    });
+
+    if (!authResponse.ok) {
+      const errorData = await authResponse.json();
+      throw new Error(errorData.error || 'Failed to initialize payment');
+    }
+
+    const { client_secret, payment_intent_id } = await authResponse.json();
+
+    // Step 2: Confirm card payment (authorize, don't charge)
+    console.log('💳 Step 2: Confirming card payment...');
+    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
+      payment_method: {
+        card: card,
+        billing_details: {
+          name: `${customerFirstName} ${customerLastName}`,
+          email: customerEmail,
+          phone: customerPhone,
+          address: {
+            line1: addressInput.value,
+          }
+        }
+      }
+    });
+
+    if (stripeError) {
+      console.error('❌ Card authorization failed:', stripeError);
+      throw new Error(stripeError.message);
+    }
+
+    if (paymentIntent.status !== 'requires_capture') {
+      throw new Error('Card authorization was not successful. Please try again.');
+    }
+
+    console.log('✅ Card authorized successfully:', paymentIntent.id);
+
+    // Store authorization details
+    cardAuthorized = true;
+    authorizedPaymentIntentId = paymentIntent.id;
+
+    // Update UI to show success
+    authorizeBtn.style.display = 'none';
+    statusDiv.innerHTML = `
+      <div style="background: #f0fdf4; border: 2px solid #86efac; color: #166534;">
+        <div style="font-size: 20px; margin-bottom: 8px;">✅</div>
+        <div style="font-weight: 700; font-size: 18px; margin-bottom: 8px;">Card Secured Successfully!</div>
+        <div style="font-size: 14px; color: #15803d;">
+          Your card has been authorized. You won't be charged until a therapist accepts your booking.
+        </div>
+      </div>
+    `;
+    statusDiv.style.display = 'block';
+
+    // Enable the "Proceed to Booking Request" button
+    proceedBtn.disabled = false;
+    proceedBtn.style.opacity = '1';
+    proceedBtn.style.cursor = 'pointer';
+
+    return true;
+
+  } catch (error) {
+    console.error('❌ Card authorization error:', error);
+    
+    // Show error status
+    statusDiv.innerHTML = `
+      <div style="background: #fef2f2; border: 2px solid #fecaca; color: #991b1b;">
+        <div style="font-size: 20px; margin-bottom: 8px;">❌</div>
+        <div style="font-weight: 700; font-size: 16px; margin-bottom: 8px;">Authorization Failed</div>
+        <div style="font-size: 14px; color: #b91c1c;">
+          ${error.message}
+        </div>
+      </div>
+    `;
+    statusDiv.style.display = 'block';
+
+    // Re-enable button to allow retry
+    authorizeBtn.disabled = false;
+    authorizeBtn.textContent = '🔒 Authorize Card';
+
+    return false;
+  }
 }
 
 // Mount Stripe card when Step 8 is shown
@@ -2622,6 +2768,17 @@ function observeStep8Mount() {
   observer.observe(step8, { attributes: true, attributeFilter: ['class'] });
 }
 observeStep8Mount();
+
+// Add event listener for authorize card button
+document.addEventListener('DOMContentLoaded', function() {
+  const authorizeBtn = document.getElementById('authorizeCardBtn');
+  if (authorizeBtn) {
+    authorizeBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      authorizeCard();
+    });
+  }
+});
 
 // Populate booking summary in Step 9
 async function populateBookingSummary() {
@@ -3438,70 +3595,18 @@ if (confirmBtn) {
         
     window.lastBookingCustomerId = customer_id || '';
 
-        // SECURE CARD AUTHORIZATION (NOT PAYMENT)
-        confirmBtn.textContent = 'Authorizing Card...';
-        
-        // Step 1: Create payment intent for AUTHORIZATION ONLY
-        const authorizationData = {
-          amount: netPrice, // Use final net price including discounts, gift cards, and GST
-          currency: 'aud',
-          bookingData: {
-            booking_id: bookingIdFormatted,
-            customer_email: customerEmail,
-            service_name: serviceName,
-            booking_time: booking_time,
-            therapist_fee: therapist_fee
-          }
-        };
-        
-        const authResponse = await fetch('/.netlify/functions/create-payment-intent', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(authorizationData)
-        });
-        
-        if (!authResponse.ok) {
-          const errorData = await authResponse.json();
-          throw new Error(`Card authorization failed: ${errorData.error || 'Unknown error'}`);
+        // Card already authorized in step 8
+        if (!cardAuthorized || !authorizedPaymentIntentId) {
+          throw new Error('Card authorization missing. Please go back to the payment step.');
         }
+
+        console.log('✅ Using pre-authorized card:', authorizedPaymentIntentId);
         
-        const { client_secret, payment_intent_id } = await authResponse.json();
-        
-        // Step 2: Confirm payment method (authorize card, don't charge)
-        confirmBtn.textContent = 'Securing Card Details...';
-        
-        const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
-          payment_method: {
-            card: card,
-            billing_details: {
-              name: `${customerFirstName} ${customerLastName}`,
-              email: customerEmail,
-              phone: customerPhone,
-              address: {
-                line1: addressInput.value,
-              }
-            }
-          }
-        });
-        
-        if (stripeError) {
-          console.error('Card authorization failed:', stripeError);
-          throw new Error(`Card authorization failed: ${stripeError.message}`);
-        }
-        
-        if (paymentIntent.status !== 'requires_capture') {
-          throw new Error('Card authorization was not successful. Please try again.');
-        }
-        
-        console.log('✅ Card authorized (funds held):', paymentIntent.id);
-        
-        // Step 3: Create booking with card authorized (payment pending)
+        // Create booking with card authorized (payment pending)
         confirmBtn.textContent = 'Creating Booking Request...';
         payload.payment_status = 'authorized'; // Card authorized, payment pending
         payload.status = 'requested'; // Waiting for therapist acceptance
-        payload.payment_intent_id = paymentIntent.id;
+        payload.payment_intent_id = authorizedPaymentIntentId;
         
         // Insert booking into Supabase with card authorized
     const { data, error } = await window.supabase.from('bookings').insert([payload]).select();
