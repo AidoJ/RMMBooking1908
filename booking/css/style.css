@@ -323,7 +323,7 @@ h1 {
   font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: -0.025em;
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 0px solid var(--gray-200);
 }
 
 @media (min-width: 768px) {
