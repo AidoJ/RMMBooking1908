@@ -13,16 +13,13 @@ CREATE TABLE IF NOT EXISTS booking_revisions (
   snapshot JSONB NOT NULL,
 
   -- Summary of what changed
-  changes JSONB,
-
-  -- Index for fast lookup by booking_id
-  CONSTRAINT fk_booking FOREIGN KEY (booking_id) REFERENCES bookings(booking_id) ON DELETE CASCADE
+  changes JSONB
 );
 
 -- Create index for efficient queries
-CREATE INDEX idx_booking_revisions_booking_id ON booking_revisions(booking_id);
-CREATE INDEX idx_booking_revisions_created_at ON booking_revisions(created_at DESC);
-CREATE UNIQUE INDEX idx_booking_revisions_unique ON booking_revisions(booking_id, revision_number);
+CREATE INDEX IF NOT EXISTS idx_booking_revisions_booking_id ON booking_revisions(booking_id);
+CREATE INDEX IF NOT EXISTS idx_booking_revisions_created_at ON booking_revisions(created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_booking_revisions_unique ON booking_revisions(booking_id, revision_number);
 
 -- Add revision tracking fields to bookings table
 ALTER TABLE bookings
