@@ -2026,13 +2026,13 @@ export const BookingEditPlatform: React.FC = () => {
       if (therapistChanged) {
         // Therapist was changed - fetch therapist details from database (don't rely on state)
         const { data: originalTherapistData } = await supabaseClient
-          .from('therapists')
+          .from('therapist_profiles')
           .select('id, first_name, last_name, email, phone')
           .eq('id', originalBooking.therapist_id)
           .single();
 
         const { data: newTherapistData } = await supabaseClient
-          .from('therapists')
+          .from('therapist_profiles')
           .select('id, first_name, last_name, email, phone')
           .eq('id', booking.therapist_id)
           .single();
@@ -2070,7 +2070,7 @@ export const BookingEditPlatform: React.FC = () => {
       } else {
         // Therapist unchanged - fetch therapist details from database
         const { data: therapistData } = await supabaseClient
-          .from('therapists')
+          .from('therapist_profiles')
           .select('id, first_name, last_name, email, phone')
           .eq('id', booking.therapist_id)
           .single();
