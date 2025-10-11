@@ -2024,35 +2024,27 @@ export const BookingEditPlatform: React.FC = () => {
       console.log('Customer email result:', customerResult);
 
       if (therapistChanged) {
-        // Therapist was changed - send notifications to both original and new therapist
-        const originalTherapist = therapists.find(t => t.id === originalBooking.therapist_id);
-        const newTherapist = therapists.find(t => t.id === booking.therapist_id);
+        // Therapist was changed - fetch therapist details from database (don't rely on state)
+        const { data: originalTherapistData } = await supabaseClient
+          .from('therapists')
+          .select('id, first_name, last_name, email, phone')
+          .eq('id', originalBooking.therapist_id)
+          .single();
+
+        const { data: newTherapistData } = await supabaseClient
+          .from('therapists')
+          .select('id, first_name, last_name, email, phone')
+          .eq('id', booking.therapist_id)
+          .single();
 
         console.log('📧 Therapist change detected:', {
           originalTherapistId: originalBooking.therapist_id,
           newTherapistId: booking.therapist_id,
-          originalTherapistFound: !!originalTherapist,
-          newTherapistFound: !!newTherapist,
-          therapistsAvailable: therapists.length
+          originalTherapistFound: !!originalTherapistData,
+          newTherapistFound: !!newTherapistData
         });
 
-        if (originalTherapist && newTherapist) {
-          const originalTherapistData: TherapistData = {
-            id: originalTherapist.id,
-            first_name: originalTherapist.first_name,
-            last_name: originalTherapist.last_name,
-            email: originalTherapist.email,
-            phone: originalTherapist.phone || ''
-          };
-
-          const newTherapistData: TherapistData = {
-            id: newTherapist.id,
-            first_name: newTherapist.first_name,
-            last_name: newTherapist.last_name,
-            email: newTherapist.email,
-            phone: newTherapist.phone || ''
-          };
-          
+        if (originalTherapistData && newTherapistData) {
           // Send reassignment notification to original therapist
           const reassignmentResult = await EmailService.sendAdminEditTherapistReassignmentOriginal(
             bookingData, 
@@ -2071,30 +2063,29 @@ export const BookingEditPlatform: React.FC = () => {
           console.log('New therapist assignment email result:', assignmentResult);
         } else {
           console.warn('⚠️ Cannot send therapist reassignment emails: One or both therapists not found', {
-            originalTherapist: originalTherapist ? 'Found' : 'NOT FOUND',
-            newTherapist: newTherapist ? 'Found' : 'NOT FOUND'
+            originalTherapist: originalTherapistData ? 'Found' : 'NOT FOUND',
+            newTherapist: newTherapistData ? 'Found' : 'NOT FOUND'
           });
         }
       } else {
-        // Therapist unchanged - send update to existing therapist
-        const currentTherapist = therapists.find(t => t.id === booking.therapist_id);
-        if (currentTherapist) {
-          const therapistData: TherapistData = {
-            id: currentTherapist.id,
-            first_name: currentTherapist.first_name,
-            last_name: currentTherapist.last_name,
-            email: currentTherapist.email,
-            phone: currentTherapist.phone || ''
-          };
-          
+        // Therapist unchanged - fetch therapist details from database
+        const { data: therapistData } = await supabaseClient
+          .from('therapists')
+          .select('id, first_name, last_name, email, phone')
+          .eq('id', booking.therapist_id)
+          .single();
+
+        if (therapistData) {
           const therapistFee = therapistFeeBreakdown.totalFee;
           const updateResult = await EmailService.sendAdminEditTherapistNotification(
-            bookingData, 
-            therapistData, 
+            bookingData,
+            therapistData,
             changes,
             therapistFee
           );
           console.log('Therapist update email result:', updateResult);
+        } else {
+          console.warn('⚠️ Cannot send therapist update email: Therapist not found', booking.therapist_id);
         }
       }
 
