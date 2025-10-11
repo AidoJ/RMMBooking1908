@@ -1397,7 +1397,7 @@ export const BookingEditPlatform: React.FC = () => {
     const dayOfWeek = bookingTime.day(); // 0=Sunday, 6=Saturday
     const timeVal = bookingTime.format('HH:mm');
 
-    // Find matching time pricing rule for NEW booking
+    // Find matching time pricing rule for NEW booking (fresh calculation)
     let newTimeUplift = 0;
     for (const rule of timePricingRulesCache) {
       if (Number(rule.day_of_week) === dayOfWeek) {
@@ -1408,42 +1408,17 @@ export const BookingEditPlatform: React.FC = () => {
       }
     }
 
-    // Calculate ORIGINAL booking's time uplift for delta calculation
-    let originalTimeUplift = 0;
-    if (originalBooking?.booking_time) {
-      const originalBookingTime = dayjs(originalBooking.booking_time);
-      const originalDayOfWeek = originalBookingTime.day();
-      const originalTimeVal = originalBookingTime.format('HH:mm');
-
-      for (const rule of timePricingRulesCache) {
-        if (Number(rule.day_of_week) === originalDayOfWeek) {
-          if (originalTimeVal >= rule.start_time && originalTimeVal < rule.end_time) {
-            originalTimeUplift = Number(rule.uplift_percentage);
-            break;
-          }
-        }
-      }
-    }
-
-    // Calculate the DIFFERENCE between original and new time uplifts
-    const timeUpliftDifference = newTimeUplift - originalTimeUplift;
-    
-    // Only apply the DIFFERENCE in time uplift
-    if (timeUpliftDifference !== 0) {
-      const timeUpliftAmount = price * (timeUpliftDifference / 100);
+    // Apply weekend/afterhours uplift to current price (base + duration)
+    if (newTimeUplift > 0) {
+      const timeUpliftAmount = price * (newTimeUplift / 100);
       price += timeUpliftAmount;
-      
-      if (timeUpliftDifference > 0) {
-        breakdown.push(`Weekend/Afterhours Uplift (+${timeUpliftDifference}%): +$${timeUpliftAmount.toFixed(2)}`);
-      } else {
-        breakdown.push(`Weekend/Afterhours Adjustment (${timeUpliftDifference}%): $${timeUpliftAmount.toFixed(2)}`);
-      }
+      breakdown.push(`Weekend/Afterhours Uplift (+${newTimeUplift}%): +$${timeUpliftAmount.toFixed(2)}`);
     }
 
     console.log('💰 Time uplift calculation:', {
-      original: { day: originalBooking?.booking_time ? dayjs(originalBooking.booking_time).day() : 'N/A', uplift: originalTimeUplift },
-      new: { day: dayOfWeek, uplift: newTimeUplift },
-      difference: timeUpliftDifference
+      dayOfWeek,
+      timeUplift: newTimeUplift,
+      priceAfterTimeUplift: price
     });
 
     // Revised Price = Base + Uplifts (before discounts)
