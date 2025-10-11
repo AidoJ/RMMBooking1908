@@ -1,0 +1,4 @@
+booking_id,booking_time,price,therapist_fee,duration_minutes,discount_amount,tax_rate_amount,net_price,discount_code,gift_card_code,gift_card_amount
+RB2510006,18/10/2025 18:00,318.75,157.5,90,31.88,26.08,255,WELCOME10,,0
+,,,,,,,,,,
+,,,,,,,286.87,,,

@@ -95,6 +95,11 @@ interface Booking {
   gift_card_amount?: number;
   tax_rate_amount?: number;
 
+  // Revision tracking fields
+  revision_number?: number;
+  last_modified_by?: string;
+  last_modified_at?: string;
+
   // Quote-specific fields
   event_type?: string;
   expected_attendees?: number;
@@ -1901,7 +1906,7 @@ export const BookingEditPlatform: React.FC = () => {
 
       // Always update calculated values from state
       updateData.price = estimatedPricing?.revisedPrice || businessSummary.customerPayment;
-      updateData.net_price = businessSummary.customerPayment;
+      updateData.net_price = estimatedPricing?.finalPrice || businessSummary.customerPayment;
       updateData.therapist_fee = therapistFeeBreakdown.totalFee;
 
       // Update discount/gift card fields if NEW ones were applied
@@ -1917,8 +1922,45 @@ export const BookingEditPlatform: React.FC = () => {
       // Always update GST
       updateData.tax_rate_amount = estimatedPricing?.gstAmount || (businessSummary.customerPayment / 11);
 
+      // Update revision tracking
+      const currentRevisionNumber = originalBooking.revision_number || 0;
+      updateData.revision_number = currentRevisionNumber + 1;
+      updateData.last_modified_by = 'admin'; // TODO: Get actual admin user email from auth
+      updateData.last_modified_at = new Date().toISOString();
+
       console.log('🔍 Update data being sent:', updateData);
 
+      // STEP 1: Save current booking state to revisions table BEFORE updating
+      const revisionSnapshot = {
+        ...originalBooking,
+        // Remove joined data that isn't part of the bookings table
+        customer_name: undefined,
+        therapist_name: undefined,
+        service_name: undefined,
+        customer_details: undefined,
+        therapist_details: undefined,
+        service_details: undefined
+      };
+
+      const { error: revisionError } = await supabaseClient
+        .from('booking_revisions')
+        .insert({
+          booking_id: booking.booking_id || booking.id,
+          revision_number: currentRevisionNumber,
+          modified_by: 'admin', // TODO: Get actual admin user email
+          change_reason: `Admin edit: ${summaryChanges.map(c => c.fieldLabel).join(', ')} changed`,
+          snapshot: revisionSnapshot,
+          changes: summaryChanges
+        });
+
+      if (revisionError) {
+        console.error('❌ Error saving revision:', revisionError);
+        throw new Error('Failed to save booking revision history: ' + revisionError.message);
+      }
+
+      console.log('✅ Revision snapshot saved:', { revision: currentRevisionNumber, booking_id: booking.booking_id });
+
+      // STEP 2: Update the booking record
       const { error: bookingError } = await supabaseClient
         .from('bookings')
         .update(updateData)
