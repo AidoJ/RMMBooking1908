@@ -885,7 +885,7 @@ console.log('Globals:', {
     if (duration && duration.uplift_percentage) {
       const durationUplift = price * (Number(duration.uplift_percentage) / 100);
       price += durationUplift;
-      breakdown.push(`Time Uplift (${duration.uplift_percentage}%): +$${durationUplift.toFixed(2)}`);
+      breakdown.push(`Extended Session Rate (${duration.uplift_percentage}%): +$${durationUplift.toFixed(2)}`);
     }
 
     // Get day of week and time
@@ -903,7 +903,7 @@ console.log('Globals:', {
     if (timeUplift) {
       const timeUpliftAmount = price * (timeUplift / 100);
       price += timeUpliftAmount;
-      breakdown.push(`Weekend/Afterhours Uplift (${timeUplift}%): +$${timeUpliftAmount.toFixed(2)}`);
+      breakdown.push(`Weekend/Afterhours Rate (${timeUplift}%): +$${timeUpliftAmount.toFixed(2)}`);
     }
 
     // Store gross price for discount calculations
@@ -2260,7 +2260,25 @@ function renderTimeSlots(slots, selectedSlot) {
   if (!container) return;
   container.innerHTML = '';
   if (!slots.length) {
-    // Remove red error message - just show empty container
+    // Show helpful message prompting user to select a different day
+    container.innerHTML = `
+      <div style="
+        padding: 20px;
+        background: #fef2f2;
+        border: 2px solid #fecaca;
+        border-radius: 8px;
+        text-align: center;
+        margin: 16px 0;
+      ">
+        <div style="font-size: 18px; margin-bottom: 8px;">⚠️</div>
+        <div style="color: #991b1b; font-weight: 600; font-size: 16px; margin-bottom: 8px;">
+          No available time slots for this date
+        </div>
+        <div style="color: #b91c1c; font-size: 14px;">
+          Please try selecting a different date, or contact us for assistance.
+        </div>
+      </div>
+    `;
     return;
   }
   slots.forEach(slot => {
@@ -3242,13 +3260,10 @@ function showExistingCustomer(customer) {
   if (customerLastNameInput) customerLastNameInput.value = customer.last_name || '';
   if (customerPhoneInput) customerPhoneInput.value = customer.phone || '';
   
-  // Show welcome message
+  // Show welcome message WITHOUT customer ID
   customerLookupResult.style.display = 'block';
   customerInfo.innerHTML = `
     <div>Welcome back, ${customer.first_name || 'Valued Customer'}!</div>
-    <div style="font-size:0.9rem; margin-top:4px;">
-      ${customer.is_guest ? 'Guest Customer' : 'Registered Customer'} • ID: ${customer.customer_code || 'N/A'}
-    </div>
   `;
   
   // Hide registration option for existing customers
