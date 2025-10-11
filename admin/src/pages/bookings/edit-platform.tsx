@@ -88,7 +88,13 @@ interface Booking {
   discount_code?: string;
   gift_card_code?: string;
   payment_notes?: string;
-  
+
+  // Pricing fields
+  net_price?: number;
+  discount_amount?: number;
+  gift_card_amount?: number;
+  tax_rate_amount?: number;
+
   // Quote-specific fields
   event_type?: string;
   expected_attendees?: number;
@@ -105,8 +111,6 @@ interface Booking {
   payment_method?: string;
   preferred_time_range?: string;
   quote_only?: string | boolean;
-  discount_amount?: number;
-  tax_rate_amount?: number;
   invoice_number?: string;
   invoice_date?: string;
   invoice_sent_at?: string;
