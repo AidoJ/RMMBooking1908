@@ -1996,27 +1996,28 @@ export const BookingEditPlatform: React.FC = () => {
     if (!booking || !originalBooking) return;
 
     try {
-      const formValues = form.getFieldsValue();
       const therapistChanged = changes.some(change => change.field === 'therapist_id');
-      
-      // Prepare booking data for emails
+
+      // Prepare booking data for emails - use booking state (form values are empty for non-Form.Item fields)
       const bookingData: BookingData = {
         id: booking.id,
-        customer_name: `${formValues.customer_first_name || ''} ${formValues.customer_last_name || ''}`.trim(),
-        customer_email: formValues.customer_email || '',
-        customer_phone: formValues.customer_phone || '',
+        customer_name: booking.customer_name || 'Unknown Customer',
+        customer_email: booking.customer_details?.email || booking.customer_email || '',
+        customer_phone: booking.customer_details?.phone || booking.customer_phone || '',
         therapist_name: booking.therapist_name || 'No Therapist Assigned',
         therapist_email: booking.therapist_details?.email || '',
         service_name: booking.service_name || 'Unknown Service',
-        booking_time: formValues.booking_time ? dayjs(formValues.booking_time).format('YYYY-MM-DD HH:mm:ss') : booking.booking_time,
-        duration_minutes: formValues.duration_minutes || booking.duration_minutes || 60,
-        address: formValues.address || booking.address,
-        business_name: formValues.business_name || booking.business_name,
-        room_number: formValues.room_number || booking.room_number,
-        price: formValues.price || booking.price,
+        booking_time: booking.booking_time,
+        duration_minutes: booking.duration_minutes || 60,
+        address: booking.address,
+        business_name: booking.business_name,
+        room_number: booking.room_number,
+        price: booking.price,
         booking_id: booking.booking_id || booking.id,
         created_at: booking.created_at
       };
+
+      console.log('📧 Sending notifications with booking data:', bookingData);
 
       // Send customer notification using admin-specific function
       const customerResult = await EmailService.sendAdminEditCustomerNotification(bookingData, changes);
@@ -2025,7 +2026,7 @@ export const BookingEditPlatform: React.FC = () => {
       if (therapistChanged) {
         // Therapist was changed - send notifications to both original and new therapist
         const originalTherapist = therapists.find(t => t.id === originalBooking.therapist_id);
-        const newTherapist = therapists.find(t => t.id === formValues.therapist_id);
+        const newTherapist = therapists.find(t => t.id === booking.therapist_id);
 
         if (originalTherapist && newTherapist) {
           const originalTherapistData: TherapistData = {
@@ -2063,7 +2064,7 @@ export const BookingEditPlatform: React.FC = () => {
         }
       } else {
         // Therapist unchanged - send update to existing therapist
-        const currentTherapist = therapists.find(t => t.id === formValues.therapist_id);
+        const currentTherapist = therapists.find(t => t.id === booking.therapist_id);
         if (currentTherapist) {
           const therapistData: TherapistData = {
             id: currentTherapist.id,
