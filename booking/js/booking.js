@@ -1847,6 +1847,7 @@ console.log('Globals:', {
 
 // Google Places Autocomplete for Address
 let autocompleteInitialized = false;
+let coverageCheckTimeout = null;
 
 function initAutocomplete() {
   // Prevent multiple initializations
@@ -1854,7 +1855,7 @@ function initAutocomplete() {
     console.log('⚠️ Autocomplete already initialized, skipping...');
     return;
   }
-  
+
   const addressInput = document.getElementById('address');
   const statusDiv = document.getElementById('address-autocomplete-status');
   
@@ -1920,12 +1921,34 @@ function initAutocomplete() {
         addressInput.dataset.lng = selected.lng;
         addressInput.dataset.businessName = selected.name;
         addressInput.dataset.verified = 'true';
+
+        // Store business name globally as backup
+        window.selectedBusinessName = selected.name;
+
         console.log('✅ Address selected:', selected);
-        
-        // Check therapist coverage (this will set the appropriate message)
-        checkTherapistCoverageForAddress();
+
+        // Show debug message on page
+        if (statusDiv) {
+          statusDiv.innerHTML = `<small style="color: #666;">🔍 DEBUG: Selected "${selected.name}" at (${selected.lat.toFixed(4)}, ${selected.lng.toFixed(4)}). Checking coverage in 500ms...</small>`;
+          statusDiv.className = 'status-message';
+          statusDiv.style.display = 'block';
+        }
+
+        // Clear any pending coverage checks
+        clearTimeout(coverageCheckTimeout);
+
+        // Debounce coverage check to ensure coordinates are properly set
+        coverageCheckTimeout = setTimeout(() => {
+          console.log('🕐 Debounce delay complete, running coverage check...');
+          checkTherapistCoverageForAddress();
+        }, 500); // 500ms delay to ensure everything is set
       } else {
         console.warn('⚠️ Place selected but no geometry available');
+        if (statusDiv) {
+          statusDiv.innerHTML = '<small style="color: #f59e0b;">⚠️ DEBUG: No location data available for this selection. Please try another address.</small>';
+          statusDiv.className = 'status-message';
+          statusDiv.style.display = 'block';
+        }
       }
     });
     
@@ -1971,45 +1994,29 @@ async function checkTherapistCoverageForAddress() {
   const address = addressInput.value;
   const statusDiv = document.getElementById('address-autocomplete-status');
   if (!address) return;
-  
+
   // Get coordinates from autocomplete or geocode manually
   let lat = addressInput.dataset.lat ? Number(addressInput.dataset.lat) : null;
   let lng = addressInput.dataset.lng ? Number(addressInput.dataset.lng) : null;
-  
-  // If coordinates not set by autocomplete, try to geocode manually
+
+  // Validate coordinates exist before proceeding
   if (!lat || !lng) {
-    try {
-      console.log('🔍 Geocoding address manually:', address);
-      const geocoder = new google.maps.Geocoder();
-      const result = await new Promise((resolve, reject) => {
-        geocoder.geocode({ address: address, componentRestrictions: { country: 'au' } }, (results, status) => {
-          if (status === 'OK' && results && results[0]) {
-            resolve(results[0]);
-          } else {
-            reject(new Error('Geocoding failed'));
-          }
-        });
-      });
-      
-      lat = result.geometry.location.lat();
-      lng = result.geometry.location.lng();
-      
-      // Store coordinates for future use
-      addressInput.dataset.lat = lat;
-      addressInput.dataset.lng = lng;
-      
-      console.log('✅ Address geocoded successfully:', { lat, lng });
-    } catch (error) {
-      console.error('❌ Geocoding failed:', error);
-      statusDiv.textContent = "Unable to verify address location. Please try selecting from the dropdown suggestions.";
-      disableContinueFromAddress();
-      return;
+    console.log('⏳ DEBUG: No coordinates available yet. Lat:', lat, 'Lng:', lng);
+    if (statusDiv) {
+      statusDiv.innerHTML = '<small style="color: #f59e0b;">⏳ DEBUG: Waiting for location coordinates... Please select from dropdown.</small>';
+      statusDiv.className = 'status-message';
+      statusDiv.style.display = 'block';
     }
+    return; // Exit early - wait for user to select from dropdown
   }
-  
-  if (!lat || !lng) {
-    console.error('❌ No coordinates available for address');
-    return;
+
+  console.log('✅ DEBUG: Coordinates validated:', { lat, lng });
+
+  // Show checking status
+  if (statusDiv) {
+    statusDiv.innerHTML = `<small style="color: #3b82f6;">🔄 DEBUG: Checking therapist coverage at (${lat.toFixed(4)}, ${lng.toFixed(4)})...</small>`;
+    statusDiv.className = 'status-message';
+    statusDiv.style.display = 'block';
   }
   // Fetch all active therapists with lat/lng and service_radius_km
   let { data, error } = await window.supabase
@@ -2049,11 +2056,24 @@ async function checkTherapistCoverageForAddress() {
   });
   
   console.log('✅ Coverage check result:', covered);
-  
+
   if (!covered) {
+    const statusDiv = document.getElementById('address-autocomplete-status');
+    if (statusDiv) {
+      statusDiv.innerHTML = `<small style="color: #ef4444;">❌ DEBUG: No therapists available (checked ${data?.length || 0} therapists)</small><br>Sorry... we don't have any therapists available in your area right now.`;
+      statusDiv.className = 'status-message error';
+      statusDiv.style.display = 'block';
+    }
     updateAddressStatus("Sorry... we don't have any therapists available in your area right now.", 'error');
     disableContinueFromAddress();
   } else {
+    const statusDiv = document.getElementById('address-autocomplete-status');
+    const businessName = window.selectedBusinessName || '';
+    if (statusDiv) {
+      statusDiv.innerHTML = `<small style="color: #10b981;">✅ DEBUG: Coverage confirmed! Business: "${businessName}"</small><br>Great news, we have therapists available in your area. Choose your service next.`;
+      statusDiv.className = 'status-message verified';
+      statusDiv.style.display = 'block';
+    }
     updateAddressStatus('Great news, we have therapists available in your area. Choose your service next.', 'verified');
     enableContinueFromAddress();
   }
@@ -2622,8 +2642,9 @@ async function populateBookingSummary() {
     businessName = document.getElementById('businessName').value;
     businessLabel = 'Business Name';
   } else if (bookingType === 'Hotel/Accommodation') {
-    businessName = addressInput.dataset.businessName || '';
+    businessName = addressInput.dataset.businessName || window.selectedBusinessName || '';
     businessLabel = 'Hotel Name';
+    console.log('📍 DEBUG: Retrieved hotel name:', businessName, 'from dataset:', addressInput.dataset.businessName, 'backup:', window.selectedBusinessName);
   }
   const address = addressInput.value;
   const service = window.selectedService?.name || 'Selected Service';
@@ -3270,7 +3291,8 @@ if (confirmBtn) {
     if (bookingType === 'Corporate Event/Office') {
       businessName = document.getElementById('businessName').value;
     } else if (bookingType === 'Hotel/Accommodation') {
-      businessName = addressInput.dataset.businessName || '';
+      businessName = addressInput.dataset.businessName || window.selectedBusinessName || '';
+      console.log('📍 DEBUG (booking creation): Hotel name:', businessName);
     }
         
         const lat = addressInput.dataset.lat ? Number(addressInput.dataset.lat) : null;
