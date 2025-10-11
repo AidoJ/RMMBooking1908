@@ -304,8 +304,10 @@
       </div>
       <div class="step-content">
         <div id="therapistSelection"></div>
-        <button class="btn prev" data-prev="step4">Back</button>
-        <button class="btn next" data-next="step6">Continue</button>
+        <div class="button-group">
+          <button class="btn prev" data-prev="step4">Back</button>
+          <button class="btn next" data-next="step6">Continue</button>
+        </div>
       </div>
     </div>
     <!-- Step 6: Customer Details -->
@@ -384,7 +386,6 @@
       <div class="step-content">
         <!-- Room Details Section -->
         <div class="form-section">
-          <h3>Room Details & Notes</h3>
           <div class="form-group">
             <label for="roomNumber">Room Details & Notes</label>
             <input type="text" id="roomNumber" placeholder="(write N/A if not applicable)" />
@@ -406,9 +407,9 @@
           <div class="form-group">
             <label for="serviceAcknowledgement">Service Acknowledgement</label>
             <select id="serviceAcknowledgement" required>
-              <option value="">Yes or No</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
+              <option value="">Please select your response...</option>
+              <option value="yes">Yes, I acknowledge and accept</option>
+              <option value="no">No, I don't accept, cancel this booking process</option>
             </select>
           </div>
         </div>
@@ -420,9 +421,9 @@
           <div class="form-group">
             <label for="termsAcceptance">Terms & Conditions Acceptance</label>
             <select id="termsAcceptance" required>
-              <option value="">Yes or No</option>
-              <option value="yes">Yes</option>
-              <option value="no">No</option>
+              <option value="">Please select your response...</option>
+              <option value="yes">Yes, I have read and accept Terms & Conditions</option>
+              <option value="no">No, I don't accept, cancel this booking process</option>
             </select>
           </div>
         </div>

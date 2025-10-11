@@ -340,6 +340,7 @@ h1 {
   overflow-x: auto;
   margin-bottom: var(--space-4);
   border-top: none;
+  margin-top: 0;
 }
 
 .progress-bar {
@@ -413,6 +414,7 @@ h1 {
   padding: var(--space-6) var(--space-4);
   text-align: center;
   border-bottom: none;
+  margin-bottom: 0;
 }
 
 .header-content {
@@ -1447,6 +1449,14 @@ input::placeholder {
   color: var(--error);
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Error Messages */
+.error-message {
+  color: #dc2626;
+  font-size: 14px;
+  margin-top: 8px;
+  font-weight: 500;
 }
 
 /* Final Pricing Breakdown */
