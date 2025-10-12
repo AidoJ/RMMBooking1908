@@ -294,10 +294,14 @@ async function handleBookingAccept(booking, therapist, headers) {
     }
 
     try {
-      await sendTherapistConfirmationEmail(booking, therapist);
+      console.log('📧 Attempting to send therapist confirmation email to:', therapist.email);
+      const therapistEmailResult = await sendTherapistConfirmationEmail(booking, therapist);
       console.log('✅ Therapist confirmation email sent successfully');
+      console.log('📧 Email result:', JSON.stringify(therapistEmailResult, null, 2));
     } catch (emailError) {
       console.error('❌ Error sending therapist confirmation email:', emailError);
+      console.error('❌ Error details:', emailError.message);
+      console.error('❌ Error stack:', emailError.stack);
     }
 
     // *** NEW: Send SMS confirmations ***
@@ -770,6 +774,8 @@ async function sendClientConfirmationEmail(booking, therapist) {
 async function sendTherapistConfirmationEmail(booking, therapist) {
   try {
     console.log('📧 Preparing therapist confirmation email...');
+    console.log('📧 Template ID:', EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID);
+    console.log('📧 Therapist email:', therapist.email);
 
     let serviceName = 'Massage Service';
     if (booking.services && booking.services.name) {
@@ -793,11 +799,16 @@ async function sendTherapistConfirmationEmail(booking, therapist) {
       therapist_fee: booking.therapist_fee ? '$' + booking.therapist_fee.toFixed(2) : 'TBD'
     };
 
+    console.log('📧 Template params:', JSON.stringify(templateParams, null, 2));
+
     const result = await sendEmail(EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID, templateParams);
+    console.log('📧 sendEmail result:', JSON.stringify(result, null, 2));
     return result;
 
   } catch (error) {
     console.error('❌ Error in sendTherapistConfirmationEmail:', error);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
     throw error;
   }
 }
