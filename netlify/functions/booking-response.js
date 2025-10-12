@@ -226,6 +226,28 @@ async function handleBookingAccept(booking, therapist, headers) {
   try {
     console.log('✅ Processing booking acceptance:', booking.booking_id, 'by', therapist.first_name, therapist.last_name);
 
+    // CRITICAL: Double-check booking status before updating to prevent race conditions
+    const { data: currentBooking, error: checkError } = await supabase
+      .from('bookings')
+      .select('status, therapist_response_time')
+      .eq('booking_id', booking.booking_id)
+      .single();
+
+    if (checkError) {
+      console.error('❌ Error checking current booking status:', checkError);
+      throw new Error('Failed to verify booking status');
+    }
+
+    if (currentBooking.status === 'confirmed') {
+      console.log('⚠️ Booking already confirmed, skipping update');
+      return await generateSuccessPage(booking, therapist, 'accept');
+    }
+
+    if (currentBooking.status !== 'requested' && currentBooking.status !== 'timeout_reassigned' && currentBooking.status !== 'seeking_alternate') {
+      console.error('❌ Invalid booking status for acceptance:', currentBooking.status);
+      throw new Error('Booking cannot be accepted in current status: ' + currentBooking.status);
+    }
+
     // Update both therapist_id and responding_therapist_id
     const acceptUpdateData = {
       status: 'confirmed',
@@ -240,7 +262,8 @@ async function handleBookingAccept(booking, therapist, headers) {
     const { error: updateError } = await supabase
       .from('bookings')
       .update(acceptUpdateData)
-      .eq('booking_id', booking.booking_id);
+      .eq('booking_id', booking.booking_id)
+      .eq('status', currentBooking.status); // Additional safety check
 
     if (updateError) {
       console.error('❌ Error updating booking status:', updateError);

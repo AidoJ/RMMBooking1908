@@ -108,20 +108,65 @@ exports.handler = async (event, context) => {
 async function handleAccept(booking, therapist) {
   console.log('✅ Processing acceptance for booking:', booking.booking_id);
   
-  // Update booking status
-  const { error: updateError } = await supabase
+  // CRITICAL: Double-check booking status before updating to prevent race conditions
+  const { data: currentBooking, error: checkError } = await supabase
     .from('bookings')
-    .update({
-      status: 'confirmed',
-      therapist_id: therapist.id,
-      therapist_response_time: new Date().toISOString(),
-      responding_therapist_id: therapist.id,
-      updated_at: new Date().toISOString()
-    })
-    .eq('booking_id', booking.booking_id);
+    .select('status, therapist_response_time')
+    .eq('booking_id', booking.booking_id)
+    .single();
+
+  if (checkError) {
+    console.error('❌ Error checking current booking status:', checkError);
+    throw new Error('Failed to verify booking status');
+  }
+
+  if (currentBooking.status === 'confirmed') {
+    console.log('⚠️ Booking already confirmed, skipping update');
+    return;
+  }
+
+  if (currentBooking.status !== 'requested' && currentBooking.status !== 'timeout_reassigned' && currentBooking.status !== 'seeking_alternate') {
+    console.error('❌ Invalid booking status for acceptance:', currentBooking.status);
+    throw new Error('Booking cannot be accepted in current status: ' + currentBooking.status);
+  }
+
+  // Update booking status with additional safety check and retry logic
+  let updateError = null;
+  let retryCount = 0;
+  const maxRetries = 3;
+  
+  while (retryCount < maxRetries) {
+    const { error: error } = await supabase
+      .from('bookings')
+      .update({
+        status: 'confirmed',
+        therapist_id: therapist.id,
+        therapist_response_time: new Date().toISOString(),
+        responding_therapist_id: therapist.id,
+        updated_at: new Date().toISOString()
+      })
+      .eq('booking_id', booking.booking_id)
+      .eq('status', currentBooking.status); // Additional safety check
+
+    if (!error) {
+      console.log('✅ Booking status updated successfully on attempt', retryCount + 1);
+      break;
+    }
+    
+    retryCount++;
+    console.log(`❌ Error updating booking status (attempt ${retryCount}):`, error);
+    
+    if (retryCount < maxRetries) {
+      console.log('🔄 Retrying in 1 second...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } else {
+      updateError = error;
+    }
+  }
 
   if (updateError) {
-    throw new Error('Failed to update booking status');
+    console.error('❌ Failed to update booking status after', maxRetries, 'attempts:', updateError);
+    throw new Error('Failed to update booking status after multiple attempts');
   }
 
   // Add status history

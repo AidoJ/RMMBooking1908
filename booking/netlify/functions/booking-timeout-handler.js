@@ -80,13 +80,16 @@ async function findBookingsNeedingTimeout(timeoutMinutes) {
 
     // FIXED: Find bookings for FIRST timeout (status = 'requested' and past first timeout AND no therapist response)
     // EXCLUDE quote-based bookings (BK-Q pattern) as they follow quote workflow
+    // CRITICAL: Also exclude bookings that might be in the process of being accepted (updated_at within last 2 minutes)
+    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
     const { data: firstTimeoutBookings, error: error1 } = await supabase
       .from('bookings')
       .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
       .eq('status', 'requested')
       .is('therapist_response_time', null) // IMPORTANT: Only if therapist hasn't responded yet
       .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
-      .lt('created_at', firstTimeoutCutoff.toISOString());
+      .lt('created_at', firstTimeoutCutoff.toISOString())
+      .or('updated_at.is.null,updated_at.lt.' + twoMinutesAgo.toISOString()); // Exclude recently updated bookings
 
     if (error1) {
       console.error('❌ Error fetching first timeout bookings:', error1);
