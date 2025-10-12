@@ -456,8 +456,8 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
   try {
     // Generate Accept/Decline URLs
     const baseUrl = process.env.URL || 'https://your-site.netlify.app';
-    const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking=' + booking.booking_id + '&therapist=' + therapist.id;
-    const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking=' + booking.booking_id + '&therapist=' + therapist.id;
+    const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
+    const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
 
     const templateParams = {
       to_email: therapist.email,
