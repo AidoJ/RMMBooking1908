@@ -1459,6 +1459,17 @@ input::placeholder {
   font-weight: 500;
 }
 
+/* Confirmation Loading Warning */
+.warning-message {
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.1);
+}
+
 /* Final Pricing Breakdown */
 .final-pricing-breakdown {
   background: var(--gray-50);
