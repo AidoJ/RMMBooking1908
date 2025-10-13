@@ -3235,21 +3235,22 @@ if (customerEmailInput) {
     emailStatus.innerHTML = '<span style="color:#007e8c;">⏳ Checking email...</span>';
     
     try {
-      const { data: customer, error } = await window.supabase
-        .from('customers')
-        .select('id, first_name, last_name, phone, customer_code, is_guest')
-        .eq('email', email)
-        .maybeSingle();
-      
-      if (error) {
-        console.error('Error fetching customer:', error);
-        emailStatus.innerHTML = '<span style="color:#d32f2f;">❌ Error checking email</span>';
-        return;
+      // Use Netlify function for customer lookup (bypasses RLS)
+      const response = await fetch('/.netlify/functions/customer-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to check customer');
       }
+
+      const result = await response.json();
       
-      if (customer) {
+      if (result.found && result.customer) {
         // Existing customer found
-        showExistingCustomer(customer);
+        showExistingCustomer(result.customer);
       } else {
         // New customer
         showNewCustomer();

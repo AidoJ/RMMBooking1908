@@ -171,6 +171,10 @@ $$ LANGUAGE sql SECURITY DEFINER;
 -- STEP 4: CUSTOMERS TABLE POLICIES
 -- ============================================================================
 
+-- NOTE: Customer lookups are now handled via Netlify function (customer-lookup.js)
+-- which uses service role key and bypasses RLS. This keeps customer data secure
+-- while allowing the booking form to check for existing customers.
+
 -- Customers can select their own data
 CREATE POLICY "customers_select_own"
 ON public.customers
@@ -205,14 +209,13 @@ USING (public.is_admin());
 -- STEP 5: THERAPIST PROFILES TABLE POLICIES
 -- ============================================================================
 
--- Public can select basic therapist profiles (for booking selection)
--- But sensitive fields should be protected at column level
+-- Public can select active therapist profiles (for booking selection)
+-- This allows the booking form to show therapists without authentication
 CREATE POLICY "therapist_profiles_select_public"
 ON public.therapist_profiles
 FOR SELECT
 USING (
   is_active = true -- Only active therapists
-  AND available_for_booking = true -- Only available therapists
 );
 
 -- Therapists can select their own full profile
