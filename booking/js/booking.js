@@ -3601,17 +3601,36 @@ if (confirmBtn) {
         payload.status = 'requested'; // Waiting for therapist acceptance
         payload.payment_intent_id = authorizedPaymentIntentId;
         
-        // Insert booking into Supabase with card authorized
-    const { data, error } = await window.supabase.from('bookings').insert([payload]).select();
-    console.log('Supabase insert result:', { data, error });
+        // Insert booking using Netlify function (bypasses RLS)
+        console.log('📝 Creating booking via Netlify function...');
+        const bookingResponse = await fetch('/.netlify/functions/create-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!bookingResponse.ok) {
+          const errorData = await bookingResponse.json();
+          console.error('❌ Error from create-booking function:', errorData);
+          alert('There was an error submitting your booking. Please try again.\n' + (errorData.error || ''));
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Confirm and Request Booking';
+          return;
+        }
+
+        const bookingResult = await bookingResponse.json();
+        console.log('Booking creation result:', bookingResult);
         
-    if (error) {
-      console.error('Supabase insert error:', error);
-      alert('There was an error submitting your booking. Please try again.\n' + (error.message || ''));
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = 'Confirm and Request Booking';
-      return;
-    }
+        if (!bookingResult.success) {
+          console.error('❌ Booking creation failed:', bookingResult);
+          alert('There was an error submitting your booking. Please try again.');
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Confirm and Request Booking';
+          return;
+        }
+
+        const data = [bookingResult.booking];
+        const error = null;
 
     if (!data || data.length === 0) {
       // Remove status message
