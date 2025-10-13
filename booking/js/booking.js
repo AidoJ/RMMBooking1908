@@ -3113,81 +3113,51 @@ async function generateSequentialQuoteId() {
 }
 
 // Add customer registration logic
+// Add customer registration logic - Uses Netlify function to bypass RLS
 async function getOrCreateCustomerId(firstName, lastName, email, phone, isGuest = false) {
   if (!email) return null;
   
-  // Check if customer exists by email
-  const { data: existing, error: fetchError } = await window.supabase
-    .from('customers')
-    .select('id, customer_code, first_name, last_name, is_guest')
-    .eq('email', email)
-    .maybeSingle();
+  console.log('🔍 Getting or creating customer via Netlify function...');
+  
+  try {
+    // Use Netlify function to create/get customer (bypasses RLS)
+    const response = await fetch('/.netlify/functions/create-customer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        phone: phone,
+        isGuest: isGuest
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('❌ Error from create-customer function:', errorData);
+      alert('There was an error with your customer details. Please try again.');
+      return null;
+    }
+
+    const result = await response.json();
     
-  if (fetchError) {
-    console.error('Error fetching customer:', fetchError);
-    return null;
-  }
-  
-  if (existing && existing.id) {
-    // Customer exists - return existing ID
-    window.lastCustomerCode = existing.customer_code || '';
-    console.log('✅ Existing customer found:', existing);
-    return existing.id;
-  }
-  
-  // Customer doesn't exist - create new customer
-  let customer_code;
-  
-  if (isGuest) {
-    // Generate guest code using sequential numbering
-    const { data: existing, error } = await window.supabase
-      .from('customers')
-      .select('customer_code')
-      .ilike('customer_code', 'GUEST%');
-    
-    let maxNum = 0;
-    if (existing && existing.length > 0) {
-      existing.forEach(row => {
-        const match = row.customer_code && row.customer_code.match(/GUEST(\d{4})$/);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxNum) maxNum = num;
-        }
-      });
+    if (result.success && result.customer_id) {
+      window.lastCustomerCode = result.customer_code || '';
+      console.log(result.is_new ? '✅ New customer created:' : '✅ Existing customer found:', result.customer_code);
+      return result.customer_id;
+    } else {
+      console.error('❌ Failed to get customer ID:', result);
+      return null;
     }
     
-    const nextNum = (maxNum + 1).toString().padStart(4, '0');
-    customer_code = `GUEST${nextNum}`;
-  } else {
-    // Generate regular customer code based on surname
-    const surname = lastName || firstName || 'CUST';
-    customer_code = await generateCustomerCode(surname);
-  }
-  
-  // Insert new customer with correct column names
-  const { data: inserted, error: insertError } = await window.supabase
-    .from('customers')
-    .insert([{ 
-      first_name: firstName, 
-      last_name: lastName, 
-      email, 
-      phone, 
-      customer_code,
-      is_guest: isGuest
-    }])
-    .select('id, customer_code')
-    .maybeSingle();
-    
-  if (insertError) {
-    console.error('Error inserting customer:', insertError);
-    alert('There was an error registering your customer details. Please try again.');
+  } catch (error) {
+    console.error('❌ Error in getOrCreateCustomerId:', error);
+    alert('There was an error with your customer details. Please try again.');
     return null;
   }
-  
-  window.lastCustomerCode = inserted?.customer_code || '';
-  console.log('✅ New customer created:', inserted);
-  return inserted?.id || null;
 }
+
 
 // Show customer_code in Customer Details step after registration
 const customerDetailsStep = document.getElementById('step6');
