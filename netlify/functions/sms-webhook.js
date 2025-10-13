@@ -1,8 +1,15 @@
 const { createClient } = require('@supabase/supabase-js');
 const twilio = require('twilio');
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://dcukfurezlkagvvwgsgr.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjdWtmdXJlemxrYWd2dndnc2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5MjM0NjQsImV4cCI6MjA2NzQ5OTQ2NH0.ThXQKNHj0XpSkPa--ghmuRXFJ7nfcf0YVlH0liHofFw';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Service role bypasses RLS
+
+// Validate required environment variables
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY');
+  throw new Error('Configuration error: Missing Supabase service role credentials');
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
