@@ -136,6 +136,18 @@ function buildQuery(operation, table, queryParams = {}) {
     }
   }
 
+  // Apply OR filter
+  if (queryParams.or) {
+    query = query.or(queryParams.or);
+  }
+
+  // Apply NOT filters
+  if (queryParams.not && Array.isArray(queryParams.not)) {
+    for (const notFilter of queryParams.not) {
+      query = query.not(notFilter.column, notFilter.operator, notFilter.value);
+    }
+  }
+
   // Apply ordering
   if (queryParams.order) {
     for (const orderClause of queryParams.order) {

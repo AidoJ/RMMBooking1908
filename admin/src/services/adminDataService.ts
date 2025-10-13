@@ -11,7 +11,7 @@
 const ADMIN_DATA_ENDPOINT = '/.netlify/functions/admin-data';
 
 interface QueryBuilder {
-  select: (columns?: string) => QueryBuilder;
+  select: (columns?: string, options?: { count?: 'exact' | 'planned' | 'estimated' }) => QueryBuilder;
   insert: (data: any) => QueryBuilder;
   update: (data: any) => QueryBuilder;
   delete: () => QueryBuilder;
@@ -27,12 +27,14 @@ interface QueryBuilder {
   is: (column: string, value: any) => QueryBuilder;
   in: (column: string, value: any[]) => QueryBuilder;
   contains: (column: string, value: any) => QueryBuilder;
+  or: (filters: string) => QueryBuilder;
+  not: (column: string, operator: string, value: any) => QueryBuilder;
   order: (column: string, options?: { ascending?: boolean }) => QueryBuilder;
   limit: (count: number) => QueryBuilder;
   range: (from: number, to: number) => QueryBuilder;
-  single: () => Promise<{ data: any; error: any; }>;
-  maybeSingle: () => Promise<{ data: any; error: any; }>;
-  then: (resolve: (value: { data: any; error: any; }) => void, reject?: (reason: any) => void) => Promise<{ data: any; error: any; }>;
+  single: () => Promise<{ data: any; error: any; count: any; }>;
+  maybeSingle: () => Promise<{ data: any; error: any; count: any; }>;
+  then: (resolve: (value: { data: any; error: any; count: any; }) => void, reject?: (reason: any) => void) => Promise<{ data: any; error: any; count: any; }>;
 }
 
 class AdminQueryBuilder implements QueryBuilder {
@@ -44,9 +46,12 @@ class AdminQueryBuilder implements QueryBuilder {
     this.table = table;
   }
 
-  select(columns: string = '*'): QueryBuilder {
+  select(columns: string = '*', options?: { count?: 'exact' | 'planned' | 'estimated' }): QueryBuilder {
     this.operation = 'select';
     this.queryParams.select = columns;
+    if (options?.count) {
+      this.queryParams.count = options.count;
+    }
     return this;
   }
 
@@ -139,6 +144,19 @@ class AdminQueryBuilder implements QueryBuilder {
     return this;
   }
 
+  or(filters: string): QueryBuilder {
+    // Store OR filter as string (will be parsed by server)
+    this.queryParams.or = filters;
+    return this;
+  }
+
+  not(column: string, operator: string, value: any): QueryBuilder {
+    // Store NOT filter
+    if (!this.queryParams.not) this.queryParams.not = [];
+    this.queryParams.not.push({ column, operator, value });
+    return this;
+  }
+
   order(column: string, options?: { ascending?: boolean }): QueryBuilder {
     if (!this.queryParams.order) this.queryParams.order = [];
     this.queryParams.order.push({
@@ -158,21 +176,21 @@ class AdminQueryBuilder implements QueryBuilder {
     return this;
   }
 
-  single(): Promise<{ data: any; error: any; }> {
+  single(): Promise<{ data: any; error: any; count: any; }> {
     this.queryParams.single = true;
     return this.execute();
   }
 
-  maybeSingle(): Promise<{ data: any; error: any; }> {
+  maybeSingle(): Promise<{ data: any; error: any; count: any; }> {
     this.queryParams.maybeSingle = true;
     return this.execute();
   }
 
-  then(resolve: (value: { data: any; error: any; }) => void, reject?: (reason: any) => void): Promise<{ data: any; error: any; }> {
+  then(resolve: (value: { data: any; error: any; count: any; }) => any, reject?: (reason: any) => any): Promise<any> {
     return this.execute().then(resolve, reject);
   }
 
-  private async execute(): Promise<{ data: any; error: any; }> {
+  private async execute(): Promise<{ data: any; error: any; count: any; }> {
     try {
       // Get JWT token from localStorage
       const token = localStorage.getItem('adminToken');
@@ -180,7 +198,8 @@ class AdminQueryBuilder implements QueryBuilder {
       if (!token) {
         return {
           data: null,
-          error: { message: 'Not authenticated', code: 'UNAUTHENTICATED' }
+          error: { message: 'Not authenticated', code: 'UNAUTHENTICATED' },
+          count: null
         };
       }
 
@@ -210,33 +229,38 @@ class AdminQueryBuilder implements QueryBuilder {
           
           return {
             data: null,
-            error: { message: result.error, code: 'TOKEN_EXPIRED' }
+            error: { message: result.error, code: 'TOKEN_EXPIRED' },
+            count: null
           };
         }
 
         return {
           data: null,
-          error: { message: result.error || 'Request failed', details: result.details }
+          error: { message: result.error || 'Request failed', details: result.details },
+          count: null
         };
       }
 
       if (!result.success) {
         return {
           data: null,
-          error: { message: result.error, details: result.details }
+          error: { message: result.error, details: result.details },
+          count: null
         };
       }
 
       return {
         data: result.data,
-        error: null
+        error: null,
+        count: result.count || null
       };
 
     } catch (error: any) {
       console.error('Admin data service error:', error);
       return {
         data: null,
-        error: { message: error.message || 'Network error' }
+        error: { message: error.message || 'Network error' },
+        count: null
       };
     }
   }
