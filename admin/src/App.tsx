@@ -18,13 +18,14 @@ import routerBindings, {
   NavigateToResource,
   UnsavedChangesNotifier,
 } from "@refinedev/react-router";
-import { dataProvider, liveProvider } from "@refinedev/supabase";
+import { liveProvider } from "@refinedev/supabase";
+import dataProvider from "./dataProvider";
 import { App as AntdApp } from "antd";
 import { BrowserRouter, Outlet, Route, Routes, useParams } from "react-router";
 import authProvider from "./authProvider";
 import { Header } from "./components/header";
 import { ColorModeContextProvider } from "./contexts/color-mode";
-import { supabaseClient } from "./utility";
+import { realSupabaseClient } from "./utility/supabaseClient";
 
 // Import the booking management components
 import { EnhancedBookingList } from "./pages/bookings/list";
@@ -92,8 +93,8 @@ function App() {
           <AntdApp>
             <DevtoolsProvider>
               <Refine
-                dataProvider={dataProvider(supabaseClient)}
-                liveProvider={liveProvider(supabaseClient)}
+                dataProvider={dataProvider}
+                liveProvider={liveProvider(realSupabaseClient)}
                 authProvider={authProvider}
                 routerProvider={routerBindings}
                 notificationProvider={useNotificationProvider}
