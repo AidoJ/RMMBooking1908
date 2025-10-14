@@ -770,7 +770,7 @@ export const EnhancedBookingList = () => {
       },
     },
     // ADMIN-ONLY COLUMN: Show separate "Therapist Fee" column for admins (not therapists)
-    ...(canAccess(userRole, 'canViewAllEarnings') && !isTherapist(userRole) ? [{
+    ...(isAdmin(userRole) && !isTherapist(userRole) ? [{
       title: 'Therapist Fee',
       dataIndex: 'therapist_fee',
       key: 'therapist_fee',

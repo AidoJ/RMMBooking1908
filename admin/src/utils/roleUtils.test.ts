@@ -56,8 +56,6 @@ describe('roleUtils', () => {
       expect(permissions.canViewOwnBookings).toBe(true);
       expect(permissions.canEditOwnProfile).toBe(true);
       expect(permissions.canManageAvailability).toBe(true);
-      expect(permissions.canViewOwnEarnings).toBe(true);
-      expect(permissions.canViewAllEarnings).toBe(false);
       expect(permissions.canAccessSystemSettings).toBe(false);
       expect(permissions.canCreateBookings).toBe(false);
     });

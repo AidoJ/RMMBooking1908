@@ -31,8 +31,6 @@ export interface RolePermissions {
   canEditAllTherapists: boolean;
   canEditOwnProfile: boolean;
   canManageAvailability: boolean;
-  canViewOwnEarnings: boolean;
-  canViewAllEarnings: boolean;
   
   // Customer management
   canViewCustomers: boolean;
@@ -74,8 +72,6 @@ export const getRolePermissions = (role: UserRole | undefined): RolePermissions 
     canEditAllTherapists: false,
     canEditOwnProfile: false,
     canManageAvailability: false,
-    canViewOwnEarnings: false,
-    canViewAllEarnings: false,
     canViewCustomers: false,
     canViewAllCustomers: false,
     canEditCustomers: false,
@@ -112,8 +108,6 @@ export const getRolePermissions = (role: UserRole | undefined): RolePermissions 
         canEditAllTherapists: true,
         canEditOwnProfile: true,
         canManageAvailability: true,
-        canViewOwnEarnings: true,
-        canViewAllEarnings: true,
         canViewCustomers: true,
         canViewAllCustomers: true,
         canEditCustomers: true,
@@ -149,8 +143,6 @@ export const getRolePermissions = (role: UserRole | undefined): RolePermissions 
         canEditAllTherapists: true,
         canEditOwnProfile: true,
         canManageAvailability: true,
-        canViewOwnEarnings: true,
-        canViewAllEarnings: true,
         canViewCustomers: true,
         canViewAllCustomers: true,
         canEditCustomers: true,
@@ -186,8 +178,6 @@ export const getRolePermissions = (role: UserRole | undefined): RolePermissions 
         canEditAllTherapists: false,
         canEditOwnProfile: true,
         canManageAvailability: true,
-        canViewOwnEarnings: true,
-        canViewAllEarnings: false,
         canViewCustomers: false,
         canViewAllCustomers: false,
         canEditCustomers: false,

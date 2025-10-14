@@ -405,7 +405,7 @@ export const Dashboard = () => {
       )
     },
     // Only show separate therapist fee column for admins (not therapists)
-    ...(canAccess(userRole, 'canViewAllEarnings') && !isTherapist(userRole) ? [{
+    ...(isAdmin(userRole) && !isTherapist(userRole) ? [{
       title: 'Therapist Fee',
       dataIndex: 'therapist_fee',
       key: 'therapist_fee',
@@ -646,7 +646,7 @@ export const Dashboard = () => {
       )}
 
       {/* Admin-specific Statistics - UNCHANGED (admin view only) */}
-      {canAccess(userRole, 'canViewAllEarnings') && (
+      {isAdmin(userRole) && (
         <>
           {/* Therapist Fees and Margins */}
           <Row gutter={16} style={{ marginBottom: 24 }}>

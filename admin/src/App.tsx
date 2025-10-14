@@ -66,11 +66,6 @@ import { DiscountCodesList, DiscountCodesCreate, DiscountCodesEdit, DiscountCode
 // Import the gift cards management components
 import { GiftCardsList, GiftCardsCreate, GiftCardsEdit, GiftCardsShow } from "./pages/gift-cards";
 
-// Import the therapist payments management component
-import { TherapistPaymentsList } from "./pages/therapist-payments/list";
-
-// Import the therapist earnings component
-import { TherapistEarnings } from "./pages/therapist-earnings";
 
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
@@ -154,14 +149,6 @@ function App() {
                     },
                   },
                   {
-                    name: "therapist_payments",
-                    list: "/therapist-payments",
-                    meta: {
-                      label: "Therapist Payments",
-                      icon: "💰",
-                    },
-                  },
-                  {
                     name: "calendar",
                     list: "/calendar",
                     meta: {
@@ -188,15 +175,6 @@ function App() {
                     meta: {
                       label: "My Profile",
                       icon: "👤",
-                    },
-                  },
-                  // Therapist-only earnings portal
-                  {
-                    name: "my-earnings",
-                    list: "/my-earnings",
-                    meta: {
-                      label: "My Earnings",
-                      icon: "💰",
                     },
                   },
                   {
@@ -315,8 +293,6 @@ function App() {
                       <Route path="show/:id" element={<GiftCardsShow />} />
                     </Route>
                     
-                    {/* Therapist Payments Management */}
-                    <Route path="/therapist-payments" element={<TherapistPaymentsList />} />
                     
                     {/* Calendar */}
                     <Route path="/calendar" element={<CalendarBookingManagement />} />
@@ -332,8 +308,6 @@ function App() {
                     {/* Therapist Profile Management (Therapist-only) */}
                     <Route path="/my-profile" element={<TherapistProfileManagement />} />
                     
-                    {/* Therapist Earnings (Therapist-only) */}
-                    <Route path="/my-earnings" element={<TherapistEarnings />} />
                     
                     {/* Customer Management */}
                     <Route path="/customers">
