@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "fs-extra": "^11.1.1",
+    "@supabase/supabase-js": "^2.39.3",
     "stripe": "^14.25.0",
     "twilio": "^4.19.3"
   },
