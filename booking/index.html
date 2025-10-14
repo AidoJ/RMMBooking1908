@@ -63,7 +63,7 @@
           </div>
           
           <div class="button-group">
-            <button class="btn btn-continue" onclick="proceedFromStep0()">Continue →</button>
+            <button class="btn btn-continue" onclick="proceedFromStep0()">Continue</button>
           </div>
         </div>
       </div>
@@ -85,8 +85,8 @@
         <div id="address-autocomplete-status" class="status-message"></div>
         <!-- Step 1 Navigation Buttons -->
         <div class="button-group">
-          <button class="btn btn-back" onclick="showStep('step0')">← Back</button>
-          <button class="btn btn-continue" onclick="validateAndContinueFromStep1()">Continue →</button>
+          <button class="btn btn-back" onclick="showStep('step0')">Back</button>
+          <button class="btn btn-continue" onclick="validateAndContinueFromStep1()">Continue</button>
         </div>
       </div>
     </div>
@@ -119,8 +119,8 @@
         
         <!-- Step 2 Navigation Buttons -->
         <div class="button-group">
-          <button class="btn btn-back" onclick="showStep('step1')">← Back</button>
-          <button class="btn btn-continue" onclick="validateAndContinueFromStep2()">Continue →</button>
+          <button class="btn btn-back" onclick="showStep('step1')">Back</button>
+          <button class="btn btn-continue" onclick="validateAndContinueFromStep2()">Continue</button>
         </div>
       </div>
     </div>
@@ -171,8 +171,8 @@
     <!-- Step 4: Date and Time -->
     <div id="step4" class="step">
       <div class="step-header">
-        <h2>Date & Time</h2>
-        <p class="step-description">Choose when you'd like your massage</p>
+        <h2>Your preferred time</h2>
+        <p class="step-description">Choose your preferred date and time for your service, and specify parking options for our team.</p>
       </div>
       <div class="step-content">
         <div class="form-group horizontal">
@@ -201,7 +201,7 @@
 
         <!-- Discount & Gift Card Section -->
         <div id="discountSection" class="discount-section" style="display:none;">
-          <div class="discount-title">🎁 Apply Discounts & Gift Cards</div>
+          <div class="discount-title">Apply Discounts & Gift Cards</div>
           
           <!-- Promo Code -->
           <div class="form-group">
@@ -247,7 +247,7 @@
 
         <!-- Discount & Gift Card Section -->
         <div id="discountSection" class="discount-section" style="display:none;">
-          <div class="discount-title">🎁 Apply Discounts & Gift Cards</div>
+          <div class="discount-title">Apply Discounts & Gift Cards</div>
           
           <!-- Promo Code -->
           <div class="form-group">
@@ -299,13 +299,15 @@
     <!-- Step 5: Therapist Selection -->
     <div id="step5" class="step">
       <div class="step-header">
-        <h2>Therapist Selection</h2>
-        <p class="step-description">Select your preferred therapist from our available team</p>
+        <h2>Select your preferred therapist</h2>
+        <p class="step-description">Based on your preferences and service time, we have the following team available for you to choose from</p>
       </div>
       <div class="step-content">
         <div id="therapistSelection"></div>
-        <button class="btn prev" data-prev="step4">Back</button>
-        <button class="btn next" data-next="step6">Continue</button>
+        <div class="button-group">
+          <button class="btn prev" data-prev="step4">Back</button>
+          <button class="btn next" data-next="step6">Continue</button>
+        </div>
       </div>
     </div>
     <!-- Step 6: Customer Details -->
@@ -353,6 +355,16 @@
           <input type="tel" id="customerPhone" placeholder="Phone Number" required />
         </div>
         
+        <!-- Marketing Subscription Checkbox -->
+        <div class="form-group" style="margin-top: 20px; padding: 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px;">
+          <label style="display: flex; align-items: flex-start; cursor: pointer; font-weight: 400; color: #0c4a6e;">
+            <input type="checkbox" id="marketingConsent" value="yes" style="margin-right: 12px; margin-top: 4px; width: 18px; height: 18px; cursor: pointer;" />
+            <span style="font-size: 14px; line-height: 1.5;">
+              I'd like to receive special offers, wellness tips, and exclusive promotions from Rejuvenators via email. You can unsubscribe at any time.
+            </span>
+          </label>
+        </div>
+        
         <!-- Customer code display -->
         <div id="customerCodeDisplay" style="display:none; background:#f0f8ff; border:1px solid #007e8c; padding:10px; border-radius:5px; margin-top:10px;">
           <div style="font-weight:600; color:#007e8c;">Your Customer ID:</div>
@@ -368,24 +380,24 @@
     <!-- Step 7: Room and Notes -->
     <div id="step7" class="step">
       <div class="step-header">
-        <h2>Room Details & Notes</h2>
-        <p class="step-description">Tell us about the room and any additional information for your therapist</p>
+        <h2>Tell us about your location</h2>
+        <p class="step-description">Add any details that will help your therapist find and access your location, such as room number, gate code, or parking instructions, as well as additional notes for your service.</p>
       </div>
       <div class="step-content">
         <!-- Room Details Section -->
         <div class="form-section">
-          <h3>📍 Room Information</h3>
+       <h3> Room Details and Notes</h3>
           <div class="form-group">
             <label for="roomNumber">Room Number</label>
-            <input type="text" id="roomNumber" placeholder="e.g., Room 101, Apartment 2B (write N/A if not applicable)" />
+            <input type="text" id="roomNumber" placeholder="e.g. Room 101, Apartment 2B (write N/A if not applicable)" />
           </div>
           <div class="form-group">
             <label for="bookerName">Name of person who booked the room</label>
-            <input type="text" id="bookerName" placeholder="Full name of the person who made this booking (write N/A if not applicable)" />
+            <input type="text" id="bookerName" placeholder="(write N/A if not applicable)" />
           </div>
           <div class="form-group">
             <label for="notes">Additional Notes (Optional)</label>
-            <textarea id="notes" rows="4" placeholder="e.g., Parking instructions, access codes, special requirements, medical conditions, preferred pressure, etc."></textarea>
+            <textarea id="notes" rows="4" placeholder="e.g., Parking instructions, access codes, special requirements, medical conditions, preferred pressure, etc." style="font-size: 13px;"></textarea>
           </div>
         </div>
 
@@ -397,8 +409,8 @@
             <label for="serviceAcknowledgement">Service Acknowledgement</label>
             <select id="serviceAcknowledgement" required>
               <option value="">Please select your response...</option>
-              <option value="yes">YES I acknowledge and accept</option>
-              <option value="no">No I don't accept, cancel this booking process</option>
+              <option value="yes">Yes, I acknowledge and accept</option>
+              <option value="no">No, I don't accept, cancel this booking process</option>
             </select>
           </div>
         </div>
@@ -411,8 +423,8 @@
             <label for="termsAcceptance">Terms & Conditions Acceptance</label>
             <select id="termsAcceptance" required>
               <option value="">Please select your response...</option>
-              <option value="yes">YES, I have read and accept Terms & Conditions</option>
-              <option value="no">No I don't accept, cancel this booking process</option>
+              <option value="yes">Yes, I have read and accept Terms & Conditions</option>
+              <option value="no">No, I don't accept, cancel this booking process</option>
             </select>
           </div>
         </div>
@@ -443,12 +455,28 @@
           <div class="card-input-container">
             <label for="card-element">Card Details</label>
             <div id="card-element" class="card-element"></div>
+            <div id="card-errors" style="color: #dc2626; font-size: 14px; margin-top: 8px;"></div>
+          </div>
+
+          <!-- Card Authorization Button -->
+          <div style="margin-top: 24px; text-align: center;">
+            <button id="authorizeCardBtn" class="btn primary" style="min-width: 250px; font-weight: 600; font-size: 16px;">
+              🔒 Authorize Card
+            </button>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">
+              We'll hold the funds but won't charge until your booking is confirmed
+            </p>
+          </div>
+
+          <!-- Card Authorization Status -->
+          <div id="cardAuthStatus" style="display: none; margin-top: 20px; padding: 16px; border-radius: 8px; text-align: center;">
+            <!-- Status will be populated by JavaScript -->
           </div>
         </div>
         
         <div class="button-group">
           <button class="btn prev" data-prev="step7">Back</button>
-          <button class="btn next primary" data-next="step9">Proceed to Booking Request</button>
+          <button id="proceedToSummaryBtn" class="btn next primary" data-next="step9" disabled style="opacity: 0.5; cursor: not-allowed;">Proceed to Booking Request</button>
         </div>
       </div>
     </div>
@@ -476,6 +504,12 @@
         <!-- Loading state while waiting for confirmation -->
         <div id="confirmationLoading" class="confirmation-loading">
           <div class="spinner"></div>
+          <div class="warning-message">
+            <h3 style="color: #dc2626; margin-bottom: 1rem;">⚠️ IMPORTANT</h3>
+            <p style="font-weight: 600; font-size: 18px; color: #dc2626; margin-bottom: 1rem;">
+              Do not close this page or click the back button until you see confirmation messages
+            </p>
+          </div>
           <p>Processing your booking request...</p>
           <p class="loading-subtext">Please wait while we confirm your booking details. This page will update automatically.</p>
         </div>
@@ -485,10 +519,15 @@
 
         <!-- Success message and next steps -->
         <div id="confirmationSuccess" class="confirmation-success" style="display: none;">
-          <div class="success-icon">✓</div>
           <div id="confirmationMessages" class="confirmation-messages"></div>
 
           <div class="button-group" style="margin-top: 2rem;">
+            <button class="btn prev" onclick="window.close()">
+              Close Page
+            </button>
+            <button class="btn" onclick="window.location.reload()">
+              Make Another Booking
+            </button>
             <button class="btn btn-continue" onclick="window.location.href='https://rejuvenators.com'">
               Visit Our Website →
             </button>

@@ -97,45 +97,103 @@ exports.handler = async (event, context) => {
 
   } catch (error) {
     console.error('❌ Error processing therapist response:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error details:', JSON.stringify(error, null, 2));
     return {
       statusCode: 500,
       headers,
-      body: generateErrorPage('An error occurred processing your response')
+      body: generateErrorPage(`An error occurred: ${error.message}`)
     };
   }
 };
 
 async function handleAccept(booking, therapist) {
-  console.log('✅ Processing acceptance for booking:', booking.booking_id);
+  console.log('✅ [START] Processing acceptance for booking:', booking.booking_id);
+  console.log('📊 Booking status:', booking.status);
+  console.log('👤 Therapist:', therapist.first_name, therapist.last_name, therapist.id);
   
-  // Update booking status
-  const { error: updateError } = await supabase
+  // CRITICAL: Double-check booking status before updating to prevent race conditions
+  console.log('🔍 [STEP 1] Checking current booking status...');
+  const { data: currentBooking, error: checkError } = await supabase
     .from('bookings')
-    .update({
-      status: 'confirmed',
-      therapist_id: therapist.id,
-      therapist_response_time: new Date().toISOString(),
-      responding_therapist_id: therapist.id,
-      updated_at: new Date().toISOString()
-    })
-    .eq('booking_id', booking.booking_id);
+    .select('status, therapist_response_time')
+    .eq('booking_id', booking.booking_id)
+    .single();
+
+  if (checkError) {
+    console.error('❌ Error checking current booking status:', checkError);
+    throw new Error('Failed to verify booking status: ' + checkError.message);
+  }
+
+  console.log('📊 Current booking status:', currentBooking.status);
+  console.log('⏰ Current response time:', currentBooking.therapist_response_time);
+
+  if (currentBooking.status === 'confirmed') {
+    console.log('⚠️ Booking already confirmed, skipping update');
+    return;
+  }
+
+  if (currentBooking.status !== 'requested' && currentBooking.status !== 'timeout_reassigned' && currentBooking.status !== 'seeking_alternate') {
+    console.error('❌ Invalid booking status for acceptance:', currentBooking.status);
+    throw new Error('Booking cannot be accepted in current status: ' + currentBooking.status);
+  }
+
+  // Update booking status
+  console.log('🔄 [STEP 2] Updating booking status to confirmed...');
+  const updateData = {
+    status: 'confirmed',
+    therapist_id: therapist.id,
+    therapist_response_time: new Date().toISOString(),
+    responding_therapist_id: therapist.id,
+    updated_at: new Date().toISOString()
+  };
+  console.log('📝 Update data:', JSON.stringify(updateData, null, 2));
+
+  const { data: updateResult, error: updateError } = await supabase
+    .from('bookings')
+    .update(updateData)
+    .eq('booking_id', booking.booking_id)
+    .eq('status', currentBooking.status) // Additional safety check
+    .select();
 
   if (updateError) {
-    throw new Error('Failed to update booking status');
+    console.error('❌ Database update failed:', updateError);
+    console.error('❌ Update error details:', JSON.stringify(updateError, null, 2));
+    throw new Error('Failed to update booking status: ' + updateError.message);
   }
+
+  console.log('✅ [STEP 2 COMPLETE] Booking status updated successfully');
+  console.log('📊 Update result:', JSON.stringify(updateResult, null, 2));
 
   // Add status history
-  await addStatusHistory(booking.id, 'confirmed', therapist.id, 'Accepted via SMS link');
-
-  // Send confirmation SMS to therapist
-  await sendConfirmationSMS(therapist.phone, booking, therapist, 'accept');
-
-  // Send SMS to customer
-  if (booking.customer_phone) {
-    await sendCustomerNotification(booking.customer_phone, booking, therapist, 'accept');
+  console.log('📝 [STEP 3] Adding status history...');
+  try {
+    await addStatusHistory(booking.id, 'confirmed', therapist.id, 'Accepted via SMS link');
+    console.log('✅ [STEP 3 COMPLETE] Status history added');
+  } catch (historyError) {
+    console.error('⚠️ Failed to add status history (non-critical):', historyError);
   }
 
-  console.log('✅ Booking accepted successfully');
+  // Send confirmation SMS to therapist (non-blocking)
+  console.log('📱 [STEP 4] Sending SMS notifications...');
+  try {
+    await sendConfirmationSMS(therapist.phone, booking, therapist, 'accept');
+    console.log('✅ Therapist SMS sent');
+  } catch (smsError) {
+    console.error('⚠️ Failed to send therapist SMS (non-critical):', smsError);
+  }
+
+  // Send SMS to customer (non-blocking)
+  if (booking.customer_phone) {
+    try {
+      await sendCustomerNotification(booking.customer_phone, booking, therapist, 'accept');
+      console.log('✅ Customer SMS sent');
+    } catch (smsError) {
+      console.error('⚠️ Failed to send customer SMS (non-critical):', smsError);
+    }
+  }
+
+  console.log('✅ [COMPLETE] Booking accepted successfully');
 }
 
 async function handleDecline(booking, therapist) {

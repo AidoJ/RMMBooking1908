@@ -1,3 +1,4 @@
+// Version: Admin Payments UI — Exceptions & Submitted Invoices — 2025-10-14T00:00:00Z
 import React, { useState, useEffect } from 'react';
 import {
   Card,
@@ -32,6 +33,7 @@ import { useGetIdentity } from '@refinedev/core';
 import { UserIdentity, canAccess } from '../../utils/roleUtils';
 import { RoleGuard } from '../../components/RoleGuard';
 import { TherapistPaymentService, WeeklyPaymentData } from '../../services/therapistPaymentService';
+import { supabaseClient } from '../../utility';
 import dayjs, { Dayjs } from 'dayjs';
 import weekOfYear from 'dayjs/plugin/weekOfYear';
 
@@ -49,6 +51,8 @@ export const TherapistPaymentsList: React.FC = () => {
     TherapistPaymentService.getCurrentWeek()
   );
   const [paymentData, setPaymentData] = useState<WeeklyPaymentData[]>([]);
+  const [submittedInvoices, setSubmittedInvoices] = useState<any[]>([]);
+  const [missingInvoices, setMissingInvoices] = useState<any[]>([]);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<WeeklyPaymentData | null>(null);
   const [form] = Form.useForm();
@@ -66,6 +70,56 @@ export const TherapistPaymentsList: React.FC = () => {
         currentWeek.end
       );
       setPaymentData(data);
+
+      // New: Pull submitted invoices and exceptions for selected week
+      const weekStartISO = new Date(currentWeek.start);
+      const weekEndISO = new Date(currentWeek.end);
+      const weekStartStr = weekStartISO.toISOString().slice(0, 10);
+      const weekEndStr = weekEndISO.toISOString().slice(0, 10);
+
+      // Submitted invoices from therapist_payments
+      const { data: invoices, error: invErr } = await supabaseClient
+        .from('therapist_payments')
+        .select(`*, therapist_profiles:therapist_id(first_name,last_name)`) // role alias
+        .gte('week_start_date', weekStartStr)
+        .lte('week_end_date', weekEndStr)
+        .order('submitted_at', { ascending: false });
+
+      if (!invErr) {
+        setSubmittedInvoices(
+          (invoices || []).map((inv: any) => ({
+            ...inv,
+            therapist_name: `${inv.therapist_profiles?.first_name || ''} ${inv.therapist_profiles?.last_name || ''}`.trim(),
+          }))
+        );
+      }
+
+      // Exceptions: therapists with completed jobs in week but no submitted invoice
+      const { data: completedBookings, error: cbErr } = await supabaseClient
+        .from('bookings')
+        .select(`therapist_id, therapist_fee, tip_amount, completion_timestamp, therapist_profiles(first_name,last_name)`) 
+        .eq('status', 'completed')
+        .gte('completion_timestamp', `${weekStartStr}T00:00:00`)
+        .lte('completion_timestamp', `${weekEndStr}T23:59:59`);
+
+      if (!cbErr) {
+        const therapistsWithCompleted = new Map<string, { therapist_id: string; therapist_name: string; jobs: number; total: number }>();
+        (completedBookings || []).forEach((b: any) => {
+          if (!b?.therapist_id) return;
+          const key = b.therapist_id as string;
+          const name = `${b.therapist_profiles?.first_name || ''} ${b.therapist_profiles?.last_name || ''}`.trim();
+          const current = therapistsWithCompleted.get(key) || { therapist_id: key, therapist_name: name, jobs: 0, total: 0 };
+          current.jobs += 1;
+          const fee = Number(b.therapist_fee || 0);
+          const tip = Number(b.tip_amount || 0);
+          current.total += fee + tip;
+          therapistsWithCompleted.set(key, current);
+        });
+
+        const therapistsWithInvoices = new Set<string>((invoices || []).map((i: any) => i.therapist_id));
+        const missing = Array.from(therapistsWithCompleted.values()).filter(t => !therapistsWithInvoices.has(t.therapist_id));
+        setMissingInvoices(missing);
+      }
     } catch (error: any) {
       console.error('Error loading payment data:', error);
       message.error('Failed to load payment data: ' + error.message);
@@ -352,7 +406,8 @@ export const TherapistPaymentsList: React.FC = () => {
           </Row>
         </Card>
 
-        {/* Summary Statistics */}
+        {/* Summary Statistics */
+        }
         <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
           <Col span={6}>
             <Card>
@@ -420,6 +475,50 @@ export const TherapistPaymentsList: React.FC = () => {
             </Col>
           </Row>
         )}
+
+        {/* Exceptions: No Invoice Submitted */}
+        <Card style={{ marginBottom: '16px' }}>
+          <Title level={4} style={{ marginBottom: 8 }}>Exceptions: No Invoice Submitted</Title>
+          {missingInvoices.length === 0 ? (
+            <Alert type="success" message="All therapists with completed jobs have submitted invoices for this week." />
+          ) : (
+            <Table
+              size="small"
+              rowKey={(r) => r.therapist_id}
+              dataSource={missingInvoices}
+              pagination={false}
+              columns={[
+                { title: 'Therapist', dataIndex: 'therapist_name', key: 'therapist_name', render: (v: string) => <Text strong style={{ color: '#fa8c16' }}>{v}</Text> },
+                { title: 'Jobs', dataIndex: 'jobs', key: 'jobs', align: 'center' as const },
+                { title: 'Uninvoiced Total', dataIndex: 'total', key: 'total', align: 'right' as const, render: (amt: number) => `$${amt.toFixed(2)}` },
+              ]}
+            />
+          )}
+        </Card>
+
+        {/* Submitted Invoices */}
+        <Card style={{ marginBottom: '16px' }}>
+          <Title level={4} style={{ marginBottom: 8 }}>Submitted Invoices</Title>
+          {submittedInvoices.length === 0 ? (
+            <Alert type="info" message="No invoices submitted for this week yet." />
+          ) : (
+            <Table
+              size="small"
+              rowKey={(r) => r.id}
+              dataSource={submittedInvoices}
+              pagination={false}
+              columns={[
+                { title: 'Therapist', dataIndex: 'therapist_name', key: 'therapist_name', render: (v: string) => <Text strong style={{ color: '#1890ff' }}>{v}</Text> },
+                { title: 'Invoice #', dataIndex: 'invoice_number', key: 'invoice_number' },
+                { title: 'Amount', dataIndex: 'invoice_amount', key: 'invoice_amount', align: 'right' as const, render: (v: number) => `$${Number(v || 0).toFixed(2)}` },
+                { title: 'Parking', dataIndex: 'parking_amount', key: 'parking_amount', align: 'right' as const, render: (v: number) => v ? `$${Number(v).toFixed(2)}` : '-' },
+                { title: 'Status', dataIndex: 'payment_status', key: 'payment_status', render: (s: string) => (
+                  s === 'paid' ? <Tag color="success">Paid</Tag> : s === 'approved' ? <Tag color="blue">Approved</Tag> : s === 'pending' ? <Tag color="orange">Pending</Tag> : <Tag>{s}</Tag>
+                ) },
+              ]}
+            />
+          )}
+        </Card>
 
         {/* Main Table */}
         <Card>

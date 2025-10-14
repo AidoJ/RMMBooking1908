@@ -550,11 +550,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         break;
       case 'step8': // Payment
-        // Payment validation is handled by Stripe, so we just check if card element exists
-        const cardElement = document.getElementById('card-element');
-        if (!cardElement) {
+        // Check if card has been authorized
+        if (!cardAuthorized) {
           isValid = false;
-          showError(document.querySelector('.card-input-container'), 'Payment form not loaded. Please refresh the page.');
+          const statusDiv = document.getElementById('cardAuthStatus');
+          if (statusDiv) {
+            statusDiv.innerHTML = `
+              <div style="background: #fef2f2; border: 2px solid #fecaca; color: #991b1b;">
+                <div style="font-size: 16px; font-weight: 600;">⚠️ Please authorize your card first</div>
+                <div style="font-size: 14px; margin-top: 4px;">Click the "Authorize Card" button to secure your payment method.</div>
+              </div>
+            `;
+            statusDiv.style.display = 'block';
+          }
         }
         break;
     }
@@ -877,7 +885,7 @@ console.log('Globals:', {
     if (duration && duration.uplift_percentage) {
       const durationUplift = price * (Number(duration.uplift_percentage) / 100);
       price += durationUplift;
-      breakdown.push(`Time Uplift (${duration.uplift_percentage}%): +$${durationUplift.toFixed(2)}`);
+      breakdown.push(`Extended Session Rate (${duration.uplift_percentage}%): +$${durationUplift.toFixed(2)}`);
     }
 
     // Get day of week and time
@@ -895,7 +903,7 @@ console.log('Globals:', {
     if (timeUplift) {
       const timeUpliftAmount = price * (timeUplift / 100);
       price += timeUpliftAmount;
-      breakdown.push(`Weekend/Afterhours Uplift (${timeUplift}%): +$${timeUpliftAmount.toFixed(2)}`);
+      breakdown.push(`Weekend/Afterhours Rate (${timeUplift}%): +$${timeUpliftAmount.toFixed(2)}`);
     }
 
     // Store gross price for discount calculations
@@ -2252,7 +2260,25 @@ function renderTimeSlots(slots, selectedSlot) {
   if (!container) return;
   container.innerHTML = '';
   if (!slots.length) {
-    // Remove red error message - just show empty container
+    // Show helpful message prompting user to select a different day
+    container.innerHTML = `
+      <div style="
+        padding: 20px;
+        background: #fef2f2;
+        border: 2px solid #fecaca;
+        border-radius: 8px;
+        text-align: center;
+        margin: 16px 0;
+      ">
+        <div style="font-size: 18px; margin-bottom: 8px;">⚠️</div>
+        <div style="color: #991b1b; font-weight: 600; font-size: 16px; margin-bottom: 8px;">
+          No available time slots for this date
+        </div>
+        <div style="color: #b91c1c; font-size: 14px;">
+          Please try selecting a different date, or contact us for assistance.
+        </div>
+      </div>
+    `;
     return;
   }
   slots.forEach(slot => {
@@ -2539,6 +2565,8 @@ async function toggleTherapistBio(therapistId) {
 // STRIPE INTEGRATION
 let stripe, elements, card;
 let STRIPE_PUBLISHABLE_KEY = null;
+let cardAuthorized = false;
+let authorizedPaymentIntentId = null;
 
 // Fetch Stripe publishable key from environment
 async function loadStripeKey() {
@@ -2609,6 +2637,142 @@ async function mountStripeCardElement() {
 
   card.mount('#card-element');
   console.log('✅ Stripe card element mounted successfully');
+
+  // Listen for card validation errors
+  card.addEventListener('change', function(event) {
+    const displayError = document.getElementById('card-errors');
+    if (event.error) {
+      displayError.textContent = event.error.message;
+    } else {
+      displayError.textContent = '';
+    }
+  });
+}
+
+// Authorize card function - moved from step 9
+async function authorizeCard() {
+  const authorizeBtn = document.getElementById('authorizeCardBtn');
+  const statusDiv = document.getElementById('cardAuthStatus');
+  const proceedBtn = document.getElementById('proceedToSummaryBtn');
+
+  if (!card) {
+    alert('Payment form not ready. Please refresh the page.');
+    return false;
+  }
+
+  // Disable button and show processing state
+  authorizeBtn.disabled = true;
+  authorizeBtn.textContent = 'Authorizing Card...';
+  statusDiv.style.display = 'none';
+
+  try {
+    // Gather customer details for billing
+    const customerFirstName = document.getElementById('customerFirstName')?.value || '';
+    const customerLastName = document.getElementById('customerLastName')?.value || '';
+    const customerEmail = document.getElementById('customerEmail')?.value || '';
+    const customerPhone = document.getElementById('customerPhone')?.value || '';
+    const addressInput = document.getElementById('address');
+    const price = document.getElementById('priceAmount').textContent ? parseFloat(document.getElementById('priceAmount').textContent) : null;
+
+    if (!customerEmail || !customerFirstName || !customerLastName || !price) {
+      throw new Error('Missing customer information. Please go back and complete all fields.');
+    }
+
+    // Step 1: Create payment intent (authorize card)
+    console.log('💳 Step 1: Creating payment intent...');
+    const authResponse = await fetch('/.netlify/functions/create-payment-intent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount: price,
+        currency: 'aud',
+        bookingData: {
+          customer_email: customerEmail,
+          customer_name: `${customerFirstName} ${customerLastName}`,
+          service_name: window.selectedService?.name || 'Massage Service',
+        }
+      })
+    });
+
+    if (!authResponse.ok) {
+      const errorData = await authResponse.json();
+      throw new Error(errorData.error || 'Failed to initialize payment');
+    }
+
+    const { client_secret, payment_intent_id } = await authResponse.json();
+
+    // Step 2: Confirm card payment (authorize, don't charge)
+    console.log('💳 Step 2: Confirming card payment...');
+    const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
+      payment_method: {
+        card: card,
+        billing_details: {
+          name: `${customerFirstName} ${customerLastName}`,
+          email: customerEmail,
+          phone: customerPhone,
+          address: {
+            line1: addressInput.value,
+          }
+        }
+      }
+    });
+
+    if (stripeError) {
+      console.error('❌ Card authorization failed:', stripeError);
+      throw new Error(stripeError.message);
+    }
+
+    if (paymentIntent.status !== 'requires_capture') {
+      throw new Error('Card authorization was not successful. Please try again.');
+    }
+
+    console.log('✅ Card authorized successfully:', paymentIntent.id);
+
+    // Store authorization details
+    cardAuthorized = true;
+    authorizedPaymentIntentId = paymentIntent.id;
+
+    // Update UI to show success
+    authorizeBtn.style.display = 'none';
+    statusDiv.innerHTML = `
+      <div style="background: #f0fdf4; border: 2px solid #86efac; color: #166534;">
+        <div style="font-size: 20px; margin-bottom: 8px;">✅</div>
+        <div style="font-weight: 700; font-size: 18px; margin-bottom: 8px;">Card Secured Successfully!</div>
+        <div style="font-size: 14px; color: #15803d;">
+          Your card has been authorized. You won't be charged until a therapist accepts your booking.
+        </div>
+      </div>
+    `;
+    statusDiv.style.display = 'block';
+
+    // Enable the "Proceed to Booking Request" button
+    proceedBtn.disabled = false;
+    proceedBtn.style.opacity = '1';
+    proceedBtn.style.cursor = 'pointer';
+
+    return true;
+
+  } catch (error) {
+    console.error('❌ Card authorization error:', error);
+    
+    // Show error status
+    statusDiv.innerHTML = `
+      <div style="background: #fef2f2; border: 2px solid #fecaca; color: #991b1b;">
+        <div style="font-size: 20px; margin-bottom: 8px;">❌</div>
+        <div style="font-weight: 700; font-size: 16px; margin-bottom: 8px;">Authorization Failed</div>
+        <div style="font-size: 14px; color: #b91c1c;">
+          ${error.message}
+        </div>
+      </div>
+    `;
+    statusDiv.style.display = 'block';
+
+    // Re-enable button to allow retry
+    authorizeBtn.disabled = false;
+    authorizeBtn.textContent = '🔒 Authorize Card';
+
+    return false;
+  }
 }
 
 // Mount Stripe card when Step 8 is shown
@@ -2622,6 +2786,17 @@ function observeStep8Mount() {
   observer.observe(step8, { attributes: true, attributeFilter: ['class'] });
 }
 observeStep8Mount();
+
+// Add event listener for authorize card button
+document.addEventListener('DOMContentLoaded', function() {
+  const authorizeBtn = document.getElementById('authorizeCardBtn');
+  if (authorizeBtn) {
+    authorizeBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      authorizeCard();
+    });
+  }
+});
 
 // Populate booking summary in Step 9
 async function populateBookingSummary() {
@@ -2758,50 +2933,57 @@ let bookingConfirmationData = null; // Store confirmation data globally
 
 const observer10 = new MutationObserver(() => {
   if (step10.classList.contains('active')) {
-    // Hide loading, show success immediately - no delay
+    // Show loading/warning message first, then transition to success after delay
     const loadingDiv = document.getElementById('confirmationLoading');
     const successDiv = document.getElementById('confirmationSuccess');
     const detailsDiv = document.getElementById('confirmationDetails');
 
-    if (loadingDiv) loadingDiv.style.display = 'none';
-    if (successDiv) successDiv.style.display = 'block';
+    // Show loading/warning message immediately
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (successDiv) successDiv.style.display = 'none';
     if (detailsDiv) detailsDiv.style.display = 'none';
+    
+    // After 5 seconds, hide loading and show success messages
+    setTimeout(() => {
+      if (loadingDiv) loadingDiv.style.display = 'none';
+      if (successDiv) successDiv.style.display = 'block';
 
-    // Update progress bar to 100%
-    const progressFill = document.getElementById('progressFill');
-    const progressIcon = document.getElementById('progressIcon');
-    if (progressFill) progressFill.style.width = '100%';
-    if (progressIcon) progressIcon.style.left = '100%';
+      // Update progress bar to 100%
+      const progressFill = document.getElementById('progressFill');
+      const progressIcon = document.getElementById('progressIcon');
+      if (progressFill) progressFill.style.width = '100%';
+      if (progressIcon) progressIcon.style.left = '100%';
 
-    // Display confirmation messages immediately
-    const messagesDiv = document.getElementById('confirmationMessages');
-    if (messagesDiv && bookingConfirmationData) {
-      let messagesHTML = '';
+      // Display confirmation messages
+      const messagesDiv = document.getElementById('confirmationMessages');
+      if (messagesDiv && bookingConfirmationData) {
+        let messagesHTML = '';
 
-      if (bookingConfirmationData.therapistEmailSent) {
-        messagesHTML = `
-          <p><strong>✓</strong> Card authorized - no charge yet</p>
-          <p><strong>✓</strong> Confirmation email sent to you</p>
-          <p><strong>✓</strong> Request sent to your selected therapist</p>
-          <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
-          <p><strong>You will receive an update within 60 minutes.</strong></p>
-        `;
-      } else if (bookingConfirmationData.success) {
-        messagesHTML = `
-          <p><strong>✓</strong> Card authorized - no charge yet</p>
-          <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
-          <p>You will receive a confirmation email shortly.</p>
-        `;
-      } else {
-        messagesHTML = `
-          <p><strong>✓</strong> Card authorized - no charge yet</p>
-          <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
-          <p>However, there was an issue sending email notifications. We will contact you directly.</p>
-        `;
+        if (bookingConfirmationData.therapistEmailSent) {
+          messagesHTML = `
+            <p><strong>✓</strong> Card authorized - no charge yet</p>
+            <p><strong>✓</strong> Confirmation email sent to you</p>
+            <p><strong>✓</strong> Request sent to your selected therapist</p>
+            <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
+            <p><strong>You will receive an update within 60 minutes.</strong></p>
+          `;
+        } else if (bookingConfirmationData.success) {
+          messagesHTML = `
+            <p><strong>✓</strong> Card authorized - no charge yet</p>
+            <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
+            <p>You will receive a confirmation email shortly.</p>
+          `;
+        } else {
+          messagesHTML = `
+            <p><strong>✓</strong> Card authorized - no charge yet</p>
+            <p style="margin-top: 1rem;">Payment will only be taken when your therapist completes the service.</p>
+            <p>However, there was an issue sending email notifications. We will contact you directly.</p>
+          `;
+        }
+
+        messagesDiv.innerHTML = messagesHTML;
       }
-
-      messagesDiv.innerHTML = messagesHTML;
-    }
+    }, 5000); // 5 second delay
   }
 });
 observer10.observe(step10, { attributes: true, attributeFilter: ['class'] });
@@ -2931,81 +3113,51 @@ async function generateSequentialQuoteId() {
 }
 
 // Add customer registration logic
+// Add customer registration logic - Uses Netlify function to bypass RLS
 async function getOrCreateCustomerId(firstName, lastName, email, phone, isGuest = false) {
   if (!email) return null;
   
-  // Check if customer exists by email
-  const { data: existing, error: fetchError } = await window.supabase
-    .from('customers')
-    .select('id, customer_code, first_name, last_name, is_guest')
-    .eq('email', email)
-    .maybeSingle();
+  console.log('🔍 Getting or creating customer via Netlify function...');
+  
+  try {
+    // Use Netlify function to create/get customer (bypasses RLS)
+    const response = await fetch('/.netlify/functions/create-customer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        phone: phone,
+        isGuest: isGuest
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('❌ Error from create-customer function:', errorData);
+      alert('There was an error with your customer details. Please try again.');
+      return null;
+    }
+
+    const result = await response.json();
     
-  if (fetchError) {
-    console.error('Error fetching customer:', fetchError);
-    return null;
-  }
-  
-  if (existing && existing.id) {
-    // Customer exists - return existing ID
-    window.lastCustomerCode = existing.customer_code || '';
-    console.log('✅ Existing customer found:', existing);
-    return existing.id;
-  }
-  
-  // Customer doesn't exist - create new customer
-  let customer_code;
-  
-  if (isGuest) {
-    // Generate guest code using sequential numbering
-    const { data: existing, error } = await window.supabase
-      .from('customers')
-      .select('customer_code')
-      .ilike('customer_code', 'GUEST%');
-    
-    let maxNum = 0;
-    if (existing && existing.length > 0) {
-      existing.forEach(row => {
-        const match = row.customer_code && row.customer_code.match(/GUEST(\d{4})$/);
-        if (match) {
-          const num = parseInt(match[1], 10);
-          if (num > maxNum) maxNum = num;
-        }
-      });
+    if (result.success && result.customer_id) {
+      window.lastCustomerCode = result.customer_code || '';
+      console.log(result.is_new ? '✅ New customer created:' : '✅ Existing customer found:', result.customer_code);
+      return result.customer_id;
+    } else {
+      console.error('❌ Failed to get customer ID:', result);
+      return null;
     }
     
-    const nextNum = (maxNum + 1).toString().padStart(4, '0');
-    customer_code = `GUEST${nextNum}`;
-  } else {
-    // Generate regular customer code based on surname
-    const surname = lastName || firstName || 'CUST';
-    customer_code = await generateCustomerCode(surname);
-  }
-  
-  // Insert new customer with correct column names
-  const { data: inserted, error: insertError } = await window.supabase
-    .from('customers')
-    .insert([{ 
-      first_name: firstName, 
-      last_name: lastName, 
-      email, 
-      phone, 
-      customer_code,
-      is_guest: isGuest
-    }])
-    .select('id, customer_code')
-    .maybeSingle();
-    
-  if (insertError) {
-    console.error('Error inserting customer:', insertError);
-    alert('There was an error registering your customer details. Please try again.');
+  } catch (error) {
+    console.error('❌ Error in getOrCreateCustomerId:', error);
+    alert('There was an error with your customer details. Please try again.');
     return null;
   }
-  
-  window.lastCustomerCode = inserted?.customer_code || '';
-  console.log('✅ New customer created:', inserted);
-  return inserted?.id || null;
 }
+
 
 // Show customer_code in Customer Details step after registration
 const customerDetailsStep = document.getElementById('step6');
@@ -3053,21 +3205,22 @@ if (customerEmailInput) {
     emailStatus.innerHTML = '<span style="color:#007e8c;">⏳ Checking email...</span>';
     
     try {
-      const { data: customer, error } = await window.supabase
-        .from('customers')
-        .select('id, first_name, last_name, phone, customer_code, is_guest')
-        .eq('email', email)
-        .maybeSingle();
-      
-      if (error) {
-        console.error('Error fetching customer:', error);
-        emailStatus.innerHTML = '<span style="color:#d32f2f;">❌ Error checking email</span>';
-        return;
+      // Use Netlify function for customer lookup (bypasses RLS)
+      const response = await fetch('/.netlify/functions/customer-lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to check customer');
       }
+
+      const result = await response.json();
       
-      if (customer) {
+      if (result.found && result.customer) {
         // Existing customer found
-        showExistingCustomer(customer);
+        showExistingCustomer(result.customer);
       } else {
         // New customer
         showNewCustomer();
@@ -3085,13 +3238,10 @@ function showExistingCustomer(customer) {
   if (customerLastNameInput) customerLastNameInput.value = customer.last_name || '';
   if (customerPhoneInput) customerPhoneInput.value = customer.phone || '';
   
-  // Show welcome message
+  // Show welcome message WITHOUT customer ID
   customerLookupResult.style.display = 'block';
   customerInfo.innerHTML = `
     <div>Welcome back, ${customer.first_name || 'Valued Customer'}!</div>
-    <div style="font-size:0.9rem; margin-top:4px;">
-      ${customer.is_guest ? 'Guest Customer' : 'Registered Customer'} • ID: ${customer.customer_code || 'N/A'}
-    </div>
   `;
   
   // Hide registration option for existing customers
@@ -3438,82 +3588,49 @@ if (confirmBtn) {
         
     window.lastBookingCustomerId = customer_id || '';
 
-        // SECURE CARD AUTHORIZATION (NOT PAYMENT)
-        confirmBtn.textContent = 'Authorizing Card...';
-        
-        // Step 1: Create payment intent for AUTHORIZATION ONLY
-        const authorizationData = {
-          amount: netPrice, // Use final net price including discounts, gift cards, and GST
-          currency: 'aud',
-          bookingData: {
-            booking_id: bookingIdFormatted,
-            customer_email: customerEmail,
-            service_name: serviceName,
-            booking_time: booking_time,
-            therapist_fee: therapist_fee
-          }
-        };
-        
-        const authResponse = await fetch('/.netlify/functions/create-payment-intent', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(authorizationData)
-        });
-        
-        if (!authResponse.ok) {
-          const errorData = await authResponse.json();
-          throw new Error(`Card authorization failed: ${errorData.error || 'Unknown error'}`);
+        // Card already authorized in step 8
+        if (!cardAuthorized || !authorizedPaymentIntentId) {
+          throw new Error('Card authorization missing. Please go back to the payment step.');
         }
+
+        console.log('✅ Using pre-authorized card:', authorizedPaymentIntentId);
         
-        const { client_secret, payment_intent_id } = await authResponse.json();
-        
-        // Step 2: Confirm payment method (authorize card, don't charge)
-        confirmBtn.textContent = 'Securing Card Details...';
-        
-        const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
-          payment_method: {
-            card: card,
-            billing_details: {
-              name: `${customerFirstName} ${customerLastName}`,
-              email: customerEmail,
-              phone: customerPhone,
-              address: {
-                line1: addressInput.value,
-              }
-            }
-          }
-        });
-        
-        if (stripeError) {
-          console.error('Card authorization failed:', stripeError);
-          throw new Error(`Card authorization failed: ${stripeError.message}`);
-        }
-        
-        if (paymentIntent.status !== 'requires_capture') {
-          throw new Error('Card authorization was not successful. Please try again.');
-        }
-        
-        console.log('✅ Card authorized (funds held):', paymentIntent.id);
-        
-        // Step 3: Create booking with card authorized (payment pending)
+        // Create booking with card authorized (payment pending)
         confirmBtn.textContent = 'Creating Booking Request...';
         payload.payment_status = 'authorized'; // Card authorized, payment pending
         payload.status = 'requested'; // Waiting for therapist acceptance
-        payload.payment_intent_id = paymentIntent.id;
+        payload.payment_intent_id = authorizedPaymentIntentId;
         
-        // Insert booking into Supabase with card authorized
-    const { data, error } = await window.supabase.from('bookings').insert([payload]).select();
-    console.log('Supabase insert result:', { data, error });
+        // Insert booking using Netlify function (bypasses RLS)
+        console.log('📝 Creating booking via Netlify function...');
+        const bookingResponse = await fetch('/.netlify/functions/create-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!bookingResponse.ok) {
+          const errorData = await bookingResponse.json();
+          console.error('❌ Error from create-booking function:', errorData);
+          alert('There was an error submitting your booking. Please try again.\n' + (errorData.error || ''));
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Confirm and Request Booking';
+          return;
+        }
+
+        const bookingResult = await bookingResponse.json();
+        console.log('Booking creation result:', bookingResult);
         
-    if (error) {
-      console.error('Supabase insert error:', error);
-      alert('There was an error submitting your booking. Please try again.\n' + (error.message || ''));
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = 'Confirm and Request Booking';
-      return;
-    }
+        if (!bookingResult.success) {
+          console.error('❌ Booking creation failed:', bookingResult);
+          alert('There was an error submitting your booking. Please try again.');
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = 'Confirm and Request Booking';
+          return;
+        }
+
+        const data = [bookingResult.booking];
+        const error = null;
 
     if (!data || data.length === 0) {
       // Remove status message

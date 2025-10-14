@@ -1,4 +1,4 @@
---- WARNING: This schema is for context only and is not meant to be run.
+-- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
 CREATE TABLE public.admin_activity_log (
@@ -34,6 +34,17 @@ CREATE TABLE public.admin_users (
   last_login timestamp with time zone,
   CONSTRAINT admin_users_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.booking_revisions (
+  id bigint NOT NULL DEFAULT nextval('booking_revisions_id_seq'::regclass),
+  booking_id character varying NOT NULL,
+  revision_number integer NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  modified_by character varying,
+  change_reason text,
+  snapshot jsonb NOT NULL,
+  changes jsonb,
+  CONSTRAINT booking_revisions_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.booking_status_history (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   booking_id uuid,
@@ -50,7 +61,7 @@ CREATE TABLE public.bookings (
   therapist_id uuid,
   alternate_therapist_id uuid,
   booking_time timestamp without time zone NOT NULL,
-  status character varying NOT NULL CHECK (status::text = ANY (ARRAY['requested'::character varying::text, 'confirmed'::character varying::text, 'completed'::character varying::text, 'cancelled'::character varying::text, 'declined'::character varying::text, 'timeout_reassigned'::character varying::text, 'seeking_alternate'::character varying::text])),
+  status character varying NOT NULL CHECK (status::text = ANY (ARRAY['requested'::character varying::text, 'pending'::character varying::text, 'confirmed'::character varying::text, 'completed'::character varying::text, 'cancelled'::character varying::text, 'declined'::character varying::text, 'timeout_reassigned'::character varying::text, 'seeking_alternate'::character varying::text, 'archived'::character varying::text])),
   payment_status character varying NOT NULL CHECK (payment_status::text = ANY (ARRAY['pending'::character varying, 'paid'::character varying, 'refunded'::character varying, 'failed'::character varying, 'authorized'::character varying, 'captured'::character varying, 'cancelled'::character varying]::text[])),
   price numeric,
   therapist_fee numeric,
@@ -92,6 +103,10 @@ CREATE TABLE public.bookings (
   is_split_booking boolean DEFAULT false,
   parent_quote_id character varying,
   quote_day_number integer,
+  payment-notes text,
+  revision_number integer DEFAULT 0,
+  last_modified_by character varying,
+  last_modified_at timestamp with time zone,
   CONSTRAINT bookings_pkey PRIMARY KEY (id),
   CONSTRAINT fk_responding_therapist FOREIGN KEY (responding_therapist_id) REFERENCES public.therapist_profiles(id),
   CONSTRAINT bookings_customer_id_fkey FOREIGN KEY (customer_id) REFERENCES public.customers(id),
@@ -236,6 +251,7 @@ CREATE TABLE public.quote_dates (
   finish_time time without time zone,
   duration_minutes integer,
   sessions_count integer,
+  service_arrangement text CHECK (service_arrangement = ANY (ARRAY['split'::text, 'multiply'::text])),
   CONSTRAINT quote_dates_pkey PRIMARY KEY (id),
   CONSTRAINT quote_dates_quote_id_fkey FOREIGN KEY (quote_id) REFERENCES public.quotes(id)
 );
@@ -249,13 +265,9 @@ CREATE TABLE public.quotes (
   customer_email character varying,
   customer_phone character varying,
   event_structure character varying NOT NULL CHECK (event_structure::text = ANY (ARRAY['single_day'::character varying, 'multi_day'::character varying]::text[])),
-  single_event_date date,
-  single_start_time time without time zone,
   number_of_event_days integer,
-  event_name character varying,
   event_location character varying,
   event_type character varying,
-  average_session_duration integer,
   total_sessions integer NOT NULL,
   expected_attendees integer,
   preferred_therapists integer,
@@ -293,12 +305,12 @@ CREATE TABLE public.quotes (
   latitude numeric,
   longitude numeric,
   service_id uuid,
-  total_event_duration integer,
   gst_amount numeric,
-  session_duration_minutes integer,
+  session_duration_minutes numeric,
   sessions_per_day integer,
   therapists_needed integer,
   duration_minutes integer,
+  service_arrangement text NOT NULL DEFAULT 'split'::text CHECK (service_arrangement = ANY (ARRAY['split'::text, 'multiply'::text])),
   CONSTRAINT quotes_pkey PRIMARY KEY (id),
   CONSTRAINT quotes_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id),
   CONSTRAINT quotes_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.admin_users(id)

@@ -3,8 +3,15 @@
 
 const { createClient } = require('@supabase/supabase-js');
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://dcukfurezlkagvvwgsgr.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjdWtmdXJlemxrYWd2dndnc2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5MjM0NjQsImV4cCI6MjA2NzQ5OTQ2NH0.ThXQKNHj0XpSkPa--ghmuRXFJ7nfcf0YVlH0liHofFw';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Service role bypasses RLS
+
+// Validate required environment variables
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY');
+  throw new Error('Configuration error: Missing Supabase service role credentials');
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // EmailJS configuration
@@ -12,7 +19,7 @@ const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_puww2kb';
 const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || 'template_ai9rrg6';
 const EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID = process.env.EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID || 'template_51wt6of';
 const EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID = process.env.EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID || 'template_confirmed';
-const EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID = process.env.EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID || 'template_therapist_ok';
+const EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID = process.env.EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID || 'therapist-confirmation';
 const EMAILJS_BOOKING_DECLINED_TEMPLATE_ID = process.env.EMAILJS_BOOKING_DECLINED_TEMPLATE_ID || 'template_declined';
 const EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID = process.env.EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID || 'template_alternate';
 const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || 'qfM_qA664E4JddSMN';
@@ -226,6 +233,28 @@ async function handleBookingAccept(booking, therapist, headers) {
   try {
     console.log('✅ Processing booking acceptance:', booking.booking_id, 'by', therapist.first_name, therapist.last_name);
 
+    // CRITICAL: Double-check booking status before updating to prevent race conditions
+    const { data: currentBooking, error: checkError } = await supabase
+      .from('bookings')
+      .select('status, therapist_response_time')
+      .eq('booking_id', booking.booking_id)
+      .single();
+
+    if (checkError) {
+      console.error('❌ Error checking current booking status:', checkError);
+      throw new Error('Failed to verify booking status');
+    }
+
+    if (currentBooking.status === 'confirmed') {
+      console.log('⚠️ Booking already confirmed, skipping update');
+      return await generateSuccessPage(booking, therapist, 'accept');
+    }
+
+    if (currentBooking.status !== 'requested' && currentBooking.status !== 'timeout_reassigned' && currentBooking.status !== 'seeking_alternate') {
+      console.error('❌ Invalid booking status for acceptance:', currentBooking.status);
+      throw new Error('Booking cannot be accepted in current status: ' + currentBooking.status);
+    }
+
     // Update both therapist_id and responding_therapist_id
     const acceptUpdateData = {
       status: 'confirmed',
@@ -240,7 +269,8 @@ async function handleBookingAccept(booking, therapist, headers) {
     const { error: updateError } = await supabase
       .from('bookings')
       .update(acceptUpdateData)
-      .eq('booking_id', booking.booking_id);
+      .eq('booking_id', booking.booking_id)
+      .eq('status', currentBooking.status); // Additional safety check
 
     if (updateError) {
       console.error('❌ Error updating booking status:', updateError);
@@ -271,10 +301,14 @@ async function handleBookingAccept(booking, therapist, headers) {
     }
 
     try {
-      await sendTherapistConfirmationEmail(booking, therapist);
+      console.log('📧 Attempting to send therapist confirmation email to:', therapist.email);
+      const therapistEmailResult = await sendTherapistConfirmationEmail(booking, therapist);
       console.log('✅ Therapist confirmation email sent successfully');
+      console.log('📧 Email result:', JSON.stringify(therapistEmailResult, null, 2));
     } catch (emailError) {
       console.error('❌ Error sending therapist confirmation email:', emailError);
+      console.error('❌ Error details:', emailError.message);
+      console.error('❌ Error stack:', emailError.stack);
     }
 
     // *** NEW: Send SMS confirmations ***
@@ -747,6 +781,8 @@ async function sendClientConfirmationEmail(booking, therapist) {
 async function sendTherapistConfirmationEmail(booking, therapist) {
   try {
     console.log('📧 Preparing therapist confirmation email...');
+    console.log('📧 Template ID:', EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID);
+    console.log('📧 Therapist email:', therapist.email);
 
     let serviceName = 'Massage Service';
     if (booking.services && booking.services.name) {
@@ -770,11 +806,16 @@ async function sendTherapistConfirmationEmail(booking, therapist) {
       therapist_fee: booking.therapist_fee ? '$' + booking.therapist_fee.toFixed(2) : 'TBD'
     };
 
+    console.log('📧 Template params:', JSON.stringify(templateParams, null, 2));
+
     const result = await sendEmail(EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID, templateParams);
+    console.log('📧 sendEmail result:', JSON.stringify(result, null, 2));
     return result;
 
   } catch (error) {
     console.error('❌ Error in sendTherapistConfirmationEmail:', error);
+    console.error('❌ Error message:', error.message);
+    console.error('❌ Error stack:', error.stack);
     throw error;
   }
 }
@@ -834,8 +875,8 @@ async function sendClientLookingForAlternateEmail(booking) {
 async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
   try {
     const baseUrl = process.env.URL || 'https://your-site.netlify.app';
-    const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking=' + booking.booking_id + '&therapist=' + therapist.id;
-    const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking=' + booking.booking_id + '&therapist=' + therapist.id;
+    const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
+    const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
 
     const templateParams = {
       to_email: therapist.email,
@@ -917,9 +958,22 @@ async function sendSMSNotification(phoneNumber, message) {
       body: JSON.stringify({ phone: phoneNumber, message: message })
     });
     
-    const result = await response.json();
-    console.log('📱 SMS API response:', result);
-    return result;
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const result = await response.json();
+      console.log('📱 SMS API response:', result);
+      return result;
+    } else {
+      // Response is not JSON, get as text
+      const text = await response.text();
+      console.log('📱 SMS API response (non-JSON):', text);
+      if (response.ok) {
+        return { success: true, message: text };
+      } else {
+        return { success: false, error: text };
+      }
+    }
   } catch (error) {
     console.error('❌ Error sending SMS notification:', error);
     return { success: false, error: error.message };

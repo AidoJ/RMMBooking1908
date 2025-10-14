@@ -4,8 +4,15 @@
 const { createClient } = require('@supabase/supabase-js');
 
 // Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL || 'https://dcukfurezlkagvvwgsgr.supabase.co';
-const supabaseKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjdWtmdXJlemxrYWd2dndnc2dyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5MjM0NjQsImV4cCI6MjA2NzQ5OTQ2NH0.ThXQKNHj0XpSkPa--ghmuRXFJ7nfcf0YVlH0liHofFw';
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Service role bypasses RLS
+
+// Validate required environment variables
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY');
+  throw new Error('Configuration error: Missing Supabase service role credentials');
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // EmailJS configuration
@@ -80,13 +87,16 @@ async function findBookingsNeedingTimeout(timeoutMinutes) {
 
     // FIXED: Find bookings for FIRST timeout (status = 'requested' and past first timeout AND no therapist response)
     // EXCLUDE quote-based bookings (BK-Q pattern) as they follow quote workflow
+    // CRITICAL: Also exclude bookings that might be in the process of being accepted (updated_at within last 2 minutes)
+    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
     const { data: firstTimeoutBookings, error: error1 } = await supabase
       .from('bookings')
       .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
       .eq('status', 'requested')
       .is('therapist_response_time', null) // IMPORTANT: Only if therapist hasn't responded yet
       .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
-      .lt('created_at', firstTimeoutCutoff.toISOString());
+      .lt('created_at', firstTimeoutCutoff.toISOString())
+      .or('updated_at.is.null,updated_at.lt.' + twoMinutesAgo.toISOString()); // Exclude recently updated bookings
 
     if (error1) {
       console.error('❌ Error fetching first timeout bookings:', error1);
@@ -453,8 +463,8 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
   try {
     // Generate Accept/Decline URLs
     const baseUrl = process.env.URL || 'https://your-site.netlify.app';
-    const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking=' + booking.booking_id + '&therapist=' + therapist.id;
-    const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking=' + booking.booking_id + '&therapist=' + therapist.id;
+    const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
+    const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
 
     const templateParams = {
       to_email: therapist.email,

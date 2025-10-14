@@ -323,7 +323,7 @@ h1 {
   font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: -0.025em;
-  border-bottom: 1px solid var(--gray-200);
+  border-bottom: 0px solid var(--gray-200);
 }
 
 @media (min-width: 768px) {
@@ -339,6 +339,8 @@ h1 {
   background: #f5f5f5;
   overflow-x: auto;
   margin-bottom: var(--space-4);
+  border-top: none;
+  margin-top: 0;
 }
 
 .progress-bar {
@@ -411,6 +413,8 @@ h1 {
   background: #007e8c;
   padding: var(--space-6) var(--space-4);
   text-align: center;
+  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .header-content {
@@ -1445,6 +1449,25 @@ input::placeholder {
   color: var(--error);
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Error Messages */
+.error-message {
+  color: #dc2626;
+  font-size: 14px;
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+/* Confirmation Loading Warning */
+.warning-message {
+  background: #fef2f2;
+  border: 2px solid #fecaca;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.1);
 }
 
 /* Final Pricing Breakdown */

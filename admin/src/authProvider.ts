@@ -1,5 +1,5 @@
 import { AuthBindings } from "@refinedev/core";
-import { supabaseClient } from "./utility";
+import { AdminDataService } from "./services/adminDataService";
 
 // Define login credentials type
 interface LoginCredentials {
@@ -10,38 +10,30 @@ interface LoginCredentials {
 const authProvider: AuthBindings = {
   login: async ({ email, password }: LoginCredentials) => {
     try {
-      console.log('Attempting login for:', email);
+      console.log('🔐 Attempting secure admin login for:', email);
       
-      // THIS IS THE KEY LINE - using "admin_users" table
-      const { data, error } = await supabaseClient
-        .from("admin_users")  // ← THIS MUST BE "admin_users" NOT "users"
-        .select("*")
-        .eq("email", email)
-        .eq("password", password)
-        .eq("is_active", true)
-        .single();
+      // Use AdminDataService for secure authentication
+      const result = await AdminDataService.authenticate(email, password);
 
-      console.log('Login response:', { data, error });
-
-      if (error || !data) {
+      if (!result.success) {
+        console.error('❌ Login failed:', result.error);
         return {
           success: false,
           error: {
-            message: "Invalid email or password",
+            message: result.error || "Invalid email or password",
             name: "Login Error",
           },
         };
       }
 
-      // Store user info
-      localStorage.setItem("user", JSON.stringify(data));
+      console.log('✅ Login successful:', result.user?.email, 'Role:', result.user?.role);
       
       return {
         success: true,
         redirectTo: "/",
       };
     } catch (error: unknown) {
-      console.error('Login error:', error);
+      console.error('❌ Login error:', error);
       return {
         success: false,
         error: {
@@ -53,7 +45,7 @@ const authProvider: AuthBindings = {
   },
 
   logout: async () => {
-    localStorage.removeItem("user");
+    AdminDataService.logout();
     return {
       success: true,
       redirectTo: "/login",
@@ -61,8 +53,8 @@ const authProvider: AuthBindings = {
   },
 
   check: async () => {
-    const user = localStorage.getItem("user");
-    if (user) {
+    const isAuthenticated = AdminDataService.isAuthenticated();
+    if (isAuthenticated) {
       return { authenticated: true };
     }
     return {

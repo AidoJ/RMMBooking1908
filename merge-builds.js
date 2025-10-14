@@ -27,9 +27,26 @@ async function main() {
     await fs.remove(path.join(__dirname, 'dist'));
     await fs.ensureDir(path.join(__dirname, 'dist'));
     
-    // Copy booking platform to root
+    // Copy booking platform to root (excluding unnecessary files)
     console.log('📋 Copying booking platform...');
-    await fs.copy(path.join(__dirname, 'booking'), path.join(__dirname, 'dist'));
+    await fs.copy(path.join(__dirname, 'booking'), path.join(__dirname, 'dist'), {
+      filter: (src, dest) => {
+        // Exclude node_modules, .md files, test files, and other unnecessary files
+        const relativePath = path.relative(path.join(__dirname, 'booking'), src);
+        
+        if (relativePath.includes('node_modules')) return false;
+        if (relativePath.endsWith('.md')) return false;
+        if (relativePath.includes('test')) return false;
+        if (relativePath.includes('.test.')) return false;
+        if (relativePath.includes('.spec.')) return false;
+        if (relativePath.includes('jest.config')) return false;
+        if (relativePath.includes('.gitignore')) return false;
+        if (relativePath.includes('.env.example')) return false;
+        if (relativePath.includes('package-lock.json')) return false;
+        
+        return true;
+      }
+    });
     
     // Copy admin build to /admin
     console.log('👥 Copying admin panel...');

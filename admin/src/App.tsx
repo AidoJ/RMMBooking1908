@@ -18,13 +18,14 @@ import routerBindings, {
   NavigateToResource,
   UnsavedChangesNotifier,
 } from "@refinedev/react-router";
-import { dataProvider, liveProvider } from "@refinedev/supabase";
+import { liveProvider } from "@refinedev/supabase";
+import dataProvider from "./dataProvider";
 import { App as AntdApp } from "antd";
 import { BrowserRouter, Outlet, Route, Routes, useParams } from "react-router";
 import authProvider from "./authProvider";
 import { Header } from "./components/header";
 import { ColorModeContextProvider } from "./contexts/color-mode";
-import { supabaseClient } from "./utility";
+import { realSupabaseClient } from "./utility/supabaseClient";
 
 // Import the booking management components
 import { EnhancedBookingList } from "./pages/bookings/list";
@@ -71,6 +72,12 @@ import { TherapistPaymentsList } from "./pages/therapist-payments/list";
 // Import the therapist earnings component
 import { TherapistEarnings } from "./pages/therapist-earnings";
 
+// Import the therapist completion component
+import TherapistCompletion from "./pages/therapist-completion";
+
+// Import the admin therapist payments component
+import TherapistPayments from "./pages/therapist-payments";
+
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
   const { id } = useParams();
@@ -92,8 +99,8 @@ function App() {
           <AntdApp>
             <DevtoolsProvider>
               <Refine
-                dataProvider={dataProvider(supabaseClient)}
-                liveProvider={liveProvider(supabaseClient)}
+                dataProvider={dataProvider}
+                liveProvider={liveProvider(realSupabaseClient)}
                 authProvider={authProvider}
                 routerProvider={routerBindings}
                 notificationProvider={useNotificationProvider}
@@ -317,6 +324,9 @@ function App() {
                     {/* Therapist Payments Management */}
                     <Route path="/therapist-payments" element={<TherapistPaymentsList />} />
                     
+                    {/* Admin Therapist Payments Dashboard */}
+                    <Route path="/admin-therapist-payments" element={<TherapistPayments />} />
+                    
                     {/* Calendar */}
                     <Route path="/calendar" element={<CalendarBookingManagement />} />
                     
@@ -333,6 +343,9 @@ function App() {
                     
                     {/* Therapist Earnings (Therapist-only) */}
                     <Route path="/my-earnings" element={<TherapistEarnings />} />
+                    
+                    {/* Therapist Job Completion (Therapist-only) */}
+                    <Route path="/complete-job" element={<TherapistCompletion />} />
                     
                     {/* Customer Management */}
                     <Route path="/customers">
