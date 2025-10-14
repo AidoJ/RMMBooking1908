@@ -72,6 +72,12 @@ import { TherapistPaymentsList } from "./pages/therapist-payments/list";
 // Import the therapist earnings component
 import { TherapistEarnings } from "./pages/therapist-earnings";
 
+// Import the therapist completion component
+import TherapistCompletion from "./pages/therapist-completion";
+
+// Import the admin therapist payments component
+import TherapistPayments from "./pages/therapist-payments";
+
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
   const { id } = useParams();
@@ -318,6 +324,9 @@ function App() {
                     {/* Therapist Payments Management */}
                     <Route path="/therapist-payments" element={<TherapistPaymentsList />} />
                     
+                    {/* Admin Therapist Payments Dashboard */}
+                    <Route path="/admin-therapist-payments" element={<TherapistPayments />} />
+                    
                     {/* Calendar */}
                     <Route path="/calendar" element={<CalendarBookingManagement />} />
                     
@@ -334,6 +343,9 @@ function App() {
                     
                     {/* Therapist Earnings (Therapist-only) */}
                     <Route path="/my-earnings" element={<TherapistEarnings />} />
+                    
+                    {/* Therapist Job Completion (Therapist-only) */}
+                    <Route path="/complete-job" element={<TherapistCompletion />} />
                     
                     {/* Customer Management */}
                     <Route path="/customers">

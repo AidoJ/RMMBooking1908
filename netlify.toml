@@ -11,6 +11,10 @@
   # Node version for the build
   [build.environment]
     NODE_VERSION = "18"
+    
+  # Enable build caching for faster builds
+  [build.cache]
+    directories = ["node_modules", "admin/node_modules", ".netlify/cache"]
 
 # Scheduled function for booking timeouts
 [functions."booking-timeout-handler"]
@@ -49,9 +53,9 @@
 # Ensure root serves booking platform (index.html should be at root)
 # No redirect needed - Netlify serves index.html by default at root
 
-# Form handling (if needed for contact forms)
+# Disable Netlify post-processing for faster builds
 [build.processing]
-  skip_processing = false
+  skip_processing = true
 [build.processing.css]
   bundle = true
   minify = true
