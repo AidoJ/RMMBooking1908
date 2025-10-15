@@ -35,6 +35,7 @@ import { QuoteAvailabilityChecker, type TherapistAssignment } from '../../compon
 import { createBookingsFromQuote } from '../../services/bookingCreationService';
 import { EmailService } from '../../utils/emailService';
 import { supabaseClient } from '../../utility';
+import { getSystemSetting } from '../../utils/systemSettings';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -380,11 +381,15 @@ export const QuoteEdit: React.FC = () => {
       if (quotesData?.status === 'sent' || quotesData?.status === 'accepted' || quotesData?.status === 'declined') {
         message.loading('Resending quote...', 0);
 
-        // For already-sent quotes, just resend the email without creating new bookings
+        // Fetch business_email from system settings for archive
+        const businessEmail = await getSystemSetting('business_email', 'string', '');
+
+        // For already-sent quotes, just resend the email without creating new bookings (with BCC to business email for archive)
         const emailResult = await EmailService.sendEnhancedOfficialQuote(
           quotesData,
           therapistAssignments,
-          [] // No new booking IDs needed for resend
+          [], // No new booking IDs needed for resend
+          businessEmail
         );
 
         if (!emailResult.success) {

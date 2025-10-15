@@ -571,7 +571,7 @@ export const EmailService = {
   },
 
   // Enhanced function to send official quote with detailed booking information
-  async sendEnhancedOfficialQuote(quoteData: any, therapistAssignments: any[], bookingIds: string[]): Promise<{success: boolean, error?: string}> {
+  async sendEnhancedOfficialQuote(quoteData: any, therapistAssignments: any[], bookingIds: string[], businessEmail?: string): Promise<{success: boolean, error?: string}> {
     try {
       if (!window.emailjs) {
         throw new Error('EmailJS not loaded');
@@ -692,6 +692,8 @@ export const EmailService = {
         // Required EmailJS system fields
         to_email: contactEmail,
         to_name: contactName,
+        // BCC to business email for archive (if provided)
+        ...(businessEmail && { bcc: businessEmail }),
 
         // Contact Information
         corporate_contact_email: contactEmail,
@@ -811,6 +813,9 @@ export const EmailService = {
       console.log('📧 Sending enhanced official quote email');
       console.log('📧 Quote data:', quoteData);
       console.log('📧 Therapist assignments:', therapistAssignments);
+      if (businessEmail) {
+        console.log('📧 BCC archive copy to:', businessEmail);
+      }
       console.log('📧 Template parameters:', templateParams);
 
       const response = await window.emailjs.send(
@@ -820,6 +825,22 @@ export const EmailService = {
       );
 
       console.log('✅ Enhanced official quote email sent:', response);
+
+      // Send copy to business email for archive
+      if (businessEmail) {
+        try {
+          await window.emailjs.send(
+            EMAILJS_SERVICE_ID,
+            TEMPLATE_IDS.CORPORATE_QUOTE,
+            { ...templateParams, to_email: businessEmail, to_name: 'Archive' }
+          );
+          console.log('✅ Archive copy sent to:', businessEmail);
+        } catch (archiveError) {
+          console.error('⚠️ Failed to send archive copy:', archiveError);
+          // Don't fail the whole operation if archive fails
+        }
+      }
+
       return { success: true };
 
     } catch (error) {

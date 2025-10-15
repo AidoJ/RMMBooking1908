@@ -1034,11 +1034,15 @@ export const EnhancedQuoteEdit: React.FC = () => {
 
       console.log('✅ Created', bookingResult.bookingIds?.length, 'pending bookings');
 
-      // Send official quote email
+      // Fetch business_email from system settings for archive
+      const businessEmail = await getSystemSetting('business_email', 'string', '');
+
+      // Send official quote email (with BCC to business email for archive)
       const emailResult = await EmailService.sendEnhancedOfficialQuote(
         quotesData,
         therapistAssignments,
-        bookingResult.bookingIds || []
+        bookingResult.bookingIds || [],
+        businessEmail
       );
 
       if (!emailResult.success) {
@@ -1122,11 +1126,15 @@ export const EnhancedQuoteEdit: React.FC = () => {
         .update({ status: 'pending' })
         .eq('parent_quote_id', id);
 
-      // Send official quote email with version
+      // Fetch business_email from system settings for archive
+      const businessEmail = await getSystemSetting('business_email', 'string', '');
+
+      // Send official quote email with version (with BCC to business email for archive)
       const emailResult = await EmailService.sendEnhancedOfficialQuote(
         { ...quotesData, quote_version: newVersion },
         therapistAssignments,
-        bookingResult.bookingIds || []
+        bookingResult.bookingIds || [],
+        businessEmail
       );
 
       if (!emailResult.success) {
@@ -1536,12 +1544,16 @@ export const EnhancedQuoteEdit: React.FC = () => {
         })
         .eq('id', id);
 
+      // Fetch business_email from system settings for archive
+      const businessEmail = await getSystemSetting('business_email', 'string', '');
+
       // TODO: Implement EmailJS template "Updated Schedule" (highlights changes)
-      // For now, use the quote template with version
+      // For now, use the quote template with version (with BCC to business email for archive)
       const emailResult = await EmailService.sendEnhancedOfficialQuote(
         { ...quotesData, quote_version: newVersion },
         therapistAssignments,
-        bookingResult.bookingIds || []
+        bookingResult.bookingIds || [],
+        businessEmail
       );
 
       if (!emailResult.success) {
