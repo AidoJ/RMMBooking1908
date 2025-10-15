@@ -195,6 +195,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
           total_amount: form?.getFieldValue('total_amount'),
           gst_amount: form?.getFieldValue('gst_amount'),
           final_amount: form?.getFieldValue('final_amount'),
+          discount_amount: form?.getFieldValue('discount_amount'),
           duration_minutes: form?.getFieldValue('duration_minutes'),
           session_duration_minutes: form?.getFieldValue('session_duration_minutes'),
           total_sessions: form?.getFieldValue('total_sessions'),

@@ -242,17 +242,31 @@ export async function createBookingsFromQuote(
 
     console.log('📋 Prepared', bookingRecords.length, 'booking records');
     console.log('💵 Price per booking:', pricePerBooking.toFixed(2), 'GST per booking:', gstPerBooking.toFixed(2));
-    console.log('🔒 All bookings will have status: REQUESTED (blocks therapist diaries)');
+    console.log('🔒 All bookings will have status: PENDING (blocks therapist diaries)');
 
     // Insert booking records into database
-    const { data: insertedBookings, error: insertError } = await supabaseClient
+    // NOTE: We don't use .select() after insert because RLS policies can cause it to return all bookings
+    // Instead we insert, then query for the newly created bookings by parent_quote_id
+    const { error: insertError } = await supabaseClient
       .from('bookings')
-      .insert(bookingRecords)
-      .select('id, booking_id');
+      .insert(bookingRecords);
 
     if (insertError) {
-      console.error('Error inserting bookings:', insertError);
+      console.error('❌ Error inserting bookings:', insertError);
       throw new Error(`Failed to create bookings: ${insertError.message}`);
+    }
+
+    // Now query for the bookings we just created
+    const { data: insertedBookings, error: fetchError } = await supabaseClient
+      .from('bookings')
+      .select('id, booking_id')
+      .eq('parent_quote_id', quoteData.id)
+      .order('created_at', { ascending: false })
+      .limit(bookingRecords.length);
+
+    if (fetchError) {
+      console.error('❌ Error fetching created bookings:', fetchError);
+      throw new Error(`Failed to fetch created bookings: ${fetchError.message}`);
     }
 
     const bookingIds = insertedBookings?.map(b => b.id) || [];
