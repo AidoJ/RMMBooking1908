@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Therapist App Mockup</title>
+<style>
+  :root {
+    --bg:#0f172a; --card:#111827; --muted:#94a3b8; --text:#e5e7eb; --accent:#22c55e; --warn:#f59e0b; --danger:#ef4444; --brand:#22c55e;
+    --border:#1f2937; --chip:#1f2937; --chip-text:#a3e635;
+  }
+  html,body { margin:0; padding:0; background:#0b1220; color:var(--text); font-family:system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif; }
+  .app { display:flex; min-height:100dvh; flex-direction:column; }
+  header { position:sticky; top:0; z-index:20; background:linear-gradient(180deg,#0b1220,rgba(11,18,32,0.7)); backdrop-filter:saturate(120%) blur(6px);
+           border-bottom:1px solid var(--border); }
+  .header-inner { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.3px; }
+  .brand .logo { width:28px; height:28px; border-radius:8px; background:linear-gradient(135deg,#22c55e,#16a34a); box-shadow:0 0 0 2px #052e16 inset; }
+  .chip { padding:4px 8px; border-radius:999px; background:var(--chip); color:var(--chip-text); font-size:12px; border:1px solid #243244; }
+  main { flex:1; display:flex; flex-direction:column; padding:12px; gap:12px; }
+  .hidden { display:none !important; }
+  .cards { display:grid; gap:12px; grid-template-columns:1fr 1fr; }
+  .card { background:linear-gradient(180deg,#0f172a,#0b1220); border:1px solid var(--border); border-radius:14px; padding:12px; }
+  .card h3 { margin:0 0 8px; font-size:14px; color:#c7d2fe; font-weight:600; }
+  .stat { font-size:22px; font-weight:800; }
+  .muted { color:var(--muted); font-size:12px; }
+  .list { display:flex; flex-direction:column; gap:10px; }
+  .item { background:linear-gradient(180deg,#0f172a,#0b1220); border:1px solid var(--border); border-radius:14px; padding:12px; display:flex; gap:12px; align-items:flex-start; }
+  .badge { font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid #2a394d; }
+  .success { color:#86efac; background:#052e16; border-color:#14532d; }
+  .warning { color:#fde68a; background:#422006; border-color:#713f12; }
+  .danger { color:#fecaca; background:#450a0a; border-color:#7f1d1d; }
+  .btn { all:unset; display:inline-flex; align-items:center; gap:8px; padding:10px 12px; border-radius:12px; font-weight:600; cursor:pointer; }
+  .btn-primary { background:linear-gradient(135deg,#22c55e,#16a34a); color:#001b0a; }
+  .btn-ghost { color:#a7f3d0; border:1px solid #134e4a; background:#042f2e; }
+  .btn-danger { background:linear-gradient(135deg,#ef4444,#b91c1c); color:#fff; }
+  .btn-outline { border:1px solid var(--border); color:#e2e8f0; background:transparent; }
+  .grid { display:grid; gap:10px; }
+  .grid-2 { grid-template-columns:1fr 1fr; }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  .label { font-size:12px; color:#94a3b8; }
+  .input, select, textarea, input[type=datetime-local], input[type=date], input[type=time], input[type=number], input[type=text] {
+    padding:10px 12px; border-radius:10px; border:1px solid #263446; background:#0b1524; color:#e5e7eb; outline:none;
+  }
+  .section-title { margin:4px 0; color:#c7d2fe; font-weight:700; }
+  nav { position:sticky; bottom:0; background:linear-gradient(0deg,#0b1220,rgba(11,18,32,0.7)); border-top:1px solid var(--border); }
+  .tabs { display:flex; }
+  .tab { flex:1; padding:12px 8px; text-align:center; color:#a3a3a3; font-size:12px; font-weight:600; cursor:pointer; }
+  .tab.active { color:#86efac; border-top:2px solid var(--brand); }
+  .modal-backdrop { position:fixed; inset:0; background:rgba(2,6,23,0.7); backdrop-filter:blur(4px); display:none; align-items:flex-end; }
+  .modal { width:100%; background:#0b1220; border-top:1px solid var(--border); border-radius:14px 14px 0 0; padding:14px; }
+  .modal h3 { margin:0 0 10px; }
+  .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:10px; }
+  @media(min-width:900px){ main{ padding:18px; gap:16px; } .cards{ grid-template-columns:repeat(4,1fr);} .grid-2{ grid-template-columns:repeat(3,1fr);} .modal{ width:480px; margin:0 auto 24px; border-radius:16px;} .modal-backdrop{ align-items:center; justify-content:center;} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="header-inner">
+      <div class="brand"><div class="logo"></div> Therapist App <span class="chip">Mobile-first</span></div>
+      <div class="chip">Wed Payouts</div>
+    </div>
+  </header>
+
+  <main>
+    <section id="screen-dashboard">
+      <div class="cards">
+        <div class="card">
+          <h3>Next Payout (Est.)</h3>
+          <div class="stat">$682.50</div>
+          <div class="muted">Week: Mon–Sun</div>
+        </div>
+        <div class="card">
+          <h3>Jobs Today</h3>
+          <div class="stat">2</div>
+          <div class="muted">10:00, 14:30</div>
+        </div>
+        <div class="card">
+          <h3>Tips (Week)</h3>
+          <div class="stat">$45.00</div>
+          <div class="muted">Informational</div>
+        </div>
+        <div class="card">
+          <h3>Expenses Pending</h3>
+          <div class="stat">1</div>
+          <div class="muted">Parking review</div>
+        </div>
+      </div>
+
+      <h3 class="section-title">Upcoming</h3>
+      <div class="list">
+        <div class="item">
+          <div style="flex:1">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong>Corporate Wellness – CBD</strong>
+              <span class="badge warning">Today 10:00</span>
+            </div>
+            <div class="muted">2h · 1 therapist · Booking #RMM-1042</div>
+          </div>
+          <button class="btn btn-ghost" onclick="goTab('bookings')">View</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-bookings" class="hidden">
+      <div class="list">
+        <div class="item">
+          <div style="flex:1">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong>Hotel Spa – Southbank</strong>
+              <span class="badge success">Assigned</span>
+            </div>
+            <div class="muted">Sun, 10:00–12:00 · 2h · Fee: $120.00</div>
+          </div>
+          <button class="btn btn-outline" onclick="openBooking()">Open</button>
+        </div>
+
+        <div class="item">
+          <div style="flex:1">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <strong>Office – Docklands</strong>
+              <span class="badge">Upcoming</span>
+            </div>
+            <div class="muted">Tue, 14:30–16:00 · 1.5h · Fee: $90.00</div>
+          </div>
+          <button class="btn btn-outline" onclick="openBooking()">Open</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-booking-detail" class="hidden">
+      <div class="card">
+        <h3>Booking #RMM-1042</h3>
+        <div class="muted">Corporate Wellness – 10:00–12:00 · 2h</div>
+        <div class="muted">Address: 123 Collins St, CBD</div>
+      </div>
+
+      <div class="grid grid-2">
+        <button class="btn btn-primary" onclick="alert('Marked Completed (mock)')">Mark Completed</button>
+        <button class="btn btn-danger" onclick="alert('Marked Cancelled (mock)')">Cancel with Note</button>
+      </div>
+
+      <div class="grid grid-2">
+        <button class="btn btn-ghost" onclick="openModal('modal-tip')">Add Tip</button>
+        <button class="btn btn-ghost" onclick="openModal('modal-expense')">Add Parking Expense</button>
+      </div>
+
+      <div class="card">
+        <h3>Notes</h3>
+        <textarea rows="4" class="input" placeholder="Optional booking notes..."></textarea>
+      </div>
+    </section>
+
+    <section id="screen-exceptions" class="hidden">
+      <div class="card">
+        <h3>Add Availability Exception</h3>
+        <div class="grid">
+          <div class="field">
+            <label class="label">Type</label>
+            <select class="input">
+              <option value="available">Available (override)</option>
+              <option value="unavailable">Unavailable (block)</option>
+            </select>
+          </div>
+          <div class="grid grid-2">
+            <div class="field">
+              <label class="label">Start</label>
+              <input type="datetime-local" class="input" />
+            </div>
+            <div class="field">
+              <label class="label">End</label>
+              <input type="datetime-local" class="input" />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Reason (optional)</label>
+            <input type="text" class="input" placeholder="e.g., Special event window" />
+          </div>
+          <div style="display:flex; gap:8px; justify-content:flex-end;">
+            <button class="btn btn-outline" onclick="toast('Discarded')">Discard</button>
+            <button class="btn btn-primary" onclick="toast('Exception saved')">Save Exception</button>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="section-title">Upcoming Exceptions</h3>
+      <div class="list">
+        <div class="item">
+          <div style="flex:1">
+            <strong>Available</strong> <span class="muted">Sun 10:00–16:00</span>
+          </div>
+          <button class="btn btn-outline" onclick="toast('Deleted')">Delete</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="screen-earnings" class="hidden">
+      <div class="card">
+        <h3>Weekly Summary (Mon–Sun)</h3>
+        <div class="grid grid-2">
+          <div>
+            <div class="muted">Jobs</div>
+            <div class="stat">6</div>
+          </div>
+          <div>
+            <div class="muted">Gross Fees</div>
+            <div class="stat">$720.00</div>
+          </div>
+          <div>
+            <div class="muted">Approved Expenses</div>
+            <div class="stat">$12.50</div>
+          </div>
+          <div>
+            <div class="muted">Final Payable</div>
+            <div class="stat">$732.50</div>
+          </div>
+        </div>
+      </div>
+
+      <h3 class="section-title">Items</h3>
+      <div class="list">
+        <div class="item">
+          <div style="flex:1">
+            <strong>Completed Job</strong>
+            <div class="muted">Sun – 2h · Fee $120.00</div>
+          </div>
+          <span class="badge success">Booking</span>
+        </div>
+        <div class="item">
+          <div style="flex:1">
+            <strong>Parking Expense</strong>
+            <div class="muted">Receipt #IMG_2033 · $12.50</div>
+          </div>
+          <span class="badge">Expense</span>
+        </div>
+      </div>
+
+      <h3 class="section-title">History</h3>
+      <div class="list">
+        <div class="item">
+          <div style="flex:1">
+            <strong>Paid</strong>
+            <div class="muted">Week ending Sun · $705.00 · EFT REF 8492</div>
+          </div>
+          <span class="badge success">Paid</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav>
+    <div class="tabs">
+      <div class="tab active" data-tab="dashboard" onclick="goTab('dashboard')">Dashboard</div>
+      <div class="tab" data-tab="bookings" onclick="goTab('bookings')">Bookings</div>
+      <div class="tab" data-tab="exceptions" onclick="goTab('exceptions')">Exceptions</div>
+      <div class="tab" data-tab="earnings" onclick="goTab('earnings')">Earnings</div>
+    </div>
+  </nav>
+</div>
+
+<div id="modal-tip" class="modal-backdrop">
+  <div class="modal">
+    <h3>Add Tip</h3>
+    <div class="grid">
+      <div class="field">
+        <label class="label">Amount</label>
+        <input type="number" class="input" placeholder="0.00" />
+      </div>
+      <div class="field">
+        <label class="label">Method</label>
+        <select class="input">
+          <option value="cash">Cash</option>
+          <option value="card">Card</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="label">Notes</label>
+        <input class="input" placeholder="Optional" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-tip')">Cancel</button>
+      <button class="btn btn-primary" onclick="toast('Tip saved'); closeModal('modal-tip')">Save</button>
+    </div>
+  </div>
+  </div>
+
+<div id="modal-expense" class="modal-backdrop">
+  <div class="modal">
+    <h3>Add Parking Expense</h3>
+    <div class="grid">
+      <div class="grid grid-2">
+        <div class="field">
+          <label class="label">Amount</label>
+          <input type="number" class="input" placeholder="0.00" />
+        </div>
+        <div class="field">
+          <label class="label">Type</label>
+          <select class="input">
+            <option value="parking">Parking</option>
+            <option value="toll">Toll</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label class="label">Receipt (URL)</label>
+        <input type="text" class="input" placeholder="https://..." />
+      </div>
+      <div class="field">
+        <label class="label">Notes</label>
+        <input class="input" placeholder="Optional" />
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modal-expense')">Cancel</button>
+      <button class="btn btn-primary" onclick="toast('Expense submitted'); closeModal('modal-expense')">Submit</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const screens = ['dashboard','bookings','booking-detail','exceptions','earnings'];
+  function goTab(tab){
+    document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab===tab));
+    screens.forEach(id => {
+      const sec = document.getElementById('screen-'+id);
+      if (!sec) return;
+      if (id === tab) sec.classList.remove('hidden'); else sec.classList.add('hidden');
+    });
+    document.getElementById('screen-booking-detail').classList.add('hidden');
+  }
+  function openBooking(){
+    screens.forEach(id => { const sec = document.getElementById('screen-'+id); if (sec) sec.classList.add('hidden'); });
+    document.getElementById('screen-booking-detail').classList.remove('hidden');
+    document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+    document.querySelector('.tab[data-tab="bookings"]').classList.add('active');
+  }
+  function openModal(id){ document.getElementById(id).style.display='flex'; }
+  function closeModal(id){ document.getElementById(id).style.display='none'; }
+  function toast(msg){ console.log(msg); }
+  goTab('dashboard');
+  </script>
+</body>
+</html>
+
+
