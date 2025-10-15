@@ -134,6 +134,21 @@ export const EnhancedQuoteEdit: React.FC = () => {
     }
   };
 
+  // Function to explicitly update quotes table fields
+  const updateQuoteFields = async (fieldsToUpdate: any) => {
+    console.log('💾 Explicitly updating quotes table with:', fieldsToUpdate);
+    const { error } = await supabaseClient
+      .from('quotes')
+      .update(fieldsToUpdate)
+      .eq('id', id);
+
+    if (error) {
+      throw new Error(`Failed to update quote: ${error.message}`);
+    }
+
+    console.log('✅ Quote fields updated successfully');
+  };
+
   const { formProps, saveButtonProps, queryResult, form } = useForm({
     redirect: false, // Stay on page after save
     meta: {
@@ -148,7 +163,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
             .from('bookings')
             .delete()
             .eq('parent_quote_id', id);
-          
+
           message.info('All existing bookings deleted due to schedule change. Re-check availability and re-assign therapists.');
         }
 
@@ -156,7 +171,52 @@ export const EnhancedQuoteEdit: React.FC = () => {
         if (hasScheduleChanges && currentQuoteDates.length > 0) {
           await handleQuoteDatesUpdate();
         }
-        
+
+        // **NEW: Explicitly update quote-level fields that might not be auto-saved by Refine**
+        const quoteFieldsToUpdate: any = {};
+
+        // Get current form values for critical fields
+        const currentServiceArrangement = form?.getFieldValue('service_arrangement');
+        const currentTherapistsNeeded = form?.getFieldValue('therapists_needed');
+
+        // Check if these fields changed from original
+        if (currentServiceArrangement && currentServiceArrangement !== quotesData?.service_arrangement) {
+          quoteFieldsToUpdate.service_arrangement = currentServiceArrangement;
+          console.log('📝 service_arrangement changed:', quotesData?.service_arrangement, '→', currentServiceArrangement);
+        }
+
+        if (currentTherapistsNeeded && currentTherapistsNeeded !== quotesData?.therapists_needed) {
+          quoteFieldsToUpdate.therapists_needed = currentTherapistsNeeded;
+          console.log('📝 therapists_needed changed:', quotesData?.therapists_needed, '→', currentTherapistsNeeded);
+        }
+
+        // Also include calculated fields that must be saved
+        const calculatedFields = {
+          total_amount: form?.getFieldValue('total_amount'),
+          gst_amount: form?.getFieldValue('gst_amount'),
+          final_amount: form?.getFieldValue('final_amount'),
+          duration_minutes: form?.getFieldValue('duration_minutes'),
+          session_duration_minutes: form?.getFieldValue('session_duration_minutes'),
+          total_sessions: form?.getFieldValue('total_sessions'),
+        };
+
+        // Only include calculated fields if they have values
+        Object.entries(calculatedFields).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            quoteFieldsToUpdate[key] = value;
+          }
+        });
+
+        // Explicitly update the quotes table if there are fields to update
+        if (Object.keys(quoteFieldsToUpdate).length > 0) {
+          try {
+            await updateQuoteFields(quoteFieldsToUpdate);
+          } catch (error) {
+            message.error('Failed to save quote changes: ' + (error instanceof Error ? error.message : 'Unknown error'));
+            return; // Don't proceed if save failed
+          }
+        }
+
         message.success('Quote updated successfully');
         // Reset change tracking after successful save
         setHasScheduleChanges(false);
@@ -164,7 +224,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
         setScheduleChangeDetected(false);
         setHasUnsavedChanges(false);
         setOriginalQuoteDates([...currentQuoteDates]);
-        
+
         // Refetch quote data to reload updated quote_dates from DB
         queryResult?.refetch();
       }
