@@ -137,7 +137,7 @@ const CurrentWeekTab: React.FC = () => {
       title: 'Therapist',
       dataIndex: 'therapist_name',
       key: 'therapist_name',
-      render: (name: string) => <strong style={{ color: '#1890ff' }}>{name}</strong>
+      render: (name: string) => <strong style={{ color: '#007e8c' }}>{name}</strong>
     },
     {
       title: 'Jobs',

@@ -328,7 +328,7 @@ const WeeklySummaryTab: React.FC = () => {
             key={summary.therapist_id}
             title={
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '18px', color: '#1890ff' }}>
+                <span style={{ fontSize: '18px', color: '#007e8c' }}>
                   {summary.therapist_name} - Week {dayjs(summary.week_start).format('MMM D')} - {dayjs(summary.week_end).format('MMM D, YYYY')}
                 </span>
                 {!summary.invoice_status && (
@@ -470,7 +470,7 @@ const WeeklySummaryTab: React.FC = () => {
                 border: '1px solid #d9d9d9',
                 borderRadius: '6px',
                 fontSize: '16px',
-                color: '#1890ff',
+                color: '#007e8c',
                 fontWeight: 500
               }}>
                 {selectedSummary.therapist_name}
@@ -480,7 +480,7 @@ const WeeklySummaryTab: React.FC = () => {
             <div style={{ marginBottom: 24 }}>
               <div style={{
                 fontSize: '16px',
-                color: '#1890ff',
+                color: '#007e8c',
                 fontWeight: 500,
                 marginBottom: 16
               }}>
