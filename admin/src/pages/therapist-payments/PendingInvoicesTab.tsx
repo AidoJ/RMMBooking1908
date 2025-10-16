@@ -275,8 +275,53 @@ const PendingInvoicesTab: React.FC = () => {
   };
 
   const handleSubmitManualEntry = async (values: any) => {
-    message.info('Manual invoice entry feature coming soon - will allow admin to manually create invoice record for therapist');
-    setManualEntryModalVisible(false);
+    try {
+      setLoading(true);
+
+      // Get completed bookings for the week to calculate fees
+      const weekStart = values.week_start_date.format('YYYY-MM-DD');
+      const weekEnd = values.week_end_date.format('YYYY-MM-DD');
+
+      const { data: bookings, error: bookingsError } = await supabaseClient
+        .from('bookings')
+        .select('therapist_fee')
+        .eq('therapist_id', values.therapist_id)
+        .eq('status', 'completed')
+        .gte('booking_time', weekStart)
+        .lte('booking_time', weekEnd + ' 23:59:59');
+
+      if (bookingsError) throw bookingsError;
+
+      const calculatedFees = bookings?.reduce((sum, b) => sum + parseFloat(b.therapist_fee || '0'), 0) || 0;
+
+      // Create invoice record
+      const { error: insertError } = await supabaseClient
+        .from('therapist_payments')
+        .insert({
+          therapist_id: values.therapist_id,
+          week_start_date: weekStart,
+          week_end_date: weekEnd,
+          calculated_fees: calculatedFees,
+          therapist_invoice_number: values.invoice_number || null,
+          therapist_invoiced_fees: values.invoiced_fees,
+          therapist_parking_amount: values.parking_amount || 0,
+          therapist_notes: values.notes || 'Manually entered by admin',
+          submitted_at: new Date().toISOString(),
+          status: values.status
+        });
+
+      if (insertError) throw insertError;
+
+      message.success('Invoice created successfully');
+      setManualEntryModalVisible(false);
+      manualForm.resetFields();
+      loadPendingInvoices();
+    } catch (error) {
+      console.error('Error creating manual invoice:', error);
+      message.error('Failed to create invoice');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -405,6 +450,116 @@ const PendingInvoicesTab: React.FC = () => {
             </Form.Item>
           </Form>
         )}
+      </Modal>
+
+      {/* Manual Entry Modal */}
+      <Modal
+        title="Manual Invoice Entry"
+        open={manualEntryModalVisible}
+        onCancel={() => {
+          setManualEntryModalVisible(false);
+          manualForm.resetFields();
+        }}
+        onOk={() => manualForm.submit()}
+        okText="Create Invoice"
+        width={700}
+      >
+        <Form
+          form={manualForm}
+          layout="vertical"
+          onFinish={handleSubmitManualEntry}
+        >
+          <Form.Item
+            label="Therapist"
+            name="therapist_id"
+            rules={[{ required: true, message: 'Please select a therapist' }]}
+          >
+            <Select placeholder="Select therapist" showSearch filterOption={(input, option) =>
+              (option?.children as string).toLowerCase().includes(input.toLowerCase())
+            }>
+              {therapists.map(t => (
+                <Option key={t.id} value={t.id}>
+                  {t.first_name} {t.last_name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Space style={{ width: '100%' }} size="middle">
+            <Form.Item
+              label="Week Start (Monday)"
+              name="week_start_date"
+              rules={[{ required: true, message: 'Please select week start' }]}
+              style={{ width: '100%' }}
+            >
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+
+            <Form.Item
+              label="Week End (Sunday)"
+              name="week_end_date"
+              rules={[{ required: true, message: 'Please select week end' }]}
+              style={{ width: '100%' }}
+            >
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+          </Space>
+
+          <Form.Item
+            label="Invoice Number"
+            name="invoice_number"
+          >
+            <Input placeholder="e.g., INV-2025-001" />
+          </Form.Item>
+
+          <Space style={{ width: '100%' }} size="middle">
+            <Form.Item
+              label="Invoiced Fees"
+              name="invoiced_fees"
+              rules={[{ required: true, message: 'Please enter fees' }]}
+            >
+              <InputNumber
+                prefix={<DollarOutlined />}
+                style={{ width: '100%' }}
+                precision={2}
+                min={0}
+                placeholder="0.00"
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Parking Amount"
+              name="parking_amount"
+            >
+              <InputNumber
+                prefix={<DollarOutlined />}
+                style={{ width: '100%' }}
+                precision={2}
+                min={0}
+                placeholder="0.00"
+              />
+            </Form.Item>
+          </Space>
+
+          <Form.Item
+            label="Notes"
+            name="notes"
+          >
+            <TextArea rows={3} placeholder="Reason for manual entry (e.g., emailed invoice, app failure)" />
+          </Form.Item>
+
+          <Form.Item
+            label="Status"
+            name="status"
+            initialValue="submitted"
+            rules={[{ required: true }]}
+          >
+            <Select>
+              <Option value="submitted">Submitted (requires approval)</Option>
+              <Option value="approved">Approved (ready for payment)</Option>
+            </Select>
+          </Form.Item>
+        </Form>
       </Modal>
     </div>
   );
