@@ -34,7 +34,11 @@ async function main() {
     // Copy admin build to /admin
     console.log('👥 Copying admin panel...');
     await fs.copy(path.join(__dirname, 'admin', 'dist'), path.join(__dirname, 'dist', 'admin'));
-    
+
+    // Copy mockups folder
+    console.log('🎨 Copying mockups...');
+    await fs.copy(path.join(__dirname, 'mockups'), path.join(__dirname, 'dist', 'mockups'));
+
     console.log('✅ Build complete!');
     
   } catch (error) {
