@@ -76,9 +76,14 @@ const CompletedJobsTab: React.FC = () => {
 
       const { data, error } = await query;
 
-      if (error) throw error;
+      if (error) {
+        console.error('CompletedJobsTab query error:', error);
+        throw error;
+      }
 
-      const formattedJobs = data?.map((job: any) => ({
+      console.log('CompletedJobsTab loaded:', data?.length, 'jobs');
+
+      const formattedJobs = data?.filter((job: any) => job.therapist_profiles).map((job: any) => ({
         id: job.id,
         booking_id: job.booking_id,
         booking_time: job.booking_time,
