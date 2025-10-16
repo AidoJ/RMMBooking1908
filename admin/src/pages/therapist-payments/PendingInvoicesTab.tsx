@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Tag, message, Modal, Form, Input, InputNumber, Image, Space, Descriptions, DatePicker, Select, Upload } from 'antd';
 import { CheckOutlined, CloseOutlined, EyeOutlined, DollarOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
-import { supabaseClient } from '../../utility';
+import { supabaseClient, realSupabaseClient } from '../../utility/supabaseClient';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
@@ -274,6 +274,15 @@ const PendingInvoicesTab: React.FC = () => {
     setManualEntryModalVisible(true);
   };
 
+  const convertFileToBase64 = (file: any): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleSubmitManualEntry = async (values: any) => {
     try {
       setLoading(true);
@@ -294,46 +303,18 @@ const PendingInvoicesTab: React.FC = () => {
 
       const calculatedFees = bookings?.reduce((sum, b) => sum + parseFloat(b.therapist_fee || '0'), 0) || 0;
 
-      // Upload invoice file if present
+      // Convert invoice file to base64 if present
       let invoiceUrl = null;
       if (values.invoice_upload?.fileList?.[0]?.originFileObj) {
         const file = values.invoice_upload.fileList[0].originFileObj;
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${values.therapist_id}_${weekStart}_invoice.${fileExt}`;
-        const filePath = `therapist-invoices/${fileName}`;
-
-        const { error: uploadError } = await supabaseClient.storage
-          .from('invoices')
-          .upload(filePath, file, { upsert: true });
-
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabaseClient.storage
-          .from('invoices')
-          .getPublicUrl(filePath);
-
-        invoiceUrl = urlData.publicUrl;
+        invoiceUrl = await convertFileToBase64(file);
       }
 
-      // Upload parking receipt if present
+      // Convert parking receipt to base64 if present
       let receiptUrl = null;
       if (values.parking_receipt_upload?.fileList?.[0]?.originFileObj) {
         const file = values.parking_receipt_upload.fileList[0].originFileObj;
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${values.therapist_id}_${weekStart}_parking.${fileExt}`;
-        const filePath = `parking-receipts/${fileName}`;
-
-        const { error: uploadError } = await supabaseClient.storage
-          .from('invoices')
-          .upload(filePath, file, { upsert: true });
-
-        if (uploadError) throw uploadError;
-
-        const { data: urlData } = supabaseClient.storage
-          .from('invoices')
-          .getPublicUrl(filePath);
-
-        receiptUrl = urlData.publicUrl;
+        receiptUrl = await convertFileToBase64(file);
       }
 
       // Create invoice record
