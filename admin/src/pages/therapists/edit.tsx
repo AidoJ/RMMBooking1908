@@ -33,6 +33,7 @@ import { useGetIdentity } from '@refinedev/core';
 import { RoleGuard } from '../../components/RoleGuard';
 import { supabaseClient } from '../../utility';
 import { useAddressGeocoding } from '../../hooks/useAddressGeocoding';
+import ServiceAreaPolygonEditor from '../../components/ServiceAreaPolygonEditor';
 import dayjs from 'dayjs';
 
 const { Title } = Typography;
@@ -52,6 +53,11 @@ interface Availability {
   end_time: string;
 }
 
+interface Coordinate {
+  lat: number;
+  lng: number;
+}
+
 interface TherapistFormData {
   first_name: string;
   last_name: string;
@@ -61,6 +67,7 @@ interface TherapistFormData {
   profile_pic?: string;
   home_address?: string;
   service_radius_km?: number;
+  service_area_polygon?: Coordinate[];
   is_active: boolean;
   gender?: string;
   years_experience?: number;
@@ -80,6 +87,7 @@ const TherapistEdit: React.FC = () => {
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [profileImage, setProfileImage] = useState<string>('');
+  const [serviceAreaPolygon, setServiceAreaPolygon] = useState<Coordinate[] | null>(null);
 
   const canEditTherapists = identity?.role === 'admin' || identity?.role === 'super_admin';
 
@@ -141,9 +149,15 @@ const TherapistEdit: React.FC = () => {
         .single();
 
       if (therapistError) throw therapistError;
-      
+
       setTherapist(therapistData);
       setProfileImage(therapistData.profile_pic || '');
+
+      // Load polygon data if available
+      if (therapistData.service_area_polygon) {
+        setServiceAreaPolygon(therapistData.service_area_polygon);
+      }
+
       form.setFieldsValue(therapistData);
 
       // Load therapist services
@@ -227,7 +241,7 @@ const TherapistEdit: React.FC = () => {
     try {
       setSaving(true);
 
-      // Update therapist profile with coordinates
+      // Update therapist profile with coordinates and polygon
       const { error: updateError } = await supabaseClient
         .from('therapist_profiles')
         .update({
@@ -236,6 +250,7 @@ const TherapistEdit: React.FC = () => {
           latitude: coordinateFields.latitude,
           longitude: coordinateFields.longitude,
           address_verified: coordinateFields.address_verified,
+          service_area_polygon: serviceAreaPolygon,
           updated_at: new Date().toISOString()
         })
         .eq('id', id);
@@ -567,8 +582,9 @@ const TherapistEdit: React.FC = () => {
                 <Form.Item
                   name="service_radius_km"
                   label="Service Radius (km)"
+                  help="Used as fallback when no polygon is defined"
                 >
-                  <InputNumber 
+                  <InputNumber
                     placeholder="Radius in kilometers"
                     min={1}
                     max={100}
@@ -576,6 +592,15 @@ const TherapistEdit: React.FC = () => {
                   />
                 </Form.Item>
               </Card>
+
+              {/* Service Area Polygon Editor */}
+              <ServiceAreaPolygonEditor
+                centerLat={coordinateFields.latitude}
+                centerLng={coordinateFields.longitude}
+                serviceRadiusKm={form.getFieldValue('service_radius_km') || 10}
+                existingPolygon={serviceAreaPolygon || undefined}
+                onPolygonChange={(polygon) => setServiceAreaPolygon(polygon)}
+              />
 
               {/* Services */}
               <Card title="Services Offered" style={{ marginBottom: '24px' }}>
