@@ -218,7 +218,7 @@ const ServiceAreaPolygonEditor: React.FC<ServiceAreaPolygonEditorProps> = ({
     setTempPath([]);
     setHasPolygon(false);
 
-    // Create new polygon
+    // Create new polygon (NOT editable during initial drawing)
     polygonRef.current = new google.maps.Polygon({
       paths: [],
       strokeColor: '#007e8c',
@@ -226,7 +226,7 @@ const ServiceAreaPolygonEditor: React.FC<ServiceAreaPolygonEditorProps> = ({
       strokeWeight: 2,
       fillColor: '#007e8c',
       fillOpacity: 0.35,
-      editable: true,
+      editable: false,
       draggable: false
     });
 
@@ -237,6 +237,8 @@ const ServiceAreaPolygonEditor: React.FC<ServiceAreaPolygonEditorProps> = ({
       mapInstanceRef.current,
       'click',
       (event: any) => {
+        if (!polygonRef.current) return;
+
         const path = polygonRef.current.getPath();
         path.push(event.latLng);
 
