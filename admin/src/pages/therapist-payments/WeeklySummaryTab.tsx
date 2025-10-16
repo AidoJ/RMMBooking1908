@@ -48,7 +48,7 @@ const WeeklySummaryTab: React.FC = () => {
           booking_time,
           therapist_id,
           therapist_fee,
-          therapist_profiles(id, first_name, last_name)
+          therapist_profiles!bookings_therapist_id_fkey(id, first_name, last_name)
         `)
         .eq('status', 'completed')
         .gte('booking_time', weekStart)

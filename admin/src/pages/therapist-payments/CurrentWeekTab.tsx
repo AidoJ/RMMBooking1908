@@ -54,7 +54,7 @@ const CurrentWeekTab: React.FC = () => {
           therapist_id,
           therapist_fee,
           booking_time,
-          therapist_profiles(id, first_name, last_name)
+          therapist_profiles!bookings_therapist_id_fkey(id, first_name, last_name)
         `)
         .eq('status', 'completed')
         .gte('booking_time', start)

@@ -62,7 +62,7 @@ const PaymentHistoryTab: React.FC = () => {
         .from('therapist_payments')
         .select(`
           *,
-          therapist_profiles(id, first_name, last_name)
+          therapist_profiles!therapist_payments_therapist_id_fkey(id, first_name, last_name)
         `)
         .in('status', ['approved', 'paid'])
         .order('week_end_date', { ascending: false });
