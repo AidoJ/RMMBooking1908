@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { DatePicker, Button, Table, Card, Descriptions, Space, message, Tag, Divider } from 'antd';
-import { SearchOutlined, DollarOutlined } from '@ant-design/icons';
+import { DatePicker, Button, Table, Card, Descriptions, Space, message, Tag, Divider, Modal, Form, Input, InputNumber, Upload, Select } from 'antd';
+import { SearchOutlined, DollarOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { supabaseClient } from '../../utility';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 
 dayjs.extend(isoWeek);
+
+const { TextArea } = Input;
+const { Option } = Select;
 
 interface DailyBreakdown {
   date: string;
@@ -40,6 +43,9 @@ const WeeklySummaryTab: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedWeek, setSelectedWeek] = useState(dayjs().startOf('isoWeek'));
   const [summaries, setSummaries] = useState<WeeklySummary[]>([]);
+  const [manualEntryModalVisible, setManualEntryModalVisible] = useState(false);
+  const [selectedSummary, setSelectedSummary] = useState<WeeklySummary | null>(null);
+  const [manualForm] = Form.useForm();
 
   const loadWeeklySummary = async () => {
     try {
@@ -160,6 +166,104 @@ const WeeklySummaryTab: React.FC = () => {
     }
   };
 
+  const handleManualEntry = (summary: WeeklySummary) => {
+    setSelectedSummary(summary);
+    manualForm.setFieldsValue({
+      therapist_id: summary.therapist_id,
+      week_start_date: dayjs(summary.week_start),
+      week_end_date: dayjs(summary.week_end),
+      invoiced_fees: summary.base_fees,
+      parking_amount: summary.parking || 0,
+      invoice_number: '',
+      notes: '',
+      status: 'submitted'
+    });
+    setManualEntryModalVisible(true);
+  };
+
+  const handleSubmitManualEntry = async (values: any) => {
+    if (!selectedSummary) return;
+
+    try {
+      setLoading(true);
+
+      const weekStart = values.week_start_date.format('YYYY-MM-DD');
+      const weekEnd = values.week_end_date.format('YYYY-MM-DD');
+
+      // Upload invoice file if present
+      let invoiceUrl = null;
+      if (values.invoice_upload?.fileList?.[0]?.originFileObj) {
+        const file = values.invoice_upload.fileList[0].originFileObj;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${selectedSummary.therapist_id}_${weekStart}_invoice.${fileExt}`;
+        const filePath = `therapist-invoices/${fileName}`;
+
+        const { error: uploadError } = await supabaseClient.storage
+          .from('invoices')
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabaseClient.storage
+          .from('invoices')
+          .getPublicUrl(filePath);
+
+        invoiceUrl = urlData.publicUrl;
+      }
+
+      // Upload parking receipt if present
+      let receiptUrl = null;
+      if (values.parking_receipt_upload?.fileList?.[0]?.originFileObj) {
+        const file = values.parking_receipt_upload.fileList[0].originFileObj;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${selectedSummary.therapist_id}_${weekStart}_parking.${fileExt}`;
+        const filePath = `parking-receipts/${fileName}`;
+
+        const { error: uploadError } = await supabaseClient.storage
+          .from('invoices')
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabaseClient.storage
+          .from('invoices')
+          .getPublicUrl(filePath);
+
+        receiptUrl = urlData.publicUrl;
+      }
+
+      // Create invoice record
+      const { error: insertError } = await supabaseClient
+        .from('therapist_payments')
+        .insert({
+          therapist_id: selectedSummary.therapist_id,
+          week_start_date: weekStart,
+          week_end_date: weekEnd,
+          calculated_fees: selectedSummary.base_fees,
+          therapist_invoice_number: values.invoice_number || null,
+          therapist_invoiced_fees: values.invoiced_fees,
+          therapist_parking_amount: values.parking_amount || 0,
+          therapist_invoice_url: invoiceUrl,
+          parking_receipt_url: receiptUrl,
+          therapist_notes: values.notes || 'Manually entered by admin',
+          submitted_at: new Date().toISOString(),
+          status: values.status
+        });
+
+      if (insertError) throw insertError;
+
+      message.success('Invoice created successfully');
+      setManualEntryModalVisible(false);
+      manualForm.resetFields();
+      loadWeeklySummary();
+    } catch (error) {
+      console.error('Error creating manual invoice:', error);
+      message.error('Failed to create invoice');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const dailyBreakdownColumns = [
     {
       title: 'Day',
@@ -223,9 +327,21 @@ const WeeklySummaryTab: React.FC = () => {
           <Card
             key={summary.therapist_id}
             title={
-              <span style={{ fontSize: '18px', color: '#1890ff' }}>
-                {summary.therapist_name} - Week {dayjs(summary.week_start).format('MMM D')} - {dayjs(summary.week_end).format('MMM D, YYYY')}
-              </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '18px', color: '#1890ff' }}>
+                  {summary.therapist_name} - Week {dayjs(summary.week_start).format('MMM D')} - {dayjs(summary.week_end).format('MMM D, YYYY')}
+                </span>
+                {!summary.invoice_status && (
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => handleManualEntry(summary)}
+                    style={{ background: '#00a99d', borderColor: '#00a99d' }}
+                  >
+                    Manual Invoice Entry
+                  </Button>
+                )}
+              </div>
             }
             style={{ background: '#fafafa' }}
           >
@@ -321,6 +437,178 @@ const WeeklySummaryTab: React.FC = () => {
           </Card>
         )}
       </Space>
+
+      {/* Manual Entry Modal */}
+      <Modal
+        title={<span style={{ fontSize: '18px', fontWeight: 600 }}>Manual Invoice Entry</span>}
+        open={manualEntryModalVisible}
+        onCancel={() => {
+          setManualEntryModalVisible(false);
+          manualForm.resetFields();
+        }}
+        onOk={() => manualForm.submit()}
+        okText="Create Invoice"
+        okButtonProps={{
+          style: { background: '#00a99d', borderColor: '#00a99d', fontWeight: 500 }
+        }}
+        width={700}
+      >
+        {selectedSummary && (
+          <Form
+            form={manualForm}
+            layout="vertical"
+            onFinish={handleSubmitManualEntry}
+          >
+            <Form.Item name="therapist_id" hidden>
+              <Input />
+            </Form.Item>
+
+            <Form.Item label={<span style={{ color: '#d32f2f' }}>* Therapist</span>}>
+              <div style={{
+                padding: '8px 12px',
+                background: '#f5f5f5',
+                border: '1px solid #d9d9d9',
+                borderRadius: '6px',
+                fontSize: '16px',
+                color: '#1890ff',
+                fontWeight: 500
+              }}>
+                {selectedSummary.therapist_name}
+              </div>
+            </Form.Item>
+
+            <div style={{ marginBottom: 24 }}>
+              <div style={{
+                fontSize: '16px',
+                color: '#1890ff',
+                fontWeight: 500,
+                marginBottom: 16
+              }}>
+                Week {dayjs(selectedSummary.week_start).format('MMM D')} - {dayjs(selectedSummary.week_end).format('MMM D, YYYY')}
+              </div>
+
+              <div style={{
+                background: '#f5f5f5',
+                padding: '16px',
+                borderRadius: '6px',
+                display: 'flex',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: '#666', fontSize: '14px', marginBottom: 4 }}>System Calculated Fees</div>
+                  <div style={{ fontSize: '18px', fontWeight: 600 }}>${selectedSummary.base_fees.toFixed(2)}</div>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ color: '#666', fontSize: '14px', marginBottom: 4 }}>Parking Reimbursements</div>
+                  <div style={{ fontSize: '18px', fontWeight: 600 }}>${(selectedSummary.parking || 0).toFixed(2)}</div>
+                </div>
+              </div>
+            </div>
+
+            <Form.Item name="week_start_date" hidden>
+              <DatePicker />
+            </Form.Item>
+
+            <Form.Item name="week_end_date" hidden>
+              <DatePicker />
+            </Form.Item>
+
+            <Form.Item
+              label="Invoice Number"
+              name="invoice_number"
+            >
+              <Input placeholder="e.g., INV-2025-001" />
+            </Form.Item>
+
+            <Space style={{ width: '100%', marginBottom: 16 }} size="middle">
+              <Form.Item
+                label={<span style={{ color: '#d32f2f' }}>* Invoiced Fees</span>}
+                name="invoiced_fees"
+                rules={[{ required: true, message: 'Please enter fees' }]}
+                style={{ marginBottom: 0, flex: 1 }}
+              >
+                <InputNumber
+                  prefix={<DollarOutlined />}
+                  style={{ width: '100%' }}
+                  precision={2}
+                  min={0}
+                  placeholder="0.00"
+                />
+              </Form.Item>
+
+              <Form.Item
+                label="Parking Amount"
+                name="parking_amount"
+                style={{ marginBottom: 0, flex: 1 }}
+              >
+                <InputNumber
+                  prefix={<DollarOutlined />}
+                  style={{ width: '100%' }}
+                  precision={2}
+                  min={0}
+                  placeholder="0.00"
+                />
+              </Form.Item>
+            </Space>
+
+            <Form.Item
+              label={
+                <span>
+                  Invoice Upload (PDF or Image)
+                  <span style={{ marginLeft: 4, color: '#999', fontWeight: 400 }}>ⓘ</span>
+                </span>
+              }
+              name="invoice_upload"
+              tooltip="Optional: Upload scanned invoice or photo"
+            >
+              <Upload
+                maxCount={1}
+                beforeUpload={() => false}
+                listType="picture"
+              >
+                <Button icon={<UploadOutlined />}>Click to Upload Invoice</Button>
+              </Upload>
+            </Form.Item>
+
+            <Form.Item
+              label={
+                <span>
+                  Parking Receipt Upload
+                  <span style={{ marginLeft: 4, color: '#999', fontWeight: 400 }}>ⓘ</span>
+                </span>
+              }
+              name="parking_receipt_upload"
+              tooltip="Optional: Upload parking receipt if applicable"
+            >
+              <Upload
+                maxCount={1}
+                beforeUpload={() => false}
+                listType="picture"
+              >
+                <Button icon={<UploadOutlined />}>Click to Upload Receipt</Button>
+              </Upload>
+            </Form.Item>
+
+            <Form.Item
+              label="Notes"
+              name="notes"
+            >
+              <TextArea rows={3} placeholder="Reason for manual entry (e.g., emailed invoice, app failure)" />
+            </Form.Item>
+
+            <Form.Item
+              label={<span style={{ color: '#d32f2f' }}>* Status</span>}
+              name="status"
+              rules={[{ required: true }]}
+            >
+              <Select>
+                <Option value="submitted">Submitted (requires approval)</Option>
+                <Option value="approved">Approved (ready for payment)</Option>
+              </Select>
+            </Form.Item>
+          </Form>
+        )}
+      </Modal>
     </div>
   );
 };
