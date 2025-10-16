@@ -13,6 +13,7 @@ interface DailyBreakdown {
   base_fee: number;
   extras: number;
   daily_total: number;
+  booking_ids: string[];
 }
 
 interface WeeklySummary {
@@ -36,8 +37,9 @@ const WeeklySummaryTab: React.FC = () => {
     try {
       setLoading(true);
 
-      const weekStart = selectedWeek.format('YYYY-MM-DD');
-      const weekEnd = selectedWeek.add(6, 'day').format('YYYY-MM-DD');
+      // Ensure we always use Monday as week start, regardless of DatePicker behavior
+      const weekStart = selectedWeek.startOf('isoWeek').format('YYYY-MM-DD');
+      const weekEnd = selectedWeek.startOf('isoWeek').add(6, 'day').format('YYYY-MM-DD');
 
       // Get all completed bookings for the selected week
       const { data: bookings, error: bookingsError } = await supabaseClient
@@ -98,12 +100,14 @@ const WeeklySummaryTab: React.FC = () => {
             jobs: 0,
             base_fee: 0,
             extras: 0,
-            daily_total: 0
+            daily_total: 0,
+            booking_ids: []
           };
           summary.daily_breakdown.push(dayRecord);
         }
         dayRecord.jobs += 1;
         dayRecord.base_fee += parseFloat(booking.therapist_fee || 0);
+        dayRecord.booking_ids.push(booking.booking_id);
       });
 
       // Add parking amounts from invoices
@@ -146,6 +150,16 @@ const WeeklySummaryTab: React.FC = () => {
       dataIndex: 'jobs',
       key: 'jobs',
       align: 'center' as const
+    },
+    {
+      title: 'Booking IDs',
+      dataIndex: 'booking_ids',
+      key: 'booking_ids',
+      render: (ids: string[]) => (
+        <div style={{ fontSize: '11px', lineHeight: '1.4' }}>
+          {ids.join(', ')}
+        </div>
+      )
     },
     {
       title: 'Base Fee',

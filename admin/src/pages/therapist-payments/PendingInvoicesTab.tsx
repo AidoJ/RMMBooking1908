@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Tag, message, Modal, Form, Input, InputNumber, Image, Space, Descriptions } from 'antd';
-import { CheckOutlined, CloseOutlined, EyeOutlined, DollarOutlined } from '@ant-design/icons';
+import { Table, Button, Tag, message, Modal, Form, Input, InputNumber, Image, Space, Descriptions, DatePicker, Select, Upload } from 'antd';
+import { CheckOutlined, CloseOutlined, EyeOutlined, DollarOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { supabaseClient } from '../../utility';
 import dayjs from 'dayjs';
 
 const { TextArea } = Input;
+const { Option } = Select;
 
 interface PendingInvoice {
   id: string;
@@ -30,11 +31,30 @@ const PendingInvoicesTab: React.FC = () => {
   const [selectedInvoice, setSelectedInvoice] = useState<PendingInvoice | null>(null);
   const [approveModalVisible, setApproveModalVisible] = useState(false);
   const [viewModalVisible, setViewModalVisible] = useState(false);
+  const [manualEntryModalVisible, setManualEntryModalVisible] = useState(false);
+  const [therapists, setTherapists] = useState<any[]>([]);
   const [form] = Form.useForm();
+  const [manualForm] = Form.useForm();
 
   useEffect(() => {
     loadPendingInvoices();
+    loadTherapists();
   }, []);
+
+  const loadTherapists = async () => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('therapist_profiles')
+        .select('id, first_name, last_name')
+        .eq('is_active', true)
+        .order('first_name');
+
+      if (error) throw error;
+      setTherapists(data || []);
+    } catch (error) {
+      console.error('Error loading therapists:', error);
+    }
+  };
 
   const loadPendingInvoices = async () => {
     try {
@@ -249,8 +269,29 @@ const PendingInvoicesTab: React.FC = () => {
     }
   ];
 
+  const handleManualEntry = () => {
+    manualForm.resetFields();
+    setManualEntryModalVisible(true);
+  };
+
+  const handleSubmitManualEntry = async (values: any) => {
+    message.info('Manual invoice entry feature coming soon - will allow admin to manually create invoice record for therapist');
+    setManualEntryModalVisible(false);
+  };
+
   return (
     <div>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3>Pending Invoices</h3>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleManualEntry}
+        >
+          Manual Invoice Entry
+        </Button>
+      </div>
+
       <Table
         dataSource={invoices}
         columns={columns}

@@ -63,6 +63,7 @@ const CompletedJobsTab: React.FC = () => {
           therapist_profiles!bookings_therapist_id_fkey(id, first_name, last_name)
         `)
         .eq('status', 'completed')
+        .not('therapist_id', 'is', null)
         .order('booking_time', { ascending: false });
 
       if (therapistId && therapistId !== 'all') {
