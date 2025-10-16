@@ -1,0 +1,1080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Therapist Payments</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            padding: 20px;
+        }
+
+        .header {
+            background: #1890ff;
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #262626;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .stat-card.green {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+
+        .stat-card.orange {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .stat-card.blue {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.95;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #1890ff;
+            color: white;
+        }
+
+        .btn-success {
+            background: #52c41a;
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 800px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e8e8e8;
+        }
+
+        th {
+            background: #fafafa;
+            font-weight: 600;
+            color: #262626;
+            position: sticky;
+            top: 0;
+        }
+
+        tr:hover {
+            background: #fafafa;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-paid {
+            background: #f6ffed;
+            color: #52c41a;
+        }
+
+        .status-pending {
+            background: #fff7e6;
+            color: #fa8c16;
+        }
+
+        .status-processing {
+            background: #e6f7ff;
+            color: #1890ff;
+        }
+
+        .therapist-name {
+            font-weight: 600;
+            color: #1890ff;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e8e8e8;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s;
+            color: #666;
+        }
+
+        .tab:hover {
+            color: #1890ff;
+        }
+
+        .tab.active {
+            color: #1890ff;
+            border-bottom-color: #1890ff;
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .weekly-summary {
+            background: #f0f2f5;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #d9d9d9;
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .alert {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alert-info {
+            background: #e6f7ff;
+            border: 1px solid #91d5ff;
+            color: #0050b3;
+        }
+
+        .alert-warning {
+            background: #fffbe6;
+            border: 1px solid #ffe58f;
+            color: #ad6800;
+        }
+
+        @media (max-width: 768px) {
+            .filter-bar {
+                flex-direction: column;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💰 Therapist Payments Management</h1>
+            <p>Track weekly earnings, process payments, and manage invoices</p>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <div class="stat-card blue">
+                <div class="stat-value">$28,450</div>
+                <div class="stat-label">Total This Week</div>
+            </div>
+            <div class="stat-card orange">
+                <div class="stat-value">$5,670</div>
+                <div class="stat-label">Pending Approval</div>
+            </div>
+            <div class="stat-card green">
+                <div class="stat-value">15</div>
+                <div class="stat-label">Active Therapists</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">Wed, Oct 23</div>
+                <div class="stat-label">Next Payment Day</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('current-week')">Current Week</div>
+            <div class="tab" onclick="switchTab('completed-jobs')">Completed Jobs</div>
+            <div class="tab" onclick="switchTab('weekly-summary')">Weekly Summary</div>
+            <div class="tab" onclick="switchTab('payment-tracking')">Payment Tracking</div>
+            <div class="tab" onclick="switchTab('pending-approval')">Pending Approval</div>
+        </div>
+
+        <!-- Current Week Tab -->
+        <div id="current-week" class="tab-content active">
+            <div class="card">
+                <div class="card-title">
+                    <span>Current Week: Monday Oct 14 - Sunday Oct 20, 2025</span>
+                    <button class="btn btn-success" onclick="processPayments()">Process All Payments</button>
+                </div>
+
+                <div class="alert alert-info">
+                    <span>📅</span>
+                    <span>Payments will be processed on Wednesday, Oct 23, 2025. Review and approve all pending items before processing.</span>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Therapist</th>
+                                <th>Jobs Completed</th>
+                                <th>Base Fees</th>
+                                <th>Parking</th>
+                                <th>Tips</th>
+                                <th>Total Due</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="therapist-name">Jane Doe</td>
+                                <td>12</td>
+                                <td>$2,160</td>
+                                <td>$48 (4 pending)</td>
+                                <td>$145 (2 pending)</td>
+                                <td>$2,353</td>
+                                <td><span class="status-badge status-processing">Review Needed</span></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" onclick="viewTherapistDetails('Jane Doe')">View Details</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="therapist-name">John Smith</td>
+                                <td>15</td>
+                                <td>$2,700</td>
+                                <td>$65</td>
+                                <td>$200</td>
+                                <td>$2,965</td>
+                                <td><span class="status-badge status-paid">Ready</span></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" onclick="viewTherapistDetails('John Smith')">View Details</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="therapist-name">Sarah Johnson</td>
+                                <td>10</td>
+                                <td>$1,800</td>
+                                <td>$30</td>
+                                <td>$120</td>
+                                <td>$1,950</td>
+                                <td><span class="status-badge status-paid">Ready</span></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" onclick="viewTherapistDetails('Sarah Johnson')">View Details</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr style="font-weight: 600; background: #fafafa;">
+                                <td>TOTAL</td>
+                                <td>37</td>
+                                <td>$6,660</td>
+                                <td>$143</td>
+                                <td>$465</td>
+                                <td>$7,268</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Jobs Tab -->
+        <div id="completed-jobs" class="tab-content">
+            <div class="card">
+                <div class="card-title">All Completed Jobs</div>
+
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label>Therapist</label>
+                        <select>
+                            <option>All Therapists</option>
+                            <option>Jane Doe</option>
+                            <option>John Smith</option>
+                            <option>Sarah Johnson</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Date Range</label>
+                        <input type="date">
+                    </div>
+                    <div class="filter-group">
+                        <label>To</label>
+                        <input type="date">
+                    </div>
+                    <div class="filter-group" style="display: flex; align-items: flex-end;">
+                        <button class="btn btn-primary">Filter</button>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Booking ID</th>
+                                <th>Therapist</th>
+                                <th>Client</th>
+                                <th>Duration</th>
+                                <th>Fee</th>
+                                <th>Parking</th>
+                                <th>Tip</th>
+                                <th>Total</th>
+                                <th>Payment Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Oct 20, 2025</td>
+                                <td>RB2510045</td>
+                                <td class="therapist-name">Jane Doe</td>
+                                <td>ABC Corp</td>
+                                <td>90 mins</td>
+                                <td>$180</td>
+                                <td>$12</td>
+                                <td>$15</td>
+                                <td>$207</td>
+                                <td><span class="status-badge status-pending">Pending</span></td>
+                            </tr>
+                            <tr>
+                                <td>Oct 20, 2025</td>
+                                <td>RB2510044</td>
+                                <td class="therapist-name">John Smith</td>
+                                <td>XYZ Ltd</td>
+                                <td>120 mins</td>
+                                <td>$240</td>
+                                <td>$15</td>
+                                <td>$25</td>
+                                <td>$280</td>
+                                <td><span class="status-badge status-pending">Pending</span></td>
+                            </tr>
+                            <tr>
+                                <td>Oct 19, 2025</td>
+                                <td>RB2510043</td>
+                                <td class="therapist-name">Sarah Johnson</td>
+                                <td>Tech Co</td>
+                                <td>90 mins</td>
+                                <td>$180</td>
+                                <td>$0</td>
+                                <td>$20</td>
+                                <td>$200</td>
+                                <td><span class="status-badge status-pending">Pending</span></td>
+                            </tr>
+                            <tr>
+                                <td>Oct 13, 2025</td>
+                                <td>RB2510030</td>
+                                <td class="therapist-name">Jane Doe</td>
+                                <td>Finance Inc</td>
+                                <td>90 mins</td>
+                                <td>$180</td>
+                                <td>$10</td>
+                                <td>$15</td>
+                                <td>$205</td>
+                                <td><span class="status-badge status-paid">Paid</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Summary Tab -->
+        <div id="weekly-summary" class="tab-content">
+            <div class="card">
+                <div class="card-title">Weekly Summary by Therapist</div>
+
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label>Week Starting</label>
+                        <input type="date" value="2025-10-14">
+                    </div>
+                    <div class="filter-group" style="display: flex; align-items: flex-end;">
+                        <button class="btn btn-primary">Load Week</button>
+                    </div>
+                </div>
+
+                <div class="card" style="background: #f9f9f9;">
+                    <h3 style="margin-bottom: 16px; color: #1890ff;">Jane Doe - Week Oct 14-20, 2025</h3>
+                    <div class="weekly-summary">
+                        <div class="summary-row">
+                            <span>Total Jobs Completed:</span>
+                            <strong>12 bookings</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>Base Therapist Fees:</span>
+                            <strong>$2,160.00</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>Parking Reimbursements:</span>
+                            <strong>$48.00</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>Tips Received:</span>
+                            <strong>$145.00</strong>
+                        </div>
+                        <div class="summary-row">
+                            <span>TOTAL PAYMENT DUE:</span>
+                            <strong style="color: #52c41a; font-size: 18px;">$2,353.00</strong>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 16px;">
+                        <strong>Daily Breakdown:</strong>
+                        <table style="margin-top: 12px; font-size: 14px;">
+                            <thead>
+                                <tr>
+                                    <th>Day</th>
+                                    <th>Jobs</th>
+                                    <th>Base Fee</th>
+                                    <th>Extras</th>
+                                    <th>Daily Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Monday, Oct 14</td>
+                                    <td>2</td>
+                                    <td>$360</td>
+                                    <td>$30</td>
+                                    <td>$390</td>
+                                </tr>
+                                <tr>
+                                    <td>Tuesday, Oct 15</td>
+                                    <td>2</td>
+                                    <td>$360</td>
+                                    <td>$25</td>
+                                    <td>$385</td>
+                                </tr>
+                                <tr>
+                                    <td>Wednesday, Oct 16</td>
+                                    <td>2</td>
+                                    <td>$360</td>
+                                    <td>$35</td>
+                                    <td>$395</td>
+                                </tr>
+                                <tr>
+                                    <td>Thursday, Oct 17</td>
+                                    <td>2</td>
+                                    <td>$360</td>
+                                    <td>$40</td>
+                                    <td>$400</td>
+                                </tr>
+                                <tr>
+                                    <td>Friday, Oct 18</td>
+                                    <td>3</td>
+                                    <td>$540</td>
+                                    <td>$55</td>
+                                    <td>$595</td>
+                                </tr>
+                                <tr>
+                                    <td>Saturday, Oct 19</td>
+                                    <td>1</td>
+                                    <td>$180</td>
+                                    <td>$8</td>
+                                    <td>$188</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <button class="btn btn-success" style="margin-top: 20px;" onclick="openRecordPaymentModal('Jane Doe', 2353.00)">Record Payment</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payment Tracking Tab -->
+        <div id="payment-tracking" class="tab-content">
+            <div class="card">
+                <div class="card-title">
+                    <span>Payment Records</span>
+                    <button class="btn btn-primary" onclick="openRecordPaymentModal()">Record New Payment</button>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label>Therapist</label>
+                        <select>
+                            <option>All Therapists</option>
+                            <option>Jane Doe</option>
+                            <option>John Smith</option>
+                            <option>Sarah Johnson</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Status</label>
+                        <select>
+                            <option>All Payments</option>
+                            <option>Paid</option>
+                            <option>Pending</option>
+                            <option>Processing</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Date Range</label>
+                        <select>
+                            <option>Last 4 Weeks</option>
+                            <option>Last 3 Months</option>
+                            <option>This Year</option>
+                            <option>All Time</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Week Ending</th>
+                                <th>Therapist</th>
+                                <th>Invoice Date</th>
+                                <th>Invoice Number</th>
+                                <th>Amount</th>
+                                <th>Paid Date</th>
+                                <th>EFT Reference</th>
+                                <th>Notes</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Oct 13, 2025</td>
+                                <td class="therapist-name">Jane Doe</td>
+                                <td>Oct 16, 2025</td>
+                                <td>INV-JD-2510-02</td>
+                                <td>$2,305.00</td>
+                                <td>Oct 16, 2025</td>
+                                <td>EFT2510160234</td>
+                                <td>Regular payment</td>
+                                <td><span class="status-badge status-paid">Paid</span></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" onclick="viewPaymentDetails()">View</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Oct 13, 2025</td>
+                                <td class="therapist-name">John Smith</td>
+                                <td>Oct 16, 2025</td>
+                                <td>INV-JS-2510-02</td>
+                                <td>$2,910.00</td>
+                                <td>Oct 16, 2025</td>
+                                <td>EFT2510160235</td>
+                                <td>Regular payment</td>
+                                <td><span class="status-badge status-paid">Paid</span></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" onclick="viewPaymentDetails()">View</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Oct 6, 2025</td>
+                                <td class="therapist-name">Sarah Johnson</td>
+                                <td>Oct 9, 2025</td>
+                                <td>INV-SJ-2510-01</td>
+                                <td>$1,870.00</td>
+                                <td>Oct 9, 2025</td>
+                                <td>EFT2510090156</td>
+                                <td>Regular payment</td>
+                                <td><span class="status-badge status-paid">Paid</span></td>
+                                <td>
+                                    <button class="btn btn-primary btn-sm" onclick="viewPaymentDetails()">View</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pending Approval Tab -->
+        <div id="pending-approval" class="tab-content">
+            <div class="card">
+                <div class="card-title">Pending Approval - Parking & Tips</div>
+
+                <div class="alert alert-warning">
+                    <span>⚠️</span>
+                    <span>Review and approve parking receipts and tips before processing weekly payments.</span>
+                </div>
+
+                <h3 style="margin: 20px 0;">Parking Receipts</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Submitted</th>
+                                <th>Therapist</th>
+                                <th>Booking</th>
+                                <th>Amount</th>
+                                <th>Receipt</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Oct 20, 2025</td>
+                                <td class="therapist-name">Jane Doe</td>
+                                <td>RB2510045</td>
+                                <td>$12.00</td>
+                                <td><a href="#" onclick="viewReceipt(); return false;">View Receipt</a></td>
+                                <td><span class="status-badge status-pending">Pending</span></td>
+                                <td>
+                                    <button class="btn btn-success btn-sm" onclick="approveItem('parking', 1)">Approve</button>
+                                    <button class="btn btn-sm" style="background: #ff4d4f; color: white;" onclick="rejectItem('parking', 1)">Reject</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Oct 19, 2025</td>
+                                <td class="therapist-name">John Smith</td>
+                                <td>RB2510044</td>
+                                <td>$15.00</td>
+                                <td><a href="#" onclick="viewReceipt(); return false;">View Receipt</a></td>
+                                <td><span class="status-badge status-pending">Pending</span></td>
+                                <td>
+                                    <button class="btn btn-success btn-sm" onclick="approveItem('parking', 2)">Approve</button>
+                                    <button class="btn btn-sm" style="background: #ff4d4f; color: white;" onclick="rejectItem('parking', 2)">Reject</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 style="margin: 20px 0;">Tips</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Submitted</th>
+                                <th>Therapist</th>
+                                <th>Booking</th>
+                                <th>Amount</th>
+                                <th>Notes</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Oct 20, 2025</td>
+                                <td class="therapist-name">Jane Doe</td>
+                                <td>RB2510045</td>
+                                <td>$15.00</td>
+                                <td>Cash tip from client</td>
+                                <td><span class="status-badge status-pending">Pending</span></td>
+                                <td>
+                                    <button class="btn btn-success btn-sm" onclick="approveItem('tip', 1)">Approve</button>
+                                    <button class="btn btn-sm" style="background: #ff4d4f; color: white;" onclick="rejectItem('tip', 1)">Reject</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Oct 19, 2025</td>
+                                <td class="therapist-name">Sarah Johnson</td>
+                                <td>RB2510043</td>
+                                <td>$20.00</td>
+                                <td>Very satisfied client</td>
+                                <td><span class="status-badge status-pending">Pending</span></td>
+                                <td>
+                                    <button class="btn btn-success btn-sm" onclick="approveItem('tip', 2)">Approve</button>
+                                    <button class="btn btn-sm" style="background: #ff4d4f; color: white;" onclick="rejectItem('tip', 2)">Reject</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Record Payment Modal -->
+    <div id="payment-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Record Payment</h3>
+                <button class="modal-close" onclick="closeModal('payment-modal')">&times;</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Therapist</label>
+                <select class="form-select">
+                    <option>Jane Doe</option>
+                    <option>John Smith</option>
+                    <option>Sarah Johnson</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Week Ending Date</label>
+                <input type="date" class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Invoice Date</label>
+                <input type="date" class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Invoice Number</label>
+                <input type="text" class="form-input" placeholder="INV-JD-2510-03">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Amount Paid</label>
+                <input type="number" class="form-input" placeholder="2353.00" step="0.01">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Paid Date</label>
+                <input type="date" class="form-input">
+            </div>
+            <div class="form-group">
+                <label class="form-label">EFT Reference</label>
+                <input type="text" class="form-input" placeholder="EFT2510230456">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Notes</label>
+                <textarea class="form-textarea" placeholder="Any additional notes..."></textarea>
+            </div>
+            <div style="display: flex; gap: 12px;">
+                <button class="btn btn-success" onclick="savePayment()">Record Payment</button>
+                <button class="btn" style="background: #f0f0f0;" onclick="closeModal('payment-modal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Therapist Details Modal -->
+    <div id="therapist-modal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Therapist Details - <span id="therapist-name-display">Jane Doe</span></h3>
+                <button class="modal-close" onclick="closeModal('therapist-modal')">&times;</button>
+            </div>
+            <div style="margin-bottom: 20px;">
+                <h4>Week: Oct 14-20, 2025</h4>
+                <div class="weekly-summary">
+                    <div class="summary-row">
+                        <span>Jobs:</span>
+                        <strong>12</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>Base Fees:</span>
+                        <strong>$2,160.00</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>Parking (4 pending):</span>
+                        <strong>$48.00</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>Tips (2 pending):</span>
+                        <strong>$145.00</strong>
+                    </div>
+                    <div class="summary-row">
+                        <span>TOTAL:</span>
+                        <strong style="color: #52c41a;">$2,353.00</strong>
+                    </div>
+                </div>
+            </div>
+
+            <h4>Job Details</h4>
+            <table style="font-size: 12px;">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Booking</th>
+                        <th>Client</th>
+                        <th>Fee</th>
+                        <th>Parking</th>
+                        <th>Tip</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Oct 14</td>
+                        <td>RB2510030</td>
+                        <td>ABC Corp</td>
+                        <td>$180</td>
+                        <td>$12 ✓</td>
+                        <td>$15 ✓</td>
+                        <td>$207</td>
+                    </tr>
+                    <tr>
+                        <td>Oct 15</td>
+                        <td>RB2510031</td>
+                        <td>XYZ Ltd</td>
+                        <td>$180</td>
+                        <td>$0</td>
+                        <td>$20 ⏳</td>
+                        <td>$200</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="margin-top: 20px; display: flex; gap: 12px;">
+                <button class="btn btn-success" onclick="openRecordPaymentModal('Jane Doe', 2353.00)">Record Payment</button>
+                <button class="btn" style="background: #f0f0f0;" onclick="closeModal('therapist-modal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+
+            document.getElementById(tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function openRecordPaymentModal(therapist, amount) {
+            openModal('payment-modal');
+        }
+
+        function viewTherapistDetails(name) {
+            document.getElementById('therapist-name-display').textContent = name;
+            openModal('therapist-modal');
+        }
+
+        function processPayments() {
+            if (confirm('Process all payments for this week? This will mark them as "Processing" and prepare them for bank transfer.')) {
+                alert('Payments are being processed! Bank transfer batch created.');
+            }
+        }
+
+        function savePayment() {
+            alert('Payment recorded successfully!');
+            closeModal('payment-modal');
+        }
+
+        function approveItem(type, id) {
+            alert(type.charAt(0).toUpperCase() + type.slice(1) + ' approved!');
+        }
+
+        function rejectItem(type, id) {
+            const reason = prompt('Reason for rejection:');
+            if (reason) {
+                alert(type.charAt(0).toUpperCase() + type.slice(1) + ' rejected.');
+            }
+        }
+
+        function viewReceipt() {
+            alert('Receipt image viewer would open here');
+        }
+
+        function viewPaymentDetails() {
+            alert('Payment details viewer would open here');
+        }
+
+        // Close modal on background click
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
