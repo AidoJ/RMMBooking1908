@@ -66,6 +66,9 @@ import { DiscountCodesList, DiscountCodesCreate, DiscountCodesEdit, DiscountCode
 // Import the gift cards management components
 import { GiftCardsList, GiftCardsCreate, GiftCardsEdit, GiftCardsShow } from "./pages/gift-cards";
 
+// Import the therapist payments management components
+import TherapistPayments from "./pages/therapist-payments";
+
 
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
@@ -202,6 +205,14 @@ function App() {
                     },
                   },
                   {
+                    name: "therapist-payments",
+                    list: "/therapist-payments",
+                    meta: {
+                      label: "Therapist Payments",
+                      icon: "💵",
+                    },
+                  },
+                  {
                     name: "reports",
                     list: "/reports",
                     meta: {
@@ -324,7 +335,10 @@ function App() {
                       <Route path="edit/:id" element={<ServiceEdit />} />
                       <Route path="show/:id" element={<ServiceShow />} />
                     </Route>
-                    
+
+                    {/* Therapist Payments */}
+                    <Route path="/therapist-payments" element={<TherapistPayments />} />
+
                     {/* Reports */}
                     <Route path="/reports" element={<Reports />} />
                     
