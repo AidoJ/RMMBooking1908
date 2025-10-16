@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DatePicker, Button, Table, Card, Descriptions, Space, message } from 'antd';
+import { DatePicker, Button, Table, Card, Descriptions, Space, message, Tag, Divider } from 'antd';
 import { SearchOutlined, DollarOutlined } from '@ant-design/icons';
 import { supabaseClient } from '../../utility';
 import dayjs from 'dayjs';
@@ -26,6 +26,14 @@ interface WeeklySummary {
   parking: number;
   total_payment: number;
   daily_breakdown: DailyBreakdown[];
+  // Invoice tracking
+  invoice_status: string | null;
+  therapist_invoiced_fees: number | null;
+  admin_approved_fees: number | null;
+  admin_approved_parking: number | null;
+  paid_amount: number | null;
+  paid_date: string | null;
+  variance_fees: number | null;
 }
 
 const WeeklySummaryTab: React.FC = () => {
@@ -58,10 +66,10 @@ const WeeklySummaryTab: React.FC = () => {
 
       if (bookingsError) throw bookingsError;
 
-      // Get invoice data for parking amounts
-      const { data: invoices, error: invoicesError } = await supabaseClient
+      // Get invoice data for parking amounts and payment status
+      const { data: invoices, error: invoicesError} = await supabaseClient
         .from('therapist_payments')
-        .select('therapist_id, therapist_parking_amount, admin_approved_parking')
+        .select('therapist_id, status, therapist_invoiced_fees, therapist_parking_amount, admin_approved_fees, admin_approved_parking, paid_amount, paid_date, variance_fees')
         .eq('week_start_date', weekStart)
         .eq('week_end_date', weekEnd);
 
@@ -84,7 +92,14 @@ const WeeklySummaryTab: React.FC = () => {
             base_fees: 0,
             parking: 0,
             total_payment: 0,
-            daily_breakdown: []
+            daily_breakdown: [],
+            invoice_status: null,
+            therapist_invoiced_fees: null,
+            admin_approved_fees: null,
+            admin_approved_parking: null,
+            paid_amount: null,
+            paid_date: null,
+            variance_fees: null
           });
         }
 
@@ -110,11 +125,18 @@ const WeeklySummaryTab: React.FC = () => {
         dayRecord.booking_ids.push(booking.booking_id);
       });
 
-      // Add parking amounts from invoices
+      // Add invoice and payment data
       invoices?.forEach((invoice: any) => {
         const summary = therapistMap.get(invoice.therapist_id);
         if (summary) {
           summary.parking = parseFloat(invoice.admin_approved_parking || invoice.therapist_parking_amount || 0);
+          summary.invoice_status = invoice.status;
+          summary.therapist_invoiced_fees = invoice.therapist_invoiced_fees ? parseFloat(invoice.therapist_invoiced_fees) : null;
+          summary.admin_approved_fees = invoice.admin_approved_fees ? parseFloat(invoice.admin_approved_fees) : null;
+          summary.admin_approved_parking = invoice.admin_approved_parking ? parseFloat(invoice.admin_approved_parking) : null;
+          summary.paid_amount = invoice.paid_amount ? parseFloat(invoice.paid_amount) : null;
+          summary.paid_date = invoice.paid_date;
+          summary.variance_fees = invoice.variance_fees ? parseFloat(invoice.variance_fees) : null;
         }
       });
 
@@ -201,18 +223,9 @@ const WeeklySummaryTab: React.FC = () => {
           <Card
             key={summary.therapist_id}
             title={
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '18px', color: '#1890ff' }}>
-                  {summary.therapist_name} - Week {dayjs(summary.week_start).format('MMM D')} - {dayjs(summary.week_end).format('MMM D, YYYY')}
-                </span>
-                <Button
-                  type="primary"
-                  icon={<DollarOutlined />}
-                  onClick={() => message.info('Record payment functionality coming soon')}
-                >
-                  Record Payment
-                </Button>
-              </div>
+              <span style={{ fontSize: '18px', color: '#1890ff' }}>
+                {summary.therapist_name} - Week {dayjs(summary.week_start).format('MMM D')} - {dayjs(summary.week_end).format('MMM D, YYYY')}
+              </span>
             }
             style={{ background: '#fafafa' }}
           >
@@ -220,15 +233,59 @@ const WeeklySummaryTab: React.FC = () => {
               <Descriptions.Item label="Total Jobs Completed">
                 <strong>{summary.total_jobs} bookings</strong>
               </Descriptions.Item>
-              <Descriptions.Item label="Base Therapist Fees">
+              <Descriptions.Item label="System Calculated Fees">
                 <strong>${summary.base_fees.toFixed(2)}</strong>
               </Descriptions.Item>
-              <Descriptions.Item label="Parking Reimbursements">
-                <strong>${summary.parking.toFixed(2)}</strong>
-              </Descriptions.Item>
-              <Descriptions.Item label="TOTAL PAYMENT DUE">
-                <strong style={{ color: '#52c41a', fontSize: '18px' }}>${summary.total_payment.toFixed(2)}</strong>
-              </Descriptions.Item>
+
+              {summary.invoice_status ? (
+                <>
+                  <Descriptions.Item label="Invoice Status">
+                    {summary.invoice_status === 'not_submitted' && <Tag color="default">Not Submitted</Tag>}
+                    {summary.invoice_status === 'submitted' && <Tag color="orange">Submitted</Tag>}
+                    {summary.invoice_status === 'approved' && <Tag color="green">Approved</Tag>}
+                    {summary.invoice_status === 'paid' && <Tag color="blue">Paid</Tag>}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Therapist Invoiced">
+                    <strong>${(summary.therapist_invoiced_fees || 0).toFixed(2)}</strong>
+                    {summary.variance_fees !== null && summary.variance_fees !== 0 && (
+                      <span style={{ color: summary.variance_fees > 0 ? '#f5222d' : '#52c41a', marginLeft: 8 }}>
+                        ({summary.variance_fees > 0 ? '+' : ''}${summary.variance_fees.toFixed(2)} variance)
+                      </span>
+                    )}
+                  </Descriptions.Item>
+
+                  {(summary.invoice_status === 'approved' || summary.invoice_status === 'paid') && (
+                    <>
+                      <Descriptions.Item label="Admin Approved Fees">
+                        <strong>${(summary.admin_approved_fees || 0).toFixed(2)}</strong>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Admin Approved Parking">
+                        <strong>${(summary.admin_approved_parking || 0).toFixed(2)}</strong>
+                      </Descriptions.Item>
+                    </>
+                  )}
+
+                  {summary.invoice_status === 'paid' && (
+                    <>
+                      <Descriptions.Item label="Paid Amount">
+                        <strong style={{ color: '#52c41a' }}>${(summary.paid_amount || 0).toFixed(2)}</strong>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Paid Date">
+                        <strong>{summary.paid_date ? dayjs(summary.paid_date).format('MMM D, YYYY') : '-'}</strong>
+                      </Descriptions.Item>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Descriptions.Item label="Invoice Status">
+                    <Tag color="default">Not Submitted</Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Parking Reimbursements">
+                    <strong>${summary.parking.toFixed(2)}</strong>
+                  </Descriptions.Item>
+                </>
+              )}
             </Descriptions>
 
             <h4 style={{ marginTop: 20 }}>Daily Breakdown</h4>

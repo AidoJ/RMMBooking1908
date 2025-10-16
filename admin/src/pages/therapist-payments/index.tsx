@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import { Tabs, Card } from 'antd';
 import {
-  DollarOutlined,
   ClockCircleOutlined,
-  CheckCircleOutlined,
   CalendarOutlined,
   FileTextOutlined,
   ExclamationCircleOutlined
 } from '@ant-design/icons';
 import CurrentWeekTab from './CurrentWeekTab';
 import PendingInvoicesTab from './PendingInvoicesTab';
-import CompletedJobsTab from './CompletedJobsTab';
 import WeeklySummaryTab from './WeeklySummaryTab';
 import PaymentHistoryTab from './PaymentHistoryTab';
 
@@ -54,18 +51,6 @@ export const TherapistPayments: React.FC = () => {
             key="pending-invoices"
           >
             <PendingInvoicesTab />
-          </TabPane>
-
-          <TabPane
-            tab={
-              <span>
-                <CheckCircleOutlined />
-                Completed Jobs
-              </span>
-            }
-            key="completed-jobs"
-          >
-            <CompletedJobsTab />
           </TabPane>
 
           <TabPane

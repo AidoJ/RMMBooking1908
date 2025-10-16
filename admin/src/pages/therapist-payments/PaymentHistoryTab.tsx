@@ -274,13 +274,6 @@ const PaymentHistoryTab: React.FC = () => {
               Filter
             </Button>
           </Space>
-
-          <Button
-            icon={<PlusOutlined />}
-            onClick={() => message.info('Manual payment entry coming soon')}
-          >
-            Record New Payment
-          </Button>
         </div>
 
         <Table

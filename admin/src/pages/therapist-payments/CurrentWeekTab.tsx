@@ -131,9 +131,6 @@ const CurrentWeekTab: React.FC = () => {
     }
   };
 
-  const handleProcessAllPayments = () => {
-    message.info('Process all payments functionality coming soon');
-  };
 
   const columns = [
     {
@@ -191,16 +188,6 @@ const CurrentWeekTab: React.FC = () => {
         }
         return <Tag>{status}</Tag>;
       }
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      align: 'center' as const,
-      render: (_: any, record: WeeklyTherapistSummary) => (
-        <Button type="primary" size="small">
-          View Details
-        </Button>
-      )
     }
   ];
 
@@ -247,17 +234,7 @@ const CurrentWeekTab: React.FC = () => {
           </Col>
         </Row>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3>Therapist Summary</h3>
-          <Button
-            type="primary"
-            size="large"
-            onClick={handleProcessAllPayments}
-            disabled={summaries.length === 0}
-          >
-            Process All Payments
-          </Button>
-        </div>
+        <h3>Therapist Summary</h3>
 
         <Table
           dataSource={summaries}

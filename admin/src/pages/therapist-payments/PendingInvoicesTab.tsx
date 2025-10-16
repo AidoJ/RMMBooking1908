@@ -294,6 +294,48 @@ const PendingInvoicesTab: React.FC = () => {
 
       const calculatedFees = bookings?.reduce((sum, b) => sum + parseFloat(b.therapist_fee || '0'), 0) || 0;
 
+      // Upload invoice file if present
+      let invoiceUrl = null;
+      if (values.invoice_upload?.fileList?.[0]?.originFileObj) {
+        const file = values.invoice_upload.fileList[0].originFileObj;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${values.therapist_id}_${weekStart}_invoice.${fileExt}`;
+        const filePath = `therapist-invoices/${fileName}`;
+
+        const { error: uploadError } = await supabaseClient.storage
+          .from('invoices')
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabaseClient.storage
+          .from('invoices')
+          .getPublicUrl(filePath);
+
+        invoiceUrl = urlData.publicUrl;
+      }
+
+      // Upload parking receipt if present
+      let receiptUrl = null;
+      if (values.parking_receipt_upload?.fileList?.[0]?.originFileObj) {
+        const file = values.parking_receipt_upload.fileList[0].originFileObj;
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${values.therapist_id}_${weekStart}_parking.${fileExt}`;
+        const filePath = `parking-receipts/${fileName}`;
+
+        const { error: uploadError } = await supabaseClient.storage
+          .from('invoices')
+          .upload(filePath, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabaseClient.storage
+          .from('invoices')
+          .getPublicUrl(filePath);
+
+        receiptUrl = urlData.publicUrl;
+      }
+
       // Create invoice record
       const { error: insertError } = await supabaseClient
         .from('therapist_payments')
@@ -305,6 +347,8 @@ const PendingInvoicesTab: React.FC = () => {
           therapist_invoice_number: values.invoice_number || null,
           therapist_invoiced_fees: values.invoiced_fees,
           therapist_parking_amount: values.parking_amount || 0,
+          therapist_invoice_url: invoiceUrl,
+          parking_receipt_url: receiptUrl,
           therapist_notes: values.notes || 'Manually entered by admin',
           submitted_at: new Date().toISOString(),
           status: values.status
@@ -540,6 +584,34 @@ const PendingInvoicesTab: React.FC = () => {
               />
             </Form.Item>
           </Space>
+
+          <Form.Item
+            label="Invoice Upload (PDF or Image)"
+            name="invoice_upload"
+            tooltip="Optional: Upload scanned invoice or photo"
+          >
+            <Upload
+              maxCount={1}
+              beforeUpload={() => false}
+              listType="picture"
+            >
+              <Button icon={<UploadOutlined />}>Click to Upload Invoice</Button>
+            </Upload>
+          </Form.Item>
+
+          <Form.Item
+            label="Parking Receipt Upload"
+            name="parking_receipt_upload"
+            tooltip="Optional: Upload parking receipt if applicable"
+          >
+            <Upload
+              maxCount={1}
+              beforeUpload={() => false}
+              listType="picture"
+            >
+              <Button icon={<UploadOutlined />}>Click to Upload Receipt</Button>
+            </Upload>
+          </Form.Item>
 
           <Form.Item
             label="Notes"
