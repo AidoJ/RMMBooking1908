@@ -60,7 +60,7 @@ const CompletedJobsTab: React.FC = () => {
           customer_name,
           duration_minutes,
           therapist_fee,
-          therapist_profiles!inner(id, first_name, last_name)
+          therapist_profiles(id, first_name, last_name)
         `)
         .eq('status', 'completed')
         .order('booking_time', { ascending: false });

@@ -44,7 +44,7 @@ const PendingInvoicesTab: React.FC = () => {
         .from('therapist_payments')
         .select(`
           *,
-          therapist_profiles!inner(id, first_name, last_name)
+          therapist_profiles(id, first_name, last_name)
         `)
         .in('status', ['submitted', 'under_review'])
         .order('submitted_at', { ascending: false });
