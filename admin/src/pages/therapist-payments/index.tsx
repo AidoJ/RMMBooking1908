@@ -18,6 +18,17 @@ export const TherapistPayments: React.FC = () => {
 
   return (
     <div style={{ padding: '24px' }}>
+      <style>{`
+        .ant-tabs-tab:hover {
+          color: #007e8c !important;
+        }
+        .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+          color: #007e8c !important;
+        }
+        .ant-tabs-ink-bar {
+          background: #007e8c !important;
+        }
+      `}</style>
       <Card>
         <div style={{ marginBottom: '24px' }}>
           <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 600 }}>
