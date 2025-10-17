@@ -24,14 +24,20 @@ async function main() {
     await fs.remove(path.join(__dirname, 'admin', 'dist'));
 
     console.log('📦 Building admin panel...');
-    await execAsync('npm run build', { cwd: path.join(__dirname, 'admin') });
+    await execAsync('npm run build', {
+      cwd: path.join(__dirname, 'admin'),
+      env: { ...process.env }
+    });
 
     // Clean and rebuild therapist app
     console.log('🧹 Cleaning therapist app build...');
     await fs.remove(path.join(__dirname, 'therapist-app', 'dist'));
 
     console.log('📦 Building therapist app...');
-    await execAsync('npm run build', { cwd: path.join(__dirname, 'therapist-app') });
+    await execAsync('npm run build', {
+      cwd: path.join(__dirname, 'therapist-app'),
+      env: { ...process.env }
+    });
 
     // Setup dist directory
     console.log('📁 Setting up dist...');
