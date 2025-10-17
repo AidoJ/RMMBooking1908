@@ -41,9 +41,9 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
       label: 'Dashboard',
     },
     {
-      key: '/schedule',
+      key: '/calendar',
       icon: <CalendarOutlined />,
-      label: 'My Schedule',
+      label: 'Calendar',
     },
     {
       key: '/profile',
@@ -51,9 +51,19 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
       label: 'My Profile',
     },
     {
+      key: '/services',
+      icon: <FileTextOutlined />,
+      label: 'My Services',
+    },
+    {
       key: '/availability',
       icon: <ClockCircleOutlined />,
       label: 'Availability',
+    },
+    {
+      key: '/time-off',
+      icon: <ClockCircleOutlined />,
+      label: 'Time Off',
     },
     {
       key: '/service-area',

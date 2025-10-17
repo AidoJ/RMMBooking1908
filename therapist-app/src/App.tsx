@@ -4,9 +4,11 @@ import { ConfigProvider, Spin } from 'antd';
 import { AppLayout } from './components/AppLayout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
-import { Schedule } from './pages/Schedule';
+import { Calendar } from './pages/Calendar';
 import { Profile } from './pages/Profile';
+import { Services } from './pages/Services';
 import { Availability } from './pages/Availability';
+import { TimeOff } from './pages/TimeOff';
 import { ServiceArea } from './pages/ServiceArea';
 import { Invoices } from './pages/Invoices';
 import { Earnings } from './pages/Earnings';
@@ -75,9 +77,11 @@ function App() {
                 >
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
-                    <Route path="/schedule" element={<Schedule />} />
+                    <Route path="/calendar" element={<Calendar />} />
                     <Route path="/profile" element={<Profile />} />
+                    <Route path="/services" element={<Services />} />
                     <Route path="/availability" element={<Availability />} />
+                    <Route path="/time-off" element={<TimeOff />} />
                     <Route path="/service-area" element={<ServiceArea />} />
                     <Route path="/invoices" element={<Invoices />} />
                     <Route path="/earnings" element={<Earnings />} />
