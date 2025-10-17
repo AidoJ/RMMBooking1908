@@ -2408,15 +2408,68 @@ async function updateAvailableTimeSlots() {
   // 1. Get buffer_time for selected service (not used here, but could be for after buffer)
   const durationMinutes = Number(durationVal);
 
-  // 2. Get all therapists who match service and gender
+  // 2. Get all therapists who match service and gender (with location data)
   const { data: therapistLinks } = await window.supabase
     .from('therapist_services')
-    .select('therapist_id, therapist:therapist_id (id, gender, is_active)')
+    .select('therapist_id, therapist:therapist_id (id, gender, is_active, latitude, longitude, service_radius_km, service_area_polygon)')
     .eq('service_id', serviceId);
   console.log('Raw therapistLinks from Supabase:', therapistLinks);
   let therapists = (therapistLinks || []).map(row => row.therapist).filter(t => t && t.is_active);
   if (genderVal !== 'any') therapists = therapists.filter(t => t.gender === genderVal);
-  
+
+  // Filter by location (polygon first, then radius fallback)
+  const addressInput = document.getElementById('address');
+  const customerLat = addressInput.dataset.lat ? Number(addressInput.dataset.lat) : null;
+  const customerLng = addressInput.dataset.lng ? Number(addressInput.dataset.lng) : null;
+
+  if (customerLat && customerLng) {
+    // Point-in-polygon check
+    function isPointInPolygon(point, polygon) {
+      if (!polygon || polygon.length < 3) return false;
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i].lng, yi = polygon[i].lat;
+        const xj = polygon[j].lng, yj = polygon[j].lat;
+        const intersect = ((yi > point.lat) !== (yj > point.lat))
+          && (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    // Distance calculation
+    function getDistanceKm(lat1, lng1, lat2, lng2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    therapists = therapists.filter(t => {
+      if (!t.latitude || !t.longitude) return false;
+
+      // Check polygon first
+      if (t.service_area_polygon && Array.isArray(t.service_area_polygon) && t.service_area_polygon.length >= 3) {
+        const inPolygon = isPointInPolygon({ lat: customerLat, lng: customerLng }, t.service_area_polygon);
+        console.log(`📍 Time slot filter - Therapist ${t.id}: polygon check = ${inPolygon}`);
+        if (inPolygon) return true;
+      }
+
+      // Fallback to radius
+      if (t.service_radius_km != null) {
+        const dist = getDistanceKm(customerLat, customerLng, t.latitude, t.longitude);
+        console.log(`📍 Time slot filter - Therapist ${t.id}: distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km`);
+        return dist <= t.service_radius_km;
+      }
+
+      return false;
+    });
+  }
+
   // Deduplicate therapists to avoid redundant checks
   const uniqueTherapists = [...new Map(therapists.map(t => [t.id, t])).values()];
   console.log('Therapists after filtering & deduplication:', uniqueTherapists);
@@ -2479,18 +2532,71 @@ async function updateTherapistSelection() {
   therapistSelectionDiv.innerHTML = '';
   if (!serviceId || !durationVal || !dateVal || !timeVal || !genderVal) return;
 
-  // Get all therapists who match service and gender
+  // Get all therapists who match service and gender (with location data)
   const { data: therapistLinks } = await window.supabase
     .from('therapist_services')
     .select(`
       therapist_id,
-      therapist_profiles!therapist_id (id, first_name, last_name, gender, is_active, profile_pic)
+      therapist_profiles!therapist_id (id, first_name, last_name, gender, is_active, profile_pic, latitude, longitude, service_radius_km, service_area_polygon)
     `)
     .eq('service_id', serviceId);
   let therapists = (therapistLinks || []).map(row => ({
     ...row.therapist_profiles
   })).filter(t => t && t.is_active);
   if (genderVal !== 'any') therapists = therapists.filter(t => t.gender === genderVal);
+
+  // Filter by location (polygon first, then radius fallback)
+  const addressInput = document.getElementById('address');
+  const customerLat = addressInput.dataset.lat ? Number(addressInput.dataset.lat) : null;
+  const customerLng = addressInput.dataset.lng ? Number(addressInput.dataset.lng) : null;
+
+  if (customerLat && customerLng) {
+    // Point-in-polygon check
+    function isPointInPolygon(point, polygon) {
+      if (!polygon || polygon.length < 3) return false;
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i].lng, yi = polygon[i].lat;
+        const xj = polygon[j].lng, yj = polygon[j].lat;
+        const intersect = ((yi > point.lat) !== (yj > point.lat))
+          && (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    // Distance calculation
+    function getDistanceKm(lat1, lng1, lat2, lng2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    therapists = therapists.filter(t => {
+      if (!t.latitude || !t.longitude) return false;
+
+      // Check polygon first
+      if (t.service_area_polygon && Array.isArray(t.service_area_polygon) && t.service_area_polygon.length >= 3) {
+        const inPolygon = isPointInPolygon({ lat: customerLat, lng: customerLng }, t.service_area_polygon);
+        console.log(`📍 Therapist selection filter - Therapist ${t.id}: polygon check = ${inPolygon}`);
+        if (inPolygon) return true;
+      }
+
+      // Fallback to radius
+      if (t.service_radius_km != null) {
+        const dist = getDistanceKm(customerLat, customerLng, t.latitude, t.longitude);
+        console.log(`📍 Therapist selection filter - Therapist ${t.id}: distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km`);
+        return dist <= t.service_radius_km;
+      }
+
+      return false;
+    });
+  }
 
   // Deduplicate therapists by id (fix for triplicates)
   const uniqueTherapists = Object.values(therapists.reduce((acc, t) => {
