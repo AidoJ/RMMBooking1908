@@ -1911,7 +1911,22 @@ function initAutocomplete() {
 
       if (place && place.geometry) {
         let cleanAddress = place.formatted_address || addressInput.value;
-        const businessName = place.name || '';
+
+        // Only use place.name as business name if it's actually a business/establishment
+        // Exclude residential addresses (street_address, premise, subpremise)
+        let businessName = '';
+        const types = place.types || [];
+        const isResidential = types.some(type =>
+          ['street_address', 'premise', 'subpremise', 'route'].includes(type)
+        );
+        const isBusiness = types.some(type =>
+          ['lodging', 'hotel', 'establishment', 'point_of_interest', 'hospital', 'shopping_mall', 'store'].includes(type)
+        );
+
+        // Only set business name if it's a business and not a residential address
+        if (isBusiness && !isResidential && place.name) {
+          businessName = place.name;
+        }
 
         // If the formatted address starts with the business name, remove it
         if (businessName && cleanAddress.startsWith(businessName)) {
