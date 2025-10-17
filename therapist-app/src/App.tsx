@@ -10,7 +10,6 @@ import { Availability } from './pages/Availability';
 import { ServiceArea } from './pages/ServiceArea';
 import { Invoices } from './pages/Invoices';
 import { Earnings } from './pages/Earnings';
-import { supabaseClient } from './services/supabaseClient';
 import type { UserIdentity } from './types';
 
 function App() {
@@ -18,54 +17,32 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check active session
-    supabaseClient.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        loadUserProfile(session.user.id);
-      } else {
-        setLoading(false);
+    // Check for stored therapist session (using localStorage like admin panel)
+    const checkAuth = () => {
+      const token = localStorage.getItem('therapistToken');
+      const userStr = localStorage.getItem('therapistUser');
+
+      if (token && userStr) {
+        try {
+          const therapistData = JSON.parse(userStr);
+          setUser({
+            id: therapistData.user_id || therapistData.id,
+            email: therapistData.email,
+            role: 'therapist',
+            therapist_profile: therapistData,
+          });
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+          // Clear invalid data
+          localStorage.removeItem('therapistToken');
+          localStorage.removeItem('therapistUser');
+        }
       }
-    });
-
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        loadUserProfile(session.user.id);
-      } else {
-        setUser(null);
-        setLoading(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const loadUserProfile = async (userId: string) => {
-    try {
-      const { data: profile, error } = await supabaseClient
-        .from('therapist_profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (error) throw error;
-
-      if (profile) {
-        setUser({
-          id: userId,
-          email: profile.email,
-          role: 'therapist',
-          therapist_profile: profile,
-        });
-      }
-    } catch (error) {
-      console.error('Error loading profile:', error);
-    } finally {
       setLoading(false);
-    }
-  };
+    };
+
+    checkAuth();
+  }, []);
 
   if (loading) {
     return (

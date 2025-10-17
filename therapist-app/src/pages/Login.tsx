@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Form, Input, Button, message, Typography } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { supabaseClient } from '../services/supabaseClient';
 import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
@@ -14,15 +13,28 @@ export const Login: React.FC = () => {
     try {
       setLoading(true);
 
-      const { error } = await supabaseClient.auth.signInWithPassword({
-        email: values.email,
-        password: values.password,
+      // Call therapist-auth Netlify function (same pattern as admin panel)
+      const response = await fetch('/.netlify/functions/therapist-auth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: values.email,
+          password: values.password
+        })
       });
 
-      if (error) throw error;
+      const result = await response.json();
 
-      // Note: Therapist verification happens in App.tsx when loading user profile
-      // This avoids RLS policy issues during login
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Authentication failed');
+      }
+
+      // Store token and user info in localStorage
+      localStorage.setItem('therapistToken', result.token);
+      localStorage.setItem('therapistUser', JSON.stringify(result.user));
+
       message.success('Welcome back!');
       navigate('/');
     } catch (error: any) {

@@ -12,7 +12,6 @@ import {
   LogoutOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabaseClient } from '../services/supabaseClient';
 
 const { Header, Content } = Layout;
 const { Text } = Typography;
@@ -28,8 +27,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
   const navigate = useNavigate();
   const location = useLocation();
 
-  const handleLogout = async () => {
-    await supabaseClient.auth.signOut();
+  const handleLogout = () => {
+    // Clear therapist session
+    localStorage.removeItem('therapistToken');
+    localStorage.removeItem('therapistUser');
     navigate('/login');
   };
 
