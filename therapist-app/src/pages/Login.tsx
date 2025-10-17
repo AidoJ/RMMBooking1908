@@ -14,25 +14,15 @@ export const Login: React.FC = () => {
     try {
       setLoading(true);
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
+      const { error } = await supabaseClient.auth.signInWithPassword({
         email: values.email,
         password: values.password,
       });
 
       if (error) throw error;
 
-      // Verify user is a therapist
-      const { data: profile } = await supabaseClient
-        .from('therapist_profiles')
-        .select('id')
-        .eq('user_id', data.user.id)
-        .single();
-
-      if (!profile) {
-        await supabaseClient.auth.signOut();
-        throw new Error('You do not have therapist access');
-      }
-
+      // Note: Therapist verification happens in App.tsx when loading user profile
+      // This avoids RLS policy issues during login
       message.success('Welcome back!');
       navigate('/');
     } catch (error: any) {
