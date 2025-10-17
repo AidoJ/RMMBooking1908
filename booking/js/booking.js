@@ -2026,22 +2026,39 @@ async function checkTherapistCoverageForAddress() {
     statusDiv.className = 'status-message';
     statusDiv.style.display = 'block';
   }
-  // Fetch all active therapists with lat/lng and service_radius_km
+  // Fetch all active therapists with lat/lng, service_radius_km, and service_area_polygon
   let { data, error } = await window.supabase
     .from('therapist_profiles')
-    .select('id, latitude, longitude, service_radius_km, is_active')
+    .select('id, latitude, longitude, service_radius_km, service_area_polygon, is_active')
     .eq('is_active', true);
-  
+
   console.log('🔍 Checking therapist coverage for coordinates:', { lat, lng });
   console.log('📊 Found therapists:', data?.length || 0);
-  
+
   if (!data || data.length === 0) {
     console.log('❌ No active therapists found in database');
     updateAddressStatus("Sorry... we don't have any therapists available in your area right now.", 'error');
     disableContinueFromAddress();
     return;
   }
-  // Haversine formula
+
+  // Point-in-polygon check using ray-casting algorithm
+  function isPointInPolygon(point, polygon) {
+    if (!polygon || polygon.length < 3) return false;
+
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lng, yi = polygon[i].lat;
+      const xj = polygon[j].lng, yj = polygon[j].lat;
+
+      const intersect = ((yi > point.lat) !== (yj > point.lat))
+        && (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  // Haversine formula for distance calculation
   function getDistanceKm(lat1, lng1, lat2, lng2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -2053,14 +2070,28 @@ async function checkTherapistCoverageForAddress() {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
+
   const covered = data.some(t => {
-    if (t.latitude == null || t.longitude == null || t.service_radius_km == null) {
+    if (t.latitude == null || t.longitude == null) {
       console.log('⚠️ Therapist missing location data:', t.id);
       return false;
     }
-    const dist = getDistanceKm(lat, lng, t.latitude, t.longitude);
-    console.log(`📍 Therapist ${t.id}: distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km`);
-    return dist <= t.service_radius_km;
+
+    // Check polygon first if it exists
+    if (t.service_area_polygon && Array.isArray(t.service_area_polygon) && t.service_area_polygon.length >= 3) {
+      const inPolygon = isPointInPolygon({ lat, lng }, t.service_area_polygon);
+      console.log(`📍 Therapist ${t.id}: polygon check = ${inPolygon}`);
+      if (inPolygon) return true;
+    }
+
+    // Fall back to radius check
+    if (t.service_radius_km != null) {
+      const dist = getDistanceKm(lat, lng, t.latitude, t.longitude);
+      console.log(`📍 Therapist ${t.id}: distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km`);
+      return dist <= t.service_radius_km;
+    }
+
+    return false;
   });
   
   console.log('✅ Coverage check result:', covered);
@@ -2104,22 +2135,39 @@ async function checkTherapistGenderAvailability() {
   const lng = addressInput.dataset.lng ? Number(addressInput.dataset.lng) : null;
   const statusDiv = document.getElementById('gender-availability-status');
   if (!genderVal || !lat || !lng) return;
-  // Fetch all active therapists with lat/lng, gender, and service_radius_km
+  // Fetch all active therapists with lat/lng, gender, service_radius_km, and service_area_polygon
   let { data, error } = await window.supabase
     .from('therapist_profiles')
-    .select('id, latitude, longitude, service_radius_km, is_active, gender')
+    .select('id, latitude, longitude, service_radius_km, service_area_polygon, is_active, gender')
     .eq('is_active', true);
-  
+
   console.log('🔍 Checking gender availability for coordinates:', { lat, lng, gender: genderVal });
   console.log('📊 Found therapists:', data?.length || 0);
-  
+
   if (!data || data.length === 0) {
     console.log('❌ No active therapists found in database');
     statusDiv.textContent = 'Sorry, we do not have any therapists available.';
     disableContinueFromGender();
     return;
   }
-  // Haversine formula
+
+  // Point-in-polygon check using ray-casting algorithm
+  function isPointInPolygon(point, polygon) {
+    if (!polygon || polygon.length < 3) return false;
+
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lng, yi = polygon[i].lat;
+      const xj = polygon[j].lng, yj = polygon[j].lat;
+
+      const intersect = ((yi > point.lat) !== (yj > point.lat))
+        && (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  // Haversine formula for distance calculation
   function getDistanceKm(lat1, lng1, lat2, lng2) {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -2131,15 +2179,29 @@ async function checkTherapistGenderAvailability() {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
-  // Filter therapists by geolocation
+
+  // Filter therapists by geolocation (polygon first, then radius fallback)
   const coveredTherapists = data.filter(t => {
-    if (t.latitude == null || t.longitude == null || t.service_radius_km == null) {
+    if (t.latitude == null || t.longitude == null) {
       console.log('⚠️ Therapist missing location data:', t.id);
       return false;
     }
-    const dist = getDistanceKm(lat, lng, t.latitude, t.longitude);
-    console.log(`📍 Therapist ${t.id} (${t.gender}): distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km`);
-    return dist <= t.service_radius_km;
+
+    // Check polygon first if it exists
+    if (t.service_area_polygon && Array.isArray(t.service_area_polygon) && t.service_area_polygon.length >= 3) {
+      const inPolygon = isPointInPolygon({ lat, lng }, t.service_area_polygon);
+      console.log(`📍 Therapist ${t.id} (${t.gender}): polygon check = ${inPolygon}`);
+      if (inPolygon) return true;
+    }
+
+    // Fall back to radius check
+    if (t.service_radius_km != null) {
+      const dist = getDistanceKm(lat, lng, t.latitude, t.longitude);
+      console.log(`📍 Therapist ${t.id} (${t.gender}): distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km`);
+      return dist <= t.service_radius_km;
+    }
+
+    return false;
   });
   
   console.log('✅ Therapists in coverage area:', coveredTherapists.length);
