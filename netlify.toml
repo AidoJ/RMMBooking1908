@@ -36,12 +36,23 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
+[[headers]]
+  for = "/therapist/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 # IMPORTANT: Order matters! Most specific routes first
 
 # Admin panel SPA routing - must come BEFORE root catch-all
 [[redirects]]
   from = "/admin/*"
   to = "/admin/index.html"
+  status = 200
+
+# Therapist app SPA routing
+[[redirects]]
+  from = "/therapist/*"
+  to = "/therapist/index.html"
   status = 200
 
 # API proxy removed - not needed as we use Supabase client directly

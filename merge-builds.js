@@ -14,26 +14,41 @@ async function main() {
     // Install admin dependencies first
     console.log('📥 Installing admin dependencies...');
     await execAsync('npm install', { cwd: path.join(__dirname, 'admin') });
-    
+
+    // Install therapist-app dependencies
+    console.log('📥 Installing therapist app dependencies...');
+    await execAsync('npm install', { cwd: path.join(__dirname, 'therapist-app') });
+
     // Clean and rebuild admin panel
     console.log('🧹 Cleaning admin build...');
     await fs.remove(path.join(__dirname, 'admin', 'dist'));
-    
+
     console.log('📦 Building admin panel...');
     await execAsync('npm run build', { cwd: path.join(__dirname, 'admin') });
-    
+
+    // Clean and rebuild therapist app
+    console.log('🧹 Cleaning therapist app build...');
+    await fs.remove(path.join(__dirname, 'therapist-app', 'dist'));
+
+    console.log('📦 Building therapist app...');
+    await execAsync('npm run build', { cwd: path.join(__dirname, 'therapist-app') });
+
     // Setup dist directory
     console.log('📁 Setting up dist...');
     await fs.remove(path.join(__dirname, 'dist'));
     await fs.ensureDir(path.join(__dirname, 'dist'));
-    
+
     // Copy booking platform to root
     console.log('📋 Copying booking platform...');
     await fs.copy(path.join(__dirname, 'booking'), path.join(__dirname, 'dist'));
-    
+
     // Copy admin build to /admin
     console.log('👥 Copying admin panel...');
     await fs.copy(path.join(__dirname, 'admin', 'dist'), path.join(__dirname, 'dist', 'admin'));
+
+    // Copy therapist app build to /therapist
+    console.log('💆 Copying therapist app...');
+    await fs.copy(path.join(__dirname, 'therapist-app', 'dist'), path.join(__dirname, 'dist', 'therapist'));
 
     // Copy mockups folder
     console.log('🎨 Copying mockups...');
