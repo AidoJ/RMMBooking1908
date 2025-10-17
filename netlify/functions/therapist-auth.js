@@ -50,17 +50,18 @@ exports.handler = async (event, context) => {
 
     console.log('🔐 Therapist authentication attempt:', email);
 
-    // Query therapist_profiles table using service role (bypasses RLS)
-    const { data: therapist, error } = await supabase
-      .from('therapist_profiles')
+    // Query admin_users table with therapist role (same as admin but filtered by role)
+    const { data: user, error } = await supabase
+      .from('admin_users')
       .select('*')
       .eq('email', email)
-      .eq('password', password) // Using same pattern as admin_users
+      .eq('password', password)
+      .eq('role', 'therapist')  // Only allow therapist role
       .eq('is_active', true)
       .single();
 
-    if (error || !therapist) {
-      console.error('❌ Authentication failed:', email, error?.message || 'Therapist not found');
+    if (error || !user) {
+      console.error('❌ Authentication failed:', email, error?.message || 'User not found or not a therapist');
 
       return {
         statusCode: 401,
@@ -69,31 +70,42 @@ exports.handler = async (event, context) => {
       };
     }
 
-    console.log('✅ Authentication successful:', therapist.email);
+    console.log('✅ Authentication successful:', user.email, 'Role:', user.role);
+
+    // Get therapist profile data
+    const { data: therapistProfile } = await supabase
+      .from('therapist_profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
 
     // Generate JWT token
     const token = jwt.sign(
       {
-        userId: therapist.user_id || therapist.id,
-        therapistId: therapist.id,
-        email: therapist.email,
-        role: 'therapist',
-        firstName: therapist.first_name,
-        lastName: therapist.last_name
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        therapistProfileId: therapistProfile?.id
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRY }
     );
 
-    // Return therapist info (without password) and token
-    const { password: _, ...therapistWithoutPassword } = therapist;
+    // Return user info (without password) and include therapist profile
+    const { password: _, ...userWithoutPassword } = user;
+    const responseData = {
+      ...userWithoutPassword,
+      therapist_profile: therapistProfile
+    };
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        user: therapistWithoutPassword,
+        user: responseData,
         token
       })
     };
