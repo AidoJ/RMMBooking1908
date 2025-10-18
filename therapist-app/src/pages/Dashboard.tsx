@@ -252,12 +252,14 @@ export const Dashboard: React.FC = () => {
           </Col>
           <Col xs={12} sm={6}>
             <Button
-              icon={<ClockCircleOutlined />}
-              onClick={() => navigate('/availability')}
+              type="primary"
+              icon={<FileTextOutlined />}
+              onClick={() => navigate('/bookings')}
               block
               size="large"
+              style={{ background: '#52c41a', borderColor: '#52c41a' }}
             >
-              Availability
+              My Bookings
             </Button>
           </Col>
           <Col xs={12} sm={6}>
