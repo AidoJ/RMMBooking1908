@@ -97,8 +97,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
     <Layout style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
       <Header
         style={{
-          background: '#1FBFBF',
-          padding: '20px 16px',
+          background: '#007e8c',
+          padding: '12px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -109,29 +109,31 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
         }}
       >
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <img
             src="/therapist/hand.png"
             alt="Rejuvenators Logo"
-            style={{ width: '70px', height: '70px', objectFit: 'contain' }}
+            style={{ width: '50px', height: '50px', objectFit: 'contain', flexShrink: 0 }}
           />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <Text strong style={{
               color: 'white',
-              fontSize: '28px',
-              letterSpacing: '3px',
+              fontSize: 'clamp(16px, 4vw, 24px)',
+              letterSpacing: '2px',
               lineHeight: '1.2',
-              margin: 0
+              margin: 0,
+              whiteSpace: 'nowrap'
             }}>
-              REJUVENATORS<sup style={{ fontSize: '14px' }}>®</sup>
+              REJUVENATORS<sup style={{ fontSize: '0.5em' }}>®</sup>
             </Text>
             <Text style={{
               color: 'white',
-              fontSize: '18px',
+              fontSize: 'clamp(12px, 3vw, 16px)',
               fontStyle: 'italic',
               fontWeight: 300,
               lineHeight: '1.2',
-              margin: 0
+              margin: 0,
+              whiteSpace: 'nowrap'
             }}>
               Therapist Portal
             </Text>
@@ -140,7 +142,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
 
         {/* Hamburger Menu */}
         <MenuOutlined
-          style={{ fontSize: '28px', color: 'white', cursor: 'pointer' }}
+          style={{ fontSize: '24px', color: 'white', cursor: 'pointer', flexShrink: 0 }}
           onClick={() => setDrawerVisible(true)}
         />
       </Header>
