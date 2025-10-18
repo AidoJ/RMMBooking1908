@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Button, List, Typography, Space, Tag, Spin } from 'antd';
+import { Card, Row, Col, Statistic, Button, List, Typography, Space, Tag, Spin, Empty } from 'antd';
 import {
   CalendarOutlined,
   ClockCircleOutlined,
   EnvironmentOutlined,
   FileTextOutlined,
   UserOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { supabaseClient } from '../services/supabaseClient';
-import type { Booking } from '../types';
+import { supabaseClient } from '../utility/supabaseClient';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 
@@ -26,7 +26,8 @@ export const Dashboard: React.FC = () => {
     todayEarnings: 0,
     weekEarnings: 0,
   });
-  const [todayBookings, setTodayBookings] = useState<Booking[]>([]);
+  const [todayBookings, setTodayBookings] = useState<any[]>([]);
+  const [upcomingBookings, setUpcomingBookings] = useState<any[]>([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -36,67 +37,114 @@ export const Dashboard: React.FC = () => {
     try {
       setLoading(true);
 
-      // Get current user and therapist profile
-      const { data: { user } } = await supabaseClient.auth.getUser();
-      if (!user) return;
+      // Get user data from localStorage
+      const userStr = localStorage.getItem('therapistUser');
+      if (!userStr) {
+        setLoading(false);
+        return;
+      }
 
-      const { data: profile } = await supabaseClient
+      const userData = JSON.parse(userStr);
+      const userId = userData.user_id || userData.id;
+
+      // Get therapist profile
+      const { data: profile, error: profileError } = await supabaseClient
         .from('therapist_profiles')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single();
 
-      if (!profile) return;
+      if (profileError || !profile) {
+        console.error('Profile error:', profileError);
+        setLoading(false);
+        return;
+      }
 
       // Calculate date ranges
-      const today = dayjs().format('YYYY-MM-DD');
-      const weekStart = dayjs().startOf('isoWeek').format('YYYY-MM-DD');
-      const weekEnd = dayjs().endOf('isoWeek').format('YYYY-MM-DD');
+      const today = dayjs();
+      const todayStart = today.startOf('day').toISOString();
+      const todayEnd = today.endOf('day').toISOString();
+      const weekStart = today.startOf('isoWeek').toISOString();
+      const weekEnd = today.endOf('isoWeek').toISOString();
 
       // Get today's bookings
-      const { data: todayData } = await supabaseClient
+      const { data: todayData, error: todayError } = await supabaseClient
         .from('bookings')
         .select(`
           *,
-          customers(first_name, last_name, phone),
           services(name)
         `)
         .eq('therapist_id', profile.id)
-        .gte('booking_time', today + ' 00:00:00')
-        .lte('booking_time', today + ' 23:59:59')
-        .in('status', ['confirmed', 'on_my_way', 'arrived'])
+        .gte('booking_time', todayStart)
+        .lte('booking_time', todayEnd)
+        .in('status', ['confirmed', 'completed'])
         .order('booking_time');
 
-      const todayBookingsData = (todayData || []).map((b: any) => ({
-        ...b,
-        customer_name: b.customers
-          ? `${b.customers.first_name} ${b.customers.last_name}`
-          : `${b.first_name || ''} ${b.last_name || ''}`.trim(),
-        service_name: b.services?.name || 'Unknown Service',
-      }));
+      if (todayError) {
+        console.error('Today bookings error:', todayError);
+      }
 
-      setTodayBookings(todayBookingsData);
+      // Get upcoming bookings (next 7 days, excluding today)
+      const tomorrowStart = today.add(1, 'day').startOf('day').toISOString();
+      const nextWeekEnd = today.add(7, 'day').endOf('day').toISOString();
 
-      // Get this week's completed jobs for earnings
-      const { data: weekData } = await supabaseClient
+      const { data: upcomingData, error: upcomingError } = await supabaseClient
+        .from('bookings')
+        .select(`
+          *,
+          services(name)
+        `)
+        .eq('therapist_id', profile.id)
+        .gte('booking_time', tomorrowStart)
+        .lte('booking_time', nextWeekEnd)
+        .in('status', ['confirmed'])
+        .order('booking_time')
+        .limit(5);
+
+      if (upcomingError) {
+        console.error('Upcoming bookings error:', upcomingError);
+      }
+
+      // Get this week's bookings for stats
+      const { data: weekData, error: weekError } = await supabaseClient
         .from('bookings')
         .select('id, therapist_fee, booking_time, status')
         .eq('therapist_id', profile.id)
         .gte('booking_time', weekStart)
-        .lte('booking_time', weekEnd + ' 23:59:59');
+        .lte('booking_time', weekEnd);
+
+      if (weekError) {
+        console.error('Week data error:', weekError);
+      }
+
+      // Process bookings data
+      const todayBookingsData = (todayData || []).map((b: any) => ({
+        ...b,
+        customer_name: b.booker_name || `${b.first_name || ''} ${b.last_name || ''}`.trim() || 'Guest',
+        service_name: b.services?.name || 'Unknown Service',
+      }));
+
+      const upcomingBookingsData = (upcomingData || []).map((b: any) => ({
+        ...b,
+        customer_name: b.booker_name || `${b.first_name || ''} ${b.last_name || ''}`.trim() || 'Guest',
+        service_name: b.services?.name || 'Unknown Service',
+      }));
+
+      setTodayBookings(todayBookingsData);
+      setUpcomingBookings(upcomingBookingsData);
 
       // Calculate stats
-      const todayCompleted = weekData?.filter(
-        (b) => b.status === 'completed' && dayjs(b.booking_time).isSame(today, 'day')
-      ) || [];
+      const todayCompleted = (weekData || []).filter(
+        (b: any) => b.status === 'completed' && dayjs(b.booking_time).isSame(today, 'day')
+      );
 
-      const weekCompleted = weekData?.filter((b) => b.status === 'completed') || [];
+      const weekCompleted = (weekData || []).filter((b: any) => b.status === 'completed');
 
       setStats({
         todayJobs: todayBookingsData.length,
         weekJobs: weekData?.length || 0,
-        todayEarnings: todayCompleted.reduce((sum, b) => sum + parseFloat(b.therapist_fee || '0'), 0),
-        weekEarnings: weekCompleted.reduce((sum, b) => sum + parseFloat(b.therapist_fee || '0'), 0),
+        todayEarnings: todayCompleted.reduce((sum: number, b: any) => sum + parseFloat(b.therapist_fee || '0'), 0),
+        weekEarnings: weekCompleted.reduce((sum: number, b: any) => sum + parseFloat(b.therapist_fee || '0'), 0),
       });
     } catch (error) {
       console.error('Error loading dashboard:', error);
@@ -109,29 +157,16 @@ export const Dashboard: React.FC = () => {
     switch (status) {
       case 'confirmed':
         return 'blue';
-      case 'on_my_way':
-        return 'orange';
-      case 'arrived':
+      case 'completed':
         return 'green';
       default:
         return 'default';
     }
   };
 
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'on_my_way':
-        return 'On My Way';
-      case 'arrived':
-        return 'Arrived';
-      default:
-        return status.charAt(0).toUpperCase() + status.slice(1);
-    }
-  };
-
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: '50px' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '50px' }}>
         <Spin size="large" />
       </div>
     );
@@ -139,51 +174,51 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div>
-      <Title level={2} style={{ marginBottom: 24, fontFamily: "'Josefin Sans', sans-serif" }}>
+      <Title level={2} style={{ marginBottom: 24 }}>
         Dashboard
       </Title>
 
       {/* Stats Grid */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={12} sm={12} md={6}>
+        <Col xs={12} md={6}>
           <Card>
             <Statistic
               title="Today's Jobs"
               value={stats.todayJobs}
-              prefix={<CalendarOutlined style={{ color: '#007e8c' }} />}
-              valueStyle={{ color: '#007e8c' }}
+              prefix={<CalendarOutlined />}
+              valueStyle={{ color: '#007e8c', fontSize: '24px' }}
             />
           </Card>
         </Col>
-        <Col xs={12} sm={12} md={6}>
+        <Col xs={12} md={6}>
           <Card>
             <Statistic
               title="This Week"
               value={stats.weekJobs}
-              prefix={<CalendarOutlined style={{ color: '#00a99d' }} />}
-              valueStyle={{ color: '#00a99d' }}
+              prefix={<CalendarOutlined />}
+              valueStyle={{ color: '#00a99d', fontSize: '24px' }}
             />
           </Card>
         </Col>
-        <Col xs={12} sm={12} md={6}>
+        <Col xs={12} md={6}>
           <Card>
             <Statistic
-              title="Today's $"
+              title="Today's Earnings"
               value={stats.todayEarnings}
               precision={2}
               prefix="$"
-              valueStyle={{ color: '#52c41a' }}
+              valueStyle={{ color: '#52c41a', fontSize: '24px' }}
             />
           </Card>
         </Col>
-        <Col xs={12} sm={12} md={6}>
+        <Col xs={12} md={6}>
           <Card>
             <Statistic
-              title="Week's $"
+              title="Week's Earnings"
               value={stats.weekEarnings}
               precision={2}
               prefix="$"
-              valueStyle={{ color: '#52c41a' }}
+              valueStyle={{ color: '#52c41a', fontSize: '24px' }}
             />
           </Card>
         </Col>
@@ -192,19 +227,18 @@ export const Dashboard: React.FC = () => {
       {/* Quick Actions */}
       <Card title="Quick Actions" style={{ marginBottom: 24 }}>
         <Row gutter={[16, 16]}>
-          <Col xs={12} sm={12} md={6}>
+          <Col xs={12} sm={6}>
             <Button
               type="primary"
               icon={<CalendarOutlined />}
-              onClick={() => navigate('/schedule')}
+              onClick={() => navigate('/calendar')}
               block
               size="large"
-              style={{ background: '#007e8c', borderColor: '#007e8c' }}
             >
-              Schedule
+              Calendar
             </Button>
           </Col>
-          <Col xs={12} sm={12} md={6}>
+          <Col xs={12} sm={6}>
             <Button
               type="primary"
               icon={<FileTextOutlined />}
@@ -213,12 +247,11 @@ export const Dashboard: React.FC = () => {
               size="large"
               style={{ background: '#00a99d', borderColor: '#00a99d' }}
             >
-              Invoice
+              Submit Invoice
             </Button>
           </Col>
-          <Col xs={12} sm={12} md={6}>
+          <Col xs={12} sm={6}>
             <Button
-              type="default"
               icon={<ClockCircleOutlined />}
               onClick={() => navigate('/availability')}
               block
@@ -227,89 +260,132 @@ export const Dashboard: React.FC = () => {
               Availability
             </Button>
           </Col>
-          <Col xs={12} sm={12} md={6}>
+          <Col xs={12} sm={6}>
             <Button
-              type="default"
-              icon={<EnvironmentOutlined />}
-              onClick={() => navigate('/service-area')}
+              icon={<DollarOutlined />}
+              onClick={() => navigate('/earnings')}
               block
               size="large"
             >
-              Service Area
+              My Earnings
             </Button>
           </Col>
         </Row>
       </Card>
 
-      {/* Earnings Summary */}
-      <Card
-        style={{
-          marginBottom: 24,
-          background: 'linear-gradient(135deg, #007e8c 0%, #00a99d 100%)',
-          color: 'white',
-        }}
-      >
-        <Row>
-          <Col span={12}>
-            <Statistic
-              title={<span style={{ color: 'white' }}>Today's Earnings</span>}
-              value={stats.todayEarnings}
-              precision={2}
-              prefix="$"
-              valueStyle={{ color: 'white' }}
-            />
-          </Col>
-          <Col span={12}>
-            <Statistic
-              title={<span style={{ color: 'white' }}>This Week's Earnings</span>}
-              value={stats.weekEarnings}
-              precision={2}
-              prefix="$"
-              valueStyle={{ color: 'white' }}
-            />
-          </Col>
-        </Row>
-      </Card>
-
       {/* Today's Bookings */}
-      <Card title="Today's Bookings">
+      <Card title="Today's Bookings" style={{ marginBottom: 24 }}>
         {todayBookings.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '24px', color: '#999' }}>
-            <CalendarOutlined style={{ fontSize: '48px', marginBottom: '16px' }} />
-            <div>No bookings scheduled for today</div>
-          </div>
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="No bookings scheduled for today"
+          />
         ) : (
           <List
             dataSource={todayBookings}
             renderItem={(booking) => (
-              <List.Item
-                style={{ cursor: 'pointer' }}
-                onClick={() => navigate(`/booking/${booking.id}`)}
-              >
+              <List.Item>
                 <List.Item.Meta
-                  avatar={<UserOutlined style={{ fontSize: '24px', color: '#007e8c' }} />}
+                  avatar={
+                    <div style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      background: '#007e8c',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white'
+                    }}>
+                      <UserOutlined style={{ fontSize: 20 }} />
+                    </div>
+                  }
                   title={
                     <Space>
                       <Text strong>{booking.customer_name}</Text>
-                      <Tag color={getStatusColor(booking.client_update_status || booking.status)}>
-                        {getStatusLabel(booking.client_update_status || booking.status)}
+                      <Tag color={getStatusColor(booking.status)}>
+                        {booking.status}
                       </Tag>
                     </Space>
                   }
                   description={
-                    <Space direction="vertical" size="small">
+                    <Space direction="vertical" size={0}>
                       <Text>{booking.service_name}</Text>
-                      <Space>
-                        <ClockCircleOutlined />
-                        <Text>{dayjs(booking.booking_time).format('h:mm A')}</Text>
-                        <EnvironmentOutlined />
-                        <Text>{booking.address?.split(',')[0] || 'No address'}</Text>
+                      <Space size="large">
+                        <Space size="small">
+                          <ClockCircleOutlined />
+                          <Text type="secondary">{dayjs(booking.booking_time).format('h:mm A')}</Text>
+                        </Space>
+                        <Space size="small">
+                          <EnvironmentOutlined />
+                          <Text type="secondary">{booking.address?.split(',')[0] || 'No address'}</Text>
+                        </Space>
                       </Space>
                     </Space>
                   }
                 />
                 <div>
-                  <Text strong style={{ color: '#52c41a' }}>
+                  <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
+                    ${parseFloat(booking.therapist_fee?.toString() || '0').toFixed(2)}
+                  </Text>
+                </div>
+              </List.Item>
+            )}
+          />
+        )}
+      </Card>
+
+      {/* Upcoming Bookings */}
+      <Card title="Upcoming Bookings">
+        {upcomingBookings.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="No upcoming bookings"
+          />
+        ) : (
+          <List
+            dataSource={upcomingBookings}
+            renderItem={(booking) => (
+              <List.Item>
+                <List.Item.Meta
+                  avatar={
+                    <div style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: '50%',
+                      background: '#00a99d',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white'
+                    }}>
+                      <CalendarOutlined style={{ fontSize: 20 }} />
+                    </div>
+                  }
+                  title={
+                    <Space>
+                      <Text strong>{booking.customer_name}</Text>
+                      <Tag color="blue">Confirmed</Tag>
+                    </Space>
+                  }
+                  description={
+                    <Space direction="vertical" size={0}>
+                      <Text>{booking.service_name}</Text>
+                      <Space size="large">
+                        <Space size="small">
+                          <CalendarOutlined />
+                          <Text type="secondary">{dayjs(booking.booking_time).format('MMM DD, YYYY')}</Text>
+                        </Space>
+                        <Space size="small">
+                          <ClockCircleOutlined />
+                          <Text type="secondary">{dayjs(booking.booking_time).format('h:mm A')}</Text>
+                        </Space>
+                      </Space>
+                    </Space>
+                  }
+                />
+                <div>
+                  <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
                     ${parseFloat(booking.therapist_fee?.toString() || '0').toFixed(2)}
                   </Text>
                 </div>
