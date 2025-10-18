@@ -174,9 +174,40 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div>
-      <Title level={2} style={{ marginBottom: 24 }}>
-        Dashboard
-      </Title>
+      {/* Banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, #007e8c 0%, #1FBFBF 100%)',
+        padding: '32px 24px',
+        borderRadius: '12px',
+        marginBottom: '24px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '16px'
+      }}>
+        <div style={{
+          width: '80px',
+          height: '80px',
+          background: 'rgba(255, 255, 255, 0.2)',
+          borderRadius: '50%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '40px',
+          color: 'white',
+          fontWeight: 'bold'
+        }}>
+          <span style={{ transform: 'rotate(-20deg)', display: 'inline-block' }}>///</span>
+          <span style={{ fontSize: '50px' }}>Ó</span>
+        </div>
+        <div>
+          <Title level={1} style={{ color: 'white', margin: 0, fontSize: '36px', letterSpacing: '2px' }}>
+            REJUVENATORS<sup style={{ fontSize: '16px' }}>®</sup>
+          </Title>
+          <Title level={2} style={{ color: 'white', margin: 0, fontStyle: 'italic', fontWeight: 300, fontSize: '24px' }}>
+            Therapist Portal
+          </Title>
+        </div>
+      </div>
 
       {/* Stats Grid */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -234,6 +265,7 @@ export const Dashboard: React.FC = () => {
               onClick={() => navigate('/calendar')}
               block
               size="large"
+              style={{ background: '#007e8c', borderColor: '#007e8c' }}
             >
               Calendar
             </Button>
@@ -242,12 +274,12 @@ export const Dashboard: React.FC = () => {
             <Button
               type="primary"
               icon={<FileTextOutlined />}
-              onClick={() => navigate('/invoices')}
+              onClick={() => navigate('/my-earnings')}
               block
               size="large"
-              style={{ background: '#00a99d', borderColor: '#00a99d' }}
+              style={{ background: '#1FBFBF', borderColor: '#1FBFBF' }}
             >
-              Submit Invoice
+              My Earnings
             </Button>
           </Col>
           <Col xs={12} sm={6}>
@@ -257,19 +289,21 @@ export const Dashboard: React.FC = () => {
               onClick={() => navigate('/bookings')}
               block
               size="large"
-              style={{ background: '#52c41a', borderColor: '#52c41a' }}
+              style={{ background: '#5F7BC7', borderColor: '#5F7BC7' }}
             >
               My Bookings
             </Button>
           </Col>
           <Col xs={12} sm={6}>
             <Button
+              type="primary"
               icon={<DollarOutlined />}
-              onClick={() => navigate('/earnings')}
+              onClick={() => navigate('/invoices')}
               block
               size="large"
+              style={{ background: '#C74BC7', borderColor: '#C74BC7' }}
             >
-              My Earnings
+              Invoices
             </Button>
           </Col>
         </Row>
