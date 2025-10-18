@@ -121,7 +121,14 @@ export const ServiceArea: React.FC = () => {
   };
 
   const handleSubmit = async (values: any) => {
+    console.log('🔵 SERVICE AREA SAVE - Starting...');
+    console.log('🔵 Therapist ID:', therapistId);
+    console.log('🔵 Form Values:', values);
+    console.log('🔵 Coordinate Fields:', coordinateFields);
+    console.log('🔵 Service Area Polygon:', serviceAreaPolygon);
+
     if (!therapistId) {
+      console.error('❌ No therapist ID found');
       message.error('Therapist ID not found');
       return;
     }
@@ -129,30 +136,42 @@ export const ServiceArea: React.FC = () => {
     try {
       setSaving(true);
 
-      const { error } = await supabaseClient
+      const updateData = {
+        home_address: values.home_address,
+        latitude: coordinateFields.latitude || values.latitude,
+        longitude: coordinateFields.longitude || values.longitude,
+        service_radius_km: values.service_radius_km,
+        address_verified: coordinateFields.address_verified || values.address_verified,
+        service_area_polygon: serviceAreaPolygon
+      };
+
+      console.log('🔵 Update Data to send:', updateData);
+      console.log('🔵 Updating therapist_profiles where id =', therapistId);
+
+      const { data, error } = await supabaseClient
         .from('therapist_profiles')
-        .update({
-          home_address: values.home_address,
-          latitude: coordinateFields.latitude || values.latitude,
-          longitude: coordinateFields.longitude || values.longitude,
-          service_radius_km: values.service_radius_km,
-          address_verified: coordinateFields.address_verified || values.address_verified,
-          service_area_polygon: serviceAreaPolygon
-        })
-        .eq('id', therapistId);
+        .update(updateData)
+        .eq('id', therapistId)
+        .select();
+
+      console.log('🔵 Supabase Response - Data:', data);
+      console.log('🔵 Supabase Response - Error:', error);
 
       if (error) {
-        console.error('Error updating service area:', error);
+        console.error('❌ Error updating service area:', error);
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
         message.error(`Failed to save service area: ${error.message}`);
         throw error;
       }
 
+      console.log('✅ Service area saved successfully!');
       message.success('Service area saved successfully!');
     } catch (error: any) {
-      console.error('Error saving service area:', error);
+      console.error('❌ Catch block - Error saving service area:', error);
       message.error(error?.message || 'Failed to save service area');
     } finally {
       setSaving(false);
+      console.log('🔵 SERVICE AREA SAVE - Finished');
     }
   };
 
