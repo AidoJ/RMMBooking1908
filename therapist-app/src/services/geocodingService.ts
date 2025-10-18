@@ -44,10 +44,6 @@ class GeocodingService {
     const viteKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     if (viteKey) return viteKey;
 
-    // Try standard environment variable
-    const envKey = process.env.GOOGLE_MAPS_API_KEY;
-    if (envKey) return envKey;
-
     // Fallback to the working key from booking platform (temporary)
     console.warn('No environment variable found for Google Maps API key, using fallback');
     return 'AIzaSyBSFcQHl262KbU3H7-N6AdzEj-VO-wRASI';

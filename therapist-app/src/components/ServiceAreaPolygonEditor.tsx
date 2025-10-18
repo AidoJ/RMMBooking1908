@@ -14,7 +14,6 @@ interface ServiceAreaPolygonEditorProps {
   serviceRadiusKm?: number;
   existingPolygon?: Coordinate[];
   onPolygonChange: (polygon: Coordinate[] | null) => void;
-  onRadiusFallback?: (radiusKm: number) => void;
 }
 
 const ServiceAreaPolygonEditor: React.FC<ServiceAreaPolygonEditorProps> = ({
@@ -22,8 +21,7 @@ const ServiceAreaPolygonEditor: React.FC<ServiceAreaPolygonEditorProps> = ({
   centerLng,
   serviceRadiusKm = 10,
   existingPolygon,
-  onPolygonChange,
-  onRadiusFallback
+  onPolygonChange
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -219,7 +217,7 @@ const ServiceAreaPolygonEditor: React.FC<ServiceAreaPolygonEditorProps> = ({
     setHasPolygon(false);
 
     // Create an empty MVCArray for the path
-    const path = new google.maps.MVCArray<google.maps.LatLng>();
+    const path = new google.maps.MVCArray();
 
     // Create new polygon with the empty path
     polygonRef.current = new google.maps.Polygon({

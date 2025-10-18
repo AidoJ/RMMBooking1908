@@ -12,7 +12,6 @@ interface Coordinate {
 
 export const ServiceArea: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [therapistId, setTherapistId] = useState<string | null>(null);
   const [homeAddress, setHomeAddress] = useState<string>('');
   const [latitude, setLatitude] = useState<number | undefined>(undefined);
@@ -77,8 +76,6 @@ export const ServiceArea: React.FC = () => {
     }
 
     try {
-      setSaving(true);
-
       const { error } = await supabaseClient
         .from('therapist_profiles')
         .update({ service_area_polygon: polygon })
@@ -95,8 +92,6 @@ export const ServiceArea: React.FC = () => {
     } catch (error: any) {
       console.error('Error saving service area:', error);
       message.error(error?.message || 'Failed to save service area');
-    } finally {
-      setSaving(false);
     }
   };
 
