@@ -39,7 +39,6 @@ export const BookingDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [booking, setBooking] = useState<any>(null);
-  const [cancellationReason, setCancellationReason] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -124,6 +123,8 @@ export const BookingDetail: React.FC = () => {
   };
 
   const handleCancelBooking = () => {
+    let reasonText = '';
+
     modal.confirm({
       title: 'Cancel Booking',
       icon: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />,
@@ -133,7 +134,9 @@ export const BookingDetail: React.FC = () => {
           <TextArea
             rows={4}
             placeholder="Enter cancellation reason..."
-            onChange={(e) => setCancellationReason(e.target.value)}
+            onChange={(e) => {
+              reasonText = e.target.value;
+            }}
             style={{ marginTop: 12 }}
           />
         </div>
@@ -142,15 +145,11 @@ export const BookingDetail: React.FC = () => {
       okType: 'danger',
       cancelText: 'Go Back',
       onOk: async () => {
-        if (!cancellationReason.trim()) {
+        if (!reasonText.trim()) {
           message.error('Cancellation reason is required');
           return Promise.reject();
         }
-        await updateBookingStatus('cancelled', cancellationReason);
-        setCancellationReason('');
-      },
-      onCancel: () => {
-        setCancellationReason('');
+        await updateBookingStatus('cancelled', reasonText);
       },
     });
   };
@@ -159,24 +158,28 @@ export const BookingDetail: React.FC = () => {
     try {
       setUpdating(true);
 
-      const { error } = await supabaseClient
+      console.log('Updating client_update_status to:', newClientStatus, 'for booking ID:', id);
+
+      const { data, error } = await supabaseClient
         .from('bookings')
         .update({ client_update_status: newClientStatus })
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
       if (error) {
         console.error('Supabase error:', error);
+        message.error(`Database error: ${error.message}`);
         throw error;
       }
 
+      console.log('Update successful:', data);
       message.success(`Status updated: ${newClientStatus.replace('_', ' ')}`);
-      setBooking({ ...booking, client_update_status: newClientStatus });
 
       // Reload to get fresh data
       await loadBookingDetail();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating client status:', error);
-      message.error('Failed to update status');
+      message.error(error?.message || 'Failed to update status');
     } finally {
       setUpdating(false);
     }
@@ -191,24 +194,28 @@ export const BookingDetail: React.FC = () => {
         updateData.cancellation_reason = reason;
       }
 
-      const { error } = await supabaseClient
+      console.log('Updating booking status to:', newStatus, 'with data:', updateData, 'for booking ID:', id);
+
+      const { data, error } = await supabaseClient
         .from('bookings')
         .update(updateData)
-        .eq('id', id);
+        .eq('id', id)
+        .select();
 
       if (error) {
         console.error('Supabase error:', error);
+        message.error(`Database error: ${error.message}`);
         throw error;
       }
 
+      console.log('Update successful:', data);
       message.success(`Booking ${newStatus}`);
-      setBooking({ ...booking, status: newStatus });
 
       // Reload to get fresh data
       await loadBookingDetail();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating booking status:', error);
-      message.error('Failed to update booking status');
+      message.error(error?.message || 'Failed to update booking status');
     } finally {
       setUpdating(false);
     }
