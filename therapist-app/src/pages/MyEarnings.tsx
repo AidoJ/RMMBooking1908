@@ -440,7 +440,7 @@ export const MyEarnings: React.FC = () => {
       render: (ids: string[]) => (
         <Space direction="vertical" size={0}>
           {ids.map((id) => (
-            <Text key={id} code style={{ fontSize: '11px' }}>
+            <Text key={id} strong style={{ fontSize: '12px', color: '#007e8c', letterSpacing: '0.5px' }}>
               {id}
             </Text>
           ))}

@@ -86,11 +86,6 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
       icon: <FileTextOutlined />,
       label: 'Invoices',
     },
-    {
-      key: '/earnings',
-      icon: <DollarOutlined />,
-      label: 'Earnings (Old)',
-    },
   ];
 
   const handleMenuClick = (key: string) => {

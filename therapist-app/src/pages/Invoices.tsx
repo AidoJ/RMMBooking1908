@@ -430,9 +430,13 @@ export const Invoices: React.FC = () => {
             {selectedInvoice.booking_ids && (
               <div>
                 <h4>Included Bookings ({selectedInvoice.booking_count} jobs)</h4>
-                <Text code style={{ fontSize: '11px' }}>
-                  {selectedInvoice.booking_ids}
-                </Text>
+                <Space wrap>
+                  {selectedInvoice.booking_ids.split(',').map((id, index) => (
+                    <Text key={index} strong style={{ fontSize: '12px', color: '#007e8c', letterSpacing: '0.5px' }}>
+                      {id.trim()}
+                    </Text>
+                  ))}
+                </Space>
               </div>
             )}
           </Space>
