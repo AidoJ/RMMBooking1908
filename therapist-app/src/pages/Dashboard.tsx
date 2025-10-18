@@ -13,7 +13,7 @@ import { supabaseClient } from '../utility/supabaseClient';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 dayjs.extend(isoWeek);
 
