@@ -15,7 +15,6 @@ import {
   Input,
   Upload,
   message as antdMessage,
-  App,
   Descriptions,
 } from 'antd';
 import {
@@ -24,7 +23,6 @@ import {
   FileTextOutlined,
   UploadOutlined,
   CheckCircleOutlined,
-  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { supabaseClient } from '../utility/supabaseClient';
 import dayjs from 'dayjs';
@@ -54,7 +52,6 @@ interface DailyBreakdown {
 }
 
 export const MyEarnings: React.FC = () => {
-  const { modal } = App.useApp();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
