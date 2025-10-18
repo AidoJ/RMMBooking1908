@@ -328,7 +328,9 @@ export const BookingDetail: React.FC = () => {
           <Card title="Booking Information">
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label="Booking ID">
-                <Text code>{booking.booking_id || booking.id.substring(0, 8)}</Text>
+                <Text strong style={{ fontSize: '16px', color: '#007e8c', letterSpacing: '0.5px' }}>
+                  {booking.booking_id || booking.id.substring(0, 8)}
+                </Text>
               </Descriptions.Item>
               <Descriptions.Item label="Date & Time">
                 <Space direction="vertical" size={0}>

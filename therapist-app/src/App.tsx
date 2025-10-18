@@ -14,6 +14,7 @@ import { TimeOff } from './pages/TimeOff';
 import { ServiceArea } from './pages/ServiceArea';
 import { Invoices } from './pages/Invoices';
 import { Earnings } from './pages/Earnings';
+import { MyEarnings } from './pages/MyEarnings';
 import type { UserIdentity } from './types';
 
 function App() {
@@ -88,6 +89,7 @@ function App() {
                     <Route path="/availability" element={<Availability />} />
                     <Route path="/time-off" element={<TimeOff />} />
                     <Route path="/service-area" element={<ServiceArea />} />
+                    <Route path="/my-earnings" element={<MyEarnings />} />
                     <Route path="/invoices" element={<Invoices />} />
                     <Route path="/earnings" element={<Earnings />} />
                     <Route path="*" element={<Navigate to="/" />} />

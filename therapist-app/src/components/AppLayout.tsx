@@ -77,14 +77,19 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
       label: 'Service Area',
     },
     {
+      key: '/my-earnings',
+      icon: <DollarOutlined />,
+      label: 'My Earnings',
+    },
+    {
       key: '/invoices',
       icon: <FileTextOutlined />,
-      label: 'Submit Invoice',
+      label: 'Invoices',
     },
     {
       key: '/earnings',
       icon: <DollarOutlined />,
-      label: 'My Earnings',
+      label: 'Earnings (Old)',
     },
   ];
 

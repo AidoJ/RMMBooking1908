@@ -4,15 +4,10 @@ import {
   Typography,
   message,
   Spin,
-  Tabs,
   Table,
   Button,
   Tag,
   Modal,
-  Form,
-  InputNumber,
-  Input,
-  Upload,
   Space,
   Descriptions,
   Image,
@@ -23,34 +18,18 @@ import {
 } from 'antd';
 import {
   FileTextOutlined,
-  DollarOutlined,
-  UploadOutlined,
-  PlusOutlined,
   EyeOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
   ExclamationCircleOutlined,
   WarningOutlined,
-  CloseCircleOutlined
+  CloseCircleOutlined,
+  DollarOutlined
 } from '@ant-design/icons';
 import { supabaseClient } from '../utility/supabaseClient';
 import dayjs from 'dayjs';
-import isoWeek from 'dayjs/plugin/isoWeek';
-
-dayjs.extend(isoWeek);
 
 const { Title, Text } = Typography;
-const { TabPane } = Tabs;
-const { TextArea } = Input;
-
-interface WeeklySummary {
-  week_start: string;
-  week_end: string;
-  booking_count: number;
-  total_fees: number;
-  booking_ids: string[];
-  bookings: any[];
-}
 
 interface Invoice {
   id: string;
@@ -83,13 +62,9 @@ interface Invoice {
 export const Invoices: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [therapistId, setTherapistId] = useState<string | null>(null);
-  const [weeklySummaries, setWeeklySummaries] = useState<WeeklySummary[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [submitModalVisible, setSubmitModalVisible] = useState(false);
   const [viewModalVisible, setViewModalVisible] = useState(false);
-  const [selectedWeek, setSelectedWeek] = useState<WeeklySummary | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
-  const [form] = Form.useForm();
 
   useEffect(() => {
     loadData();
@@ -123,79 +98,13 @@ export const Invoices: React.FC = () => {
 
       setTherapistId(profile.id);
 
-      // Load weekly summaries and invoices
-      await Promise.all([
-        loadWeeklySummaries(profile.id),
-        loadInvoices(profile.id)
-      ]);
+      // Load invoices
+      await loadInvoices(profile.id);
     } catch (error) {
       console.error('Error loading data:', error);
       message.error('Failed to load data');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadWeeklySummaries = async (therapistId: string) => {
-    try {
-      // Get completed bookings from last 12 weeks
-      const startDate = dayjs().subtract(12, 'weeks').startOf('isoWeek').format('YYYY-MM-DD');
-
-      const { data: bookings, error } = await supabaseClient
-        .from('bookings')
-        .select(`
-          id,
-          booking_id,
-          booking_time,
-          status,
-          therapist_fee,
-          booker_name,
-          first_name,
-          last_name,
-          services(name)
-        `)
-        .eq('therapist_id', therapistId)
-        .eq('status', 'completed')
-        .gte('booking_time', startDate)
-        .order('booking_time');
-
-      if (error) throw error;
-
-      // Group bookings by week (Monday to Sunday)
-      const weekMap = new Map<string, WeeklySummary>();
-
-      bookings?.forEach((booking) => {
-        const bookingDate = dayjs(booking.booking_time);
-        const weekStart = bookingDate.startOf('isoWeek'); // Monday
-        const weekEnd = bookingDate.endOf('isoWeek'); // Sunday
-        const weekKey = weekStart.format('YYYY-MM-DD');
-
-        if (!weekMap.has(weekKey)) {
-          weekMap.set(weekKey, {
-            week_start: weekStart.format('YYYY-MM-DD'),
-            week_end: weekEnd.format('YYYY-MM-DD'),
-            booking_count: 0,
-            total_fees: 0,
-            booking_ids: [],
-            bookings: []
-          });
-        }
-
-        const week = weekMap.get(weekKey)!;
-        week.booking_count++;
-        week.total_fees += parseFloat(booking.therapist_fee || '0');
-        week.booking_ids.push(booking.booking_id);
-        week.bookings.push(booking);
-      });
-
-      // Convert to array and sort by date descending
-      const summaries = Array.from(weekMap.values())
-        .sort((a, b) => dayjs(b.week_start).unix() - dayjs(a.week_start).unix());
-
-      setWeeklySummaries(summaries);
-    } catch (error) {
-      console.error('Error loading weekly summaries:', error);
-      message.error('Failed to load weekly summaries');
     }
   };
 
@@ -213,98 +122,6 @@ export const Invoices: React.FC = () => {
     } catch (error) {
       console.error('Error loading invoices:', error);
       message.error('Failed to load invoices');
-    }
-  };
-
-  const handleSubmitInvoice = (week: WeeklySummary) => {
-    // Check if week has ended
-    if (dayjs().isBefore(dayjs(week.week_end).endOf('day'))) {
-      message.warning('You can only submit invoices after the week has ended (Sunday midnight)');
-      return;
-    }
-
-    // Check if invoice already exists for this week
-    const existingInvoice = invoices.find(
-      inv => inv.week_start_date === week.week_start && inv.week_end_date === week.week_end
-    );
-
-    if (existingInvoice) {
-      message.warning('Invoice already submitted for this week');
-      return;
-    }
-
-    setSelectedWeek(week);
-    form.setFieldsValue({
-      invoiced_fees: week.total_fees,
-      parking_amount: 0,
-      invoice_number: '',
-      notes: ''
-    });
-    setSubmitModalVisible(true);
-  };
-
-  const convertFileToBase64 = (file: any): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const handleFormSubmit = async (values: any) => {
-    if (!therapistId || !selectedWeek) return;
-
-    try {
-      setLoading(true);
-
-      // Convert invoice file to base64 if present
-      let invoiceUrl = null;
-      if (values.invoice_upload?.fileList?.[0]?.originFileObj) {
-        const file = values.invoice_upload.fileList[0].originFileObj;
-        invoiceUrl = await convertFileToBase64(file);
-      }
-
-      // Convert parking receipt to base64 if present
-      let receiptUrl = null;
-      if (values.parking_receipt_upload?.fileList?.[0]?.originFileObj) {
-        const file = values.parking_receipt_upload.fileList[0].originFileObj;
-        receiptUrl = await convertFileToBase64(file);
-      }
-
-      const invoiceData = {
-        therapist_id: therapistId,
-        week_start_date: selectedWeek.week_start,
-        week_end_date: selectedWeek.week_end,
-        calculated_fees: selectedWeek.total_fees,
-        booking_count: selectedWeek.booking_count,
-        booking_ids: selectedWeek.booking_ids.join(','),
-        therapist_invoice_number: values.invoice_number || null,
-        therapist_invoice_date: dayjs().format('YYYY-MM-DD'),
-        therapist_invoice_url: invoiceUrl,
-        therapist_invoiced_fees: values.invoiced_fees,
-        therapist_parking_amount: values.parking_amount || 0,
-        parking_receipt_url: receiptUrl,
-        therapist_notes: values.notes || null,
-        submitted_at: new Date().toISOString(),
-        status: 'submitted'
-      };
-
-      const { error } = await supabaseClient
-        .from('therapist_payments')
-        .insert(invoiceData);
-
-      if (error) throw error;
-
-      message.success('Invoice submitted successfully!');
-      setSubmitModalVisible(false);
-      form.resetFields();
-      loadInvoices(therapistId);
-    } catch (error: any) {
-      console.error('Error submitting invoice:', error);
-      message.error(error.message || 'Failed to submit invoice');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -332,94 +149,6 @@ export const Invoices: React.FC = () => {
       </Tag>
     );
   };
-
-  const weeklySummaryColumns = [
-    {
-      title: 'Week',
-      key: 'week',
-      render: (_: any, record: WeeklySummary) => (
-        <div>
-          <Text strong>{dayjs(record.week_start).format('MMM D')} - {dayjs(record.week_end).format('MMM D, YYYY')}</Text>
-          <br />
-          <Text type="secondary" style={{ fontSize: '12px' }}>
-            {dayjs(record.week_start).format('ddd MMM D')} to {dayjs(record.week_end).format('ddd MMM D')}
-          </Text>
-        </div>
-      )
-    },
-    {
-      title: 'Bookings',
-      dataIndex: 'booking_count',
-      key: 'booking_count',
-      align: 'center' as const,
-      render: (count: number) => <Tag color="blue">{count} jobs</Tag>
-    },
-    {
-      title: 'Total Fees',
-      dataIndex: 'total_fees',
-      key: 'total_fees',
-      align: 'right' as const,
-      render: (fees: number) => <Text strong style={{ fontSize: '16px', color: '#007e8c' }}>${fees.toFixed(2)}</Text>
-    },
-    {
-      title: 'Status',
-      key: 'status',
-      align: 'center' as const,
-      render: (_: any, record: WeeklySummary) => {
-        const invoice = invoices.find(
-          inv => inv.week_start_date === record.week_start && inv.week_end_date === record.week_end
-        );
-
-        if (invoice) {
-          return getStatusTag(invoice.status);
-        }
-
-        const weekEnded = dayjs().isAfter(dayjs(record.week_end).endOf('day'));
-        if (!weekEnded) {
-          return <Tag color="default">Week In Progress</Tag>;
-        }
-
-        return <Tag color="orange">Ready to Submit</Tag>;
-      }
-    },
-    {
-      title: 'Action',
-      key: 'action',
-      align: 'center' as const,
-      render: (_: any, record: WeeklySummary) => {
-        const invoice = invoices.find(
-          inv => inv.week_start_date === record.week_start && inv.week_end_date === record.week_end
-        );
-
-        if (invoice) {
-          return (
-            <Button
-              type="link"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewInvoice(invoice)}
-            >
-              View Invoice
-            </Button>
-          );
-        }
-
-        const weekEnded = dayjs().isAfter(dayjs(record.week_end).endOf('day'));
-        if (!weekEnded) {
-          return <Text type="secondary">Wait until week ends</Text>;
-        }
-
-        return (
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => handleSubmitInvoice(record)}
-          >
-            Submit Invoice
-          </Button>
-        );
-      }
-    }
-  ];
 
   const invoiceColumns = [
     {
@@ -554,142 +283,24 @@ export const Invoices: React.FC = () => {
 
       {/* Info Alert */}
       <Alert
-        message="Invoice Submission Process"
-        description="Submit your invoice after each week ends (Sunday midnight). Include your calculated fees, any parking expenses with receipts, and upload your invoice. Payments are processed on Wednesdays following week completion."
+        message="Invoice Tracking"
+        description="This page shows all invoices you have submitted. To submit new invoices for completed weeks, please visit the 'My Earnings' page. Invoices are typically reviewed within 2-3 business days, and payments are processed on Wednesdays following approval."
         type="info"
         showIcon
         style={{ marginBottom: 24 }}
       />
 
-      {/* Tabs */}
-      <Card>
-        <Tabs defaultActiveKey="weekly-summary">
-          <TabPane tab="Weekly Summary" key="weekly-summary">
-            <Table
-              dataSource={weeklySummaries}
-              columns={weeklySummaryColumns}
-              rowKey={(record) => record.week_start}
-              loading={loading}
-              pagination={{ pageSize: 10 }}
-            />
-          </TabPane>
-
-          <TabPane tab="Submitted Invoices" key="submitted-invoices">
-            <Table
-              dataSource={invoices}
-              columns={invoiceColumns}
-              rowKey="id"
-              loading={loading}
-              pagination={{ pageSize: 20 }}
-            />
-          </TabPane>
-        </Tabs>
+      {/* Invoices Table */}
+      <Card title="Submitted Invoices">
+        <Table
+          dataSource={invoices}
+          columns={invoiceColumns}
+          rowKey="id"
+          loading={loading}
+          pagination={{ pageSize: 20 }}
+          locale={{ emptyText: 'No invoices submitted yet. Visit My Earnings to submit invoices for completed weeks.' }}
+        />
       </Card>
-
-      {/* Submit Invoice Modal */}
-      <Modal
-        title="Submit Invoice"
-        open={submitModalVisible}
-        onCancel={() => {
-          setSubmitModalVisible(false);
-          form.resetFields();
-        }}
-        onOk={() => form.submit()}
-        okText="Submit Invoice"
-        width={700}
-        confirmLoading={loading}
-      >
-        {selectedWeek && (
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleFormSubmit}
-          >
-            <Alert
-              message={`Week: ${dayjs(selectedWeek.week_start).format('MMM D')} - ${dayjs(selectedWeek.week_end).format('MMM D, YYYY')}`}
-              description={`${selectedWeek.booking_count} completed jobs | Calculated fees: $${selectedWeek.total_fees.toFixed(2)}`}
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-
-            <Form.Item
-              label="Invoice Number"
-              name="invoice_number"
-              help="Your personal invoice number (optional)"
-            >
-              <Input placeholder="e.g., INV-2025-001" />
-            </Form.Item>
-
-            <Form.Item
-              label="Invoiced Fees"
-              name="invoiced_fees"
-              rules={[{ required: true, message: 'Please enter invoiced fees' }]}
-              help="This should match the calculated fees unless you have adjustments (explain in notes)"
-            >
-              <InputNumber
-                prefix={<DollarOutlined />}
-                style={{ width: '100%' }}
-                precision={2}
-                min={0}
-                placeholder="0.00"
-              />
-            </Form.Item>
-
-            <Form.Item
-              label="Parking Amount"
-              name="parking_amount"
-              help="Total parking expenses for the week (attach receipt below)"
-            >
-              <InputNumber
-                prefix={<DollarOutlined />}
-                style={{ width: '100%' }}
-                precision={2}
-                min={0}
-                placeholder="0.00"
-              />
-            </Form.Item>
-
-            <Form.Item
-              label="Invoice Upload (PDF or Image)"
-              name="invoice_upload"
-              help="Upload your completed invoice document"
-            >
-              <Upload
-                maxCount={1}
-                beforeUpload={() => false}
-                listType="picture"
-                accept="image/*,.pdf"
-              >
-                <Button icon={<UploadOutlined />}>Click to Upload Invoice</Button>
-              </Upload>
-            </Form.Item>
-
-            <Form.Item
-              label="Parking Receipt Upload"
-              name="parking_receipt_upload"
-              help="Upload parking receipt if claiming parking expenses"
-            >
-              <Upload
-                maxCount={1}
-                beforeUpload={() => false}
-                listType="picture"
-                accept="image/*,.pdf"
-              >
-                <Button icon={<UploadOutlined />}>Click to Upload Receipt</Button>
-              </Upload>
-            </Form.Item>
-
-            <Form.Item
-              label="Notes"
-              name="notes"
-              help="Explain any variance between calculated and invoiced fees, or other notes"
-            >
-              <TextArea rows={3} placeholder="Optional notes about this invoice..." />
-            </Form.Item>
-          </Form>
-        )}
-      </Modal>
 
       {/* View Invoice Modal */}
       <Modal
