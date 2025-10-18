@@ -160,11 +160,10 @@ export const BookingDetail: React.FC = () => {
 
       console.log('Updating client_update_status to:', newClientStatus, 'for booking ID:', id);
 
-      const { data, error } = await supabaseClient
+      const { error } = await supabaseClient
         .from('bookings')
         .update({ client_update_status: newClientStatus })
-        .eq('id', id)
-        .select();
+        .eq('id', id);
 
       if (error) {
         console.error('Supabase error:', error);
@@ -172,7 +171,7 @@ export const BookingDetail: React.FC = () => {
         throw error;
       }
 
-      console.log('Update successful:', data);
+      console.log('Update successful');
       message.success(`Status updated: ${newClientStatus.replace('_', ' ')}`);
 
       // Reload to get fresh data
@@ -196,11 +195,10 @@ export const BookingDetail: React.FC = () => {
 
       console.log('Updating booking status to:', newStatus, 'with data:', updateData, 'for booking ID:', id);
 
-      const { data, error } = await supabaseClient
+      const { error } = await supabaseClient
         .from('bookings')
         .update(updateData)
-        .eq('id', id)
-        .select();
+        .eq('id', id);
 
       if (error) {
         console.error('Supabase error:', error);
@@ -208,7 +206,7 @@ export const BookingDetail: React.FC = () => {
         throw error;
       }
 
-      console.log('Update successful:', data);
+      console.log('Update successful');
       message.success(`Booking ${newStatus}`);
 
       // Reload to get fresh data
