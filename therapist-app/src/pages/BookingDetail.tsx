@@ -6,12 +6,11 @@ import {
   Typography,
   Space,
   Tag,
-  message,
   Spin,
   Row,
   Col,
-  Modal,
   Input,
+  App,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -36,6 +35,7 @@ const { TextArea } = Input;
 export const BookingDetail: React.FC = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const { modal, message } = App.useApp();
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [booking, setBooking] = useState<any>(null);
@@ -85,7 +85,7 @@ export const BookingDetail: React.FC = () => {
   };
 
   const handleOnMyWay = () => {
-    Modal.confirm({
+    modal.confirm({
       title: 'On My Way',
       icon: <ExclamationCircleOutlined />,
       content: 'Please confirm you\'re on your way to this booking.',
@@ -98,7 +98,7 @@ export const BookingDetail: React.FC = () => {
   };
 
   const handleArrived = () => {
-    Modal.confirm({
+    modal.confirm({
       title: 'I\'ve Arrived',
       icon: <ExclamationCircleOutlined />,
       content: 'Please confirm you have arrived at the location.',
@@ -111,7 +111,7 @@ export const BookingDetail: React.FC = () => {
   };
 
   const handleCompleteJob = () => {
-    Modal.confirm({
+    modal.confirm({
       title: 'Complete Job',
       icon: <ExclamationCircleOutlined />,
       content: 'Please confirm job is now completed.',
@@ -124,7 +124,7 @@ export const BookingDetail: React.FC = () => {
   };
 
   const handleCancelBooking = () => {
-    Modal.confirm({
+    modal.confirm({
       title: 'Cancel Booking',
       icon: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />,
       content: (
