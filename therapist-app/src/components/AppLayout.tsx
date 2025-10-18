@@ -179,6 +179,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
         onClose={() => setDrawerVisible(false)}
         open={drawerVisible}
         width={280}
+        zIndex={1050}
         styles={{
           header: {
             borderBottom: '1px solid #f0f0f0',

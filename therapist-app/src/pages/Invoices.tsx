@@ -308,7 +308,10 @@ export const Invoices: React.FC = () => {
         open={viewModalVisible}
         onCancel={() => setViewModalVisible(false)}
         footer={null}
-        width={900}
+        width="100%"
+        style={{ maxWidth: '900px', top: 20 }}
+        destroyOnClose
+        zIndex={1000}
       >
         {selectedInvoice && (
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
