@@ -97,8 +97,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
     <Layout style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
       <Header
         style={{
-          background: 'linear-gradient(135deg, #007e8c 0%, #1FBFBF 100%)',
-          padding: '16px 16px',
+          background: '#1FBFBF',
+          padding: '20px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -109,36 +109,25 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
         }}
       >
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '50px',
-            height: '50px',
-            background: 'rgba(255, 255, 255, 0.2)',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '24px',
-            color: 'white',
-            fontWeight: 'bold',
-            flexShrink: 0
-          }}>
-            <span style={{ transform: 'rotate(-20deg)', display: 'inline-block', fontSize: '16px' }}>///</span>
-            <span style={{ fontSize: '32px' }}>Ó</span>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <img
+            src="/therapist/hand.png"
+            alt="Rejuvenators Logo"
+            style={{ width: '70px', height: '70px', objectFit: 'contain' }}
+          />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <Text strong style={{
               color: 'white',
-              fontSize: '20px',
-              letterSpacing: '1.5px',
+              fontSize: '28px',
+              letterSpacing: '3px',
               lineHeight: '1.2',
               margin: 0
             }}>
-              REJUVENATORS<sup style={{ fontSize: '10px' }}>®</sup>
+              REJUVENATORS<sup style={{ fontSize: '14px' }}>®</sup>
             </Text>
             <Text style={{
               color: 'white',
-              fontSize: '14px',
+              fontSize: '18px',
               fontStyle: 'italic',
               fontWeight: 300,
               lineHeight: '1.2',
@@ -151,7 +140,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
 
         {/* Hamburger Menu */}
         <MenuOutlined
-          style={{ fontSize: '24px', color: 'white', cursor: 'pointer' }}
+          style={{ fontSize: '28px', color: 'white', cursor: 'pointer' }}
           onClick={() => setDrawerVisible(true)}
         />
       </Header>

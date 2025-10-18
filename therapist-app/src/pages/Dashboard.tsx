@@ -174,31 +174,6 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div>
-      {/* Banner */}
-      <div style={{
-        background: 'linear-gradient(135deg, #007e8c 0%, #1FBFBF 100%)',
-        padding: '32px 24px',
-        borderRadius: '12px',
-        marginBottom: '24px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '20px'
-      }}>
-        <img
-          src="/therapist/hand.png"
-          alt="Rejuvenators Logo"
-          style={{ width: '80px', height: '80px', objectFit: 'contain' }}
-        />
-        <div>
-          <Title level={1} style={{ color: 'white', margin: 0, fontSize: '36px', letterSpacing: '2px' }}>
-            REJUVENATORS<sup style={{ fontSize: '16px' }}>®</sup>
-          </Title>
-          <Title level={2} style={{ color: 'white', margin: 0, fontStyle: 'italic', fontWeight: 300, fontSize: '24px' }}>
-            Therapist Portal
-          </Title>
-        </div>
-      </div>
-
       {/* Stats Grid */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
         <Col xs={12} md={6}>
