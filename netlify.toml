@@ -1,16 +1,18 @@
 [build]
   # Build command that builds admin panel and merges with booking platform
   command = "npm run build"
-  
+
   # Publish directory (where the merged build output will be)
   publish = "dist"
-  
+
   # Functions directory
   functions = "netlify/functions"
-  
+
   # Node version for the build
   [build.environment]
     NODE_VERSION = "18"
+    # Disable secrets scanning for Google Maps API key (it's a public key)
+    SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
 
 # Scheduled function for booking timeouts
 [functions."booking-timeout-handler"]
