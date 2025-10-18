@@ -63,7 +63,7 @@ function App() {
         },
       }}
     >
-      <BrowserRouter>
+      <BrowserRouter basename="/therapist">
         <Routes>
           <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
 
