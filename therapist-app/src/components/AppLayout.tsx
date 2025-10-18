@@ -97,35 +97,61 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
     <Layout style={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
       <Header
         style={{
-          background: '#fff',
-          padding: '0 16px',
+          background: 'linear-gradient(135deg, #007e8c 0%, #1FBFBF 100%)',
+          padding: '16px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
           position: 'sticky',
           top: 0,
           zIndex: 1000,
         }}
       >
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Text
-            strong
-            style={{
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: '50px',
+            height: '50px',
+            background: 'rgba(255, 255, 255, 0.2)',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '24px',
+            color: 'white',
+            fontWeight: 'bold',
+            flexShrink: 0
+          }}>
+            <span style={{ transform: 'rotate(-20deg)', display: 'inline-block', fontSize: '16px' }}>///</span>
+            <span style={{ fontSize: '32px' }}>Ó</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <Text strong style={{
+              color: 'white',
               fontSize: '20px',
-              fontFamily: "'Josefin Sans', sans-serif",
-              color: '#007e8c',
-              letterSpacing: '0.5px',
-            }}
-          >
-            Rejuvenators
-          </Text>
+              letterSpacing: '1.5px',
+              lineHeight: '1.2',
+              margin: 0
+            }}>
+              REJUVENATORS<sup style={{ fontSize: '10px' }}>®</sup>
+            </Text>
+            <Text style={{
+              color: 'white',
+              fontSize: '14px',
+              fontStyle: 'italic',
+              fontWeight: 300,
+              lineHeight: '1.2',
+              margin: 0
+            }}>
+              Therapist Portal
+            </Text>
+          </div>
         </div>
 
         {/* Hamburger Menu */}
         <MenuOutlined
-          style={{ fontSize: '24px', color: '#007e8c', cursor: 'pointer' }}
+          style={{ fontSize: '24px', color: 'white', cursor: 'pointer' }}
           onClick={() => setDrawerVisible(true)}
         />
       </Header>
