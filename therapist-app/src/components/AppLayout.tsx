@@ -31,7 +31,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
     // Clear therapist session
     localStorage.removeItem('therapistToken');
     localStorage.removeItem('therapistUser');
-    navigate('/login');
+    // Force page reload to login page
+    window.location.href = '/therapist/login';
   };
 
   const menuItems = [

@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { Card, Form, Input, Button, message, Typography } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
 
 export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleLogin = async (values: { email: string; password: string }) => {
     try {
@@ -36,7 +34,8 @@ export const Login: React.FC = () => {
       localStorage.setItem('therapistUser', JSON.stringify(result.user));
 
       message.success('Welcome back!');
-      navigate('/');
+      // Force page reload to trigger auth check in App.tsx
+      window.location.href = '/therapist/';
     } catch (error: any) {
       console.error('Login error:', error);
       message.error(error.message || 'Failed to log in');
