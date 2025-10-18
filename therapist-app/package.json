@@ -11,6 +11,11 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.1.0",
+    "@fullcalendar/core": "^6.1.19",
+    "@fullcalendar/daygrid": "^6.1.19",
+    "@fullcalendar/interaction": "^6.1.19",
+    "@fullcalendar/react": "^6.1.19",
+    "@fullcalendar/timegrid": "^6.1.19",
     "@supabase/supabase-js": "^2.75.0",
     "antd": "^5.27.5",
     "dayjs": "^1.11.18",

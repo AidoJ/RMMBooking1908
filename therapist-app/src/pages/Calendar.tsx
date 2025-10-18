@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar as AntCalendar, Badge, Card, Typography, List, Space, Tag, message, Spin, Empty } from 'antd';
-import { ClockCircleOutlined, EnvironmentOutlined, UserOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useRef } from 'react';
+import { Card, Typography, message, Spin, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { supabaseClient } from '../utility/supabaseClient';
-import dayjs, { Dayjs } from 'dayjs';
-import isoWeek from 'dayjs/plugin/isoWeek';
+import dayjs from 'dayjs';
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
+import './Calendar.css';
 
-const { Title, Text } = Typography;
-
-dayjs.extend(isoWeek);
+const { Title } = Typography;
 
 interface Booking {
   id: string;
@@ -18,13 +19,14 @@ interface Booking {
   service_name: string;
   address: string;
   therapist_fee: number;
+  duration_minutes?: number;
 }
 
 export const Calendar: React.FC = () => {
   const navigate = useNavigate();
+  const calendarRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
 
   useEffect(() => {
     loadBookings();
@@ -57,9 +59,9 @@ export const Calendar: React.FC = () => {
         return;
       }
 
-      // Get bookings for current month (we'll filter by selected date in UI)
-      const monthStart = dayjs().startOf('month').subtract(7, 'days').toISOString();
-      const monthEnd = dayjs().endOf('month').add(7, 'days').toISOString();
+      // Get bookings for a wider range (3 months before and after current date)
+      const rangeStart = dayjs().subtract(3, 'months').startOf('month').toISOString();
+      const rangeEnd = dayjs().add(3, 'months').endOf('month').toISOString();
 
       const { data, error } = await supabaseClient
         .from('bookings')
@@ -69,14 +71,15 @@ export const Calendar: React.FC = () => {
           status,
           address,
           therapist_fee,
+          duration_minutes,
           booker_name,
           first_name,
           last_name,
           services(name)
         `)
         .eq('therapist_id', profile.id)
-        .gte('booking_time', monthStart)
-        .lte('booking_time', monthEnd)
+        .gte('booking_time', rangeStart)
+        .lte('booking_time', rangeEnd)
         .order('booking_time');
 
       if (error) {
@@ -94,6 +97,7 @@ export const Calendar: React.FC = () => {
         service_name: b.services?.name || 'Unknown Service',
         address: b.address,
         therapist_fee: b.therapist_fee || 0,
+        duration_minutes: b.duration_minutes || 60
       }));
 
       setBookings(bookingsData);
@@ -105,82 +109,38 @@ export const Calendar: React.FC = () => {
     }
   };
 
-  const getBookingsForDate = (date: Dayjs) => {
-    return bookings.filter((booking) =>
-      dayjs(booking.booking_time).isSame(date, 'day')
-    );
-  };
-
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string): string => {
     const colors: { [key: string]: string } = {
-      requested: 'orange',
-      pending: 'orange',
-      confirmed: 'blue',
-      completed: 'green',
-      cancelled: 'red',
-      declined: 'red',
+      requested: '#faad14',
+      pending: '#faad14',
+      confirmed: '#1890ff',
+      completed: '#52c41a',
+      cancelled: '#f5222d',
+      declined: '#f5222d',
     };
-    return colors[status] || 'default';
+    return colors[status] || '#d9d9d9';
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusMap: { [key: string]: 'success' | 'processing' | 'default' | 'error' | 'warning' } = {
-      completed: 'success',
-      confirmed: 'processing',
-      requested: 'warning',
-      pending: 'warning',
-      cancelled: 'error',
-      declined: 'error',
-    };
-    return statusMap[status] || 'default';
+  // Convert bookings to FullCalendar events
+  const events = bookings.map(booking => ({
+    id: booking.id,
+    title: `${booking.customer_name} - ${booking.service_name}`,
+    start: booking.booking_time,
+    end: dayjs(booking.booking_time).add(booking.duration_minutes || 60, 'minutes').toISOString(),
+    backgroundColor: getStatusColor(booking.status),
+    borderColor: getStatusColor(booking.status),
+    extendedProps: {
+      status: booking.status,
+      customer_name: booking.customer_name,
+      service_name: booking.service_name,
+      address: booking.address,
+      therapist_fee: booking.therapist_fee
+    }
+  }));
+
+  const handleEventClick = (info: any) => {
+    navigate(`/booking/${info.event.id}`);
   };
-
-  const dateCellRender = (date: Dayjs) => {
-    const dayBookings = getBookingsForDate(date);
-
-    if (dayBookings.length === 0) return null;
-
-    return (
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-        {dayBookings.slice(0, 3).map((booking) => (
-          <li key={booking.id} style={{ marginBottom: 2 }}>
-            <Badge
-              status={getStatusBadge(booking.status)}
-              text={
-                <Text
-                  style={{
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    display: 'block',
-                    maxWidth: '100px',
-                  }}
-                  onClick={() => navigate(`/booking/${booking.id}`)}
-                >
-                  {dayjs(booking.booking_time).format('h:mm A')} - {booking.customer_name}
-                </Text>
-              }
-            />
-          </li>
-        ))}
-        {dayBookings.length > 3 && (
-          <li>
-            <Text type="secondary" style={{ fontSize: '11px' }}>
-              +{dayBookings.length - 3} more
-            </Text>
-          </li>
-        )}
-      </ul>
-    );
-  };
-
-  const onDateSelect = (date: Dayjs) => {
-    setSelectedDate(date);
-  };
-
-  const selectedDateBookings = getBookingsForDate(selectedDate);
 
   if (loading) {
     return (
@@ -192,90 +152,86 @@ export const Calendar: React.FC = () => {
 
   return (
     <div>
-      <Title level={2} style={{ marginBottom: 24 }}>
+      <Title level={2} style={{ marginBottom: 16 }}>
         My Schedule
       </Title>
 
-      <Card style={{ marginBottom: 24 }}>
-        <AntCalendar
-          onSelect={onDateSelect}
-          cellRender={dateCellRender}
-        />
+      {/* Legend */}
+      <Card style={{ marginBottom: 16 }}>
+        <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ fontWeight: 500 }}>Status Legend:</span>
+          <Tag color="orange">Requested/Pending</Tag>
+          <Tag color="blue">Confirmed</Tag>
+          <Tag color="green">Completed</Tag>
+          <Tag color="red">Cancelled/Declined</Tag>
+        </div>
       </Card>
 
-      <Card
-        title={
-          <Space>
-            <Text strong>Bookings for {selectedDate.format('MMMM DD, YYYY')}</Text>
-            {selectedDateBookings.length > 0 && (
-              <Tag color="blue">{selectedDateBookings.length} booking{selectedDateBookings.length !== 1 ? 's' : ''}</Tag>
-            )}
-          </Space>
-        }
-      >
-        {selectedDateBookings.length === 0 ? (
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No bookings on this day"
-          />
-        ) : (
-          <List
-            dataSource={selectedDateBookings}
-            renderItem={(booking) => (
-              <List.Item
-                style={{ cursor: 'pointer' }}
-                onClick={() => navigate(`/booking/${booking.id}`)}
-              >
-                <List.Item.Meta
-                  avatar={
-                    <div
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: '50%',
-                        background: '#007e8c',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                      }}
-                    >
-                      <UserOutlined style={{ fontSize: 20 }} />
-                    </div>
-                  }
-                  title={
-                    <Space>
-                      <Text strong>{booking.customer_name}</Text>
-                      <Tag color={getStatusColor(booking.status)}>
-                        {booking.status.toUpperCase()}
-                      </Tag>
-                    </Space>
-                  }
-                  description={
-                    <Space direction="vertical" size={0}>
-                      <Text>{booking.service_name}</Text>
-                      <Space size="large">
-                        <Space size="small">
-                          <ClockCircleOutlined />
-                          <Text type="secondary">{dayjs(booking.booking_time).format('h:mm A')}</Text>
-                        </Space>
-                        <Space size="small">
-                          <EnvironmentOutlined />
-                          <Text type="secondary">{booking.address?.split(',')[0] || 'No address'}</Text>
-                        </Space>
-                      </Space>
-                    </Space>
-                  }
-                />
-                <div>
-                  <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
-                    ${parseFloat(booking.therapist_fee?.toString() || '0').toFixed(2)}
-                  </Text>
+      {/* Calendar */}
+      <Card>
+        <FullCalendar
+          ref={calendarRef}
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView="timeGridWeek"
+          headerToolbar={{
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+          }}
+          buttonText={{
+            today: 'Today',
+            month: 'Month',
+            week: 'Week',
+            day: 'Day'
+          }}
+          events={events}
+          eventClick={handleEventClick}
+          height="auto"
+          slotMinTime="06:00:00"
+          slotMaxTime="22:00:00"
+          allDaySlot={false}
+          nowIndicator={true}
+          editable={false}
+          selectable={false}
+          eventTimeFormat={{
+            hour: 'numeric',
+            minute: '2-digit',
+            meridiem: 'short'
+          }}
+          slotDuration="00:30:00"
+          slotLabelInterval="01:00"
+          slotLabelFormat={{
+            hour: 'numeric',
+            minute: '2-digit',
+            meridiem: 'short'
+          }}
+          dayHeaderFormat={{
+            weekday: 'short',
+            month: 'numeric',
+            day: 'numeric'
+          }}
+          eventContent={(eventInfo) => {
+            const { event } = eventInfo;
+            const { status, customer_name, service_name, therapist_fee } = event.extendedProps;
+
+            return (
+              <div style={{
+                padding: '4px',
+                overflow: 'hidden',
+                cursor: 'pointer',
+                fontSize: '11px',
+                lineHeight: '1.3'
+              }}>
+                <div style={{ fontWeight: 600 }}>{customer_name}</div>
+                <div>{service_name}</div>
+                <div>${parseFloat(therapist_fee).toFixed(2)}</div>
+                <div style={{ fontSize: '10px', opacity: 0.9 }}>
+                  {status.toUpperCase()}
                 </div>
-              </List.Item>
-            )}
-          />
-        )}
+              </div>
+            );
+          }}
+        />
       </Card>
     </div>
   );
