@@ -13,6 +13,7 @@ import {
   Modal,
   Form,
   Input,
+  InputNumber,
   Upload,
   message as antdMessage,
   Descriptions,
@@ -62,6 +63,7 @@ export const MyEarnings: React.FC = () => {
   const [submitModalVisible, setSubmitModalVisible] = useState(false);
   const [selectedWeek, setSelectedWeek] = useState<WeeklySummary | null>(null);
   const [invoiceFile, setInvoiceFile] = useState<string | null>(null);
+  const [parkingReceiptFile, setParkingReceiptFile] = useState<string | null>(null);
   const [dailyBreakdown, setDailyBreakdown] = useState<DailyBreakdown[]>([]);
   const [breakdownModalVisible, setBreakdownModalVisible] = useState(false);
 
@@ -234,15 +236,30 @@ export const MyEarnings: React.FC = () => {
   const handleSubmitInvoice = (week: WeeklySummary) => {
     setSelectedWeek(week);
     form.resetFields();
+    form.setFieldsValue({
+      therapist_invoiced_fees: week.total_fees, // Pre-fill with calculated amount
+      therapist_parking_amount: 0,
+    });
     setInvoiceFile(null);
+    setParkingReceiptFile(null);
     setSubmitModalVisible(true);
   };
 
-  const handleFileUpload = (file: File) => {
+  const handleInvoiceFileUpload = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const base64 = e.target?.result as string;
       setInvoiceFile(base64);
+    };
+    reader.readAsDataURL(file);
+    return false; // Prevent auto upload
+  };
+
+  const handleParkingReceiptUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      setParkingReceiptFile(base64);
     };
     reader.readAsDataURL(file);
     return false; // Prevent auto upload
@@ -254,32 +271,51 @@ export const MyEarnings: React.FC = () => {
     try {
       setSubmitting(true);
 
+      // Prepare invoice data matching the therapist_payments schema
       const invoiceData = {
+        // Required fields
         therapist_id: therapistId,
         week_start_date: selectedWeek.week_start,
         week_end_date: selectedWeek.week_end,
-        total_amount: selectedWeek.total_fees,
-        jobs_count: selectedWeek.jobs_count,
-        booking_ids: selectedWeek.booking_ids,
-        status: 'submitted' as const,
-        invoice_number: values.invoice_number,
-        notes: values.notes || null,
-        invoice_file: invoiceFile || null,
+
+        // System calculated data (read-only for therapist)
+        calculated_fees: selectedWeek.total_fees,
+        booking_count: selectedWeek.jobs_count,
+        booking_ids: selectedWeek.booking_ids.join(','), // Comma-separated string
+
+        // Therapist submitted data
+        therapist_invoice_number: values.therapist_invoice_number || null,
+        therapist_invoice_date: dayjs().format('YYYY-MM-DD'),
+        therapist_invoice_url: invoiceFile || null,
+        therapist_invoiced_fees: parseFloat(values.therapist_invoiced_fees || selectedWeek.total_fees),
+        therapist_parking_amount: parseFloat(values.therapist_parking_amount || 0),
+        parking_receipt_url: parkingReceiptFile || null,
+        therapist_notes: values.therapist_notes || null,
         submitted_at: new Date().toISOString(),
+
+        // Status
+        status: 'submitted' as const,
       };
 
-      const { error } = await supabaseClient
+      console.log('Submitting invoice data:', invoiceData);
+
+      const { data, error } = await supabaseClient
         .from('therapist_payments')
-        .insert([invoiceData]);
+        .insert([invoiceData])
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
+      console.log('Invoice submitted successfully:', data);
       antdMessage.success('Invoice submitted successfully!');
       setSubmitModalVisible(false);
       loadEarningsData(); // Reload to update status
     } catch (error: any) {
       console.error('Error submitting invoice:', error);
-      antdMessage.error('Failed to submit invoice');
+      antdMessage.error(`Failed to submit invoice: ${error.message || 'Unknown error'}`);
     } finally {
       setSubmitting(false);
     }
@@ -502,29 +538,72 @@ export const MyEarnings: React.FC = () => {
 
             <Form form={form} layout="vertical" onFinish={handleInvoiceSubmit}>
               <Form.Item
-                name="invoice_number"
+                name="therapist_invoice_number"
                 label="Invoice Number"
                 rules={[{ required: true, message: 'Please enter invoice number' }]}
               >
                 <Input placeholder="e.g., INV-2024-001" />
               </Form.Item>
 
-              <Form.Item name="notes" label="Notes (Optional)">
-                <TextArea rows={3} placeholder="Additional notes or comments..." />
+              <Form.Item
+                name="therapist_invoiced_fees"
+                label="Invoiced Fees"
+                rules={[{ required: true, message: 'Please enter invoiced fees' }]}
+                help="This should match the calculated fees unless you have adjustments"
+              >
+                <InputNumber
+                  prefix="$"
+                  style={{ width: '100%' }}
+                  precision={2}
+                  min={0}
+                  placeholder="0.00"
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="therapist_parking_amount"
+                label="Parking Amount"
+                help="Total parking expenses for the week (attach receipt below if claiming)"
+              >
+                <InputNumber
+                  prefix="$"
+                  style={{ width: '100%' }}
+                  precision={2}
+                  min={0}
+                  placeholder="0.00"
+                />
               </Form.Item>
 
               <Form.Item label="Upload Invoice (Optional)">
                 <Upload
-                  beforeUpload={handleFileUpload}
+                  beforeUpload={handleInvoiceFileUpload}
                   maxCount={1}
                   accept=".pdf,.jpg,.jpeg,.png"
                   onRemove={() => setInvoiceFile(null)}
                 >
-                  <Button icon={<UploadOutlined />}>Select File</Button>
+                  <Button icon={<UploadOutlined />}>Select Invoice File</Button>
                 </Upload>
                 <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
                   Accepted formats: PDF, JPG, PNG
                 </Text>
+              </Form.Item>
+
+              <Form.Item label="Upload Parking Receipt (Optional)">
+                <Upload
+                  beforeUpload={handleParkingReceiptUpload}
+                  maxCount={1}
+                  accept=".pdf,.jpg,.jpeg,.png"
+                  onRemove={() => setParkingReceiptFile(null)}
+                >
+                  <Button icon={<UploadOutlined />}>Select Parking Receipt</Button>
+                </Upload>
+                <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
+                  Upload receipt if claiming parking expenses
+                </Text>
+              </Form.Item>
+
+              <Form.Item name="therapist_notes" label="Notes (Optional)">
+                <TextArea rows={3} placeholder="Additional notes or comments..." />
               </Form.Item>
 
               <Form.Item>
