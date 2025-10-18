@@ -284,7 +284,10 @@ export const Dashboard: React.FC = () => {
           <List
             dataSource={todayBookings}
             renderItem={(booking) => (
-              <List.Item>
+              <List.Item
+                style={{ cursor: 'pointer' }}
+                onClick={() => navigate(`/booking/${booking.id}`)}
+              >
                 <List.Item.Meta
                   avatar={
                     <div style={{
@@ -346,7 +349,10 @@ export const Dashboard: React.FC = () => {
           <List
             dataSource={upcomingBookings}
             renderItem={(booking) => (
-              <List.Item>
+              <List.Item
+                style={{ cursor: 'pointer' }}
+                onClick={() => navigate(`/booking/${booking.id}`)}
+              >
                 <List.Item.Meta
                   avatar={
                     <div style={{

@@ -5,6 +5,8 @@ import { AppLayout } from './components/AppLayout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Calendar } from './pages/Calendar';
+import { Bookings } from './pages/Bookings';
+import { BookingDetail } from './pages/BookingDetail';
 import { Profile } from './pages/Profile';
 import { Services } from './pages/Services';
 import { Availability } from './pages/Availability';
@@ -78,6 +80,8 @@ function App() {
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/calendar" element={<Calendar />} />
+                    <Route path="/bookings" element={<Bookings />} />
+                    <Route path="/booking/:id" element={<BookingDetail />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/services" element={<Services />} />
                     <Route path="/availability" element={<Availability />} />

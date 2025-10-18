@@ -47,6 +47,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
       label: 'Calendar',
     },
     {
+      key: '/bookings',
+      icon: <FileTextOutlined />,
+      label: 'My Bookings',
+    },
+    {
       key: '/profile',
       icon: <UserOutlined />,
       label: 'My Profile',
