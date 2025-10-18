@@ -10,6 +10,8 @@ import {
   Spin,
   Row,
   Col,
+  Modal,
+  Input,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -21,12 +23,15 @@ import {
   CarOutlined,
   CheckCircleOutlined,
   FileTextOutlined,
+  CloseCircleOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabaseClient } from '../utility/supabaseClient';
 import dayjs from 'dayjs';
 
 const { Title, Text, Paragraph } = Typography;
+const { TextArea } = Input;
 
 export const BookingDetail: React.FC = () => {
   const navigate = useNavigate();
@@ -34,6 +39,7 @@ export const BookingDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [booking, setBooking] = useState<any>(null);
+  const [cancellationReason, setCancellationReason] = useState('');
 
   useEffect(() => {
     if (id) {
@@ -78,22 +84,131 @@ export const BookingDetail: React.FC = () => {
     }
   };
 
-  const updateBookingStatus = async (newStatus: string) => {
+  const handleOnMyWay = () => {
+    Modal.confirm({
+      title: 'On My Way',
+      icon: <ExclamationCircleOutlined />,
+      content: 'Please confirm you\'re on your way to this booking.',
+      okText: 'Confirm',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        await updateClientStatus('on_my_way');
+      },
+    });
+  };
+
+  const handleArrived = () => {
+    Modal.confirm({
+      title: 'I\'ve Arrived',
+      icon: <ExclamationCircleOutlined />,
+      content: 'Please confirm you have arrived at the location.',
+      okText: 'Confirm',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        await updateClientStatus('arrived');
+      },
+    });
+  };
+
+  const handleCompleteJob = () => {
+    Modal.confirm({
+      title: 'Complete Job',
+      icon: <ExclamationCircleOutlined />,
+      content: 'Please confirm job is now completed.',
+      okText: 'Confirm',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        await updateBookingStatus('completed');
+      },
+    });
+  };
+
+  const handleCancelBooking = () => {
+    Modal.confirm({
+      title: 'Cancel Booking',
+      icon: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />,
+      content: (
+        <div>
+          <Text>Please provide a reason for cancellation:</Text>
+          <TextArea
+            rows={4}
+            placeholder="Enter cancellation reason..."
+            onChange={(e) => setCancellationReason(e.target.value)}
+            style={{ marginTop: 12 }}
+          />
+        </div>
+      ),
+      okText: 'Cancel Booking',
+      okType: 'danger',
+      cancelText: 'Go Back',
+      onOk: async () => {
+        if (!cancellationReason.trim()) {
+          message.error('Cancellation reason is required');
+          return Promise.reject();
+        }
+        await updateBookingStatus('cancelled', cancellationReason);
+        setCancellationReason('');
+      },
+      onCancel: () => {
+        setCancellationReason('');
+      },
+    });
+  };
+
+  const updateClientStatus = async (newClientStatus: string) => {
     try {
       setUpdating(true);
 
       const { error } = await supabaseClient
         .from('bookings')
-        .update({ status: newStatus })
+        .update({ client_update_status: newClientStatus })
         .eq('id', id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
 
-      message.success(`Status updated to ${newStatus}`);
-      setBooking({ ...booking, status: newStatus });
+      message.success(`Status updated: ${newClientStatus.replace('_', ' ')}`);
+      setBooking({ ...booking, client_update_status: newClientStatus });
+
+      // Reload to get fresh data
+      await loadBookingDetail();
     } catch (error) {
-      console.error('Error updating status:', error);
+      console.error('Error updating client status:', error);
       message.error('Failed to update status');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const updateBookingStatus = async (newStatus: string, reason?: string) => {
+    try {
+      setUpdating(true);
+
+      const updateData: any = { status: newStatus };
+      if (reason) {
+        updateData.cancellation_reason = reason;
+      }
+
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update(updateData)
+        .eq('id', id);
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      message.success(`Booking ${newStatus}`);
+      setBooking({ ...booking, status: newStatus });
+
+      // Reload to get fresh data
+      await loadBookingDetail();
+    } catch (error) {
+      console.error('Error updating booking status:', error);
+      message.error('Failed to update booking status');
     } finally {
       setUpdating(false);
     }
@@ -162,7 +277,7 @@ export const BookingDetail: React.FC = () => {
             <Button
               type="primary"
               icon={<CarOutlined />}
-              onClick={() => updateBookingStatus('on_my_way')}
+              onClick={handleOnMyWay}
               loading={updating}
               size="large"
               style={{ background: '#1890ff', borderColor: '#1890ff' }}
@@ -172,7 +287,7 @@ export const BookingDetail: React.FC = () => {
             <Button
               type="primary"
               icon={<EnvironmentOutlined />}
-              onClick={() => updateBookingStatus('arrived')}
+              onClick={handleArrived}
               loading={updating}
               size="large"
               style={{ background: '#faad14', borderColor: '#faad14' }}
@@ -182,12 +297,21 @@ export const BookingDetail: React.FC = () => {
             <Button
               type="primary"
               icon={<CheckCircleOutlined />}
-              onClick={() => updateBookingStatus('completed')}
+              onClick={handleCompleteJob}
               loading={updating}
               size="large"
               style={{ background: '#52c41a', borderColor: '#52c41a' }}
             >
               Complete Job
+            </Button>
+            <Button
+              danger
+              icon={<CloseCircleOutlined />}
+              onClick={handleCancelBooking}
+              loading={updating}
+              size="large"
+            >
+              Cancel
             </Button>
           </Space>
         </Card>
@@ -221,6 +345,13 @@ export const BookingDetail: React.FC = () => {
                   {booking.status.toUpperCase()}
                 </Tag>
               </Descriptions.Item>
+              {booking.client_update_status && (
+                <Descriptions.Item label="Client Update">
+                  <Tag color="blue">
+                    {booking.client_update_status.replace('_', ' ').toUpperCase()}
+                  </Tag>
+                </Descriptions.Item>
+              )}
               <Descriptions.Item label="Therapist Fee">
                 <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
                   ${parseFloat(booking.therapist_fee?.toString() || '0').toFixed(2)}
