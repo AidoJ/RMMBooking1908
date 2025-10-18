@@ -17,7 +17,6 @@ import ServiceAreaPolygonEditor from '../components/ServiceAreaPolygonEditor';
 import { useAddressGeocoding } from '../hooks/useAddressGeocoding';
 
 const { Title } = Typography;
-const { TextArea } = Input;
 
 interface Coordinate {
   lat: number;
@@ -186,9 +185,8 @@ export const ServiceArea: React.FC = () => {
                   'Enter address for automatic verification'}
             rules={[{ required: true, message: 'Please enter your home address' }]}
           >
-            <TextArea
+            <Input
               id="home_address"
-              rows={3}
               placeholder="Start typing address for autocomplete suggestions..."
             />
           </Form.Item>

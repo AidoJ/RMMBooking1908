@@ -58,9 +58,14 @@ async function main() {
     console.log('💆 Copying therapist app...');
     await fs.copy(path.join(__dirname, 'therapist-app', 'dist'), path.join(__dirname, 'dist', 'therapist'));
 
-    // Copy mockups folder
-    console.log('🎨 Copying mockups...');
-    await fs.copy(path.join(__dirname, 'mockups'), path.join(__dirname, 'dist', 'mockups'));
+    // Copy mockups folder if it exists
+    const mockupsPath = path.join(__dirname, 'mockups');
+    if (await fs.pathExists(mockupsPath)) {
+      console.log('🎨 Copying mockups...');
+      await fs.copy(mockupsPath, path.join(__dirname, 'dist', 'mockups'));
+    } else {
+      console.log('⏭️  Skipping mockups (folder not found)...');
+    }
 
     // Copy the root netlify.toml AFTER everything else to ensure correct config
     console.log('⚙️  Copying netlify.toml...');
