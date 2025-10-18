@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider, Spin } from 'antd';
+import { ConfigProvider, Spin, App as AntApp } from 'antd';
 import { AppLayout } from './components/AppLayout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -65,7 +65,8 @@ function App() {
         },
       }}
     >
-      <BrowserRouter basename="/therapist">
+      <AntApp>
+        <BrowserRouter basename="/therapist">
         <Routes>
           <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
 
@@ -99,6 +100,7 @@ function App() {
           />
         </Routes>
       </BrowserRouter>
+      </AntApp>
     </ConfigProvider>
   );
 }
