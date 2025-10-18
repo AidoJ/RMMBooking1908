@@ -44,9 +44,11 @@ async function main() {
     await fs.remove(path.join(__dirname, 'dist'));
     await fs.ensureDir(path.join(__dirname, 'dist'));
 
-    // Copy booking platform to root
+    // Copy booking platform to root (exclude netlify.toml to prevent overwriting)
     console.log('📋 Copying booking platform...');
-    await fs.copy(path.join(__dirname, 'booking'), path.join(__dirname, 'dist'));
+    await fs.copy(path.join(__dirname, 'booking'), path.join(__dirname, 'dist'), {
+      filter: (src) => !src.endsWith('netlify.toml')
+    });
 
     // Copy admin build to /admin
     console.log('👥 Copying admin panel...');
@@ -59,6 +61,10 @@ async function main() {
     // Copy mockups folder
     console.log('🎨 Copying mockups...');
     await fs.copy(path.join(__dirname, 'mockups'), path.join(__dirname, 'dist', 'mockups'));
+
+    // Copy the root netlify.toml AFTER everything else to ensure correct config
+    console.log('⚙️  Copying netlify.toml...');
+    await fs.copy(path.join(__dirname, 'netlify.toml'), path.join(__dirname, 'dist', 'netlify.toml'));
 
     console.log('✅ Build complete!');
     
