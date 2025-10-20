@@ -69,7 +69,7 @@ exports.handler = async (event, context) => {
       .select(`
         *,
         services(name),
-        therapist_profiles!bookings_therapist_id_fkey(first_name, last_name, phone, address)
+        therapist_profiles!bookings_therapist_id_fkey(first_name, last_name, phone, home_address)
       `)
       .eq('id', bookingId)
       .single();
@@ -94,7 +94,7 @@ exports.handler = async (event, context) => {
     let travelTimeMinutes = null;
     if (status === 'on_my_way' && GOOGLE_MAPS_API_KEY) {
       try {
-        travelTimeMinutes = await calculateTravelTime(therapist.address, booking.address);
+        travelTimeMinutes = await calculateTravelTime(therapist.home_address, booking.address);
         console.log(`🚗 Estimated travel time: ${travelTimeMinutes} minutes`);
       } catch (error) {
         console.error('❌ Error calculating travel time:', error);
