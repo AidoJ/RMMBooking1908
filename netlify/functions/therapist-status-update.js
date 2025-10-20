@@ -69,7 +69,7 @@ exports.handler = async (event, context) => {
       .select(`
         *,
         services(name),
-        therapist_profiles(first_name, last_name, phone, address)
+        therapist_profiles!bookings_therapist_id_fkey(first_name, last_name, phone, address)
       `)
       .eq('id', bookingId)
       .single();
