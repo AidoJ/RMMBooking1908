@@ -294,6 +294,7 @@ export const BookingDetail: React.FC = () => {
 
       console.log('Updating client_update_status to:', newClientStatus, 'for booking ID:', id);
 
+      // First update the database
       const { error } = await supabaseClient
         .from('bookings')
         .update({ client_update_status: newClientStatus })
@@ -306,7 +307,26 @@ export const BookingDetail: React.FC = () => {
       }
 
       console.log('Update successful');
-      message.success(`Status updated: ${newClientStatus.replace('_', ' ')}`);
+
+      // Then send notifications to customer via Netlify function
+      try {
+        const notificationUrl = `/.netlify/functions/therapist-status-update?booking=${id}&status=${newClientStatus}`;
+        const notificationResponse = await fetch(notificationUrl, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' }
+        });
+
+        if (notificationResponse.ok) {
+          console.log('✅ Customer notification sent');
+          message.success(`Status updated: ${newClientStatus.replace('_', ' ')}. Customer has been notified via email and SMS.`);
+        } else {
+          console.warn('⚠️ Notification failed but status updated');
+          message.success(`Status updated: ${newClientStatus.replace('_', ' ')}`);
+        }
+      } catch (notificationError) {
+        console.error('❌ Error sending notification:', notificationError);
+        message.success(`Status updated: ${newClientStatus.replace('_', ' ')}`);
+      }
 
       // Reload to get fresh data
       await loadBookingDetail();
