@@ -8,6 +8,7 @@ import {
   UserOutlined,
   DollarOutlined,
   ExclamationCircleOutlined,
+  ClockCircleFilled,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { supabaseClient } from '../utility/supabaseClient';
@@ -24,6 +25,7 @@ export const Dashboard: React.FC = () => {
   const [stats, setStats] = useState({
     todayJobs: 0,
     requestedJobs: 0,
+    pendingJobs: 0,
     weekJobs: 0,
     todayEarnings: 0,
     weekEarnings: 0,
@@ -147,9 +149,15 @@ export const Dashboard: React.FC = () => {
         (b: any) => b.status === 'requested'
       ).length;
 
+      // Count pending jobs (status = 'pending' or 'timeout_reassigned' or 'seeking_alternate')
+      const pendingCount = (weekData || []).filter(
+        (b: any) => b.status === 'pending' || b.status === 'timeout_reassigned' || b.status === 'seeking_alternate'
+      ).length;
+
       setStats({
         todayJobs: todayBookingsData.length,
         requestedJobs: requestedCount,
+        pendingJobs: pendingCount,
         weekJobs: weekData?.length || 0,
         todayEarnings: todayCompleted.reduce((sum: number, b: any) => sum + parseFloat(b.therapist_fee || '0'), 0),
         weekEarnings: weekCompleted.reduce((sum: number, b: any) => sum + parseFloat(b.therapist_fee || '0'), 0),
@@ -215,6 +223,16 @@ export const Dashboard: React.FC = () => {
               value={stats.requestedJobs}
               prefix={<ExclamationCircleOutlined />}
               valueStyle={{ color: '#FFD700', fontSize: '24px', fontWeight: 'bold' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} md={6}>
+          <Card style={{ borderColor: '#ff7875', borderWidth: '2px' }}>
+            <Statistic
+              title="Pending Jobs"
+              value={stats.pendingJobs}
+              prefix={<ClockCircleFilled />}
+              valueStyle={{ color: '#ff7875', fontSize: '24px' }}
             />
           </Card>
         </Col>
