@@ -606,13 +606,6 @@ export const BookingDetail: React.FC = () => {
           <Paragraph>{booking.notes}</Paragraph>
         </Card>
       )}
-
-      {/* Service Description */}
-      {booking.service_description && (
-        <Card title="Service Description" style={{ marginTop: 16 }}>
-          <Paragraph>{booking.service_description}</Paragraph>
-        </Card>
-      )}
     </div>
   );
 };

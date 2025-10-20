@@ -7,6 +7,7 @@ import {
   FileTextOutlined,
   UserOutlined,
   DollarOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { supabaseClient } from '../utility/supabaseClient';
@@ -22,6 +23,7 @@ export const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     todayJobs: 0,
+    requestedJobs: 0,
     weekJobs: 0,
     todayEarnings: 0,
     weekEarnings: 0,
@@ -140,8 +142,14 @@ export const Dashboard: React.FC = () => {
 
       const weekCompleted = (weekData || []).filter((b: any) => b.status === 'completed');
 
+      // Count requested jobs from today and upcoming bookings
+      const requestedCount = [...todayBookingsData, ...upcomingBookingsData].filter(
+        (b: any) => b.status === 'requested'
+      ).length;
+
       setStats({
         todayJobs: todayBookingsData.length,
+        requestedJobs: requestedCount,
         weekJobs: weekData?.length || 0,
         todayEarnings: todayCompleted.reduce((sum: number, b: any) => sum + parseFloat(b.therapist_fee || '0'), 0),
         weekEarnings: weekCompleted.reduce((sum: number, b: any) => sum + parseFloat(b.therapist_fee || '0'), 0),
@@ -156,7 +164,7 @@ export const Dashboard: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'requested':
-        return 'orange';
+        return 'warning'; // Yellow background
       case 'confirmed':
         return 'blue';
       case 'completed':
@@ -164,6 +172,18 @@ export const Dashboard: React.FC = () => {
       default:
         return 'default';
     }
+  };
+
+  const getStatusStyle = (status: string) => {
+    if (status === 'requested') {
+      return {
+        backgroundColor: '#FFD700',
+        color: '#000',
+        fontWeight: 'bold',
+        border: '1px solid #FFA500'
+      };
+    }
+    return {};
   };
 
   if (loading) {
@@ -185,6 +205,16 @@ export const Dashboard: React.FC = () => {
               value={stats.todayJobs}
               prefix={<CalendarOutlined />}
               valueStyle={{ color: '#007e8c', fontSize: '24px' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} md={6}>
+          <Card style={{ borderColor: '#FFD700', borderWidth: '2px' }}>
+            <Statistic
+              title="Requested Jobs"
+              value={stats.requestedJobs}
+              prefix={<ExclamationCircleOutlined />}
+              valueStyle={{ color: '#FFD700', fontSize: '24px', fontWeight: 'bold' }}
             />
           </Card>
         </Col>
@@ -309,8 +339,8 @@ export const Dashboard: React.FC = () => {
                   title={
                     <Space>
                       <Text strong>{booking.customer_name}</Text>
-                      <Tag color={getStatusColor(booking.status)}>
-                        {booking.status}
+                      <Tag color={getStatusColor(booking.status)} style={getStatusStyle(booking.status)}>
+                        {booking.status.toUpperCase()}
                       </Tag>
                     </Space>
                   }
@@ -374,7 +404,7 @@ export const Dashboard: React.FC = () => {
                   title={
                     <Space>
                       <Text strong>{booking.customer_name}</Text>
-                      <Tag color={getStatusColor(booking.status)}>
+                      <Tag color={getStatusColor(booking.status)} style={getStatusStyle(booking.status)}>
                         {booking.status.toUpperCase()}
                       </Tag>
                     </Space>
