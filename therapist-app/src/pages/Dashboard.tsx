@@ -121,6 +121,17 @@ export const Dashboard: React.FC = () => {
         console.error('Week data error:', weekError);
       }
 
+      // Get ALL pending bookings for stats (no date filter)
+      const { data: pendingData, error: pendingError } = await supabaseClient
+        .from('bookings')
+        .select('id')
+        .eq('therapist_id', profile.id)
+        .eq('status', 'pending');
+
+      if (pendingError) {
+        console.error('Pending bookings error:', pendingError);
+      }
+
       // Process bookings data
       const todayBookingsData = (todayData || []).map((b: any) => ({
         ...b,
@@ -149,10 +160,8 @@ export const Dashboard: React.FC = () => {
         (b: any) => b.status === 'requested'
       ).length;
 
-      // Count pending jobs (quoted jobs awaiting client acceptance)
-      const pendingCount = (weekData || []).filter(
-        (b: any) => b.status === 'pending'
-      ).length;
+      // Count pending jobs (quoted jobs awaiting client acceptance) - ALL pending, no date filter
+      const pendingCount = pendingData?.length || 0;
 
       setStats({
         todayJobs: todayBookingsData.length,
