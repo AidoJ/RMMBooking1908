@@ -97,7 +97,7 @@ export const Dashboard: React.FC = () => {
         .eq('therapist_id', profile.id)
         .gte('booking_time', tomorrowStart)
         .lte('booking_time', nextWeekEnd)
-        .in('status', ['confirmed'])
+        .in('status', ['requested', 'confirmed'])
         .order('booking_time')
         .limit(5);
 
@@ -374,7 +374,9 @@ export const Dashboard: React.FC = () => {
                   title={
                     <Space>
                       <Text strong>{booking.customer_name}</Text>
-                      <Tag color="blue">Confirmed</Tag>
+                      <Tag color={getStatusColor(booking.status)}>
+                        {booking.status.toUpperCase()}
+                      </Tag>
                     </Space>
                   }
                   description={
