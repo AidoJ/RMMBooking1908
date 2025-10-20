@@ -214,6 +214,19 @@ export const Calendar: React.FC = () => {
             const { event } = eventInfo;
             const { status, customer_name, service_name, therapist_fee } = event.extendedProps;
 
+            // Color mapping for status text
+            const getStatusTextColor = (status: string): string => {
+              const colors: { [key: string]: string } = {
+                requested: '#faad14',
+                pending: '#faad14',
+                confirmed: '#1890ff',
+                completed: '#52c41a',
+                cancelled: '#f5222d',
+                declined: '#f5222d',
+              };
+              return colors[status] || '#8c8c8c';
+            };
+
             return (
               <div style={{
                 padding: '4px',
@@ -222,10 +235,10 @@ export const Calendar: React.FC = () => {
                 fontSize: '11px',
                 lineHeight: '1.3'
               }}>
-                <div style={{ fontWeight: 600 }}>{customer_name}</div>
-                <div>{service_name}</div>
-                <div>${parseFloat(therapist_fee).toFixed(2)}</div>
-                <div style={{ fontSize: '10px', opacity: 0.9 }}>
+                <div style={{ fontWeight: 600, color: getStatusTextColor(status) }}>{customer_name}</div>
+                <div style={{ color: getStatusTextColor(status) }}>{service_name}</div>
+                <div style={{ color: getStatusTextColor(status) }}>${parseFloat(therapist_fee).toFixed(2)}</div>
+                <div style={{ fontSize: '10px', opacity: 0.9, fontWeight: 600, color: getStatusTextColor(status) }}>
                   {status.toUpperCase()}
                 </div>
               </div>

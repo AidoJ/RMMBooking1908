@@ -154,6 +154,149 @@ export const BookingDetail: React.FC = () => {
     });
   };
 
+  const handleAcceptBooking = () => {
+    modal.confirm({
+      title: 'Accept Booking',
+      icon: <CheckCircleOutlined style={{ color: '#52c41a' }} />,
+      content: 'Are you sure you want to accept this booking? The client will be notified immediately.',
+      okText: 'Yes, Accept',
+      okType: 'primary',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        await acceptBooking();
+      },
+    });
+  };
+
+  const handleDeclineBooking = () => {
+    modal.confirm({
+      title: 'Decline Booking',
+      icon: <CloseCircleOutlined style={{ color: '#ff4d4f' }} />,
+      content: 'Are you sure you want to decline this booking? We will look for alternative therapists if the client requested a fallback.',
+      okText: 'Yes, Decline',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        await declineBooking();
+      },
+    });
+  };
+
+  const acceptBooking = async () => {
+    try {
+      setUpdating(true);
+
+      // Get therapist profile ID
+      const userStr = localStorage.getItem('therapistUser');
+      if (!userStr) {
+        message.error('Session expired. Please log in again.');
+        return;
+      }
+
+      const userData = JSON.parse(userStr);
+      const userId = userData.user_id || userData.id;
+
+      const { data: profile } = await supabaseClient
+        .from('therapist_profiles')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+
+      if (!profile) {
+        message.error('Therapist profile not found');
+        return;
+      }
+
+      const acceptUpdateData = {
+        status: 'confirmed',
+        therapist_id: profile.id,
+        therapist_response_time: new Date().toISOString(),
+        responding_therapist_id: profile.id,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update(acceptUpdateData)
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error accepting booking:', error);
+        message.error(`Failed to accept booking: ${error.message}`);
+        throw error;
+      }
+
+      message.success('Booking accepted! Confirmation emails will be sent to you and the client.');
+
+      // Reload booking details
+      await loadBookingDetail();
+    } catch (error: any) {
+      console.error('Error accepting booking:', error);
+      message.error(error?.message || 'Failed to accept booking');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const declineBooking = async () => {
+    try {
+      setUpdating(true);
+
+      // Get therapist profile ID
+      const userStr = localStorage.getItem('therapistUser');
+      if (!userStr) {
+        message.error('Session expired. Please log in again.');
+        return;
+      }
+
+      const userData = JSON.parse(userStr);
+      const userId = userData.user_id || userData.id;
+
+      const { data: profile } = await supabaseClient
+        .from('therapist_profiles')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+
+      if (!profile) {
+        message.error('Therapist profile not found');
+        return;
+      }
+
+      const declineUpdateData = {
+        status: 'declined',
+        therapist_response_time: new Date().toISOString(),
+        responding_therapist_id: profile.id,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update(declineUpdateData)
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error declining booking:', error);
+        message.error(`Failed to decline booking: ${error.message}`);
+        throw error;
+      }
+
+      if (booking.fallback_option === 'yes') {
+        message.success('Booking declined. We will look for alternative therapists and notify the client.');
+      } else {
+        message.success('Booking declined. The client has been notified.');
+      }
+
+      // Reload booking details
+      await loadBookingDetail();
+    } catch (error: any) {
+      console.error('Error declining booking:', error);
+      message.error(error?.message || 'Failed to decline booking');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   const updateClientStatus = async (newClientStatus: string) => {
     try {
       setUpdating(true);
@@ -259,6 +402,7 @@ export const BookingDetail: React.FC = () => {
   }
 
   const canUpdateStatus = ['confirmed'].includes(booking.status);
+  const isRequested = booking.status === 'requested';
 
   return (
     <div>
@@ -272,7 +416,37 @@ export const BookingDetail: React.FC = () => {
 
       <Title level={2}>Booking Details</Title>
 
-      {/* Status Actions */}
+      {/* Accept/Decline Actions - Only for Requested Status */}
+      {isRequested && (
+        <Card style={{ marginBottom: 24, background: '#fff7e6', borderColor: '#faad14' }}>
+          <Text strong style={{ display: 'block', marginBottom: 16, color: '#faad14', fontSize: '16px' }}>
+            ⏰ Booking Request - Please Respond:
+          </Text>
+          <Space size="middle" wrap>
+            <Button
+              type="primary"
+              icon={<CheckCircleOutlined />}
+              onClick={handleAcceptBooking}
+              loading={updating}
+              size="large"
+              style={{ background: '#52c41a', borderColor: '#52c41a' }}
+            >
+              Accept Booking
+            </Button>
+            <Button
+              danger
+              icon={<CloseCircleOutlined />}
+              onClick={handleDeclineBooking}
+              loading={updating}
+              size="large"
+            >
+              Decline Booking
+            </Button>
+          </Space>
+        </Card>
+      )}
+
+      {/* Status Actions - Only for Confirmed Status */}
       {canUpdateStatus && (
         <Card style={{ marginBottom: 24, background: '#f0f9ff' }}>
           <Text strong style={{ display: 'block', marginBottom: 16 }}>
