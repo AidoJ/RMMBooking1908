@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Therapist Has Arrived</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; }
+        .header { background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%); color: white; padding: 30px 20px; text-align: center; }
+        .content { padding: 30px 20px; }
+        .booking-details { background-color: #f6ffed; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #52c41a; }
+        .therapist-info { background-color: #d9f7be; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #52c41a; text-align: center; }
+        .ready-box { background-color: #fffbe6; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #fadb14; }
+        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
+        .highlight { color: #52c41a; font-weight: bold; }
+        .icon { font-size: 48px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="icon">🎉</div>
+            <h1>Your Therapist Has Arrived!</h1>
+            <p>{{therapist_name}} is at your location</p>
+        </div>
+
+        <div class="content">
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                Dear <span class="highlight">{{customer_name}}</span>,
+            </p>
+
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                Perfect timing! Your therapist <strong>{{therapist_name}}</strong> has arrived at your location
+                and is ready to begin your relaxing massage session.
+            </p>
+
+            <div class="therapist-info">
+                <div class="icon">✅</div>
+                <h3 style="color: #52c41a; margin: 10px 0;">Your Therapist</h3>
+                <p style="font-size: 20px; font-weight: bold; color: #52c41a; margin: 10px 0;">
+                    {{therapist_name}}
+                </p>
+                <p style="color: #595959; margin: 5px 0;">has arrived and is ready</p>
+            </div>
+
+            <div class="booking-details">
+                <h3 style="color: #52c41a; margin-top: 0;">📋 Your Booking Details</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 8px 0;"><strong>Booking ID:</strong></td><td style="padding: 8px 0;">{{booking_id}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Service:</strong></td><td style="padding: 8px 0;">{{service_name}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Duration:</strong></td><td style="padding: 8px 0;">{{duration}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Location:</strong></td><td style="padding: 8px 0;">{{address}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Room Number:</strong></td><td style="padding: 8px 0;">{{room_number}}</td></tr>
+                </table>
+            </div>
+
+            <div class="ready-box">
+                <h3 style="color: #d4b106; margin-top: 0;">💆 Let's Begin</h3>
+                <p style="color: #8c7700; margin: 10px 0;">
+                    Your therapist will now set up their equipment and prepare for your session.
+                    Please let them know if you have any specific areas of concern or special requests.
+                </p>
+                <p style="color: #8c7700; margin: 10px 0; font-weight: bold;">
+                    Relax and enjoy your massage experience!
+                </p>
+            </div>
+
+            <p style="font-size: 16px; line-height: 1.6; text-align: center; margin-top: 30px; color: #52c41a; font-weight: bold;">
+                🌟 We hope you have a wonderful and rejuvenating experience! 🌟
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>Thank you for choosing Rejuvenators Mobile Massage</p>
+            <p>For support, call 1300 302542 or email info@rejuvenators.com</p>
+        </div>
+    </div>
+</body>
+</html>
