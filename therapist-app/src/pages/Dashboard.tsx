@@ -149,9 +149,9 @@ export const Dashboard: React.FC = () => {
         (b: any) => b.status === 'requested'
       ).length;
 
-      // Count pending jobs (status = 'pending' or 'timeout_reassigned' or 'seeking_alternate')
+      // Count pending jobs (quoted jobs awaiting client acceptance)
       const pendingCount = (weekData || []).filter(
-        (b: any) => b.status === 'pending' || b.status === 'timeout_reassigned' || b.status === 'seeking_alternate'
+        (b: any) => b.status === 'pending'
       ).length;
 
       setStats({
