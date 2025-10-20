@@ -207,26 +207,21 @@ export const BookingDetail: React.FC = () => {
         return;
       }
 
-      const acceptUpdateData = {
-        status: 'confirmed',
-        therapist_id: profile.id,
-        therapist_response_time: new Date().toISOString(),
-        responding_therapist_id: profile.id,
-        updated_at: new Date().toISOString()
-      };
+      // Call the same booking-response function that email buttons use
+      const url = `/.netlify/functions/booking-response?action=accept&booking=${booking.booking_id}&therapist=${profile.id}`;
 
-      const { error } = await supabaseClient
-        .from('bookings')
-        .update(acceptUpdateData)
-        .eq('id', id);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/html,application/json'
+        }
+      });
 
-      if (error) {
-        console.error('Error accepting booking:', error);
-        message.error(`Failed to accept booking: ${error.message}`);
-        throw error;
+      if (!response.ok) {
+        throw new Error('Failed to accept booking');
       }
 
-      message.success('Booking accepted! Confirmation emails will be sent to you and the client.');
+      message.success('Booking accepted! Confirmation emails and SMS sent to you and the client.');
 
       // Reload booking details
       await loadBookingDetail();
@@ -263,22 +258,18 @@ export const BookingDetail: React.FC = () => {
         return;
       }
 
-      const declineUpdateData = {
-        status: 'declined',
-        therapist_response_time: new Date().toISOString(),
-        responding_therapist_id: profile.id,
-        updated_at: new Date().toISOString()
-      };
+      // Call the same booking-response function that email buttons use
+      const url = `/.netlify/functions/booking-response?action=decline&booking=${booking.booking_id}&therapist=${profile.id}`;
 
-      const { error } = await supabaseClient
-        .from('bookings')
-        .update(declineUpdateData)
-        .eq('id', id);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/html,application/json'
+        }
+      });
 
-      if (error) {
-        console.error('Error declining booking:', error);
-        message.error(`Failed to decline booking: ${error.message}`);
-        throw error;
+      if (!response.ok) {
+        throw new Error('Failed to decline booking');
       }
 
       if (booking.fallback_option === 'yes') {

@@ -77,7 +77,7 @@ export const Dashboard: React.FC = () => {
         .eq('therapist_id', profile.id)
         .gte('booking_time', todayStart)
         .lte('booking_time', todayEnd)
-        .in('status', ['confirmed', 'completed'])
+        .in('status', ['requested', 'confirmed', 'completed'])
         .order('booking_time');
 
       if (todayError) {
@@ -155,6 +155,8 @@ export const Dashboard: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
+      case 'requested':
+        return 'orange';
       case 'confirmed':
         return 'blue';
       case 'completed':
