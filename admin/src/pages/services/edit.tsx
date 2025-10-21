@@ -140,9 +140,18 @@ const ServiceEdit: React.FC = () => {
         imageUrl = await handleImageUpload(fileList[0].originFileObj) as string;
       }
 
+      // Only send fields that exist in the form - preserve existing quote fields
       const serviceData = {
-        ...values,
+        name: values.name,
+        description: values.description,
+        short_description: values.short_description,
         image_url: imageUrl,
+        image_alt: values.image_alt,
+        is_active: values.is_active,
+        sort_order: values.sort_order,
+        service_base_price: values.service_base_price,
+        minimum_duration: values.minimum_duration,
+        quote_only: values.quote_only,
         updated_at: new Date().toISOString()
       };
 
