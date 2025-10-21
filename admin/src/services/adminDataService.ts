@@ -47,7 +47,11 @@ class AdminQueryBuilder implements QueryBuilder {
   }
 
   select(columns: string = '*', options?: { count?: 'exact' | 'planned' | 'estimated' }): QueryBuilder {
-    this.operation = 'select';
+    // Only set operation to 'select' if no operation has been set yet
+    // This allows .select() to work after .update(), .insert(), etc.
+    if (this.operation === 'select' && !this.queryParams.data) {
+      this.operation = 'select';
+    }
     this.queryParams.select = columns;
     if (options?.count) {
       this.queryParams.count = options.count;
