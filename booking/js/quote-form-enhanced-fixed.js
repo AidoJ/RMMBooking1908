@@ -874,7 +874,7 @@ class QuoteFormManager {
 
   showSuccessModal(quoteId) {
     // For now, show simple alert - replace with modal later
-    alert(`Quote request submitted successfully! Reference: ${quoteId}\n\nWe'll review your request and send you a detailed quote within 24 hours.`);
+    alert(`Quote request submitted successfully! Reference: ${quoteId}\n\nWe'll review your request and get in touch with you within 2 business days. If urgent please call us on 1300 302542`);
   }
 
   // Initialize with service information

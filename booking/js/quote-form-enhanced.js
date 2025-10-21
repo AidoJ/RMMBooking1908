@@ -503,7 +503,13 @@ class QuoteFormManager {
 
       console.log('Final pricing:', { baseAmount, weekendMultiplier, finalAmount });
 
-      document.getElementById('estimatePrice').textContent = `$${Math.round(finalAmount)}`;
+      // Display as range: 90% to 110% of calculated price
+      const lowEstimate = Math.round(finalAmount * 0.9);
+      const highEstimate = Math.round(finalAmount * 1.1);
+      document.getElementById('estimatePrice').textContent = `$${lowEstimate} - $${highEstimate}`;
+
+      // Store the actual calculated amount for database save (not displayed)
+      document.getElementById('estimatePrice').dataset.actualAmount = Math.round(finalAmount);
 
     } catch (error) {
       console.error('Error calculating pricing:', error);
@@ -753,7 +759,7 @@ class QuoteFormManager {
 
     const required = [
       'contactName', 'contactEmail', 'contactPhone', 'eventLocation',
-      'numberOfServices', 'durationPerService', 'paymentMethod', 'urgency'
+      'numberOfServices', 'durationPerService', 'paymentMethod'
     ];
 
     // Validate unified event date/time fields
@@ -837,7 +843,6 @@ class QuoteFormManager {
 
       // Business requirements
       payment_method: document.getElementById('paymentMethod').value || 'card',
-      urgency: document.getElementById('urgency').value || 'flexible',
 
       // Requirements
       setup_requirements: document.getElementById('setupRequirements').value.trim() || null,
@@ -868,13 +873,12 @@ class QuoteFormManager {
   }
 
   calculateBasicAmount() {
-    // Get the already calculated and displayed estimate price
+    // Get the actual calculated amount (stored as data attribute, not the displayed range)
     const estimatePriceElement = document.getElementById('estimatePrice');
-    if (estimatePriceElement && estimatePriceElement.textContent) {
-      const priceText = estimatePriceElement.textContent.replace(/[^0-9.]/g, '');
-      const displayedPrice = parseFloat(priceText);
-      if (!isNaN(displayedPrice)) {
-        return displayedPrice;
+    if (estimatePriceElement && estimatePriceElement.dataset.actualAmount) {
+      const actualAmount = parseFloat(estimatePriceElement.dataset.actualAmount);
+      if (!isNaN(actualAmount)) {
+        return actualAmount;
       }
     }
 
@@ -1071,7 +1075,6 @@ class QuoteFormManager {
 
         // Business requirements
         payment_method: this.formatPaymentMethod(quoteData.payment_method),
-        urgency: this.formatUrgency(quoteData.urgency),
 
         // Special requirements
         setup_requirements: quoteData.setup_requirements || 'None specified',
@@ -1116,22 +1119,12 @@ class QuoteFormManager {
     return methods[method] || method;
   }
 
-  formatUrgency(urgency) {
-    const urgencies = {
-      'flexible': 'Flexible timing',
-      'within_week': 'Within 1 week',
-      'within_3_days': 'Within 3 days',
-      'urgent_24h': 'Urgent (24 hours)'
-    };
-    return urgencies[urgency] || urgency;
-  }
-
   formatPriceRange(totalAmount) {
     if (!totalAmount || totalAmount <= 0) {
       return 'To be calculated';
     }
-    const lowEstimate = Math.round(totalAmount * 0.8);
-    const highEstimate = Math.round(totalAmount * 1.2);
+    const lowEstimate = Math.round(totalAmount * 0.9);
+    const highEstimate = Math.round(totalAmount * 1.1);
     return `$${lowEstimate} - $${highEstimate}`;
   }
 
