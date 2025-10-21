@@ -133,6 +133,8 @@ const ServiceEdit: React.FC = () => {
     try {
       setLoading(true);
 
+      console.log('Form values being submitted:', values);
+
       let imageUrl = values.image_url;
 
       // Handle image upload
@@ -154,6 +156,8 @@ const ServiceEdit: React.FC = () => {
         quote_only: values.quote_only,
         updated_at: new Date().toISOString()
       };
+
+      console.log('Service data being sent to database:', serviceData);
 
       const { data, error } = await adminDataService
         .from('services')
