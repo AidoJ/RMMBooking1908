@@ -153,7 +153,17 @@ const ServiceEdit: React.FC = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      console.log('Update response:', { data, error });
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      if (!data) {
+        console.error('No data returned from update');
+        throw new Error('Update failed - no data returned');
+      }
 
       message.success('Service updated successfully!');
       setService(data);
