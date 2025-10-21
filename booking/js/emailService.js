@@ -277,8 +277,12 @@ formatPhoneNumber(phone) {
   // Send Email 3: Booking Confirmation to Customer (when therapist accepts)
   async sendBookingConfirmationToCustomer(bookingData) {
     console.log('📧 Sending booking confirmation to customer...', bookingData);
-    
+
     try {
+      // Generate intake form URL with booking ID
+      const baseUrl = window.location.origin;
+      const intakeFormUrl = `${baseUrl}/intake-form/index.html?booking=${bookingData.id || bookingData.booking_id}`;
+
       const templateParams = {
         to_email: bookingData.customer_email,
         to_name: bookingData.customer_name,
@@ -289,12 +293,13 @@ formatPhoneNumber(phone) {
         date_time: bookingData.booking_date + ' at ' + bookingData.booking_time,
         address: bookingData.address,
         therapist: bookingData.therapist_name,
-        estimated_price: bookingData.total_price || 'N/A'
+        estimated_price: bookingData.total_price || 'N/A',
+        intake_form_url: intakeFormUrl
       };
 
       const response = await emailjs.send(
-        EMAILJS_SERVICE_ID, 
-        EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID, 
+        EMAILJS_SERVICE_ID,
+        EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID,
         templateParams
       );
 

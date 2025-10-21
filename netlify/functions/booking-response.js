@@ -755,6 +755,10 @@ async function sendClientConfirmationEmail(booking, therapist) {
       serviceName = booking.services.name;
     }
 
+    // Generate intake form URL with booking UUID
+    const baseUrl = process.env.URL || 'https://rmmbookingplatform.netlify.app';
+    const intakeFormUrl = `${baseUrl}/intake-form/index.html?booking=${booking.id}`;
+
     const templateParams = {
       to_email: booking.customer_email,
       to_name: booking.first_name + ' ' + booking.last_name,
@@ -766,7 +770,8 @@ async function sendClientConfirmationEmail(booking, therapist) {
       address: booking.address,
       room_number: booking.room_number || 'N/A',
       therapist: therapist.first_name + ' ' + therapist.last_name,
-      estimated_price: booking.price ? '$' + booking.price.toFixed(2) : 'N/A'
+      estimated_price: booking.price ? '$' + booking.price.toFixed(2) : 'N/A',
+      intake_form_url: intakeFormUrl
     };
 
     const result = await sendEmail(EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID, templateParams);
