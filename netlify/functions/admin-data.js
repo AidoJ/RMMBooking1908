@@ -168,9 +168,14 @@ function buildQuery(operation, table, queryParams = {}) {
     query = query.range(queryParams.range.from, queryParams.range.to);
   }
 
-  // Apply single
+  // Apply single/maybeSingle only for operations that should return a single row
+  // For UPDATE/INSERT/DELETE with eq filter, or when explicitly requested
   if (queryParams.single) {
-    query = query.single();
+    // Only apply .single() if we have an eq filter (targeting specific row)
+    // or if it's an insert/update/delete operation
+    if (queryParams.eq || operation === 'insert' || operation === 'update' || operation === 'delete' || operation === 'upsert') {
+      query = query.single();
+    }
   }
 
   // Apply maybeSingle
