@@ -23,7 +23,7 @@ import {
 } from '@ant-design/icons';
 import { useGetIdentity, useNavigation } from '@refinedev/core';
 import { RoleGuard } from '../../components/RoleGuard';
-import { supabaseClient } from '../../utility';
+import adminDataService from '../../services/adminDataService';
 
 const { Title } = Typography;
 const { TextArea } = Input;
@@ -84,7 +84,7 @@ const ServiceCreate: React.FC = () => {
         average_rating: 0.0
       };
 
-      const { data, error } = await supabaseClient
+      const { data, error } = await adminDataService
         .from('services')
         .insert([serviceData])
         .select()

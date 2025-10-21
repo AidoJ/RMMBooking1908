@@ -27,7 +27,7 @@ import {
 import { useGetIdentity, useNavigation } from '@refinedev/core';
 import { useParams } from 'react-router';
 import { RoleGuard } from '../../components/RoleGuard';
-import { supabaseClient } from '../../utility';
+import adminDataService from '../../services/adminDataService';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -85,7 +85,7 @@ const ServiceEdit: React.FC = () => {
     try {
       setInitialLoading(true);
 
-      const { data, error } = await supabaseClient
+      const { data, error } = await adminDataService
         .from('services')
         .select('*')
         .eq('id', serviceId)
@@ -146,7 +146,7 @@ const ServiceEdit: React.FC = () => {
         updated_at: new Date().toISOString()
       };
 
-      const { data, error } = await supabaseClient
+      const { data, error } = await adminDataService
         .from('services')
         .update(serviceData)
         .eq('id', service.id)
