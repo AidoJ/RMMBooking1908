@@ -95,7 +95,9 @@ class QuoteFormManager {
 
   addEventDateField(dayNumber = null) {
     const container = document.getElementById('multiDayDates');
-    const dayNum = dayNumber || this.multiDayDates.length + 1;
+    // Calculate next day number based on existing date rows, not multiDayDates array
+    const existingRows = document.querySelectorAll('.multi-day-date-row');
+    const dayNum = dayNumber || existingRows.length + 1;
 
     const dateRow = document.createElement('div');
     dateRow.className = 'multi-day-date-row';
@@ -109,12 +111,12 @@ class QuoteFormManager {
         </div>
         <div class="form-group">
           <label>Event Start Time *</label>
-          <input type="time" class="event-start-time" data-day="${dayNum}" required />
+          <input type="time" class="event-start-time" data-day="${dayNum}" step="900" required />
           <div class="time-validation-message" id="time-validation-${dayNum}" style="display: none; color: red; font-size: 12px; margin-top: 4px;"></div>
         </div>
         <div class="form-group">
           <label>Event Finish Time *</label>
-          <input type="time" class="event-finish-time" data-day="${dayNum}" required />
+          <input type="time" class="event-finish-time" data-day="${dayNum}" step="900" required />
         </div>
       </div>
       ${!dayNumber ? '<button type="button" class="remove-day-btn" onclick="quoteForm.removeEventDate(this)">Remove Day</button>' : ''}
@@ -844,8 +846,8 @@ class QuoteFormManager {
       // Business requirements
       payment_method: document.getElementById('paymentMethod').value || 'card',
 
-      // Requirements
-      setup_requirements: document.getElementById('setupRequirements').value.trim() || null,
+      // Requirements - merged into single field
+      setup_requirements: null, // Deprecated - merged with special_requirements
       special_requirements: document.getElementById('specialRequirements').value.trim() || null,
 
       // Financial fields - basic values for database
@@ -1190,9 +1192,75 @@ function resetToServiceSelection() {
   if (serviceDropdown) {
     serviceDropdown.selectedIndex = 0;
   }
-  
+
   // Clear card-based service selection
   document.querySelectorAll('.service-card').forEach(card => {
     card.classList.remove('selected');
   });
+
+  // Clear all quote form data
+  clearQuoteFormData();
+}
+
+// Helper function to clear all quote form fields
+function clearQuoteFormData() {
+  // Clear contact information
+  document.getElementById('contactName').value = '';
+  document.getElementById('contactEmail').value = '';
+  document.getElementById('contactPhone').value = '';
+  document.getElementById('companyName').value = '';
+
+  // Clear event details
+  document.getElementById('eventLocation').value = '';
+  document.getElementById('eventLocation').removeAttribute('data-lat');
+  document.getElementById('eventLocation').removeAttribute('data-lng');
+  document.getElementById('eventType').selectedIndex = 0;
+  document.getElementById('expectedAttendees').value = '';
+
+  // Clear service specifications
+  document.getElementById('numberOfServices').value = '';
+  document.getElementById('durationPerService').value = '';
+
+  // Clear payment method
+  document.getElementById('paymentMethod').selectedIndex = 0;
+
+  // Clear special requirements
+  document.getElementById('specialRequirements').value = '';
+
+  // Clear number of days dropdown
+  document.getElementById('numberOfDays').selectedIndex = 0;
+
+  // Clear all multi-day date fields
+  const multiDayContainer = document.getElementById('multiDayDates');
+  if (multiDayContainer) {
+    multiDayContainer.innerHTML = '';
+  }
+
+  // Reset multiDayDates array in quote form manager
+  if (window.quoteForm) {
+    window.quoteForm.multiDayDates = [];
+  }
+
+  // Clear calculation displays
+  document.getElementById('eventScheduleTime').textContent = '-';
+  document.getElementById('serviceRequirementsTime').textContent = '-';
+  document.getElementById('totalValidatedTime').textContent = '-';
+  document.getElementById('estimateSessions').textContent = '-';
+  document.getElementById('estimateDuration').textContent = '-';
+  document.getElementById('estimatePrice').textContent = 'Enter details above';
+  document.getElementById('estimatePrice').removeAttribute('data-actualAmount');
+
+  // Hide validation message
+  const validationMessage = document.getElementById('timeValidationMessage');
+  if (validationMessage) {
+    validationMessage.style.display = 'none';
+  }
+
+  // Clear address status
+  const addressStatus = document.getElementById('event-address-status');
+  if (addressStatus) {
+    addressStatus.textContent = '';
+    addressStatus.className = 'address-status';
+    addressStatus.style.display = 'none';
+  }
 }
