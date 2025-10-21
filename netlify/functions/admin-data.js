@@ -238,14 +238,10 @@ exports.handler = async (event, context) => {
     }
 
     console.log(`🔍 Admin data request: ${operation} on ${table} by ${user.email}`);
-    console.log('📝 Query params:', JSON.stringify(queryParams, null, 2));
 
     // Build and execute query
     const query = buildQuery(operation, table, queryParams);
-    console.log('🔧 Built query for operation:', operation);
-    
     const result = await query;
-    console.log('📊 Query result:', JSON.stringify(result, null, 2));
 
     if (result.error) {
       console.error('❌ Query error:', result.error);

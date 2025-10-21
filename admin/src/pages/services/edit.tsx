@@ -133,8 +133,6 @@ const ServiceEdit: React.FC = () => {
     try {
       setLoading(true);
 
-      console.log('Form values being submitted:', values);
-
       let imageUrl = values.image_url;
 
       // Handle image upload
@@ -157,8 +155,6 @@ const ServiceEdit: React.FC = () => {
         updated_at: new Date().toISOString()
       };
 
-      console.log('Service data being sent to database:', serviceData);
-
       const { data, error } = await adminDataService
         .from('services')
         .update(serviceData)
@@ -166,21 +162,14 @@ const ServiceEdit: React.FC = () => {
         .select()
         .single();
 
-      console.log('Update response:', { data, error });
-
       if (error) {
-        console.error('Database error:', error);
+        console.error('Error updating service:', error);
         throw error;
       }
 
       if (!data) {
-        console.error('No data returned from update');
         throw new Error('Update failed - no data returned');
       }
-
-      console.log('Successfully updated service. Returned data:', data);
-      console.log('Updated service_base_price:', data.service_base_price);
-      console.log('Updated sort_order:', data.sort_order);
 
       message.success('Service updated successfully!');
       setService(data);
