@@ -206,7 +206,7 @@ export const Bookings: React.FC = () => {
           <Option value="confirmed">Confirmed</Option>
           <Option value="completed">Completed</Option>
           <Option value="requested">Requested</Option>
-           <Option value="cancelled">Pending</Option>
+           <Option value="pending">Pending</Option>
           <Option value="cancelled">Cancelled</Option>
         </Select>
       </div>
