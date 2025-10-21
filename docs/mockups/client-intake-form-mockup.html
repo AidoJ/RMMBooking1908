@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Intake Form - Rejuvenators Mobile Massage</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px 30px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .header p {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .booking-info {
+      background: #f8f9fa;
+      padding: 20px 30px;
+      border-bottom: 1px solid #e9ecef;
+    }
+
+    .booking-info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: #6c757d;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .info-value {
+      font-size: 16px;
+      color: #212529;
+      font-weight: 500;
+    }
+
+    .form-content {
+      padding: 40px 30px;
+    }
+
+    .section {
+      margin-bottom: 40px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: #212529;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-icon {
+      font-size: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #495057;
+      margin-bottom: 8px;
+    }
+
+    .required {
+      color: #dc3545;
+      margin-left: 4px;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    input[type="number"],
+    textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      font-size: 15px;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+
+    input[type="text"]:focus,
+    input[type="date"]:focus,
+    input[type="number"]:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .radio-group,
+    .checkbox-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .radio-option,
+    .checkbox-option {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .radio-option:hover,
+    .checkbox-option:hover {
+      background: #f8f9fa;
+      border-color: #667eea;
+    }
+
+    .radio-option input[type="radio"],
+    .checkbox-option input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      accent-color: #667eea;
+    }
+
+    .radio-option label,
+    .checkbox-option label {
+      margin: 0;
+      cursor: pointer;
+      flex: 1;
+      font-weight: 500;
+    }
+
+    .conditional-field {
+      margin-top: 15px;
+      padding-left: 35px;
+      display: none;
+    }
+
+    .conditional-field.active {
+      display: block;
+    }
+
+    .conditions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 10px;
+    }
+
+    .signature-pad {
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      background: #f8f9fa;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .signature-canvas {
+      width: 100%;
+      max-width: 500px;
+      height: 200px;
+      border: 2px dashed #667eea;
+      border-radius: 8px;
+      background: white;
+      cursor: crosshair;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .signature-controls {
+      margin-top: 15px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: #5a6268;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px 48px;
+      font-size: 18px;
+      width: 100%;
+      margin-top: 30px;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .help-text {
+      font-size: 13px;
+      color: #6c757d;
+      margin-top: 6px;
+      font-style: italic;
+    }
+
+    .alert {
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin-bottom: 25px;
+      font-size: 14px;
+      display: flex;
+      align-items: start;
+      gap: 12px;
+    }
+
+    .alert-info {
+      background: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+
+    .alert-icon {
+      font-size: 20px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 0;
+      }
+
+      .container {
+        border-radius: 0;
+      }
+
+      .header {
+        padding: 30px 20px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+      }
+
+      .booking-info {
+        padding: 15px 20px;
+      }
+
+      .form-content {
+        padding: 30px 20px;
+      }
+
+      .conditions-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .success-message {
+      text-align: center;
+      padding: 60px 30px;
+      display: none;
+    }
+
+    .success-message.active {
+      display: block;
+    }
+
+    .success-icon {
+      font-size: 80px;
+      color: #28a745;
+      margin-bottom: 20px;
+    }
+
+    .success-message h2 {
+      font-size: 28px;
+      color: #212529;
+      margin-bottom: 12px;
+    }
+
+    .success-message p {
+      font-size: 16px;
+      color: #6c757d;
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <h1>✨ Client Intake Form</h1>
+      <p>Please complete this form before your massage session</p>
+    </div>
+
+    <!-- Booking Information -->
+    <div class="booking-info">
+      <div class="booking-info-grid">
+        <div class="info-item">
+          <div class="info-label">Client Name</div>
+          <div class="info-value">John Smith</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Booking ID</div>
+          <div class="info-value">B-2510-042</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Service Date</div>
+          <div class="info-value">21 Oct 2025, 2:00 PM</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Therapist</div>
+          <div class="info-value">Sarah Johnson</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Form Content -->
+    <div class="form-content" id="formContent">
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
+        <div>
+          <strong>Important:</strong> This information helps us provide you with the safest and most effective massage therapy experience. All information is kept strictly confidential.
+        </div>
+      </div>
+
+      <form id="intakeForm">
+        <!-- Medications Section -->
+        <div class="section">
+          <h2 class="section-title">
+            <span class="section-icon">💊</span>
+            Medications
+          </h2>
+          <div class="form-group">
+            <label for="medications">
+              Are you taking any medications?
+              <span class="help-text">Please list all current medications including supplements</span>
+            </label>
+            <textarea id="medications" name="medications" placeholder="e.g., Aspirin 100mg daily, Vitamin D supplements..."></textarea>
+          </div>
+        </div>
+
+        <!-- Allergies Section -->
+        <div class="section">
+          <h2 class="section-title">
+            <span class="section-icon">⚠️</span>
+            Allergies
+          </h2>
+          <div class="form-group">
+            <label for="allergies">
+              Do you have any allergies?
+              <span class="help-text">Including oils, lotions, nuts, fruits, skin sensitivities, etc.</span>
+            </label>
+            <textarea id="allergies" name="allergies" placeholder="e.g., Allergic to lavender oil, nut allergies..."></textarea>
+          </div>
+        </div>
+
+        <!-- Pregnancy Section -->
+        <div class="section">
+          <h2 class="section-title">
+            <span class="section-icon">🤰</span>
+            Pregnancy
+          </h2>
+          <div class="form-group">
+            <label>Are you currently pregnant?</label>
+            <div class="radio-group">
+              <div class="radio-option">
+                <input type="radio" id="pregnantNo" name="pregnant" value="no" checked onchange="togglePregnancyDetails()">
+                <label for="pregnantNo">No</label>
+              </div>
+              <div class="radio-option">
+                <input type="radio" id="pregnantYes" name="pregnant" value="yes" onchange="togglePregnancyDetails()">
+                <label for="pregnantYes">Yes</label>
+              </div>
+            </div>
+            <div id="pregnancyDetails" class="conditional-field">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="monthsPregnant">How many months?</label>
+                  <input type="number" id="monthsPregnant" name="monthsPregnant" min="1" max="9" placeholder="e.g., 5">
+                </div>
+                <div class="form-group">
+                  <label for="dueDate">Due date</label>
+                  <input type="date" id="dueDate" name="dueDate">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Medical Supervision Section -->
+        <div class="section">
+          <h2 class="section-title">
+            <span class="section-icon">🏥</span>
+            Medical Supervision
+          </h2>
+          <div class="form-group">
+            <label>Are you currently under medical supervision or receiving other medical interventions?</label>
+            <div class="radio-group">
+              <div class="radio-option">
+                <input type="radio" id="medicalNo" name="medicalSupervision" value="no" checked onchange="toggleMedicalDetails()">
+                <label for="medicalNo">No</label>
+              </div>
+              <div class="radio-option">
+                <input type="radio" id="medicalYes" name="medicalSupervision" value="yes" onchange="toggleMedicalDetails()">
+                <label for="medicalYes">Yes</label>
+              </div>
+            </div>
+            <div id="medicalDetails" class="conditional-field">
+              <div class="form-group">
+                <label for="medicalDescription">Please describe</label>
+                <textarea id="medicalDescription" name="medicalDescription" placeholder="Describe your current medical supervision or interventions..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Medical Conditions Section -->
+        <div class="section">
+          <h2 class="section-title">
+            <span class="section-icon">📋</span>
+            Medical Conditions
+          </h2>
+          <div class="form-group">
+            <label>Do any of the following conditions apply to you?</label>
+            <div class="help-text" style="margin-bottom: 15px;">Select all that apply</div>
+            <div class="conditions-grid">
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond1" name="conditions" value="Autoimmune disorder">
+                <label for="cond1">Autoimmune disorder</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond2" name="conditions" value="Back / neck problems">
+                <label for="cond2">Back / neck problems</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond3" name="conditions" value="Bleeding disorders">
+                <label for="cond3">Bleeding disorders</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond4" name="conditions" value="Blood clots">
+                <label for="cond4">Blood clots</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond5" name="conditions" value="Bursitis">
+                <label for="cond5">Bursitis</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond6" name="conditions" value="Cancer">
+                <label for="cond6">Cancer</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond7" name="conditions" value="Contagious condition">
+                <label for="cond7">Contagious condition</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond8" name="conditions" value="Diabetes">
+                <label for="cond8">Diabetes</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond9" name="conditions" value="Fibromyalgia">
+                <label for="cond9">Fibromyalgia</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond10" name="conditions" value="Headaches / Vertigo / dizziness">
+                <label for="cond10">Headaches / Vertigo / dizziness</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond11" name="conditions" value="Heart condition">
+                <label for="cond11">Heart condition</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond12" name="conditions" value="Hypertension">
+                <label for="cond12">Hypertension</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond13" name="conditions" value="Kidney disease">
+                <label for="cond13">Kidney disease</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond14" name="conditions" value="Multiple sclerosis">
+                <label for="cond14">Multiple sclerosis</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond15" name="conditions" value="Neurological condition">
+                <label for="cond15">Neurological condition</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond16" name="conditions" value="Osteoporosis">
+                <label for="cond16">Osteoporosis</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond17" name="conditions" value="Phlebitis">
+                <label for="cond17">Phlebitis</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond18" name="conditions" value="Sciatica">
+                <label for="cond18">Sciatica</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond19" name="conditions" value="Seizures">
+                <label for="cond19">Seizures</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond20" name="conditions" value="Stroke">
+                <label for="cond20">Stroke</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond21" name="conditions" value="Tendinitis">
+                <label for="cond21">Tendinitis</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond22" name="conditions" value="TMJ disorder">
+                <label for="cond22">TMJ disorder</label>
+              </div>
+              <div class="checkbox-option">
+                <input type="checkbox" id="cond23" name="conditions" value="Varicose veins">
+                <label for="cond23">Varicose veins</label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Broken Skin Section -->
+        <div class="section">
+          <h2 class="section-title">
+            <span class="section-icon">🩹</span>
+            Skin Conditions
+          </h2>
+          <div class="form-group">
+            <label>Do you have any areas of broken skin (e.g., rash, wounds)?</label>
+            <div class="radio-group">
+              <div class="radio-option">
+                <input type="radio" id="brokenSkinNo" name="brokenSkin" value="no" checked onchange="toggleBrokenSkinDetails()">
+                <label for="brokenSkinNo">No</label>
+              </div>
+              <div class="radio-option">
+                <input type="radio" id="brokenSkinYes" name="brokenSkin" value="yes" onchange="toggleBrokenSkinDetails()">
+                <label for="brokenSkinYes">Yes</label>
+              </div>
+            </div>
+            <div id="brokenSkinDetails" class="conditional-field">
+              <div class="form-group">
+                <label for="brokenSkinLocation">Where is the broken skin?</label>
+                <textarea id="brokenSkinLocation" name="brokenSkinLocation" placeholder="Describe the location and nature of the broken skin..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Joint Replacement Section -->
+        <div class="section">
+          <h2 class="section-title">
+            <span class="section-icon">🦴</span>
+            Joint Replacement
+          </h2>
+          <div class="form-group">
+            <label>Do you have any history of joint replacement surgery?</label>
+            <div class="radio-group">
+              <div class="radio-option">
+                <input type="radio" id="jointNo" name="jointReplacement" value="no" checked onchange="toggleJointDetails()">
+                <label for="jointNo">No</label>
+              </div>
+              <div class="radio-option">
+                <input type="radio" id="jointYes" name="jointReplacement" value="yes" onchange="toggleJointDetails()">
+                <label for="jointYes">Yes</label>
+              </div>
+            </div>
+            <div id="jointDetails" class="conditional-field">
+              <div class="form-group">
+                <label for="jointWhich">Which joints?</label>
+                <input type="text" id="jointWhich" name="jointWhich" placeholder="e.g., Left hip, right knee...">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Injuries Section -->
+        <div class="section">
+          <h2 class="section-title">
+            <span class="section-icon">🏥</span>
+            Recent Medical History
+          </h2>
+          <div class="form-group">
+            <label for="recentInjuries">
+              Have you had any recent injuries or medical procedures in the past 2 years?
+              <span class="help-text">Please describe any injuries, surgeries, or medical procedures</span>
+            </label>
+            <textarea id="recentInjuries" name="recentInjuries" placeholder="Describe any recent injuries or medical procedures..."></textarea>
+          </div>
+        </div>
+
+        <!-- Other Conditions Section -->
+        <div class="section">
+          <h2 class="section-title">
+            <span class="section-icon">📝</span>
+            Additional Information
+          </h2>
+          <div class="form-group">
+            <label for="otherConditions">
+              Please describe any other injuries or health conditions we should know about
+              <span class="help-text">Include anything not covered above that may affect your massage</span>
+            </label>
+            <textarea id="otherConditions" name="otherConditions" placeholder="Any other health information you'd like to share..."></textarea>
+          </div>
+        </div>
+
+        <!-- Signature Section -->
+        <div class="section">
+          <h2 class="section-title">
+            <span class="section-icon">✍️</span>
+            Signature
+          </h2>
+          <div class="form-group">
+            <label>
+              Client Signature <span class="required">*</span>
+              <span class="help-text">Please sign below to confirm the accuracy of this information</span>
+            </label>
+            <div class="signature-pad">
+              <canvas id="signatureCanvas" class="signature-canvas"></canvas>
+              <div class="signature-controls">
+                <button type="button" class="btn btn-secondary" onclick="clearSignature()">Clear Signature</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary">
+          Submit Intake Form ✓
+        </button>
+      </form>
+    </div>
+
+    <!-- Success Message (Hidden by default) -->
+    <div class="success-message" id="successMessage">
+      <div class="success-icon">✅</div>
+      <h2>Thank You!</h2>
+      <p>Your intake form has been submitted successfully.<br>Your therapist will review this information before your session.</p>
+      <p style="color: #667eea; font-weight: 600;">We look forward to seeing you on 21 Oct 2025 at 2:00 PM</p>
+    </div>
+  </div>
+
+  <script>
+    // Signature pad functionality
+    const canvas = document.getElementById('signatureCanvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let hasSignature = false;
+
+    // Set canvas size
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width;
+      canvas.height = rect.height;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    // Drawing functions
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    // Touch events for mobile
+    canvas.addEventListener('touchstart', handleTouchStart);
+    canvas.addEventListener('touchmove', handleTouchMove);
+    canvas.addEventListener('touchend', stopDrawing);
+
+    function startDrawing(e) {
+      isDrawing = true;
+      const rect = canvas.getBoundingClientRect();
+      ctx.beginPath();
+      ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    }
+
+    function draw(e) {
+      if (!isDrawing) return;
+      const rect = canvas.getBoundingClientRect();
+      ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+      ctx.strokeStyle = '#212529';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      hasSignature = true;
+    }
+
+    function stopDrawing() {
+      isDrawing = false;
+    }
+
+    function handleTouchStart(e) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      isDrawing = true;
+      ctx.beginPath();
+      ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    }
+
+    function handleTouchMove(e) {
+      e.preventDefault();
+      if (!isDrawing) return;
+      const touch = e.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+      ctx.strokeStyle = '#212529';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      hasSignature = true;
+    }
+
+    function clearSignature() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      hasSignature = false;
+    }
+
+    // Toggle conditional fields
+    function togglePregnancyDetails() {
+      const isPregnant = document.getElementById('pregnantYes').checked;
+      document.getElementById('pregnancyDetails').classList.toggle('active', isPregnant);
+    }
+
+    function toggleMedicalDetails() {
+      const hasMedical = document.getElementById('medicalYes').checked;
+      document.getElementById('medicalDetails').classList.toggle('active', hasMedical);
+    }
+
+    function toggleBrokenSkinDetails() {
+      const hasBrokenSkin = document.getElementById('brokenSkinYes').checked;
+      document.getElementById('brokenSkinDetails').classList.toggle('active', hasBrokenSkin);
+    }
+
+    function toggleJointDetails() {
+      const hasJoint = document.getElementById('jointYes').checked;
+      document.getElementById('jointDetails').classList.toggle('active', hasJoint);
+    }
+
+    // Form submission
+    document.getElementById('intakeForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      if (!hasSignature) {
+        alert('Please provide your signature before submitting.');
+        return;
+      }
+
+      // Show success message
+      document.getElementById('formContent').style.display = 'none';
+      document.getElementById('successMessage').classList.add('active');
+
+      // In real implementation, this would submit to the server
+      console.log('Form submitted successfully!');
+    });
+  </script>
+</body>
+</html>

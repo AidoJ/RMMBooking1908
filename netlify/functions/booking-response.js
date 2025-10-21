@@ -756,8 +756,7 @@ async function sendClientConfirmationEmail(booking, therapist) {
     }
 
     // Generate intake form URL with booking UUID
-    const baseUrl = process.env.URL || 'https://rmmbookingplatform.netlify.app';
-    const intakeFormUrl = `${baseUrl}/intake-form/index.html?booking=${booking.id}`;
+    const intakeFormUrl = `https://rmmbook.netlify.app/therapist/clientintake?booking=${booking.id}`;
 
     const templateParams = {
       to_email: booking.customer_email,

@@ -280,8 +280,7 @@ formatPhoneNumber(phone) {
 
     try {
       // Generate intake form URL with booking ID
-      const baseUrl = window.location.origin;
-      const intakeFormUrl = `${baseUrl}/intake-form/index.html?booking=${bookingData.id || bookingData.booking_id}`;
+      const intakeFormUrl = `https://rmmbook.netlify.app/therapist/clientintake?booking=${bookingData.id || bookingData.booking_id}`;
 
       const templateParams = {
         to_email: bookingData.customer_email,

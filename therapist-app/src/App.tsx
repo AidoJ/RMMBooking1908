@@ -14,6 +14,7 @@ import { TimeOff } from './pages/TimeOff';
 import { ServiceArea } from './pages/ServiceArea';
 import { Invoices } from './pages/Invoices';
 import { MyEarnings } from './pages/MyEarnings';
+import { ClientIntakeForm } from './pages/ClientIntakeForm';
 import type { UserIdentity } from './types';
 
 function App() {
@@ -162,6 +163,9 @@ function App() {
       <AntApp>
         <BrowserRouter basename="/therapist">
         <Routes>
+          {/* Public route - no auth required */}
+          <Route path="/clientintake" element={<ClientIntakeForm />} />
+
           <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
 
           <Route
