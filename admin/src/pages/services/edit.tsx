@@ -169,7 +169,7 @@ const ServiceEdit: React.FC = () => {
       console.log('Update response:', { data, error });
 
       if (error) {
-        console.error('Supabase error:', error);
+        console.error('Database error:', error);
         throw error;
       }
 
@@ -177,6 +177,10 @@ const ServiceEdit: React.FC = () => {
         console.error('No data returned from update');
         throw new Error('Update failed - no data returned');
       }
+
+      console.log('Successfully updated service. Returned data:', data);
+      console.log('Updated service_base_price:', data.service_base_price);
+      console.log('Updated sort_order:', data.sort_order);
 
       message.success('Service updated successfully!');
       setService(data);
