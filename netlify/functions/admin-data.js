@@ -55,6 +55,9 @@ function buildQuery(operation, table, queryParams = {}) {
       break;
     case 'update':
       query = query.update(queryParams.data);
+      if (queryParams.select) {
+        query = query.select(queryParams.select);
+      }
       break;
     case 'delete':
       query = query.delete();
