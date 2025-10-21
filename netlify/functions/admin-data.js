@@ -169,11 +169,14 @@ function buildQuery(operation, table, queryParams = {}) {
   }
 
   // Apply single/maybeSingle only for operations that should return a single row
-  // For UPDATE/INSERT/DELETE with eq filter, or when explicitly requested
   if (queryParams.single) {
-    // Only apply .single() if we have an eq filter (targeting specific row)
-    // or if it's an insert/update/delete operation
-    if (queryParams.eq || operation === 'insert' || operation === 'update' || operation === 'delete' || operation === 'upsert') {
+    // For INSERT/UPSERT: always apply .single() (they create one row)
+    // For UPDATE/DELETE: only apply if there's an eq filter (targeting specific row)
+    // For SELECT: only apply if there's an eq filter (querying specific row)
+    if (operation === 'insert' || operation === 'upsert') {
+      query = query.single();
+    } else if (queryParams.eq && Object.keys(queryParams.eq).length > 0) {
+      // Only apply .single() if there's actually an eq filter
       query = query.single();
     }
   }
