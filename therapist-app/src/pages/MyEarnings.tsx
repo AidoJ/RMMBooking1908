@@ -40,6 +40,7 @@ interface WeeklySummary {
   jobs_count: number;
   total_fees: number;
   booking_ids: string[];
+  booking_uuids: string[]; // UUID ids for navigation
   invoice_status?: 'submitted' | 'under_review' | 'approved' | 'paid' | null;
   invoice_id?: string;
 }
@@ -128,6 +129,7 @@ export const MyEarnings: React.FC = () => {
             jobs_count: 0,
             total_fees: 0,
             booking_ids: [],
+            booking_uuids: [],
           });
         }
 
@@ -135,6 +137,7 @@ export const MyEarnings: React.FC = () => {
         week.jobs_count += 1;
         week.total_fees += parseFloat(booking.therapist_fee?.toString() || '0');
         week.booking_ids.push(booking.booking_id);
+        week.booking_uuids.push(booking.id); // Store UUID for navigation
       });
 
       const summaries = Array.from(weekMap.values()).sort(
@@ -533,6 +536,36 @@ export const MyEarnings: React.FC = () => {
                 <Text strong style={{ color: '#52c41a', fontSize: '16px' }}>
                   ${selectedWeek.total_fees.toFixed(2)}
                 </Text>
+              </Descriptions.Item>
+              <Descriptions.Item label="Booking IDs">
+                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                  {selectedWeek.booking_ids && selectedWeek.booking_ids.length > 0 ? (
+                    selectedWeek.booking_ids.map((bookingId: string, index: number) => (
+                      <Button
+                        key={bookingId}
+                        type="link"
+                        size="small"
+                        onClick={() => {
+                          // Close the invoice modal and navigate to booking details using UUID
+                          setSubmitModalVisible(false);
+                          const uuid = selectedWeek.booking_uuids[index];
+                          window.location.href = `/therapist/booking/${uuid}`;
+                        }}
+                        style={{
+                          padding: 0,
+                          height: 'auto',
+                          fontFamily: 'monospace',
+                          fontSize: '12px',
+                          color: '#007e8c'
+                        }}
+                      >
+                        {bookingId}
+                      </Button>
+                    ))
+                  ) : (
+                    <Text type="secondary">No booking IDs available</Text>
+                  )}
+                </Space>
               </Descriptions.Item>
             </Descriptions>
 
