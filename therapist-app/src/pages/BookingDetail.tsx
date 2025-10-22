@@ -48,6 +48,8 @@ export const BookingDetail: React.FC = () => {
   const [booking, setBooking] = useState<any>(null);
   const [intakeForm, setIntakeForm] = useState<any>(null);
   const [showFullIntakeForm, setShowFullIntakeForm] = useState(false);
+  const [therapistNotes, setTherapistNotes] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -84,6 +86,7 @@ export const BookingDetail: React.FC = () => {
       };
 
       setBooking(bookingData);
+      setTherapistNotes(data.therapist_notes || '');
 
       // Load intake form if exists
       const { data: intakeData } = await supabaseClient
@@ -391,6 +394,31 @@ export const BookingDetail: React.FC = () => {
     }
   };
 
+  const saveTherapistNotes = async () => {
+    try {
+      setSavingNotes(true);
+
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update({ therapist_notes: therapistNotes })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error saving notes:', error);
+        message.error('Failed to save notes');
+        throw error;
+      }
+
+      message.success('Notes saved successfully');
+      await loadBookingDetail();
+    } catch (error: any) {
+      console.error('Error saving therapist notes:', error);
+      message.error(error?.message || 'Failed to save notes');
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: string } = {
       requested: 'orange',
@@ -604,6 +632,36 @@ export const BookingDetail: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      {/* Therapist Notes */}
+      <Card
+        title={
+          <Space>
+            <FileTextOutlined />
+            <span>Therapist Notes</span>
+          </Space>
+        }
+        style={{ marginTop: 16 }}
+      >
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Text type="secondary">Add your private notes about this booking (visible only to you)</Text>
+          <TextArea
+            rows={4}
+            value={therapistNotes}
+            onChange={(e) => setTherapistNotes(e.target.value)}
+            placeholder="Enter notes about the client, session details, preferences, or any observations..."
+            style={{ width: '100%' }}
+          />
+          <Button
+            type="primary"
+            onClick={saveTherapistNotes}
+            loading={savingNotes}
+            icon={<FileTextOutlined />}
+          >
+            Save Notes
+          </Button>
+        </Space>
+      </Card>
 
       {/* Accommodation Details */}
       {(booking.business_name || booking.room_number || booking.booker_name) && (
