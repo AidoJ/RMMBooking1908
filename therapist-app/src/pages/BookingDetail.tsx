@@ -11,6 +11,10 @@ import {
   Col,
   Input,
   App,
+  Modal,
+  Divider,
+  List,
+  Image,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -24,6 +28,9 @@ import {
   FileTextOutlined,
   CloseCircleOutlined,
   ExclamationCircleOutlined,
+  MedicineBoxOutlined,
+  EyeOutlined,
+  FormOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabaseClient } from '../utility/supabaseClient';
@@ -39,6 +46,8 @@ export const BookingDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [booking, setBooking] = useState<any>(null);
+  const [intakeForm, setIntakeForm] = useState<any>(null);
+  const [showFullIntakeForm, setShowFullIntakeForm] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -75,6 +84,15 @@ export const BookingDetail: React.FC = () => {
       };
 
       setBooking(bookingData);
+
+      // Load intake form if exists
+      const { data: intakeData } = await supabaseClient
+        .from('client_intake_forms')
+        .select('*')
+        .eq('booking_id', id)
+        .maybeSingle();
+
+      setIntakeForm(intakeData);
     } catch (error) {
       console.error('Error loading booking:', error);
       message.error('Failed to load booking details');
@@ -587,6 +605,45 @@ export const BookingDetail: React.FC = () => {
         </Col>
       </Row>
 
+      {/* Accommodation Details */}
+      {(booking.business_name || booking.room_number || booking.booker_name) && (
+        <Card title="Accommodation Details" style={{ marginTop: 16 }}>
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            {booking.business_name && (
+              <div>
+                <Text type="secondary">Hotel Name:</Text>
+                <br />
+                <Text strong>{booking.business_name}</Text>
+              </div>
+            )}
+
+            {booking.room_number && (
+              <div>
+                <Text type="secondary">Room Number:</Text>
+                <br />
+                <Text strong>{booking.room_number}</Text>
+              </div>
+            )}
+
+            {booking.booker_name && (
+              <div>
+                <Text type="secondary">Name of person who booked the room:</Text>
+                <br />
+                <Text strong>{booking.booker_name}</Text>
+              </div>
+            )}
+
+            {booking.notes && (
+              <div>
+                <Text type="secondary">Additional Notes:</Text>
+                <br />
+                <Paragraph style={{ marginBottom: 0 }}>{booking.notes}</Paragraph>
+              </div>
+            )}
+          </Space>
+        </Card>
+      )}
+
       {/* Location */}
       <Card title="Location" style={{ marginTop: 16 }}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -620,12 +677,221 @@ export const BookingDetail: React.FC = () => {
         </Space>
       </Card>
 
-      {/* Notes */}
-      {booking.notes && (
-        <Card title="Customer Notes" style={{ marginTop: 16 }}>
-          <Paragraph>{booking.notes}</Paragraph>
-        </Card>
-      )}
+      {/* Client Health Intake */}
+      <Card
+        title={
+          <Space>
+            <MedicineBoxOutlined />
+            <span>Client Health Intake</span>
+          </Space>
+        }
+        style={{ marginTop: 16 }}
+      >
+        {intakeForm && intakeForm.completed_at ? (
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Tag color="success" icon={<CheckCircleOutlined />} style={{ fontSize: '14px', padding: '4px 12px' }}>
+              Completed {dayjs(intakeForm.completed_at).format('MMM DD, YYYY [at] h:mm A')}
+            </Tag>
+
+            <Divider orientation="left" style={{ margin: '12px 0' }}>Health Concerns</Divider>
+
+            {/* Show only "Yes" responses */}
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              {intakeForm.has_medications && (
+                <div>
+                  <Text strong style={{ color: '#007e8c' }}>• Medications:</Text>
+                  <br />
+                  <Text>{intakeForm.medications}</Text>
+                </div>
+              )}
+
+              {intakeForm.has_allergies && (
+                <div>
+                  <Text strong style={{ color: '#007e8c' }}>• Allergies:</Text>
+                  <br />
+                  <Text>{intakeForm.allergies}</Text>
+                </div>
+              )}
+
+              {intakeForm.is_pregnant && (
+                <div>
+                  <Text strong style={{ color: '#007e8c' }}>• Pregnancy:</Text>
+                  <br />
+                  <Text>{intakeForm.pregnancy_months} months</Text>
+                  {intakeForm.pregnancy_due_date && <Text> (Due: {dayjs(intakeForm.pregnancy_due_date).format('MMM DD, YYYY')})</Text>}
+                </div>
+              )}
+
+              {intakeForm.has_medical_supervision && (
+                <div>
+                  <Text strong style={{ color: '#007e8c' }}>• Medical Supervision:</Text>
+                  <br />
+                  <Text>{intakeForm.medical_supervision_details}</Text>
+                </div>
+              )}
+
+              {intakeForm.has_broken_skin && (
+                <div>
+                  <Text strong style={{ color: '#007e8c' }}>• Broken Skin/Wounds:</Text>
+                  <br />
+                  <Text>{intakeForm.broken_skin_location}</Text>
+                </div>
+              )}
+
+              {intakeForm.has_joint_replacement && (
+                <div>
+                  <Text strong style={{ color: '#007e8c' }}>• Joint Replacement:</Text>
+                  <br />
+                  <Text>{intakeForm.joint_replacement_details}</Text>
+                </div>
+              )}
+
+              {intakeForm.has_recent_injuries && (
+                <div>
+                  <Text strong style={{ color: '#007e8c' }}>• Recent Injuries:</Text>
+                  <br />
+                  <Text>{intakeForm.recent_injuries}</Text>
+                </div>
+              )}
+
+              {intakeForm.has_other_conditions && (
+                <div>
+                  <Text strong style={{ color: '#007e8c' }}>• Other Conditions:</Text>
+                  <br />
+                  <Text>{intakeForm.other_conditions}</Text>
+                </div>
+              )}
+
+              {(!intakeForm.has_medications && !intakeForm.has_allergies && !intakeForm.is_pregnant &&
+                !intakeForm.has_medical_supervision && !intakeForm.has_broken_skin &&
+                !intakeForm.has_joint_replacement && !intakeForm.has_recent_injuries &&
+                !intakeForm.has_other_conditions) && (
+                <Text type="secondary">No health concerns reported</Text>
+              )}
+            </Space>
+
+            {/* Medical Conditions */}
+            {intakeForm.medical_conditions && intakeForm.medical_conditions.length > 0 && (
+              <>
+                <Divider orientation="left" style={{ margin: '12px 0' }}>Medical Conditions</Divider>
+                <List
+                  size="small"
+                  dataSource={intakeForm.medical_conditions}
+                  renderItem={(item: string) => (
+                    <List.Item style={{ padding: '4px 0', border: 'none' }}>
+                      <Text>• {item}</Text>
+                    </List.Item>
+                  )}
+                />
+              </>
+            )}
+
+            {/* Signature */}
+            {intakeForm.signature_data && (
+              <>
+                <Divider orientation="left" style={{ margin: '12px 0' }}>Signature</Divider>
+                <Image
+                  src={intakeForm.signature_data}
+                  alt="Client Signature"
+                  style={{ maxWidth: 300, border: '1px solid #d9d9d9', borderRadius: 4 }}
+                />
+              </>
+            )}
+
+            <Button
+              icon={<EyeOutlined />}
+              onClick={() => setShowFullIntakeForm(true)}
+              style={{ marginTop: 8 }}
+            >
+              View Full Form
+            </Button>
+          </Space>
+        ) : (
+          <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Tag color="warning" style={{ fontSize: '14px', padding: '4px 12px' }}>
+              Pending - Not yet completed
+            </Tag>
+            <Text type="secondary">
+              Client has not completed their health intake form yet. You can complete it on their behalf if needed.
+            </Text>
+            <Button
+              type="primary"
+              icon={<FormOutlined />}
+              onClick={() => window.open(`/therapist/clientintake?booking=${booking.id}`, '_blank')}
+            >
+              Complete Intake Form
+            </Button>
+          </Space>
+        )}
+      </Card>
+
+      {/* Full Intake Form Modal */}
+      <Modal
+        title="Complete Health Intake Form"
+        open={showFullIntakeForm}
+        onCancel={() => setShowFullIntakeForm(false)}
+        footer={[
+          <Button key="close" onClick={() => setShowFullIntakeForm(false)}>
+            Close
+          </Button>
+        ]}
+        width={800}
+      >
+        {intakeForm && (
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Descriptions column={1} bordered size="small">
+              <Descriptions.Item label="Medications">
+                {intakeForm.has_medications ? intakeForm.medications : 'No'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Allergies">
+                {intakeForm.has_allergies ? intakeForm.allergies : 'No'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Pregnant">
+                {intakeForm.is_pregnant ? `Yes - ${intakeForm.pregnancy_months} months` : 'No'}
+              </Descriptions.Item>
+              {intakeForm.is_pregnant && intakeForm.pregnancy_due_date && (
+                <Descriptions.Item label="Due Date">
+                  {dayjs(intakeForm.pregnancy_due_date).format('MMMM DD, YYYY')}
+                </Descriptions.Item>
+              )}
+              <Descriptions.Item label="Medical Supervision">
+                {intakeForm.has_medical_supervision ? intakeForm.medical_supervision_details : 'No'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Medical Conditions">
+                {intakeForm.medical_conditions && intakeForm.medical_conditions.length > 0
+                  ? intakeForm.medical_conditions.join(', ')
+                  : 'None'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Broken Skin/Wounds">
+                {intakeForm.has_broken_skin ? intakeForm.broken_skin_location : 'No'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Joint Replacement">
+                {intakeForm.has_joint_replacement ? intakeForm.joint_replacement_details : 'No'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Recent Injuries">
+                {intakeForm.has_recent_injuries ? intakeForm.recent_injuries : 'No'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Other Conditions">
+                {intakeForm.has_other_conditions ? intakeForm.other_conditions : 'No'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Completed">
+                {dayjs(intakeForm.completed_at).format('MMMM DD, YYYY [at] h:mm A')}
+              </Descriptions.Item>
+            </Descriptions>
+
+            {intakeForm.signature_data && (
+              <div>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>Signature:</Text>
+                <Image
+                  src={intakeForm.signature_data}
+                  alt="Client Signature"
+                  style={{ maxWidth: '100%', border: '1px solid #d9d9d9', borderRadius: 4 }}
+                />
+              </div>
+            )}
+          </Space>
+        )}
+      </Modal>
     </div>
   );
 };
