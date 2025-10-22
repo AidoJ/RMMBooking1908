@@ -29,7 +29,11 @@ import {
   PhoneOutlined,
   MailOutlined,
   PlusOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  FileOutlined,
+  UploadOutlined,
+  BankOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import { useGetIdentity } from '@refinedev/core';
 import { useParams, useNavigate } from 'react-router';
@@ -63,6 +67,16 @@ interface TherapistProfile {
   total_reviews?: number;
   business_abn: string;
   address_verified?: boolean;
+  insurance_expiry_date?: string;
+  insurance_certificate_url?: string;
+  first_aid_expiry_date?: string;
+  first_aid_certificate_url?: string;
+  qualification_certificate_url?: string;
+  bank_account_name?: string;
+  bsb?: string;
+  bank_account_number?: string;
+  hourly_rate?: number;
+  afterhours_rate?: number;
 }
 
 interface AvailabilitySlot {
@@ -101,8 +115,12 @@ const TherapistProfileManagement: React.FC = () => {
   const [therapistServices, setTherapistServices] = useState<any[]>([]);
   const [allServices, setAllServices] = useState<any[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
+  const [insuranceCertFile, setInsuranceCertFile] = useState<any[]>([]);
+  const [firstAidCertFile, setFirstAidCertFile] = useState<any[]>([]);
+  const [qualificationCertFile, setQualificationCertFile] = useState<any[]>([]);
 
   const isAdmin = identity?.role === 'admin' || identity?.role === 'super_admin';
+  const isSuperAdmin = identity?.role === 'super_admin';
   const isTherapist = identity?.role === 'therapist';
 
   const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -203,7 +221,15 @@ const TherapistProfileManagement: React.FC = () => {
       if (error) throw error;
 
       setProfile(data);
-      form.setFieldsValue(data);
+
+      // Convert date fields to dayjs objects for the form
+      const formData = {
+        ...data,
+        insurance_expiry_date: data.insurance_expiry_date ? dayjs(data.insurance_expiry_date) : undefined,
+        first_aid_expiry_date: data.first_aid_expiry_date ? dayjs(data.first_aid_expiry_date) : undefined,
+      };
+
+      form.setFieldsValue(formData);
 
       if (data.profile_pic) {
         setFileList([{
@@ -211,6 +237,33 @@ const TherapistProfileManagement: React.FC = () => {
           name: 'profile.jpg',
           status: 'done',
           url: data.profile_pic
+        }]);
+      }
+
+      if (data.insurance_certificate_url) {
+        setInsuranceCertFile([{
+          uid: '1',
+          name: 'insurance_certificate.pdf',
+          status: 'done',
+          url: data.insurance_certificate_url
+        }]);
+      }
+
+      if (data.first_aid_certificate_url) {
+        setFirstAidCertFile([{
+          uid: '1',
+          name: 'first_aid_certificate.pdf',
+          status: 'done',
+          url: data.first_aid_certificate_url
+        }]);
+      }
+
+      if (data.qualification_certificate_url) {
+        setQualificationCertFile([{
+          uid: '1',
+          name: 'qualification_certificate.pdf',
+          status: 'done',
+          url: data.qualification_certificate_url
         }]);
       }
 
@@ -246,7 +299,15 @@ const TherapistProfileManagement: React.FC = () => {
       }
 
       setProfile(data);
-      form.setFieldsValue(data);
+
+      // Convert date fields to dayjs objects for the form
+      const formData = {
+        ...data,
+        insurance_expiry_date: data.insurance_expiry_date ? dayjs(data.insurance_expiry_date) : undefined,
+        first_aid_expiry_date: data.first_aid_expiry_date ? dayjs(data.first_aid_expiry_date) : undefined,
+      };
+
+      form.setFieldsValue(formData);
 
       if (data.profile_pic) {
         setFileList([{
@@ -254,6 +315,33 @@ const TherapistProfileManagement: React.FC = () => {
           name: 'profile.jpg',
           status: 'done',
           url: data.profile_pic
+        }]);
+      }
+
+      if (data.insurance_certificate_url) {
+        setInsuranceCertFile([{
+          uid: '1',
+          name: 'insurance_certificate.pdf',
+          status: 'done',
+          url: data.insurance_certificate_url
+        }]);
+      }
+
+      if (data.first_aid_certificate_url) {
+        setFirstAidCertFile([{
+          uid: '1',
+          name: 'first_aid_certificate.pdf',
+          status: 'done',
+          url: data.first_aid_certificate_url
+        }]);
+      }
+
+      if (data.qualification_certificate_url) {
+        setQualificationCertFile([{
+          uid: '1',
+          name: 'qualification_certificate.pdf',
+          status: 'done',
+          url: data.qualification_certificate_url
         }]);
       }
 
@@ -402,14 +490,38 @@ const TherapistProfileManagement: React.FC = () => {
       setLoading(true);
 
       let profilePicUrl = values.profile_pic;
+      let insuranceCertUrl = values.insurance_certificate_url;
+      let firstAidCertUrl = values.first_aid_certificate_url;
+      let qualificationCertUrl = values.qualification_certificate_url;
 
       if (fileList.length > 0 && fileList[0].originFileObj) {
         profilePicUrl = await handleImageUpload(fileList[0].originFileObj);
       }
 
+      // Handle insurance certificate upload
+      if (insuranceCertFile.length > 0 && insuranceCertFile[0].originFileObj) {
+        insuranceCertUrl = await handleImageUpload(insuranceCertFile[0].originFileObj);
+      }
+
+      // Handle first aid certificate upload
+      if (firstAidCertFile.length > 0 && firstAidCertFile[0].originFileObj) {
+        firstAidCertUrl = await handleImageUpload(firstAidCertFile[0].originFileObj);
+      }
+
+      // Handle qualification certificate upload
+      if (qualificationCertFile.length > 0 && qualificationCertFile[0].originFileObj) {
+        qualificationCertUrl = await handleImageUpload(qualificationCertFile[0].originFileObj);
+      }
+
       const profileData = {
         ...values,
         profile_pic: profilePicUrl,
+        insurance_certificate_url: insuranceCertUrl,
+        first_aid_certificate_url: firstAidCertUrl,
+        qualification_certificate_url: qualificationCertUrl,
+        // Convert dayjs objects back to strings for database
+        insurance_expiry_date: values.insurance_expiry_date ? values.insurance_expiry_date.format('YYYY-MM-DD') : null,
+        first_aid_expiry_date: values.first_aid_expiry_date ? values.first_aid_expiry_date.format('YYYY-MM-DD') : null,
         latitude: coordinateFields.latitude || values.latitude,
         longitude: coordinateFields.longitude || values.longitude,
         address_verified: coordinateFields.address_verified || values.address_verified
@@ -791,11 +903,124 @@ const TherapistProfileManagement: React.FC = () => {
                 </Form.Item>
 
                 <Form.Item label="Bio" name="bio">
-                  <TextArea 
-                    rows={4} 
-                    placeholder="Tell customers about yourself, your specialties, and your approach to massage therapy..." 
+                  <TextArea
+                    rows={4}
+                    placeholder="Tell customers about yourself, your specialties, and your approach to massage therapy..."
                   />
                 </Form.Item>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="Insurance Expiry Date" name="insurance_expiry_date">
+                      <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Insurance Certificate">
+                      <Upload
+                        listType="text"
+                        fileList={insuranceCertFile}
+                        beforeUpload={() => false}
+                        onChange={({ fileList }) => setInsuranceCertFile(fileList)}
+                        maxCount={1}
+                        accept=".pdf,.jpg,.jpeg,.png"
+                      >
+                        <Button icon={<UploadOutlined />}>Upload Certificate</Button>
+                      </Upload>
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="First Aid Expiry Date" name="first_aid_expiry_date">
+                      <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="First Aid Certificate">
+                      <Upload
+                        listType="text"
+                        fileList={firstAidCertFile}
+                        beforeUpload={() => false}
+                        onChange={({ fileList }) => setFirstAidCertFile(fileList)}
+                        maxCount={1}
+                        accept=".pdf,.jpg,.jpeg,.png"
+                      >
+                        <Button icon={<UploadOutlined />}>Upload Certificate</Button>
+                      </Upload>
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Form.Item label="Therapist Qualification Certificate">
+                  <Upload
+                    listType="text"
+                    fileList={qualificationCertFile}
+                    beforeUpload={() => false}
+                    onChange={({ fileList }) => setQualificationCertFile(fileList)}
+                    maxCount={1}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                  >
+                    <Button icon={<UploadOutlined />}>Upload Certificate</Button>
+                  </Upload>
+                </Form.Item>
+
+                <Form.Item label="Bank Account Name" name="bank_account_name">
+                  <Input prefix={<BankOutlined />} placeholder="Account holder name" />
+                </Form.Item>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="BSB"
+                      name="bsb"
+                      rules={[{ pattern: /^\d{3}-?\d{3}$/, message: 'BSB must be in format XXX-XXX or XXXXXX' }]}
+                    >
+                      <Input placeholder="XXX-XXX" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Bank Account Number" name="bank_account_number">
+                      <Input placeholder="Account number" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="Hourly Rate" name="hourly_rate">
+                      <InputNumber
+                        prefix="$"
+                        style={{ width: '100%' }}
+                        min={0}
+                        step={0.01}
+                        disabled={!isSuperAdmin}
+                        placeholder={isSuperAdmin ? "Enter hourly rate" : "Only editable by superadmin"}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="After Hours Rate" name="afterhours_rate">
+                      <InputNumber
+                        prefix="$"
+                        style={{ width: '100%' }}
+                        min={0}
+                        step={0.01}
+                        disabled={!isSuperAdmin}
+                        placeholder={isSuperAdmin ? "Enter after hours rate" : "Only editable by superadmin"}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                {!isSuperAdmin && (
+                  <div style={{ padding: 12, backgroundColor: '#fff7e6', border: '1px solid #ffd591', borderRadius: 4, marginBottom: 16 }}>
+                    <Text type="warning">
+                      ⚠️ Only superadmin users can modify hourly rates
+                    </Text>
+                  </div>
+                )}
 
                 <Form.Item label="Active Status" name="is_active" valuePropName="checked">
                   <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
