@@ -1045,21 +1045,8 @@ console.log('Globals:', {
     // Service selection is now handled by card clicks, no dropdown event listener needed
     
     // Add acknowledgement dropdown listeners
-    const serviceAck = document.getElementById('serviceAcknowledgement');
     const termsAck = document.getElementById('termsAcceptance');
-    
-    if (serviceAck) {
-      serviceAck.addEventListener('change', function() {
-        if (this.value === 'no') {
-          if (confirm('Are you sure you want to cancel this booking?')) {
-            window.location.href = 'https://rejuvenators.com';
-          } else {
-            this.value = '';
-          }
-        }
-      });
-    }
-    
+      
     if (termsAck) {
       termsAck.addEventListener('change', function() {
         if (this.value === 'no') {
@@ -3678,14 +3665,9 @@ if (confirmBtn) {
         const therapistName = therapistRadio?.dataset?.name || 'Available Therapist';
         
     // Validate acknowledgement dropdowns
-    const serviceAck = document.getElementById('serviceAcknowledgement');
+    
     const termsAck = document.getElementById('termsAcceptance');
-    
-    if (serviceAck.value !== 'yes') {
-      alert('Please acknowledge that you understand this is a strictly non-sexual professional service.');
-      return;
-    }
-    
+        
     if (termsAck.value !== 'yes') {
       alert('Please read and accept the Terms & Conditions.');
       return;
@@ -3750,8 +3732,7 @@ if (confirmBtn) {
       gift_card_amount: giftCardAmount,
       tax_rate_amount: taxRateAmount,
       // Acknowledgement fields
-      service_acknowledgement: document.getElementById('serviceAcknowledgement').value === 'yes',
-      terms_acceptance: document.getElementById('termsAcceptance').value === 'yes',
+            terms_acceptance: document.getElementById('termsAcceptance').value === 'yes',
       status: 'requested',
       payment_status: 'pending'
     };
