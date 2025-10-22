@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic, Button, List, Typography, Space, Tag, Spin, Empty } from 'antd';
+import { Card, Row, Col, Statistic, Button, List, Typography, Space, Tag, Spin, Empty, Alert } from 'antd';
 import {
   CalendarOutlined,
   ClockCircleOutlined,
@@ -9,6 +9,10 @@ import {
   DollarOutlined,
   ExclamationCircleOutlined,
   ClockCircleFilled,
+  SafetyCertificateOutlined,
+  CheckCircleOutlined,
+  WarningOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { supabaseClient } from '../utility/supabaseClient';
@@ -32,6 +36,12 @@ export const Dashboard: React.FC = () => {
   });
   const [todayBookings, setTodayBookings] = useState<any[]>([]);
   const [upcomingBookings, setUpcomingBookings] = useState<any[]>([]);
+  const [certificateStatus, setCertificateStatus] = useState({
+    insurance: 'ok',
+    firstAid: 'ok',
+    insuranceExpiry: null as string | null,
+    firstAidExpiry: null as string | null,
+  });
 
   useEffect(() => {
     loadDashboardData();
@@ -51,10 +61,10 @@ export const Dashboard: React.FC = () => {
       const userData = JSON.parse(userStr);
       const userId = userData.user_id || userData.id;
 
-      // Get therapist profile
+      // Get therapist profile with certificate dates
       const { data: profile, error: profileError } = await supabaseClient
         .from('therapist_profiles')
-        .select('id')
+        .select('id, insurance_expiry_date, first_aid_expiry_date')
         .eq('user_id', userId)
         .single();
 
@@ -64,8 +74,26 @@ export const Dashboard: React.FC = () => {
         return;
       }
 
-      // Calculate date ranges
+      // Check certificate expiry status
       const today = dayjs();
+      const oneMonthFromNow = today.add(1, 'month');
+
+      const checkCertStatus = (expiryDate: string | null) => {
+        if (!expiryDate) return 'missing';
+        const expiry = dayjs(expiryDate);
+        if (expiry.isBefore(today)) return 'expired';
+        if (expiry.isBefore(oneMonthFromNow)) return 'expiring';
+        return 'ok';
+      };
+
+      setCertificateStatus({
+        insurance: checkCertStatus(profile.insurance_expiry_date),
+        firstAid: checkCertStatus(profile.first_aid_expiry_date),
+        insuranceExpiry: profile.insurance_expiry_date,
+        firstAidExpiry: profile.first_aid_expiry_date,
+      });
+
+      // Calculate date ranges
       const todayStart = today.startOf('day').toISOString();
       const todayEnd = today.endOf('day').toISOString();
       const weekStart = today.startOf('isoWeek').toISOString();
@@ -329,6 +357,95 @@ export const Dashboard: React.FC = () => {
             >
               Invoices
             </Button>
+          </Col>
+        </Row>
+      </Card>
+
+      {/* Certificate Status */}
+      <Card
+        title={
+          <Space>
+            <SafetyCertificateOutlined />
+            <span>Certificate Status</span>
+          </Space>
+        }
+        style={{ marginBottom: 24 }}
+        extra={
+          <Button type="link" onClick={() => navigate('/profile')}>
+            Update
+          </Button>
+        }
+      >
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12}>
+            <div style={{
+              padding: '16px',
+              borderRadius: '8px',
+              border: `2px solid ${
+                certificateStatus.insurance === 'ok' ? '#52c41a' :
+                certificateStatus.insurance === 'expiring' ? '#faad14' : '#ff4d4f'
+              }`,
+              background: certificateStatus.insurance === 'ok' ? '#f6ffed' :
+                certificateStatus.insurance === 'expiring' ? '#fffbe6' : '#fff2f0'
+            }}>
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Space>
+                  {certificateStatus.insurance === 'ok' && <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 20 }} />}
+                  {certificateStatus.insurance === 'expiring' && <WarningOutlined style={{ color: '#faad14', fontSize: 20 }} />}
+                  {certificateStatus.insurance === 'expired' && <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 20 }} />}
+                  {certificateStatus.insurance === 'missing' && <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 20 }} />}
+                  <Text strong style={{ fontSize: 16 }}>Insurance Certificate</Text>
+                </Space>
+                {certificateStatus.insuranceExpiry ? (
+                  <Text type="secondary">
+                    Expires: {dayjs(certificateStatus.insuranceExpiry).format('DD/MM/YYYY')}
+                  </Text>
+                ) : (
+                  <Text type="danger">Not uploaded</Text>
+                )}
+                {certificateStatus.insurance === 'expiring' && (
+                  <Alert message="Expires within 30 days" type="warning" showIcon style={{ marginTop: 8 }} />
+                )}
+                {certificateStatus.insurance === 'expired' && (
+                  <Alert message="Certificate expired!" type="error" showIcon style={{ marginTop: 8 }} />
+                )}
+              </Space>
+            </div>
+          </Col>
+          <Col xs={24} sm={12}>
+            <div style={{
+              padding: '16px',
+              borderRadius: '8px',
+              border: `2px solid ${
+                certificateStatus.firstAid === 'ok' ? '#52c41a' :
+                certificateStatus.firstAid === 'expiring' ? '#faad14' : '#ff4d4f'
+              }`,
+              background: certificateStatus.firstAid === 'ok' ? '#f6ffed' :
+                certificateStatus.firstAid === 'expiring' ? '#fffbe6' : '#fff2f0'
+            }}>
+              <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Space>
+                  {certificateStatus.firstAid === 'ok' && <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 20 }} />}
+                  {certificateStatus.firstAid === 'expiring' && <WarningOutlined style={{ color: '#faad14', fontSize: 20 }} />}
+                  {certificateStatus.firstAid === 'expired' && <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 20 }} />}
+                  {certificateStatus.firstAid === 'missing' && <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 20 }} />}
+                  <Text strong style={{ fontSize: 16 }}>First Aid Certificate</Text>
+                </Space>
+                {certificateStatus.firstAidExpiry ? (
+                  <Text type="secondary">
+                    Expires: {dayjs(certificateStatus.firstAidExpiry).format('DD/MM/YYYY')}
+                  </Text>
+                ) : (
+                  <Text type="danger">Not uploaded</Text>
+                )}
+                {certificateStatus.firstAid === 'expiring' && (
+                  <Alert message="Expires within 30 days" type="warning" showIcon style={{ marginTop: 8 }} />
+                )}
+                {certificateStatus.firstAid === 'expired' && (
+                  <Alert message="Certificate expired!" type="error" showIcon style={{ marginTop: 8 }} />
+                )}
+              </Space>
+            </div>
           </Col>
         </Row>
       </Card>
