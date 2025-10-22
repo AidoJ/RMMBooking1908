@@ -8,7 +8,7 @@ import {
   Row,
   Col,
   InputNumber,
-  message,
+  App,
   Spin,
   Typography,
   Upload,
@@ -57,6 +57,7 @@ interface TherapistProfile {
 }
 
 export const Profile: React.FC = () => {
+  const { message } = App.useApp(); // Use v5-correct message API
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -295,6 +296,12 @@ export const Profile: React.FC = () => {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
+          onFinishFailed={({ errorFields }) => {
+            if (errorFields && errorFields.length > 0) {
+              form.scrollToField(errorFields[0].name);
+              message.error('Please fix the highlighted fields before saving.');
+            }
+          }}
           initialValues={{
             gender: 'prefer_not_to_say',
           }}
@@ -378,10 +385,11 @@ export const Profile: React.FC = () => {
             name="business_abn"
             rules={[
               { required: true, message: 'Please enter business ABN' },
-              { pattern: /^\d{11}$/, message: 'ABN must be exactly 11 digits' }
+              { pattern: /^\d{11}$/, message: 'ABN must be exactly 11 digits (no spaces)' }
             ]}
+            help="Enter 11 digits only, no spaces or dashes"
           >
-            <Input placeholder="11 digit ABN number" />
+            <Input placeholder="12345678901" maxLength={11} />
           </Form.Item>
 
           <Form.Item label="Bio" name="bio">
