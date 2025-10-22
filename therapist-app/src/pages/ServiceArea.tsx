@@ -148,6 +148,9 @@ export const ServiceArea: React.FC = () => {
       }
 
       message.success('Service area saved successfully!');
+
+      // Reload the service area data to refresh the map
+      await loadServiceArea();
     } catch (error: any) {
       console.error('Error saving service area:', error);
       message.error(error?.message || 'Failed to save service area');

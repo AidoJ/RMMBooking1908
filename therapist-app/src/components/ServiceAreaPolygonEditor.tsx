@@ -420,21 +420,21 @@ const ServiceAreaPolygonEditor: React.FC<ServiceAreaPolygonEditorProps> = ({
             </>
           )}
           {hasPolygon && !isDrawing && (
-            <>
-              <Button
-                icon={<EditOutlined />}
-                onClick={editPolygon}
-              >
-                Edit
-              </Button>
-              <Button
-                danger
-                icon={<DeleteOutlined />}
-                onClick={clearPolygon}
-              >
-                Clear
-              </Button>
-            </>
+            <Button
+              icon={<EditOutlined />}
+              onClick={editPolygon}
+            >
+              Edit
+            </Button>
+          )}
+          {(hasPolygon || isDrawing) && (
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              onClick={clearPolygon}
+            >
+              Clear Polygon
+            </Button>
           )}
         </Space>
       }
@@ -487,7 +487,7 @@ const ServiceAreaPolygonEditor: React.FC<ServiceAreaPolygonEditorProps> = ({
       </div>
 
       <div style={{ marginTop: '16px', fontSize: '12px', color: '#666' }}>
-        <strong>Tips:</strong>
+        <strong>Steps to Create Your Polygon:</strong>
         <ul style={{ marginTop: '8px', marginBottom: 0 }}>
           <li>The blue circle represents your current service radius ({serviceRadiusKm}km) as a reference</li>
           <li>Click on the map to add points and draw your custom service area boundary</li>
