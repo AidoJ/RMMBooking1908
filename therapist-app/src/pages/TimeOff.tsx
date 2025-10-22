@@ -14,7 +14,7 @@ import {
   Spin,
   message,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { supabaseClient } from '../utility/supabaseClient';
 import dayjs from 'dayjs';
 
@@ -36,6 +36,7 @@ export const TimeOff: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<TimeOff | null>(null);
   const [timeOff, setTimeOff] = useState<TimeOff[]>([]);
   const [therapistProfileId, setTherapistProfileId] = useState<string | null>(null);
 
@@ -94,7 +95,7 @@ export const TimeOff: React.FC = () => {
     }
   };
 
-  const handleAdd = async (values: any) => {
+  const handleSubmit = async (values: any) => {
     if (!therapistProfileId) {
       message.error('Profile not found. Please complete your profile first.');
       return;
@@ -111,22 +112,51 @@ export const TimeOff: React.FC = () => {
         is_active: true
       };
 
-      const { data, error } = await supabaseClient
-        .from('therapist_time_off')
-        .insert([timeOffData])
-        .select()
-        .single();
+      if (editingRecord) {
+        // Update existing record
+        const { data, error } = await supabaseClient
+          .from('therapist_time_off')
+          .update(timeOffData)
+          .eq('id', editingRecord.id)
+          .select()
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setTimeOff([...timeOff, data]);
+        setTimeOff(timeOff.map(item => item.id === editingRecord.id ? data : item));
+        message.success('Time off updated successfully!');
+      } else {
+        // Insert new record
+        const { data, error } = await supabaseClient
+          .from('therapist_time_off')
+          .insert([timeOffData])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setTimeOff([...timeOff, data]);
+        message.success('Time off added successfully!');
+      }
+
       setModalVisible(false);
+      setEditingRecord(null);
       form.resetFields();
-      message.success('Time off added successfully!');
     } catch (error) {
-      console.error('Error adding time off:', error);
-      message.error('Failed to add time off');
+      console.error('Error saving time off:', error);
+      message.error(editingRecord ? 'Failed to update time off' : 'Failed to add time off');
     }
+  };
+
+  const handleEdit = (record: TimeOff) => {
+    setEditingRecord(record);
+    form.setFieldsValue({
+      dates: [dayjs(record.start_date), dayjs(record.end_date)],
+      start_time: record.start_time ? dayjs(record.start_time, 'HH:mm:ss') : undefined,
+      end_time: record.end_time ? dayjs(record.end_time, 'HH:mm:ss') : undefined,
+      reason: record.reason
+    });
+    setModalVisible(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -179,14 +209,23 @@ export const TimeOff: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       render: (_: any, record: TimeOff) => (
-        <Button
-          danger
-          size="small"
-          icon={<DeleteOutlined />}
-          onClick={() => handleDelete(record.id)}
-        >
-          Remove
-        </Button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Button
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+          >
+            Edit
+          </Button>
+          <Button
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record.id)}
+          >
+            Remove
+          </Button>
+        </div>
       ),
     },
   ];
@@ -219,7 +258,11 @@ export const TimeOff: React.FC = () => {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => setModalVisible(true)}
+            onClick={() => {
+              setEditingRecord(null);
+              form.resetFields();
+              setModalVisible(true);
+            }}
             disabled={!therapistProfileId}
             size="large"
           >
@@ -236,16 +279,17 @@ export const TimeOff: React.FC = () => {
       </Card>
 
       <Modal
-        title="Add Time Off"
+        title={editingRecord ? "Edit Time Off" : "Add Time Off"}
         open={modalVisible}
         onCancel={() => {
           setModalVisible(false);
+          setEditingRecord(null);
           form.resetFields();
         }}
         footer={null}
         width={600}
       >
-        <Form form={form} onFinish={handleAdd} layout="vertical">
+        <Form form={form} onFinish={handleSubmit} layout="vertical">
           <Form.Item
             label="Date Range"
             name="dates"
@@ -260,6 +304,7 @@ export const TimeOff: React.FC = () => {
                 <TimePicker
                   format="h:mm A"
                   use12Hours
+                  minuteStep={15}
                   size="large"
                   placeholder="All day if empty"
                   style={{ width: '100%' }}
@@ -271,6 +316,7 @@ export const TimeOff: React.FC = () => {
                 <TimePicker
                   format="h:mm A"
                   use12Hours
+                  minuteStep={15}
                   size="large"
                   placeholder="All day if empty"
                   style={{ width: '100%' }}
@@ -285,7 +331,7 @@ export const TimeOff: React.FC = () => {
 
           <Form.Item>
             <Button type="primary" htmlType="submit" size="large" block>
-              Add Time Off
+              {editingRecord ? 'Update Time Off' : 'Add Time Off'}
             </Button>
           </Form.Item>
         </Form>
