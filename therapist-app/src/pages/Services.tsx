@@ -7,8 +7,9 @@ import {
   Typography,
   Spin,
   message,
+  Space,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, SaveOutlined } from '@ant-design/icons';
 import { supabaseClient } from '../utility/supabaseClient';
 
 const { Title, Text } = Typography;
@@ -31,9 +32,12 @@ interface TherapistService {
 
 export const Services: React.FC = () => {
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [therapistServices, setTherapistServices] = useState<TherapistService[]>([]);
+  const [originalServices, setOriginalServices] = useState<TherapistService[]>([]); // Track original state
   const [allServices, setAllServices] = useState<Service[]>([]);
   const [therapistProfileId, setTherapistProfileId] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     loadServices();
@@ -93,8 +97,11 @@ export const Services: React.FC = () => {
 
       if (allServicesError) throw allServicesError;
 
-      setTherapistServices((therapistServicesData || []) as any);
+      const services = (therapistServicesData || []) as any;
+      setTherapistServices(services);
+      setOriginalServices(services); // Store original state
       setAllServices(allServicesData || []);
+      setHasChanges(false);
     } catch (error) {
       console.error('Error loading services:', error);
       message.error('Failed to load services');
@@ -103,50 +110,83 @@ export const Services: React.FC = () => {
     }
   };
 
-  const handleAddService = async (serviceId: string) => {
+  const handleAddService = (serviceId: string) => {
     if (!therapistProfileId) {
       message.error('Profile not found. Please complete your profile first.');
       return;
     }
 
-    try {
-      const { data, error } = await supabaseClient
-        .from('therapist_services')
-        .insert([{
-          therapist_id: therapistProfileId,
-          service_id: serviceId
-        }])
-        .select(`
-          id,
-          service_id,
-          services:service_id(id, name, description, short_description, service_base_price, minimum_duration, is_active)
-        `)
-        .single();
+    // Find the service to add
+    const serviceToAdd = allServices.find(s => s.id === serviceId);
+    if (!serviceToAdd) return;
 
-      if (error) throw error;
+    // Create temporary therapist service object
+    const tempTherapistService: TherapistService = {
+      id: `temp-${Date.now()}`, // Temporary ID
+      service_id: serviceId,
+      services: serviceToAdd
+    };
 
-      setTherapistServices([...therapistServices, data as any]);
-      message.success('Service added successfully!');
-    } catch (error) {
-      console.error('Error adding service:', error);
-      message.error('Failed to add service');
-    }
+    setTherapistServices([...therapistServices, tempTherapistService]);
+    setHasChanges(true);
   };
 
-  const handleRemoveService = async (therapistServiceId: string) => {
+  const handleRemoveService = (therapistServiceId: string) => {
+    setTherapistServices(therapistServices.filter(ts => ts.id !== therapistServiceId));
+    setHasChanges(true);
+  };
+
+  const handleSaveChanges = async () => {
+    if (!therapistProfileId) {
+      message.error('Profile not found');
+      return;
+    }
+
     try {
-      const { error } = await supabaseClient
-        .from('therapist_services')
-        .delete()
-        .eq('id', therapistServiceId);
+      setSaving(true);
 
-      if (error) throw error;
+      // Determine which services to add and remove
+      const originalServiceIds = originalServices.map(ts => ts.service_id);
+      const currentServiceIds = therapistServices.map(ts => ts.service_id);
 
-      setTherapistServices(therapistServices.filter(ts => ts.id !== therapistServiceId));
-      message.success('Service removed successfully!');
+      const servicesToAdd = currentServiceIds.filter(id => !originalServiceIds.includes(id));
+      const servicesToRemove = originalServices.filter(
+        ts => !currentServiceIds.includes(ts.service_id)
+      );
+
+      // Remove services
+      for (const ts of servicesToRemove) {
+        const { error } = await supabaseClient
+          .from('therapist_services')
+          .delete()
+          .eq('id', ts.id);
+
+        if (error) throw error;
+      }
+
+      // Add new services
+      if (servicesToAdd.length > 0) {
+        const { error } = await supabaseClient
+          .from('therapist_services')
+          .insert(
+            servicesToAdd.map(serviceId => ({
+              therapist_id: therapistProfileId,
+              service_id: serviceId
+            }))
+          );
+
+        if (error) throw error;
+      }
+
+      message.success('Services updated successfully!');
+
+      // Reload services to get actual IDs
+      await loadServices();
     } catch (error) {
-      console.error('Error removing service:', error);
-      message.error('Failed to remove service');
+      console.error('Error saving services:', error);
+      message.error('Failed to save services');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -283,6 +323,24 @@ export const Services: React.FC = () => {
           </Card>
         </Col>
       </Row>
+
+      {hasChanges && (
+        <Card style={{ marginTop: 24, textAlign: 'center', backgroundColor: '#fff7e6', borderColor: '#ffa940' }}>
+          <Space direction="vertical" size={16} style={{ width: '100%' }}>
+            <Text strong>You have unsaved changes</Text>
+            <Button
+              type="primary"
+              size="large"
+              icon={<SaveOutlined />}
+              onClick={handleSaveChanges}
+              loading={saving}
+              style={{ minWidth: 200 }}
+            >
+              Save Changes
+            </Button>
+          </Space>
+        </Card>
+      )}
 
       <Card style={{ marginTop: 24, backgroundColor: '#f0f0f0' }}>
         <Text type="secondary" style={{ fontSize: '14px' }}>
