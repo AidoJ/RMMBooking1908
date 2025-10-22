@@ -536,12 +536,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         break;
       case 'step7': // Room Details & Notes
-        // Check service acknowledgement
-        const serviceAck = document.getElementById('serviceAcknowledgement');
-        if (!serviceAck?.value || serviceAck.value !== 'yes') {
-          isValid = false;
-          showError(serviceAck || document.getElementById('serviceAcknowledgement'), 'Please accept the service acknowledgement to continue.');
-        }
+        
         // Check terms acceptance
         const termsAccept = document.getElementById('termsAcceptance');
         if (!termsAccept?.value || termsAccept.value !== 'yes') {
