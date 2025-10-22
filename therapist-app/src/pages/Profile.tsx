@@ -21,7 +21,6 @@ import {
   CameraOutlined,
   PhoneOutlined,
   MailOutlined,
-  FileOutlined,
   UploadOutlined,
   BankOutlined,
   DollarOutlined,
