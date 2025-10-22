@@ -555,11 +555,19 @@ const TherapistProfileManagement: React.FC = () => {
         savedProfile = data;
       }
 
-      message.success(`Profile ${profile?.id ? 'updated' : 'created'} successfully!`);
       setProfile(savedProfile);
 
+      // Show success message with longer duration
+      message.success({
+        content: `Profile ${profile?.id ? 'updated' : 'created'} successfully!`,
+        duration: 3,
+      });
+
       if (profileData.latitude && profileData.longitude) {
-        message.success('Location coordinates saved for proximity matching!');
+        message.success({
+          content: 'Location coordinates saved for proximity matching!',
+          duration: 3,
+        });
       }
 
     } catch (error: any) {

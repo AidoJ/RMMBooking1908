@@ -241,12 +241,17 @@ export const Profile: React.FC = () => {
         savedProfile = data;
       }
 
-      message.success('Your profile has been updated');
       setProfile(savedProfile);
 
       // Update localStorage with new profile data
       const updatedUser = { ...userData, ...savedProfile };
       localStorage.setItem('therapistUser', JSON.stringify(updatedUser));
+
+      // Show success message with longer duration
+      message.success({
+        content: 'Your profile has been updated successfully!',
+        duration: 3,
+      });
 
     } catch (error: any) {
       console.error('Error saving profile:', error);
