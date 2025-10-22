@@ -91,6 +91,43 @@ export const Availability: React.FC = () => {
     }
   };
 
+  const checkTimeOverlap = (
+    dayOfWeek: number,
+    startTime: string,
+    endTime: string
+  ): { hasOverlap: boolean; conflictingSlot?: AvailabilitySlot } => {
+    // Find all slots for the same day
+    const sameDaySlots = availability.filter(slot => slot.day_of_week === dayOfWeek);
+
+    // Convert times to minutes for easier comparison
+    const toMinutes = (timeStr: string) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    const newStart = toMinutes(startTime);
+    const newEnd = toMinutes(endTime);
+
+    // Check if end time is before start time (invalid)
+    if (newEnd <= newStart) {
+      return { hasOverlap: true };
+    }
+
+    // Check for overlap with existing slots
+    for (const slot of sameDaySlots) {
+      const existingStart = toMinutes(slot.start_time);
+      const existingEnd = toMinutes(slot.end_time);
+
+      // Check if there's any overlap
+      // Overlap occurs if: new start is before existing end AND new end is after existing start
+      if (newStart < existingEnd && newEnd > existingStart) {
+        return { hasOverlap: true, conflictingSlot: slot };
+      }
+    }
+
+    return { hasOverlap: false };
+  };
+
   const handleAdd = async (values: any) => {
     if (!therapistProfileId) {
       message.error('Profile not found. Please complete your profile first.');
@@ -98,11 +135,31 @@ export const Availability: React.FC = () => {
     }
 
     try {
+      const startTime = values.start_time.format('HH:mm:ss');
+      const endTime = values.end_time.format('HH:mm:ss');
+      const dayOfWeek = values.day_of_week;
+
+      // Check for overlapping time slots
+      const { hasOverlap, conflictingSlot } = checkTimeOverlap(dayOfWeek, startTime, endTime);
+
+      if (hasOverlap) {
+        if (conflictingSlot) {
+          const conflictStart = dayjs(conflictingSlot.start_time, 'HH:mm:ss').format('h:mm A');
+          const conflictEnd = dayjs(conflictingSlot.end_time, 'HH:mm:ss').format('h:mm A');
+          message.error(
+            `This time slot overlaps with an existing availability on ${dayNames[dayOfWeek]} from ${conflictStart} to ${conflictEnd}. Please choose a different time.`
+          );
+        } else {
+          message.error('End time must be after start time.');
+        }
+        return;
+      }
+
       const availabilityData = {
         therapist_id: therapistProfileId,
-        day_of_week: values.day_of_week,
-        start_time: values.start_time.format('HH:mm:ss'),
-        end_time: values.end_time.format('HH:mm:ss')
+        day_of_week: dayOfWeek,
+        start_time: startTime,
+        end_time: endTime
       };
 
       const { data, error } = await supabaseClient
