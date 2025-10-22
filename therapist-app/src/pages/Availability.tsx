@@ -255,6 +255,7 @@ export const Availability: React.FC = () => {
                 <TimePicker
                   format="h:mm A"
                   use12Hours
+                  minuteStep={15}
                   size="large"
                   style={{ width: '100%' }}
                 />
@@ -269,6 +270,7 @@ export const Availability: React.FC = () => {
                 <TimePicker
                   format="h:mm A"
                   use12Hours
+                  minuteStep={15}
                   size="large"
                   style={{ width: '100%' }}
                 />
