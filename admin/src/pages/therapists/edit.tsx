@@ -17,7 +17,8 @@ import {
   Spin,
   Divider,
   TimePicker,
-  Checkbox
+  Checkbox,
+  DatePicker,
 } from 'antd';
 import {
   SaveOutlined,
@@ -26,7 +27,9 @@ import {
   UploadOutlined,
   PlusOutlined,
   DeleteOutlined,
-  EnvironmentOutlined
+  EnvironmentOutlined,
+  BankOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router';
 import { useGetIdentity } from '@refinedev/core';
@@ -73,6 +76,16 @@ interface TherapistFormData {
   years_experience?: number;
   business_abn: string;
   address_verified: boolean;
+  insurance_expiry_date?: string;
+  insurance_certificate_url?: string;
+  first_aid_expiry_date?: string;
+  first_aid_certificate_url?: string;
+  qualification_certificate_url?: string;
+  bank_account_name?: string;
+  bsb?: string;
+  bank_account_number?: string;
+  hourly_rate?: number;
+  afterhours_rate?: number;
 }
 
 const TherapistEdit: React.FC = () => {
@@ -88,8 +101,12 @@ const TherapistEdit: React.FC = () => {
   const [availability, setAvailability] = useState<Availability[]>([]);
   const [profileImage, setProfileImage] = useState<string>('');
   const [serviceAreaPolygon, setServiceAreaPolygon] = useState<Coordinate[] | null>(null);
+  const [insuranceCertFile, setInsuranceCertFile] = useState<any[]>([]);
+  const [firstAidCertFile, setFirstAidCertFile] = useState<any[]>([]);
+  const [qualificationCertFile, setQualificationCertFile] = useState<any[]>([]);
 
   const canEditTherapists = identity?.role === 'admin' || identity?.role === 'super_admin';
+  const isSuperAdmin = identity?.role === 'super_admin';
 
   // Geocoding hook for address verification
   const {
@@ -158,7 +175,42 @@ const TherapistEdit: React.FC = () => {
         setServiceAreaPolygon(therapistData.service_area_polygon);
       }
 
-      form.setFieldsValue(therapistData);
+      // Convert date fields to dayjs objects for the form
+      const formData = {
+        ...therapistData,
+        insurance_expiry_date: therapistData.insurance_expiry_date ? dayjs(therapistData.insurance_expiry_date) : undefined,
+        first_aid_expiry_date: therapistData.first_aid_expiry_date ? dayjs(therapistData.first_aid_expiry_date) : undefined,
+      };
+
+      form.setFieldsValue(formData);
+
+      // Load certificate files
+      if (therapistData.insurance_certificate_url) {
+        setInsuranceCertFile([{
+          uid: '1',
+          name: 'insurance_certificate.pdf',
+          status: 'done',
+          url: therapistData.insurance_certificate_url
+        }]);
+      }
+
+      if (therapistData.first_aid_certificate_url) {
+        setFirstAidCertFile([{
+          uid: '1',
+          name: 'first_aid_certificate.pdf',
+          status: 'done',
+          url: therapistData.first_aid_certificate_url
+        }]);
+      }
+
+      if (therapistData.qualification_certificate_url) {
+        setQualificationCertFile([{
+          uid: '1',
+          name: 'qualification_certificate.pdf',
+          status: 'done',
+          url: therapistData.qualification_certificate_url
+        }]);
+      }
 
       // Load therapist services
       const { data: servicesData, error: servicesError } = await supabaseClient
@@ -214,6 +266,18 @@ const TherapistEdit: React.FC = () => {
     return false; // Prevent auto upload
   };
 
+  const handleCertificateUpload = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target?.result as string;
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
   const addAvailabilitySlot = () => {
     setAvailability([...availability, {
       day_of_week: 1,
@@ -241,12 +305,35 @@ const TherapistEdit: React.FC = () => {
     try {
       setSaving(true);
 
+      // Handle certificate file uploads
+      let insuranceCertUrl = therapist?.insurance_certificate_url;
+      let firstAidCertUrl = therapist?.first_aid_certificate_url;
+      let qualificationCertUrl = therapist?.qualification_certificate_url;
+
+      if (insuranceCertFile.length > 0 && insuranceCertFile[0].originFileObj) {
+        insuranceCertUrl = await handleCertificateUpload(insuranceCertFile[0].originFileObj);
+      }
+
+      if (firstAidCertFile.length > 0 && firstAidCertFile[0].originFileObj) {
+        firstAidCertUrl = await handleCertificateUpload(firstAidCertFile[0].originFileObj);
+      }
+
+      if (qualificationCertFile.length > 0 && qualificationCertFile[0].originFileObj) {
+        qualificationCertUrl = await handleCertificateUpload(qualificationCertFile[0].originFileObj);
+      }
+
       // Update therapist profile with coordinates and polygon
       const { error: updateError } = await supabaseClient
         .from('therapist_profiles')
         .update({
           ...values,
           profile_pic: profileImage,
+          insurance_certificate_url: insuranceCertUrl,
+          first_aid_certificate_url: firstAidCertUrl,
+          qualification_certificate_url: qualificationCertUrl,
+          // Convert dayjs objects back to strings for database
+          insurance_expiry_date: values.insurance_expiry_date ? dayjs(values.insurance_expiry_date).format('YYYY-MM-DD') : null,
+          first_aid_expiry_date: values.first_aid_expiry_date ? dayjs(values.first_aid_expiry_date).format('YYYY-MM-DD') : null,
           latitude: coordinateFields.latitude,
           longitude: coordinateFields.longitude,
           address_verified: coordinateFields.address_verified,
@@ -473,13 +560,132 @@ const TherapistEdit: React.FC = () => {
                   name="bio"
                   label="Biography"
                 >
-                  <TextArea 
-                    rows={4} 
+                  <TextArea
+                    rows={4}
                     placeholder="Enter therapist biography..."
                     maxLength={500}
                     showCount
                   />
                 </Form.Item>
+
+                <Divider orientation="left">Certificates</Divider>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="Insurance Expiry Date" name="insurance_expiry_date">
+                      <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Insurance Certificate">
+                      <Upload
+                        listType="text"
+                        fileList={insuranceCertFile}
+                        beforeUpload={() => false}
+                        onChange={({ fileList }) => setInsuranceCertFile(fileList)}
+                        maxCount={1}
+                        accept=".pdf,.jpg,.jpeg,.png"
+                      >
+                        <Button icon={<UploadOutlined />}>Upload Certificate</Button>
+                      </Upload>
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="First Aid Expiry Date" name="first_aid_expiry_date">
+                      <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="First Aid Certificate">
+                      <Upload
+                        listType="text"
+                        fileList={firstAidCertFile}
+                        beforeUpload={() => false}
+                        onChange={({ fileList }) => setFirstAidCertFile(fileList)}
+                        maxCount={1}
+                        accept=".pdf,.jpg,.jpeg,.png"
+                      >
+                        <Button icon={<UploadOutlined />}>Upload Certificate</Button>
+                      </Upload>
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Form.Item label="Therapist Qualification Certificate">
+                  <Upload
+                    listType="text"
+                    fileList={qualificationCertFile}
+                    beforeUpload={() => false}
+                    onChange={({ fileList }) => setQualificationCertFile(fileList)}
+                    maxCount={1}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                  >
+                    <Button icon={<UploadOutlined />}>Upload Certificate</Button>
+                  </Upload>
+                </Form.Item>
+
+                <Divider orientation="left">Banking Details</Divider>
+
+                <Form.Item label="Bank Account Name" name="bank_account_name">
+                  <Input prefix={<BankOutlined />} placeholder="Account holder name" />
+                </Form.Item>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item
+                      label="BSB"
+                      name="bsb"
+                      rules={[{ pattern: /^\d{3}-?\d{3}$/, message: 'BSB must be in format XXX-XXX or XXXXXX' }]}
+                    >
+                      <Input placeholder="XXX-XXX" />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="Bank Account Number" name="bank_account_number">
+                      <Input placeholder="Account number" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                <Divider orientation="left">Hourly Rates</Divider>
+
+                <Row gutter={16}>
+                  <Col span={12}>
+                    <Form.Item label="Hourly Rate" name="hourly_rate">
+                      <InputNumber
+                        prefix="$"
+                        style={{ width: '100%' }}
+                        min={0}
+                        step={0.01}
+                        disabled={!isSuperAdmin}
+                        placeholder={isSuperAdmin ? "Enter hourly rate" : "Only editable by superadmin"}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label="After Hours Rate" name="afterhours_rate">
+                      <InputNumber
+                        prefix="$"
+                        style={{ width: '100%' }}
+                        min={0}
+                        step={0.01}
+                        disabled={!isSuperAdmin}
+                        placeholder={isSuperAdmin ? "Enter after hours rate" : "Only editable by superadmin"}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+
+                {!isSuperAdmin && (
+                  <div style={{ padding: 12, backgroundColor: '#fff7e6', border: '1px solid #ffd591', borderRadius: 4, marginBottom: 16 }}>
+                    <Typography.Text type="warning">
+                      ⚠️ Only superadmin users can modify hourly rates
+                    </Typography.Text>
+                  </div>
+                )}
               </Card>
 
               {/* Status & Verification */}

@@ -34,7 +34,6 @@ import { BookingShow } from "./pages/bookings/show";
 import { BookingEdit } from "./pages/bookings/edit";
 import { BookingEditNew } from "./pages/bookings/edit-new";
 import { BookingEditPlatform } from "./pages/bookings/edit-platform";
-import TherapistProfileManagement from "./pages/therapists/profile";
 
 // Import the service management components
 import ServiceList from "./pages/services/list";
@@ -169,15 +168,6 @@ function App() {
                       canDelete: true,
                       label: "Therapists",
                       icon: "👨‍⚕️",
-                    },
-                  },
-                  // Therapist-only profile management resource
-                  {
-                    name: "my-profile",
-                    list: "/my-profile",
-                    meta: {
-                      label: "My Profile",
-                      icon: "👤",
                     },
                   },
                   {
@@ -315,11 +305,7 @@ function App() {
                       <Route path="edit/:id" element={<TherapistEdit />} />
                       <Route path="show/:id" element={<TherapistShow />} />
                     </Route>
-                    
-                    {/* Therapist Profile Management (Therapist-only) */}
-                    <Route path="/my-profile" element={<TherapistProfileManagement />} />
-                    
-                    
+
                     {/* Customer Management */}
                     <Route path="/customers">
                       <Route index element={<CustomerList />} />
