@@ -109,18 +109,6 @@ export const Calendar: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string): string => {
-    const colors: { [key: string]: string } = {
-      requested: '#faad14',
-      pending: '#faad14',
-      confirmed: '#1890ff',
-      completed: '#52c41a',
-      cancelled: '#f5222d',
-      declined: '#f5222d',
-    };
-    return colors[status] || '#d9d9d9';
-  };
-
   // Convert bookings to FullCalendar events
   const events = bookings.map(booking => ({
     id: booking.id,
