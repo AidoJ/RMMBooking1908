@@ -9,8 +9,10 @@ const { TextArea } = Input;
 
 interface IntakeFormData {
   booking_id: string;
-  medications: string;
-  allergies: string;
+  has_medications: boolean;
+  medications: string | null;
+  has_allergies: boolean;
+  allergies: string | null;
   is_pregnant: boolean;
   pregnancy_months: number | null;
   pregnancy_due_date: string | null;
@@ -21,8 +23,10 @@ interface IntakeFormData {
   broken_skin_location: string | null;
   has_joint_replacement: boolean;
   joint_replacement_details: string | null;
-  recent_injuries: string;
-  other_conditions: string;
+  has_recent_injuries: boolean;
+  recent_injuries: string | null;
+  has_other_conditions: boolean;
+  other_conditions: string | null;
   signature_data: string | null;
   completed_at: string;
 }
@@ -69,10 +73,14 @@ export function ClientIntakeForm() {
   const [hasSignature, setHasSignature] = useState(false);
 
   // Form state for conditional fields
+  const [hasMedications, setHasMedications] = useState(false);
+  const [hasAllergies, setHasAllergies] = useState(false);
   const [isPregnant, setIsPregnant] = useState(false);
   const [hasMedicalSupervision, setHasMedicalSupervision] = useState(false);
   const [hasBrokenSkin, setHasBrokenSkin] = useState(false);
   const [hasJointReplacement, setHasJointReplacement] = useState(false);
+  const [hasRecentInjuries, setHasRecentInjuries] = useState(false);
+  const [hasOtherConditions, setHasOtherConditions] = useState(false);
 
   useEffect(() => {
     if (!bookingId) {
@@ -154,7 +162,9 @@ export function ClientIntakeForm() {
 
   function loadExistingFormData(formData: any) {
     form.setFieldsValue({
+      has_medications: formData.has_medications,
       medications: formData.medications,
+      has_allergies: formData.has_allergies,
       allergies: formData.allergies,
       is_pregnant: formData.is_pregnant,
       pregnancy_months: formData.pregnancy_months,
@@ -166,14 +176,20 @@ export function ClientIntakeForm() {
       broken_skin_location: formData.broken_skin_location,
       has_joint_replacement: formData.has_joint_replacement,
       joint_replacement_details: formData.joint_replacement_details,
+      has_recent_injuries: formData.has_recent_injuries,
       recent_injuries: formData.recent_injuries,
+      has_other_conditions: formData.has_other_conditions,
       other_conditions: formData.other_conditions,
     });
 
+    setHasMedications(formData.has_medications);
+    setHasAllergies(formData.has_allergies);
     setIsPregnant(formData.is_pregnant);
     setHasMedicalSupervision(formData.has_medical_supervision);
     setHasBrokenSkin(formData.has_broken_skin);
     setHasJointReplacement(formData.has_joint_replacement);
+    setHasRecentInjuries(formData.has_recent_injuries);
+    setHasOtherConditions(formData.has_other_conditions);
   }
 
   // Signature canvas handlers
@@ -245,8 +261,10 @@ export function ClientIntakeForm() {
     try {
       const formData: IntakeFormData = {
         booking_id: bookingId!,
-        medications: values.medications,
-        allergies: values.allergies,
+        has_medications: values.has_medications || false,
+        medications: values.has_medications ? values.medications : null,
+        has_allergies: values.has_allergies || false,
+        allergies: values.has_allergies ? values.allergies : null,
         is_pregnant: values.is_pregnant || false,
         pregnancy_months: values.is_pregnant ? values.pregnancy_months : null,
         pregnancy_due_date: values.is_pregnant && values.pregnancy_due_date ? values.pregnancy_due_date.format('YYYY-MM-DD') : null,
@@ -257,8 +275,10 @@ export function ClientIntakeForm() {
         broken_skin_location: values.has_broken_skin ? values.broken_skin_location : null,
         has_joint_replacement: values.has_joint_replacement || false,
         joint_replacement_details: values.has_joint_replacement ? values.joint_replacement_details : null,
-        recent_injuries: values.recent_injuries,
-        other_conditions: values.other_conditions,
+        has_recent_injuries: values.has_recent_injuries || false,
+        recent_injuries: values.has_recent_injuries ? values.recent_injuries : null,
+        has_other_conditions: values.has_other_conditions || false,
+        other_conditions: values.has_other_conditions ? values.other_conditions : null,
         signature_data: getSignatureData(),
         completed_at: new Date().toISOString(),
       };
@@ -334,20 +354,46 @@ export function ClientIntakeForm() {
           <Title level={4} style={{ marginTop: 24 }}>Medications & Allergies</Title>
 
           <Form.Item
-            name="medications"
-            label="Are you currently taking any medications? If yes, please list them"
+            name="has_medications"
+            label="Are you currently taking any medications?"
             rules={[{ required: true, message: 'Please answer this question' }]}
           >
-            <TextArea rows={2} placeholder="List all medications or type 'None'" />
+            <Radio.Group onChange={(e) => setHasMedications(e.target.value)}>
+              <Radio value={true}>Yes</Radio>
+              <Radio value={false}>No</Radio>
+            </Radio.Group>
           </Form.Item>
 
+          {hasMedications && (
+            <Form.Item
+              name="medications"
+              label="Please list all medications"
+              rules={[{ required: true, message: 'Please list your medications' }]}
+            >
+              <TextArea rows={2} placeholder="List all medications" />
+            </Form.Item>
+          )}
+
           <Form.Item
-            name="allergies"
+            name="has_allergies"
             label="Do you have any allergies (medications, oils, lotions, etc.)?"
             rules={[{ required: true, message: 'Please answer this question' }]}
           >
-            <TextArea rows={2} placeholder="List all allergies or type 'None'" />
+            <Radio.Group onChange={(e) => setHasAllergies(e.target.value)}>
+              <Radio value={true}>Yes</Radio>
+              <Radio value={false}>No</Radio>
+            </Radio.Group>
           </Form.Item>
+
+          {hasAllergies && (
+            <Form.Item
+              name="allergies"
+              label="Please list all allergies"
+              rules={[{ required: true, message: 'Please list your allergies' }]}
+            >
+              <TextArea rows={2} placeholder="List all allergies" />
+            </Form.Item>
+          )}
 
           <Title level={4} style={{ marginTop: 32 }}>Health Status</Title>
 
@@ -463,20 +509,46 @@ export function ClientIntakeForm() {
           )}
 
           <Form.Item
-            name="recent_injuries"
-            label="Any recent injuries or accidents?"
+            name="has_recent_injuries"
+            label="Have you had any recent injuries or accidents?"
             rules={[{ required: true, message: 'Please answer this question' }]}
           >
-            <TextArea rows={2} placeholder="Describe any injuries or type 'None'" />
+            <Radio.Group onChange={(e) => setHasRecentInjuries(e.target.value)}>
+              <Radio value={true}>Yes</Radio>
+              <Radio value={false}>No</Radio>
+            </Radio.Group>
           </Form.Item>
 
+          {hasRecentInjuries && (
+            <Form.Item
+              name="recent_injuries"
+              label="Please describe"
+              rules={[{ required: true, message: 'Please describe your injuries' }]}
+            >
+              <TextArea rows={2} placeholder="Describe any injuries or accidents" />
+            </Form.Item>
+          )}
+
           <Form.Item
-            name="other_conditions"
+            name="has_other_conditions"
             label="Any other conditions or information your therapist should know?"
             rules={[{ required: true, message: 'Please answer this question' }]}
           >
-            <TextArea rows={2} placeholder="Any other relevant information or type 'None'" />
+            <Radio.Group onChange={(e) => setHasOtherConditions(e.target.value)}>
+              <Radio value={true}>Yes</Radio>
+              <Radio value={false}>No</Radio>
+            </Radio.Group>
           </Form.Item>
+
+          {hasOtherConditions && (
+            <Form.Item
+              name="other_conditions"
+              label="Please describe"
+              rules={[{ required: true, message: 'Please provide details' }]}
+            >
+              <TextArea rows={2} placeholder="Any other relevant information" />
+            </Form.Item>
+          )}
 
           <Title level={4} style={{ marginTop: 32 }}>Signature</Title>
           <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
