@@ -578,13 +578,13 @@ export const BookingDetail: React.FC = () => {
                   <Text>{booking.duration_minutes || 60} minutes</Text>
                 </Space>
               </Descriptions.Item>
-              <Descriptions.Item label="Status">
+              <Descriptions.Item label="Booking Status">
                 <Tag color={getStatusColor(booking.status)}>
                   {booking.status.toUpperCase()}
                 </Tag>
               </Descriptions.Item>
               {booking.client_update_status && (
-                <Descriptions.Item label="Client Update">
+                <Descriptions.Item label="Last Client Update">
                   <Tag color="blue">
                     {booking.client_update_status.replace('_', ' ').toUpperCase()}
                   </Tag>

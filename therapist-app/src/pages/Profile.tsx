@@ -241,7 +241,7 @@ export const Profile: React.FC = () => {
         savedProfile = data;
       }
 
-      message.success(`Profile ${profile?.id ? 'updated' : 'created'} successfully!`);
+      message.success('Your profile has been updated');
       setProfile(savedProfile);
 
       // Update localStorage with new profile data

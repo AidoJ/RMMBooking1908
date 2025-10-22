@@ -99,14 +99,14 @@ export const Bookings: React.FC = () => {
   const columns = [
     {
       title: 'Booking ID',
-      dataIndex: 'id',
-      key: 'id',
-      render: (id: string) => (
+      dataIndex: 'booking_id',
+      key: 'booking_id',
+      render: (bookingId: string) => (
         <Text strong style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-          {id.substring(0, 8)}
+          {bookingId || 'N/A'}
         </Text>
       ),
-      width: 100,
+      width: 120,
     },
     {
       title: 'Date & Time',
