@@ -127,8 +127,9 @@ export const Calendar: React.FC = () => {
     title: `${booking.customer_name} - ${booking.service_name}`,
     start: booking.booking_time,
     end: dayjs(booking.booking_time).add(booking.duration_minutes || 60, 'minutes').toISOString(),
-    backgroundColor: getStatusColor(booking.status),
-    borderColor: getStatusColor(booking.status),
+    backgroundColor: 'transparent',
+    borderColor: '#d9d9d9',
+    classNames: ['calendar-event-text-only'],
     extendedProps: {
       status: booking.status,
       customer_name: booking.customer_name,
