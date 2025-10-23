@@ -508,7 +508,7 @@ export const EmailService = {
                        new Date(bookingData.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 
       // Calculate pricing breakdown
-      const subtotal = ((bookingData.price || 0) + (bookingData.discount_amount || 0));
+      const subtotal = ((totalAmount) + (bookingData.discount_amount || 0));
       const discountAmount = bookingData.discount_amount || 0;
       const gstAmount = bookingData.tax_rate_amount || 0;
       const totalAmount = bookingData.price || 0;
