@@ -587,7 +587,7 @@ export const EmailService = {
       expiryDate.setDate(expiryDate.getDate() + 30);
 
       // Format financial information
-      const subtotal = (quoteData.total_amount || 0) + (quoteData.discount_amount || 0);
+      const subtotal = (quoteData.final_amount || 0) + (quoteData.discount_amount || 0);
       const totalAmount = quoteData.final_amount || quoteData.total_amount || 0;
 
       // Group assignments by date for display
