@@ -195,6 +195,10 @@ async function sendCustomerStatusEmail(booking, therapistName, customerName, ser
 
     const templateId = status === 'on_my_way' ? EMAILJS_ON_MY_WAY_TEMPLATE : EMAILJS_ARRIVED_TEMPLATE;
 
+    // Generate intake form URL
+    const baseUrl = process.env.URL || 'https://rejuvenators.com.au';
+    const intakeFormUrl = `${baseUrl}/therapist-app/#/intake-form/${booking.id}`;
+
     const templateParams = {
       to_email: booking.customer_email,
       to_name: customerName,
@@ -206,7 +210,8 @@ async function sendCustomerStatusEmail(booking, therapistName, customerName, ser
       booking_time: timeFormatted,
       duration: `${booking.duration_minutes} minutes`,
       address: booking.address,
-      room_number: booking.room_number || 'N/A'
+      room_number: booking.room_number || 'N/A',
+      intake_form_url: intakeFormUrl
     };
 
     const emailData = {
