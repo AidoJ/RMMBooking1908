@@ -12,6 +12,8 @@
         .booking-details { background-color: #f0f9ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1890ff; }
         .therapist-info { background-color: #e6f7ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1890ff; text-align: center; }
         .alert-box { background-color: #fff7e6; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #faad14; }
+        .intake-box { background-color: #e8f4f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #007e8c; text-align: center; }
+        .intake-btn { display: inline-block; background-color: #007e8c; color: #ffffff; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 10px 0; }
         .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
         .highlight { color: #1890ff; font-weight: bold; }
         .icon { font-size: 48px; margin: 10px 0; }
@@ -66,12 +68,12 @@
                 </ul>
             </div>
 
-            <div style="background-color: #e8f4f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #007e8c; text-align: center;">
+            <div class="intake-box">
                 <h3 style="color: #007e8c; margin-top: 0;">🏥 Complete Your Health Intake Form</h3>
                 <p style="font-size: 15px; line-height: 1.6; margin-bottom: 15px; color: #333;">
                     If you haven't already, please take a moment to complete your health intake form. This helps your therapist provide you with the best possible care.
                 </p>
-                <a href="{{intake_form_url}}" style="display: inline-block; background-color: #007e8c; color: #ffffff !important; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 10px 0;">Complete Health Intake Form</a>
+                <a href="{{intake_form_url}}" class="intake-btn">Complete Health Intake Form</a>
                 <p style="font-size: 13px; color: #666; margin-top: 15px;">
                     This only takes 2-3 minutes and ensures your therapist is aware of any health conditions or allergies.
                 </p>
