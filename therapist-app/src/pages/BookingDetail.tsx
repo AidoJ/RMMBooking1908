@@ -515,20 +515,22 @@ export const BookingDetail: React.FC = () => {
               icon={<CarOutlined />}
               onClick={handleOnMyWay}
               loading={updating}
+              disabled={booking.client_update_status === 'on_my_way' || booking.client_update_status === 'arrived'}
               size="large"
               style={{ background: '#1890ff', borderColor: '#1890ff' }}
             >
-              On My Way
+              {booking.client_update_status === 'on_my_way' || booking.client_update_status === 'arrived' ? '✓ On My Way Sent' : 'On My Way'}
             </Button>
             <Button
               type="primary"
               icon={<EnvironmentOutlined />}
               onClick={handleArrived}
               loading={updating}
+              disabled={booking.client_update_status === 'arrived'}
               size="large"
               style={{ background: '#faad14', borderColor: '#faad14' }}
             >
-              I've Arrived
+              {booking.client_update_status === 'arrived' ? '✓ Arrived Sent' : 'I\'ve Arrived'}
             </Button>
             <Button
               type="primary"
