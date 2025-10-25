@@ -23,7 +23,8 @@ import {
   PercentageOutlined,
   TeamOutlined,
   ReloadOutlined,
-  EyeOutlined
+  EyeOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import { useGetIdentity, useNavigation } from '@refinedev/core';
 import { supabaseClient } from '../../utility';
@@ -54,6 +55,11 @@ interface BookingStats {
   conversionRate: number;
   pendingBookingsColor?: string;
   pendingBookingsWeeks?: number;
+  draftQuotes: number;
+  draftQuotesColor?: string;
+  sentQuotes: number;
+  sentQuotesColor?: string;
+  sentQuotesWeeks?: number;
 }
 
 interface RecentBooking {
@@ -200,6 +206,19 @@ export const Dashboard = () => {
     return { color: '#52c41a', weeks: weeksUntil }; // Green
   };
 
+  const getDraftQuoteColor = (createdDate: string): string => {
+    const daysOld = dayjs().diff(dayjs(createdDate), 'day');
+    if (daysOld > 1) return '#ff4d4f'; // Red - older than 1 day
+    return '#52c41a'; // Green - within 1 day
+  };
+
+  const getSentQuoteColor = (eventDate: string): { color: string; weeks: number } => {
+    const weeksUntil = dayjs(eventDate).diff(dayjs(), 'week');
+    if (weeksUntil < 4) return { color: '#ff4d4f', weeks: weeksUntil }; // Red - urgent
+    if (weeksUntil <= 8) return { color: '#faad14', weeks: weeksUntil }; // Amber
+    return { color: '#52c41a', weeks: weeksUntil }; // Green - plenty of time
+  };
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -294,6 +313,61 @@ export const Dashboard = () => {
         pendingBookingsWeeks = colorData.weeks;
       }
 
+      // Fetch draft quotes (admin only)
+      let draftQuotes = 0;
+      let draftQuotesColor = '#52c41a';
+      if (canAccess(userRole, 'canViewAllTherapists')) {
+        const { data: drafts } = await supabaseClient
+          .from('quotes')
+          .select('id, created_date')
+          .eq('status', 'draft');
+
+        draftQuotes = drafts?.length || 0;
+
+        if (drafts && drafts.length > 0) {
+          // Find oldest draft
+          const oldestDraft = drafts.reduce((oldest, quote) => {
+            return dayjs(quote.created_date).isBefore(dayjs(oldest.created_date)) ? quote : oldest;
+          });
+          draftQuotesColor = getDraftQuoteColor(oldestDraft.created_date);
+        }
+      }
+
+      // Fetch sent quotes with event dates (admin only)
+      let sentQuotes = 0;
+      let sentQuotesColor = '#52c41a';
+      let sentQuotesWeeks = 0;
+      if (canAccess(userRole, 'canViewAllTherapists')) {
+        const { data: sentQuotesData } = await supabaseClient
+          .from('quotes')
+          .select(`
+            id,
+            quote_dates!inner(quote_id, event_date)
+          `)
+          .eq('status', 'sent');
+
+        if (sentQuotesData && sentQuotesData.length > 0) {
+          // Get unique quote IDs
+          const uniqueQuoteIds = [...new Set(sentQuotesData.map(q => q.id))];
+          sentQuotes = uniqueQuoteIds.length;
+
+          // Find earliest event date across all sent quotes
+          const allEventDates = sentQuotesData
+            .flatMap(q => q.quote_dates)
+            .filter(qd => qd && qd.event_date)
+            .map(qd => qd.event_date);
+
+          if (allEventDates.length > 0) {
+            const earliestEventDate = allEventDates.reduce((earliest, date) => {
+              return dayjs(date).isBefore(dayjs(earliest)) ? date : earliest;
+            });
+            const colorData = getSentQuoteColor(earliestEventDate);
+            sentQuotesColor = colorData.color;
+            sentQuotesWeeks = colorData.weeks;
+          }
+        }
+      }
+
       const dashboardStats: BookingStats = {
         totalBookings: bookings?.length || 0,
         totalRevenue,
@@ -311,7 +385,12 @@ export const Dashboard = () => {
         averageFeeValue,
         conversionRate,
         pendingBookingsColor,
-        pendingBookingsWeeks
+        pendingBookingsWeeks,
+        draftQuotes,
+        draftQuotesColor,
+        sentQuotes,
+        sentQuotesColor,
+        sentQuotesWeeks
       };
 
       // Prepare recent bookings (sorted by most recent) - increased from 10 to 50
@@ -723,6 +802,31 @@ export const Dashboard = () => {
                   precision={1}
                   suffix="%"
                   valueStyle={{ color: '#722ed1' }}
+                />
+              </Card>
+            </Col>
+          </Row>
+
+          {/* Quote Statistics */}
+          <Row gutter={16} style={{ marginBottom: 24 }}>
+            <Col span={12}>
+              <Card>
+                <Statistic
+                  title="Draft Quotes"
+                  value={stats?.draftQuotes || 0}
+                  prefix={<FileTextOutlined />}
+                  valueStyle={{ color: stats?.draftQuotesColor || '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col span={12}>
+              <Card>
+                <Statistic
+                  title="Sent Quotes"
+                  value={stats?.sentQuotes || 0}
+                  prefix={<FileTextOutlined />}
+                  valueStyle={{ color: stats?.sentQuotesColor || '#52c41a' }}
+                  suffix={stats?.sentQuotes ? `(${stats?.sentQuotesWeeks}w)` : ''}
                 />
               </Card>
             </Col>
