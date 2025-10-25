@@ -6,11 +6,12 @@ import { RefineKbar, RefineKbarProvider } from "@refinedev/kbar";
 import {
   AuthPage,
   ErrorComponent,
-  ThemedLayoutV2,
-  ThemedSiderV2,
   useNotificationProvider,
 } from "@refinedev/antd";
 import "@refinedev/antd/dist/reset.css";
+
+// Import the new mobile-first Admin Layout
+import { AdminLayout } from "./components/AdminLayout";
 
 import routerBindings, {
   CatchAllNavigate,
@@ -23,7 +24,6 @@ import dataProvider from "./dataProvider";
 import { App as AntdApp } from "antd";
 import { BrowserRouter, Outlet, Route, Routes, useParams } from "react-router";
 import authProvider from "./authProvider";
-import { Header } from "./components/header";
 import { ColorModeContextProvider } from "./contexts/color-mode";
 import { realSupabaseClient } from "./utility/supabaseClient";
 
@@ -260,12 +260,9 @@ function App() {
                         key="authenticated-inner"
                         fallback={<CatchAllNavigate to="/login" />}
                       >
-                        <ThemedLayoutV2
-                          Header={Header}
-                          Sider={(props) => <ThemedSiderV2 {...props} fixed />}
-                        >
+                        <AdminLayout>
                           <Outlet />
-                        </ThemedLayoutV2>
+                        </AdminLayout>
                       </Authenticated>
                     }
                   >
