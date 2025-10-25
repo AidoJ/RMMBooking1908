@@ -240,7 +240,7 @@ export const Dashboard = () => {
       // Calculate statistics for the selected date range
       const completedBookings = bookings?.filter(b => b.status === 'completed') || [];
       const confirmedBookings = bookings?.filter(b => b.status === 'confirmed') || [];
-      const pendingBookings = bookings?.filter(b => b.status === 'requested') || [];
+      const pendingBookings = bookings?.filter(b => b.status === 'pending') || [];
       const cancelledBookings = bookings?.filter(b => b.status === 'cancelled') || [];
 
       // Calculate revenue (only from completed bookings)
