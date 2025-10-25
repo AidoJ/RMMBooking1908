@@ -56,6 +56,9 @@ import CustomerCreate from "./pages/customers/create";
 // Import the system settings component
 import SystemSettings from "./pages/system-settings";
 
+// Import the services uplift rates component
+import ServicesUpliftRates from "./pages/services-uplift-rates";
+
 // Import the quotes management components
 import { QuotesList, QuoteShow, QuoteEdit, EnhancedQuoteEdit } from "./pages/quotes";
 
@@ -127,6 +130,66 @@ function App() {
                     },
                   },
                   {
+                    name: "calendar",
+                    list: "/calendar",
+                    meta: {
+                      label: "Calendar",
+                      icon: "📅",
+                    },
+                  },
+                  {
+                    name: "services",
+                    list: "/services",
+                    show: "/services/show/:id",
+                    edit: "/services/edit/:id",
+                    create: "/services/create",
+                    meta: {
+                      canDelete: true,
+                      label: "Services",
+                      icon: "💆‍♀️",
+                    },
+                  },
+                  {
+                    name: "services-uplift-rates",
+                    list: "/services-uplift-rates",
+                    meta: {
+                      label: "Services Uplift Rates",
+                      icon: "💲",
+                    },
+                  },
+                  {
+                    name: "therapist_profiles",
+                    list: "/therapists",
+                    show: "/therapists/show/:id",
+                    edit: "/therapists/edit/:id",
+                    create: "/therapists/create",
+                    meta: {
+                      canDelete: true,
+                      label: "Therapists",
+                      icon: "👨‍⚕️",
+                    },
+                  },
+                  {
+                    name: "therapist-payments",
+                    list: "/therapist-payments",
+                    meta: {
+                      label: "Therapist Payments",
+                      icon: "💵",
+                    },
+                  },
+                  {
+                    name: "customers",
+                    list: "/customers",
+                    create: "/customers/create",
+                    show: "/customers/show/:id",
+                    edit: "/customers/edit/:id",
+                    meta: {
+                      canDelete: true,
+                      label: "Customers",
+                      icon: "👥",
+                    },
+                  },
+                  {
                     name: "discount_codes",
                     list: "/discount-codes",
                     create: "/discount-codes/create",
@@ -148,58 +211,6 @@ function App() {
                       canDelete: true,
                       label: "Gift Cards",
                       icon: "🎁",
-                    },
-                  },
-                  {
-                    name: "calendar",
-                    list: "/calendar",
-                    meta: {
-                      label: "Calendar",
-                      icon: "📅",
-                    },
-                  },
-                  {
-                    name: "therapist_profiles",
-                    list: "/therapists",
-                    show: "/therapists/show/:id",
-                    edit: "/therapists/edit/:id",
-                    create: "/therapists/create",
-                    meta: {
-                      canDelete: true,
-                      label: "Therapists",
-                      icon: "👨‍⚕️",
-                    },
-                  },
-                  {
-                    name: "customers",
-                    list: "/customers",
-                    create: "/customers/create",
-                    show: "/customers/show/:id",
-                    edit: "/customers/edit/:id",
-                    meta: {
-                      canDelete: true,
-                      label: "Customers",
-                      icon: "👥",
-                    },
-                  },
-                  {
-                    name: "services",
-                    list: "/services",
-                    show: "/services/show/:id",
-                    edit: "/services/edit/:id",
-                    create: "/services/create",
-                    meta: {
-                      canDelete: true,
-                      label: "Services",
-                      icon: "💆‍♀️",
-                    },
-                  },
-                  {
-                    name: "therapist-payments",
-                    list: "/therapist-payments",
-                    meta: {
-                      label: "Therapist Payments",
-                      icon: "💵",
                     },
                   },
                   {
@@ -321,6 +332,9 @@ function App() {
                       <Route path="edit/:id" element={<ServiceEdit />} />
                       <Route path="show/:id" element={<ServiceShow />} />
                     </Route>
+
+                    {/* Services Uplift Rates */}
+                    <Route path="/services-uplift-rates" element={<ServicesUpliftRates />} />
 
                     {/* Therapist Payments */}
                     <Route path="/therapist-payments" element={<TherapistPayments />} />
