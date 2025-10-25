@@ -319,7 +319,7 @@ export const Dashboard = () => {
       if (canAccess(userRole, 'canViewAllTherapists')) {
         const { data: drafts } = await supabaseClient
           .from('quotes')
-          .select('id, created_date')
+          .select('id, created_at')
           .eq('status', 'draft');
 
         draftQuotes = drafts?.length || 0;
@@ -327,9 +327,9 @@ export const Dashboard = () => {
         if (drafts && drafts.length > 0) {
           // Find oldest draft
           const oldestDraft = drafts.reduce((oldest, quote) => {
-            return dayjs(quote.created_date).isBefore(dayjs(oldest.created_date)) ? quote : oldest;
+            return dayjs(quote.created_at).isBefore(dayjs(oldest.created_at)) ? quote : oldest;
           });
-          draftQuotesColor = getDraftQuoteColor(oldestDraft.created_date);
+          draftQuotesColor = getDraftQuoteColor(oldestDraft.created_at);
         }
       }
 
