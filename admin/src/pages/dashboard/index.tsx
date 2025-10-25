@@ -551,67 +551,160 @@ export const Dashboard = () => {
   }
 
   return (
-    <div style={{ padding: 24 }}>
+    <div>
       {/* Header */}
       <div style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <Title level={2}>
-              {isTherapist(userRole) 
-                ? `Welcome back, ${identity?.first_name || identity?.name || 'Therapist'}!`
-                : `Rejuvenators Dashboard - ${getRoleName(userRole)}`
-              }
-            </Title>
-            <Text type="secondary">
-              {isTherapist(userRole) 
-                ? "Here's an overview of your bookings and performance"
-                : "Overview of your massage booking business"
-              }
-            </Text>
-            <div style={{ marginTop: 8 }}>
-              <Text strong>Period: </Text>
-              <Text>{getDateRangeLabel()}</Text>
-            </div>
-          </div>
-          <Card size="small" style={{ minWidth: 400 }}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <div>
-                <Text strong>Quick Select:</Text>
-                <Select 
-                  value={selectedPreset}
-                  onChange={handlePresetChange}
-                  style={{ width: '100%', marginTop: 4 }}
-                >
-                  {Object.entries(datePresets).map(([key, preset]) => (
-                    <Option key={key} value={key}>{preset.label}</Option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Text strong>Custom Range:</Text>
-                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                  <RangePicker
-                    value={selectedPreset === 'custom' ? [dateRange.start, dateRange.end] : null}
-                    onChange={handleCustomDateRange}
-                    style={{ flex: 1 }}
-                  />
-                  <Button 
-                    icon={<ReloadOutlined />} 
-                    onClick={fetchDashboardData}
-                    loading={loading}
-                  >
-                    Refresh
-                  </Button>
-                </div>
-              </div>
-            </Space>
-          </Card>
+        <Title level={2} style={{ marginBottom: 8 }}>
+          {isTherapist(userRole)
+            ? `Welcome back, ${identity?.first_name || identity?.name || 'Therapist'}!`
+            : `Rejuvenators Dashboard - ${getRoleName(userRole)}`
+          }
+        </Title>
+        <Text type="secondary">
+          {isTherapist(userRole)
+            ? "Here's an overview of your bookings and performance"
+            : "Overview of your massage booking business"
+          }
+        </Text>
+        <div style={{ marginTop: 8 }}>
+          <Text strong>Period: </Text>
+          <Text>{getDateRangeLabel()}</Text>
         </div>
       </div>
 
+      {/* Date Range Selector - Mobile Responsive */}
+      <Card size="small" style={{ marginBottom: 24 }}>
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <div>
+            <Text strong>Quick Select:</Text>
+            <Select
+              value={selectedPreset}
+              onChange={handlePresetChange}
+              style={{ width: '100%', marginTop: 4 }}
+            >
+              {Object.entries(datePresets).map(([key, preset]) => (
+                <Option key={key} value={key}>{preset.label}</Option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <Text strong>Custom Range:</Text>
+            <Space direction="vertical" style={{ width: '100%', marginTop: 4 }} size="small">
+              <RangePicker
+                value={selectedPreset === 'custom' ? [dateRange.start, dateRange.end] : null}
+                onChange={handleCustomDateRange}
+                style={{ width: '100%' }}
+              />
+              <Button
+                icon={<ReloadOutlined />}
+                onClick={fetchDashboardData}
+                loading={loading}
+                block
+              >
+                Refresh
+              </Button>
+            </Space>
+          </div>
+        </Space>
+      </Card>
+
+      {/* Quick Actions - Mobile Responsive */}
+      <Card title="Quick Actions" style={{ marginBottom: 24 }}>
+        <Row gutter={[12, 12]}>
+          <Col xs={12} sm={6}>
+            <Button
+              type="primary"
+              size="large"
+              icon={<CalendarOutlined />}
+              onClick={() => { window.location.href = '/admin/calendar'; }}
+              block
+              style={{
+                height: 'auto',
+                padding: '20px 16px',
+                background: '#007e8c',
+                borderColor: '#007e8c',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <CalendarOutlined style={{ fontSize: '24px' }} />
+              <span>Calendar</span>
+            </Button>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Button
+              type="primary"
+              size="large"
+              icon={<FileTextOutlined />}
+              onClick={() => { window.location.href = '/admin/bookings'; }}
+              block
+              style={{
+                height: 'auto',
+                padding: '20px 16px',
+                background: '#1FBFBF',
+                borderColor: '#1FBFBF',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FileTextOutlined style={{ fontSize: '24px' }} />
+              <span>Bookings</span>
+            </Button>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Button
+              type="primary"
+              size="large"
+              icon={<DollarOutlined />}
+              onClick={() => { window.location.href = '/admin/quotes'; }}
+              block
+              style={{
+                height: 'auto',
+                padding: '20px 16px',
+                background: '#5F7BC7',
+                borderColor: '#5F7BC7',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <DollarOutlined style={{ fontSize: '24px' }} />
+              <span>Quotes</span>
+            </Button>
+          </Col>
+          <Col xs={12} sm={6}>
+            <Button
+              type="primary"
+              size="large"
+              icon={<TeamOutlined />}
+              onClick={() => { window.location.href = '/admin/therapist-payments'; }}
+              block
+              style={{
+                height: 'auto',
+                padding: '20px 16px',
+                background: '#C74BC7',
+                borderColor: '#C74BC7',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <TeamOutlined style={{ fontSize: '24px' }} />
+              <span>Therapist Payments</span>
+            </Button>
+          </Col>
+        </Row>
+      </Card>
+
       {/* Key Statistics - Role-based display */}
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={6}>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={12} sm={12} md={6}>
           <Card>
             <Statistic
               title="Total Bookings"
@@ -625,7 +718,7 @@ export const Dashboard = () => {
         {/* THERAPIST VIEW: Show separate fee categories */}
         {isTherapist(userRole) ? (
           <>
-            <Col span={6}>
+            <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
                   title="Fees Confirmed"
@@ -636,7 +729,7 @@ export const Dashboard = () => {
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
                   title="Fees Completed"
@@ -647,7 +740,7 @@ export const Dashboard = () => {
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
                   title="Your Completed"
@@ -661,7 +754,7 @@ export const Dashboard = () => {
         ) : (
           // ADMIN VIEW: Show revenue and average (unchanged)
           <>
-            <Col span={6}>
+            <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
                   title="Total Revenue"
@@ -672,7 +765,7 @@ export const Dashboard = () => {
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
                   title="Avg Booking Value"
@@ -683,7 +776,7 @@ export const Dashboard = () => {
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
                   title="Pending Bookings"
@@ -700,8 +793,8 @@ export const Dashboard = () => {
 
       {/* Second row for therapists - Fees Declined */}
       {isTherapist(userRole) && (
-        <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col span={6}>
+        <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+          <Col xs={12} sm={12} md={6}>
             <Card>
               <Statistic
                 title="Fees Declined"
@@ -754,7 +847,7 @@ export const Dashboard = () => {
         <>
           {/* Therapist Fees and Margins */}
           <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={6}>
+            <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
                   title="Active Therapists"
@@ -764,7 +857,7 @@ export const Dashboard = () => {
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
                   title="Total Therapist Fees"
@@ -775,7 +868,7 @@ export const Dashboard = () => {
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
                   title="Net Margin"
@@ -793,7 +886,7 @@ export const Dashboard = () => {
                 />
               </Card>
             </Col>
-            <Col span={6}>
+            <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
                   title="Conversion Rate"
@@ -809,7 +902,7 @@ export const Dashboard = () => {
 
           {/* Quote Statistics */}
           <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={12}>
+            <Col xs={24} sm={12} md={12}>
               <Card>
                 <Statistic
                   title="Draft Quotes"
@@ -819,7 +912,7 @@ export const Dashboard = () => {
                 />
               </Card>
             </Col>
-            <Col span={12}>
+            <Col xs={24} sm={12} md={12}>
               <Card>
                 <Statistic
                   title="Sent Quotes"
