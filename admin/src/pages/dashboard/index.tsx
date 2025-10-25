@@ -52,6 +52,8 @@ interface BookingStats {
   averageBookingValue: number;
   averageFeeValue: number;
   conversionRate: number;
+  pendingBookingsColor?: string;
+  pendingBookingsWeeks?: number;
 }
 
 interface RecentBooking {
@@ -191,6 +193,13 @@ export const Dashboard = () => {
     return ((revenue - therapistFees) / revenue) * 100;
   };
 
+  const getPendingBookingColor = (bookingTime: string): { color: string; weeks: number } => {
+    const weeksUntil = dayjs(bookingTime).diff(dayjs(), 'week');
+    if (weeksUntil < 4) return { color: '#ff4d4f', weeks: weeksUntil }; // Red
+    if (weeksUntil <= 8) return { color: '#faad14', weeks: weeksUntil }; // Amber
+    return { color: '#52c41a', weeks: weeksUntil }; // Green
+  };
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -272,12 +281,25 @@ export const Dashboard = () => {
       const feesCompleted = completedBookings.reduce((sum, b) => sum + (parseFloat(b.therapist_fee?.toString() || '0') || 0), 0);
       const feesDeclined = (bookings?.filter(b => b.status === 'declined') || []).reduce((sum, b) => sum + (parseFloat(b.therapist_fee?.toString() || '0') || 0), 0);
 
+      // Calculate pending bookings color based on earliest pending booking
+      let pendingBookingsColor = '#52c41a'; // Default green
+      let pendingBookingsWeeks = 0;
+      if (pendingBookings.length > 0) {
+        // Find the earliest pending booking
+        const earliestPending = pendingBookings.reduce((earliest, booking) => {
+          return dayjs(booking.booking_time).isBefore(dayjs(earliest.booking_time)) ? booking : earliest;
+        });
+        const colorData = getPendingBookingColor(earliestPending.booking_time);
+        pendingBookingsColor = colorData.color;
+        pendingBookingsWeeks = colorData.weeks;
+      }
+
       const dashboardStats: BookingStats = {
         totalBookings: bookings?.length || 0,
         totalRevenue,
         totalTherapistFees,
         feesConfirmed,
-        feesCompleted, 
+        feesCompleted,
         feesDeclined,
         totalNetMargin,
         activeTherapists,
@@ -287,7 +309,9 @@ export const Dashboard = () => {
         cancelledBookings: cancelledBookings.length,
         averageBookingValue,
         averageFeeValue,
-        conversionRate
+        conversionRate,
+        pendingBookingsColor,
+        pendingBookingsWeeks
       };
 
       // Prepare recent bookings (sorted by most recent) - increased from 10 to 50
@@ -583,10 +607,11 @@ export const Dashboard = () => {
             <Col span={6}>
               <Card>
                 <Statistic
-                  title={canAccess(userRole, 'canViewAllTherapists') ? "Active Therapists" : "Your Completed"}
-                  value={canAccess(userRole, 'canViewAllTherapists') ? stats?.activeTherapists || 0 : stats?.completedBookings || 0}
-                  prefix={canAccess(userRole, 'canViewAllTherapists') ? <UserOutlined /> : <CheckCircleOutlined />}
-                  valueStyle={{ color: '#722ed1' }}
+                  title="Pending Bookings"
+                  value={stats?.pendingBookings || 0}
+                  prefix={<ClockCircleOutlined />}
+                  valueStyle={{ color: stats?.pendingBookingsColor || '#faad14' }}
+                  suffix={stats?.pendingBookings ? `(${stats?.pendingBookingsWeeks}w)` : ''}
                 />
               </Card>
             </Col>
@@ -645,12 +670,22 @@ export const Dashboard = () => {
         </Row>
       )}
 
-      {/* Admin-specific Statistics - UNCHANGED (admin view only) */}
+      {/* Admin-specific Statistics */}
       {isAdmin(userRole) && (
         <>
           {/* Therapist Fees and Margins */}
           <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={8}>
+            <Col span={6}>
+              <Card>
+                <Statistic
+                  title="Active Therapists"
+                  value={stats?.activeTherapists || 0}
+                  prefix={<UserOutlined />}
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
               <Card>
                 <Statistic
                   title="Total Therapist Fees"
@@ -661,7 +696,7 @@ export const Dashboard = () => {
                 />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
               <Card>
                 <Statistic
                   title="Net Margin"
@@ -669,17 +704,17 @@ export const Dashboard = () => {
                   prefix={<PercentageOutlined />}
                   precision={1}
                   suffix="%"
-                  valueStyle={{ 
-                    color: (stats?.totalNetMargin || 0) >= 50 
-                      ? '#52c41a' 
-                      : (stats?.totalNetMargin || 0) >= 30 
-                        ? '#faad14' 
+                  valueStyle={{
+                    color: (stats?.totalNetMargin || 0) >= 50
+                      ? '#52c41a'
+                      : (stats?.totalNetMargin || 0) >= 30
+                        ? '#faad14'
                         : '#ff4d4f'
                   }}
                 />
               </Card>
             </Col>
-            <Col span={8}>
+            <Col span={6}>
               <Card>
                 <Statistic
                   title="Conversion Rate"
