@@ -207,7 +207,9 @@ async sendTherapistBookingRequestSMS(therapistPhone, bookingData, therapistData,
     const declineUrl = `${baseUrl}/.netlify/functions/booking-response?action=decline&booking=${bookingData.booking_id}&therapist=${therapistData.id}`;
     
     // Format date and time properly for SMS
-    const bookingDateTime = new Date(bookingData.booking_time);
+    // bookingData has separate booking_date (e.g. "2025-10-26") and booking_time (e.g. "09:00")
+    const dateTimeString = `${bookingData.booking_date}T${bookingData.booking_time}:00`;
+    const bookingDateTime = new Date(dateTimeString);
     const formattedTime = bookingDateTime.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
     const formattedDate = bookingDateTime.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: '2-digit' });
     const duration = bookingData.duration_minutes || 60;
