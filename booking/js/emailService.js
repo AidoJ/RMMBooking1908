@@ -206,20 +206,19 @@ async sendTherapistBookingRequestSMS(therapistPhone, bookingData, therapistData,
     const acceptUrl = `${baseUrl}/.netlify/functions/booking-response?action=accept&booking=${bookingData.booking_id}&therapist=${therapistData.id}`;
     const declineUrl = `${baseUrl}/.netlify/functions/booking-response?action=decline&booking=${bookingData.booking_id}&therapist=${therapistData.id}`;
     
-    // Create compact SMS message with clickable links + text backup
-    const dateTime = new Date(bookingData.booking_time).toLocaleDateString('en-AU', { 
-      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
-    }).replace(',', '');
-    const shortAddress = bookingData.address ? 
-      bookingData.address.split(',')[0].substring(0, 15) : 'TBD';
-    const fee = bookingData.therapist_fee ? 
+    // Format date and time properly for SMS
+    const bookingDateTime = new Date(bookingData.booking_time);
+    const formattedTime = bookingDateTime.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+    const formattedDate = bookingDateTime.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+    const duration = bookingData.duration_minutes || 60;
+    const address = bookingData.address || 'TBD';
+    const fee = bookingData.therapist_fee ?
       '$' + parseFloat(bookingData.therapist_fee).toFixed(0) : 'TBD';
-    
-    // Compact SMS message with clickable links only
+
+    // SMS message format: name, time, date, duration, location, fee
     const message = `📱 NEW BOOKING ${bookingData.booking_id}
 
-${bookingData.first_name} ${bookingData.last_name} - ${dateTime}
-${shortAddress} - ${fee}
+${bookingData.first_name} ${bookingData.last_name}, ${formattedTime}, ${formattedDate}, ${duration} mins, ${address}, ${fee}
 
 ✅ Accept: ${acceptUrl}
 ❌ Decline: ${declineUrl}

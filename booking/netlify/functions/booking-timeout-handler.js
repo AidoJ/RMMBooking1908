@@ -492,38 +492,6 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
 
     const result = await sendEmail(EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID, templateParams);
     console.log('📧 Booking request sent to therapist:', therapist.email);
-
-    // *** NEW: Send SMS to therapist with booking request ***
-    if (therapist.phone) {
-      try {
-        console.log('📱 Sending booking request SMS to therapist:', therapist.phone);
-
-        // Format date and time
-        const bookingDate = new Date(booking.booking_time);
-        const formattedTime = bookingDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true });
-        const formattedDate = bookingDate.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: '2-digit' });
-
-        // Create SMS message in requested format: name, time, date, duration, location, fee
-        const therapistSMSMessage = `🆕 NEW BOOKING REQUEST
-
-${booking.first_name} ${booking.last_name}, ${formattedTime}, ${formattedDate}, ${booking.duration_minutes} mins, ${booking.address}, $${booking.therapist_fee ? booking.therapist_fee.toFixed(2) : 'TBD'}
-
-Accept: ${acceptUrl}
-Decline: ${declineUrl}
-
-Respond within ${timeoutMinutes} mins
-- Rejuvenators`;
-
-        await sendSMSNotification(therapist.phone, therapistSMSMessage);
-        console.log('✅ Therapist booking request SMS sent');
-      } catch (smsError) {
-        console.error('❌ Error sending therapist booking request SMS:', smsError);
-        // Don't fail the whole request if SMS fails
-      }
-    } else {
-      console.log('❌ No therapist phone number for SMS');
-    }
-
     return result;
 
   } catch (error) {
@@ -578,27 +546,6 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
             Math.sin(dLon/2) * Math.sin(dLon/2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
-}
-
-// *** NEW: SMS notification function ***
-async function sendSMSNotification(phoneNumber, message) {
-  try {
-    console.log(`📱 Sending SMS notification to ${phoneNumber}`);
-    console.log(`📄 Message preview: ${message.substring(0, 100)}...`);
-
-    const response = await fetch('https://rmmbookingplatform.netlify.app/.netlify/functions/send-sms', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: phoneNumber, message: message })
-    });
-
-    const result = await response.json();
-    console.log('📱 SMS API response:', result);
-    return result;
-  } catch (error) {
-    console.error('❌ Error sending SMS notification:', error);
-    return { success: false, error: error.message };
-  }
 }
 
 async function sendEmail(templateId, templateParams) {

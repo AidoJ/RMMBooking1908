@@ -876,38 +876,6 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
 
     const result = await sendEmail(EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID, templateParams);
     console.log('📧 Booking request sent to therapist:', therapist.email);
-
-    // *** NEW: Send SMS to therapist with booking request ***
-    if (therapist.phone) {
-      try {
-        console.log('📱 Sending booking request SMS to therapist:', therapist.phone);
-
-        // Format date and time
-        const bookingDate = new Date(booking.booking_time);
-        const formattedTime = bookingDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit', hour12: true });
-        const formattedDate = bookingDate.toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: '2-digit' });
-
-        // Create SMS message in requested format: name, time, date, duration, location, fee
-        const therapistSMSMessage = `🆕 NEW BOOKING REQUEST
-
-${booking.first_name} ${booking.last_name}, ${formattedTime}, ${formattedDate}, ${booking.duration_minutes} mins, ${booking.address}, $${booking.therapist_fee ? booking.therapist_fee.toFixed(2) : 'TBD'}
-
-Accept: ${acceptUrl}
-Decline: ${declineUrl}
-
-Respond within ${timeoutMinutes} mins
-- Rejuvenators`;
-
-        await sendSMSNotification(therapist.phone, therapistSMSMessage);
-        console.log('✅ Therapist booking request SMS sent');
-      } catch (smsError) {
-        console.error('❌ Error sending therapist booking request SMS:', smsError);
-        // Don't fail the whole request if SMS fails
-      }
-    } else {
-      console.log('❌ No therapist phone number for SMS');
-    }
-
     return result;
 
   } catch (error) {
