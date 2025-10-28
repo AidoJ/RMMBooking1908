@@ -14,7 +14,8 @@ import {
   Table,
   message,
   Spin,
-  Divider
+  Divider,
+  Tabs
 } from 'antd';
 import {
   UserOutlined,
@@ -61,6 +62,14 @@ interface Availability {
   end_time: string;
 }
 
+interface TimeOff {
+  id: string;
+  start_date: string;
+  end_date: string;
+  reason?: string;
+  status: string;
+}
+
 interface TherapistProfile {
   id: string;
   first_name: string;
@@ -97,6 +106,7 @@ const TherapistShow: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [recentBookings, setRecentBookings] = useState<Booking[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
+  const [timeOff, setTimeOff] = useState<TimeOff[]>([]);
   const [loading, setLoading] = useState(true);
 
   const canEditTherapists = identity?.role === 'admin' || identity?.role === 'super_admin';
@@ -180,6 +190,16 @@ const TherapistShow: React.FC = () => {
 
       if (availabilityError) throw availabilityError;
       setAvailability(availabilityData || []);
+
+      // Load time off
+      const { data: timeOffData, error: timeOffError } = await supabaseClient
+        .from('therapist_time_off')
+        .select('*')
+        .eq('therapist_id', id)
+        .order('start_date', { ascending: false });
+
+      if (timeOffError) throw timeOffError;
+      setTimeOff(timeOffData || []);
 
     } catch (error: any) {
       console.error('Error loading therapist details:', error);
@@ -295,205 +315,268 @@ const TherapistShow: React.FC = () => {
           </Row>
         </Card>
 
-        <Row gutter={24}>
-          {/* Left Column - Personal Info */}
-          <Col span={8}>
-            <Card title="Personal Information" style={{ marginBottom: '24px' }}>
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                <Avatar
-                  size={120}
-                  src={therapist.profile_pic}
-                  icon={<UserOutlined />}
-                  style={{ marginBottom: '16px' }}
-                />
-                <div>
-                  <Title level={3} style={{ margin: 0 }}>
-                    {therapist.first_name} {therapist.last_name}
-                  </Title>
-                  <Space>
-                    <Tag color={therapist.is_active ? 'green' : 'red'}>
-                      {therapist.is_active ? 'Active' : 'Inactive'}
-                    </Tag>
-                    {therapist.address_verified && (
-                      <Tag color="blue" icon={<CheckCircleOutlined />}>
-                        Verified
-                      </Tag>
-                    )}
-                  </Space>
-                </div>
-              </div>
-
-              <Descriptions column={1} size="small">
-                <Descriptions.Item label="Email" span={1}>
-                  <Space>
-                    <MailOutlined />
-                    {therapist.email}
-                  </Space>
-                </Descriptions.Item>
-                {therapist.phone && (
-                  <Descriptions.Item label="Phone" span={1}>
-                    <Space>
-                      <PhoneOutlined />
-                      {therapist.phone}
-                    </Space>
-                  </Descriptions.Item>
-                )}
-                <Descriptions.Item label="Gender" span={1}>
-                  {therapist.gender || 'Not specified'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Experience" span={1}>
-                  {therapist.years_experience ? `${therapist.years_experience} years` : 'Not specified'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Business ABN" span={1}>
-                  {therapist.business_abn || 'Not provided'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Account Created" span={1}>
-                  {new Date(therapist.created_at).toLocaleDateString()}
-                </Descriptions.Item>
-                <Descriptions.Item label="Last Updated" span={1}>
-                  {new Date(therapist.updated_at).toLocaleDateString()}
-                </Descriptions.Item>
-                {therapist.user?.last_login && (
-                  <Descriptions.Item label="Last Login" span={1}>
-                    {new Date(therapist.user.last_login).toLocaleDateString()}
-                  </Descriptions.Item>
-                )}
-              </Descriptions>
-            </Card>
-
-            {/* Performance Stats */}
-            <Card title="Performance Overview">
-              <Row gutter={16}>
-                <Col span={12}>
-                  <Statistic
-                    title="Rating"
-                    value={therapist.rating}
-                    precision={1}
-                    prefix={<StarOutlined style={{ color: '#faad14' }} />}
-                    suffix={`/ 5.0`}
-                  />
-                </Col>
-                <Col span={12}>
-                  <Statistic
-                    title="Reviews"
-                    value={therapist.total_reviews}
-                    prefix={<span style={{ color: '#1890ff' }}>💬</span>}
-                  />
-                </Col>
-              </Row>
-              <div style={{ marginTop: '16px' }}>
-                <Rate disabled allowHalf value={therapist.rating} />
-              </div>
-            </Card>
-          </Col>
-
-          {/* Right Column - Details */}
-          <Col span={16}>
-            {/* Bio */}
-            {therapist.bio && (
-              <Card title="Biography" style={{ marginBottom: '24px' }}>
-                <Paragraph>{therapist.bio}</Paragraph>
-              </Card>
-            )}
-
-            {/* Location & Service Area */}
-            <Card title="Location & Service Area" style={{ marginBottom: '24px' }}>
-              <Descriptions column={2}>
-                <Descriptions.Item label="Home Address" span={2}>
-                  <Space>
-                    <EnvironmentOutlined />
-                    {therapist.home_address || 'Not provided'}
-                  </Space>
-                </Descriptions.Item>
-                <Descriptions.Item label="Service Radius">
-                  {therapist.service_radius_km ? `${therapist.service_radius_km} km` : 'Not specified'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Address Verified">
-                  {therapist.address_verified ? (
-                    <Tag color="green" icon={<CheckCircleOutlined />}>Verified</Tag>
-                  ) : (
-                    <Tag color="red" icon={<CloseCircleOutlined />}>Unverified</Tag>
-                  )}
-                </Descriptions.Item>
-              </Descriptions>
-            </Card>
-
-            {/* Services Offered */}
-            <Card title="Services Offered" style={{ marginBottom: '24px' }}>
-              {services.length > 0 ? (
-                <Row gutter={[16, 16]}>
-                  {services.map(service => (
-                    <Col span={12} key={service.id}>
-                      <Card size="small">
-                        <Title level={5} style={{ margin: 0, marginBottom: '8px' }}>
-                          {service.name}
-                        </Title>
-                        <Text type="secondary" style={{ fontSize: '12px' }}>
-                          ${service.service_base_price} • {service.minimum_duration} min
-                        </Text>
-                        {service.description && (
-                          <Paragraph 
-                            style={{ marginTop: '8px', marginBottom: 0, fontSize: '12px' }}
-                            ellipsis={{ rows: 2 }}
-                          >
-                            {service.description}
-                          </Paragraph>
-                        )}
-                      </Card>
-                    </Col>
-                  ))}
-                </Row>
-              ) : (
-                <Text type="secondary">No services assigned</Text>
-              )}
-            </Card>
-
-            {/* Availability Schedule */}
-            <Card title="Availability Schedule" style={{ marginBottom: '24px' }}>
-              {availability.length > 0 ? (
-                <Row gutter={[16, 8]}>
-                  {availability.map(avail => (
-                    <Col span={12} key={avail.id}>
-                      <div style={{ 
-                        padding: '8px 12px', 
-                        border: '1px solid #d9d9d9', 
-                        borderRadius: '6px',
-                        fontSize: '12px'
-                      }}>
-                        <Text strong>{getDayName(avail.day_of_week)}</Text>
-                        <br />
-                        <Space>
-                          <ClockCircleOutlined />
-                          {avail.start_time} - {avail.end_time}
-                        </Space>
-                      </div>
-                    </Col>
-                  ))}
-                </Row>
-              ) : (
-                <Text type="secondary">No availability schedule set</Text>
-              )}
-            </Card>
-
-            {/* Recent Bookings */}
-            <Card title="Recent Bookings">
-              <Table
-                dataSource={recentBookings}
-                columns={bookingColumns}
-                rowKey="id"
-                size="small"
-                pagination={{
-                  pageSize: 5,
-                  total: recentBookings.length,
-                  showSizeChanger: false,
-                }}
-                locale={{
-                  emptyText: 'No recent bookings'
-                }}
+        {/* Profile Header Card */}
+        <Card style={{ marginBottom: '24px' }}>
+          <Row gutter={24} align="middle">
+            <Col>
+              <Avatar
+                size={80}
+                src={therapist.profile_pic}
+                icon={<UserOutlined />}
               />
-            </Card>
-          </Col>
-        </Row>
+            </Col>
+            <Col flex="auto">
+              <Title level={3} style={{ margin: 0 }}>
+                {therapist.first_name} {therapist.last_name}
+              </Title>
+              <Space style={{ marginTop: '8px' }}>
+                <Tag color={therapist.is_active ? 'green' : 'red'}>
+                  {therapist.is_active ? 'Active' : 'Inactive'}
+                </Tag>
+                {therapist.address_verified && (
+                  <Tag color="blue" icon={<CheckCircleOutlined />}>
+                    Verified
+                  </Tag>
+                )}
+              </Space>
+            </Col>
+            <Col>
+              <Space direction="vertical" size="small">
+                <Statistic
+                  title="Rating"
+                  value={therapist.rating}
+                  precision={1}
+                  prefix={<StarOutlined style={{ color: '#faad14' }} />}
+                  suffix="/ 5.0"
+                />
+                <Rate disabled allowHalf value={therapist.rating} style={{ fontSize: 14 }} />
+              </Space>
+            </Col>
+            <Col>
+              <Statistic
+                title="Reviews"
+                value={therapist.total_reviews}
+              />
+            </Col>
+          </Row>
+        </Card>
+
+        {/* Tabbed Content */}
+        <Card>
+          <Tabs
+            defaultActiveKey="bio"
+            items={[
+              {
+                key: 'bio',
+                label: 'Bio',
+                children: (
+                  <div>
+                    <Row gutter={24}>
+                      <Col span={12}>
+                        <Descriptions title="Personal Information" column={1}>
+                          <Descriptions.Item label="Email">
+                            <Space>
+                              <MailOutlined />
+                              {therapist.email}
+                            </Space>
+                          </Descriptions.Item>
+                          {therapist.phone && (
+                            <Descriptions.Item label="Phone">
+                              <Space>
+                                <PhoneOutlined />
+                                {therapist.phone}
+                              </Space>
+                            </Descriptions.Item>
+                          )}
+                          <Descriptions.Item label="Gender">
+                            {therapist.gender || 'Not specified'}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Experience">
+                            {therapist.years_experience ? `${therapist.years_experience} years` : 'Not specified'}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Business ABN">
+                            {therapist.business_abn || 'Not provided'}
+                          </Descriptions.Item>
+                        </Descriptions>
+                      </Col>
+                      <Col span={12}>
+                        <Descriptions title="Account Information" column={1}>
+                          <Descriptions.Item label="Account Created">
+                            {new Date(therapist.created_at).toLocaleDateString()}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Last Updated">
+                            {new Date(therapist.updated_at).toLocaleDateString()}
+                          </Descriptions.Item>
+                          {therapist.user?.last_login && (
+                            <Descriptions.Item label="Last Login">
+                              {new Date(therapist.user.last_login).toLocaleDateString()}
+                            </Descriptions.Item>
+                          )}
+                        </Descriptions>
+                      </Col>
+                    </Row>
+                    {therapist.bio && (
+                      <>
+                        <Divider />
+                        <div>
+                          <Title level={5}>Biography</Title>
+                          <Paragraph>{therapist.bio}</Paragraph>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                key: 'services',
+                label: 'Services',
+                children: (
+                  <div>
+                    {services.length > 0 ? (
+                      <Row gutter={[16, 16]}>
+                        {services.map(service => (
+                          <Col span={12} key={service.id}>
+                            <Card size="small" style={{ height: '100%' }}>
+                              <Title level={5} style={{ margin: 0, marginBottom: '8px' }}>
+                                {service.name}
+                              </Title>
+                              <Text type="secondary" style={{ fontSize: '12px' }}>
+                                ${service.service_base_price} • {service.minimum_duration} min
+                              </Text>
+                              {service.description && (
+                                <Paragraph
+                                  style={{ marginTop: '8px', marginBottom: 0, fontSize: '12px' }}
+                                  ellipsis={{ rows: 2 }}
+                                >
+                                  {service.description}
+                                </Paragraph>
+                              )}
+                            </Card>
+                          </Col>
+                        ))}
+                      </Row>
+                    ) : (
+                      <Text type="secondary">No services assigned</Text>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                key: 'service-area',
+                label: 'Service Area',
+                children: (
+                  <div>
+                    <Descriptions column={2}>
+                      <Descriptions.Item label="Home Address" span={2}>
+                        <Space>
+                          <EnvironmentOutlined />
+                          {therapist.home_address || 'Not provided'}
+                        </Space>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Service Radius">
+                        {therapist.service_radius_km ? `${therapist.service_radius_km} km` : 'Not specified'}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Address Verified">
+                        {therapist.address_verified ? (
+                          <Tag color="green" icon={<CheckCircleOutlined />}>Verified</Tag>
+                        ) : (
+                          <Tag color="red" icon={<CloseCircleOutlined />}>Unverified</Tag>
+                        )}
+                      </Descriptions.Item>
+                      {therapist.latitude && therapist.longitude && (
+                        <>
+                          <Descriptions.Item label="Latitude">
+                            {therapist.latitude}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Longitude">
+                            {therapist.longitude}
+                          </Descriptions.Item>
+                        </>
+                      )}
+                    </Descriptions>
+                  </div>
+                ),
+              },
+              {
+                key: 'availability',
+                label: 'Availability',
+                children: (
+                  <div>
+                    {availability.length > 0 ? (
+                      <Row gutter={[16, 8]}>
+                        {availability.map(avail => (
+                          <Col span={12} key={avail.id}>
+                            <div style={{
+                              padding: '12px 16px',
+                              border: '1px solid #d9d9d9',
+                              borderRadius: '6px'
+                            }}>
+                              <Text strong>{getDayName(avail.day_of_week)}</Text>
+                              <br />
+                              <Space style={{ marginTop: '4px' }}>
+                                <ClockCircleOutlined />
+                                {avail.start_time} - {avail.end_time}
+                              </Space>
+                            </div>
+                          </Col>
+                        ))}
+                      </Row>
+                    ) : (
+                      <Text type="secondary">No availability schedule set</Text>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                key: 'time-off',
+                label: 'Time Off',
+                children: (
+                  <div>
+                    {timeOff.length > 0 ? (
+                      <Table
+                        dataSource={timeOff}
+                        rowKey="id"
+                        pagination={false}
+                        columns={[
+                          {
+                            title: 'Start Date',
+                            dataIndex: 'start_date',
+                            key: 'start_date',
+                            render: (date: string) => new Date(date).toLocaleDateString(),
+                          },
+                          {
+                            title: 'End Date',
+                            dataIndex: 'end_date',
+                            key: 'end_date',
+                            render: (date: string) => new Date(date).toLocaleDateString(),
+                          },
+                          {
+                            title: 'Reason',
+                            dataIndex: 'reason',
+                            key: 'reason',
+                            render: (reason: string) => reason || 'Not specified',
+                          },
+                          {
+                            title: 'Status',
+                            dataIndex: 'status',
+                            key: 'status',
+                            render: (status: string) => (
+                              <Tag color={status === 'approved' ? 'green' : status === 'pending' ? 'orange' : 'red'}>
+                                {status.toUpperCase()}
+                              </Tag>
+                            ),
+                          },
+                        ]}
+                      />
+                    ) : (
+                      <Text type="secondary">No time off requests</Text>
+                    )}
+                  </div>
+                ),
+              },
+            ]}
+          />
+        </Card>
       </div>
     </RoleGuard>
   );
