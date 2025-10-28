@@ -255,6 +255,14 @@ async function updateUser(data, authUser, headers) {
 
     if (error) throw error;
 
+    // If email changed and user is a therapist, sync to therapist_profiles
+    if (email !== undefined && oldUser.email !== email && oldUser.role === 'therapist') {
+      await supabase
+        .from('therapist_profiles')
+        .update({ email: email })
+        .eq('user_id', id);
+    }
+
     // Log activity
     await supabase
       .from('admin_activity_log')

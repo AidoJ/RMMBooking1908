@@ -363,8 +363,11 @@ const TherapistEdit: React.FC = () => {
         qualificationCertUrl = await handleCertificateUpload(qualificationCertFile[0].originFileObj);
       }
 
+      // Check if email has changed
+      const emailChanged = therapist?.email !== values.email;
+
       // Update therapist profile with coordinates and polygon
-      const { error: updateError } = await supabaseClient
+      const { data: updatedTherapist, error: updateError } = await supabaseClient
         .from('therapist_profiles')
         .update({
           ...values,
@@ -381,9 +384,24 @@ const TherapistEdit: React.FC = () => {
           service_area_polygon: serviceAreaPolygon,
           updated_at: new Date().toISOString()
         })
-        .eq('id', id);
+        .eq('id', id)
+        .select('user_id')
+        .single();
 
       if (updateError) throw updateError;
+
+      // If email changed, also update the admin_users table
+      if (emailChanged && updatedTherapist?.user_id) {
+        const { error: userUpdateError } = await supabaseClient
+          .from('admin_users')
+          .update({ email: values.email })
+          .eq('id', updatedTherapist.user_id);
+
+        if (userUpdateError) {
+          console.error('Failed to update user email:', userUpdateError);
+          message.warning('Therapist profile updated but user account email sync failed');
+        }
+      }
 
       // Update services
       // First, remove all existing services
