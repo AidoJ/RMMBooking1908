@@ -1,5 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Service role bypasses RLS
@@ -55,13 +56,12 @@ exports.handler = async (event, context) => {
       .from('admin_users')
       .select('*')
       .eq('email', email)
-      .eq('password', password) // TODO: In production, use bcrypt/hashed passwords
       .eq('is_active', true)
       .single();
 
     if (error || !user) {
       console.error('❌ Authentication failed:', email, error?.message || 'User not found');
-      
+
       // Log failed attempt for security monitoring
       try {
         await supabase
@@ -84,12 +84,87 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Check if account is locked
+    if (user.locked_until && new Date(user.locked_until) > new Date()) {
+      const minutesLeft = Math.ceil((new Date(user.locked_until) - new Date()) / 60000);
+      console.error('❌ Account locked:', email);
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: `Account is locked. Please try again in ${minutesLeft} minute${minutesLeft > 1 ? 's' : ''}.`
+        })
+      };
+    }
+
+    // Verify password using bcrypt
+    const passwordMatch = await bcrypt.compare(password, user.password);
+
+    if (!passwordMatch) {
+      console.error('❌ Invalid password:', email);
+
+      // Increment failed login attempts
+      const failedAttempts = (user.failed_login_attempts || 0) + 1;
+      const lockAccount = failedAttempts >= 5;
+      const lockUntil = lockAccount ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null; // 15 minutes
+
+      await supabase
+        .from('admin_users')
+        .update({
+          failed_login_attempts: failedAttempts,
+          locked_until: lockUntil,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      // Log failed attempt
+      try {
+        await supabase
+          .from('admin_activity_log')
+          .insert({
+            user_id: user.id,
+            action: lockAccount ? 'account_locked' : 'login_failed',
+            table_name: 'admin_users',
+            record_id: user.id,
+            ip_address: event.headers['x-forwarded-for'] || event.headers['client-ip']
+          });
+      } catch (logError) {
+        console.error('Failed to log activity:', logError);
+      }
+
+      if (lockAccount) {
+        return {
+          statusCode: 401,
+          headers,
+          body: JSON.stringify({
+            success: false,
+            error: 'Account locked due to too many failed login attempts. Please try again in 15 minutes.'
+          })
+        };
+      }
+
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: `Invalid email or password. ${5 - failedAttempts} attempt${5 - failedAttempts > 1 ? 's' : ''} remaining.`
+        })
+      };
+    }
+
     console.log('✅ Authentication successful:', user.email, 'Role:', user.role);
 
-    // Update last_login timestamp
+    // Update last_login timestamp and reset failed login attempts
     await supabase
       .from('admin_users')
-      .update({ last_login: new Date().toISOString() })
+      .update({
+        last_login: new Date().toISOString(),
+        failed_login_attempts: 0,
+        locked_until: null,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', user.id);
 
     // Log successful login

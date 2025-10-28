@@ -71,6 +71,8 @@ import { GiftCardsList, GiftCardsCreate, GiftCardsEdit, GiftCardsShow } from "./
 // Import the therapist payments management components
 import TherapistPayments from "./pages/therapist-payments";
 
+// Import the user management components
+import { UserManagementList } from "./pages/user-management";
 
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
@@ -81,7 +83,6 @@ const BookingShowWrapper = () => {
 // Service components are now imported above
 
 // Super Admin only pages
-const UserManagement = () => <div style={{padding: 24}}><h1>User Management</h1><p>Manage admin users and therapist accounts</p></div>;
 const ActivityLogs = () => <div style={{padding: 24}}><h1>Activity Logs</h1><p>System activity monitoring will go here</p></div>;
 const Reports = () => <div style={{padding: 24}}><h1>Business Reports</h1><p>Analytics and business reports will go here</p></div>;
 
@@ -343,7 +344,7 @@ function App() {
                     <Route path="/system-settings" element={<SystemSettings />} />
                     
                     {/* User Management (Super Admin Only) */}
-                    <Route path="/user-management" element={<UserManagement />} />
+                    <Route path="/user-management" element={<UserManagementList />} />
                     
                     {/* Activity Logs (Super Admin Only) */}
                     <Route path="/activity-logs" element={<ActivityLogs />} />

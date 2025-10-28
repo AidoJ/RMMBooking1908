@@ -1100,21 +1100,21 @@ console.log('Globals:', {
   function selectServiceCard(card, service) {
     // Remove selected class from all service cards
     document.querySelectorAll('.service-card').forEach(c => c.classList.remove('selected'));
-    
+
     // Add selected class to clicked card
     card.classList.add('selected');
-    
+
     // Get service data
     const serviceId = service.id;
     const minimumDuration = parseInt(card.dataset.minimumDuration);
     const quoteOnly = service.quote_only === true || service.quote_only === 'true';
-    
+
     // Store selected service globally for use in other functions
     window.selectedService = service;
     window.selectedServiceId = serviceId;
-    
+
     console.log('📋 Service selected:', service.name, 'quote_only:', service.quote_only, 'parsed:', quoteOnly);
-    
+
     if (quoteOnly) {
       // This is a quote-only service, show quote form
       console.log('📋 Showing quote form for quote-only service');
@@ -1123,13 +1123,13 @@ console.log('Globals:', {
       // Regular service, show minimum duration and update duration options
       showMinimumDuration(minimumDuration);
       updateDurationOptions(minimumDuration);
-      
-      // Clear duration selection if invalid
-      if (selectedDuration && selectedDuration < minimumDuration) {
-        selectedDuration = null;
+
+      // Clear duration selection if invalid - FIX: use DOM element instead of undefined variable
+      const currentDuration = document.getElementById('duration').value;
+      if (currentDuration && parseInt(currentDuration) < minimumDuration) {
         document.getElementById('duration').value = '';
       }
-      
+
       updateContinueButton();
     }
   }
@@ -1161,7 +1161,6 @@ console.log('Globals:', {
       if (selectedCard && selectedCard.classList.contains('hidden')) {
         document.getElementById('minimumDurationInfo').classList.remove('show');
         document.getElementById('duration').value = '';
-        selectedDuration = null;
         updateContinueButton();
       }
     }
@@ -2624,10 +2623,10 @@ async function updateTherapistSelection() {
     card.innerHTML = `
       <div class="therapist-info">
         <div class="therapist-image">
-          <img src="${t.profile_pic || '/images/default-therapist.jpg'}" 
-               alt="${t.first_name} ${t.last_name}" 
+          <img src="${t.profile_pic || '/images/default-therapist.svg'}"
+               alt="${t.first_name} ${t.last_name}"
                class="therapist-profile-pic"
-               onerror="this.src='/images/default-therapist.jpg'">
+               onerror="this.src='/images/default-therapist.svg'">
         </div>
         <div class="therapist-details">
           <div class="therapist-name">
