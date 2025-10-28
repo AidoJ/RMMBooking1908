@@ -384,6 +384,26 @@ export const BookingDetail: React.FC = () => {
       console.log('Update successful');
       message.success(`Booking ${newStatus}`);
 
+      // If completing the job, schedule a review request for 60 minutes later
+      if (newStatus === 'completed') {
+        try {
+          const scheduleUrl = `/.netlify/functions/schedule-review-request?booking=${id}`;
+          const scheduleResponse = await fetch(scheduleUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+          });
+
+          if (scheduleResponse.ok) {
+            console.log('✅ Review request scheduled for 60 minutes from now');
+          } else {
+            console.warn('⚠️ Failed to schedule review request, but job marked complete');
+          }
+        } catch (scheduleError) {
+          console.error('❌ Error scheduling review request:', scheduleError);
+          // Don't fail the whole operation if scheduling fails
+        }
+      }
+
       // Reload to get fresh data
       await loadBookingDetail();
     } catch (error: any) {

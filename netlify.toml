@@ -18,6 +18,10 @@
 [functions."booking-timeout-handler"]
   schedule = "*/5 * * * *"  # Run every 5 minutes
 
+# Scheduled function for sending review requests
+[functions."send-scheduled-notifications"]
+  schedule = "*/10 * * * *"  # Run every 10 minutes
+
 # Headers for security and performance
 [[headers]]
   for = "/*"
