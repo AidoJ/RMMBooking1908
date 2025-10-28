@@ -19,6 +19,9 @@ import {
   TimePicker,
   Checkbox,
   DatePicker,
+  Tabs,
+  Table,
+  Tag,
 } from 'antd';
 import {
   SaveOutlined,
@@ -54,6 +57,14 @@ interface Availability {
   day_of_week: number;
   start_time: string;
   end_time: string;
+}
+
+interface TimeOff {
+  id?: string;
+  start_date: string;
+  end_date: string;
+  reason?: string;
+  status: string;
 }
 
 interface Coordinate {
@@ -99,6 +110,7 @@ const TherapistEdit: React.FC = () => {
   const [allServices, setAllServices] = useState<Service[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
+  const [timeOff, setTimeOff] = useState<TimeOff[]>([]);
   const [profileImage, setProfileImage] = useState<string>('');
   const [serviceAreaPolygon, setServiceAreaPolygon] = useState<Coordinate[] | null>(null);
   const [insuranceCertFile, setInsuranceCertFile] = useState<any[]>([]);
@@ -231,6 +243,16 @@ const TherapistEdit: React.FC = () => {
       if (availabilityError) throw availabilityError;
       setAvailability(availabilityData || []);
 
+      // Load time off
+      const { data: timeOffData, error: timeOffError } = await supabaseClient
+        .from('therapist_time_off')
+        .select('*')
+        .eq('therapist_id', id)
+        .order('start_date', { ascending: false });
+
+      if (timeOffError) throw timeOffError;
+      setTimeOff(timeOffData || []);
+
     } catch (error: any) {
       console.error('Error loading therapist data:', error);
       message.error('Failed to load therapist data');
@@ -294,6 +316,25 @@ const TherapistEdit: React.FC = () => {
     const updated = [...availability];
     updated[index] = { ...updated[index], [field]: value };
     setAvailability(updated);
+  };
+
+  const addTimeOffSlot = () => {
+    setTimeOff([...timeOff, {
+      start_date: dayjs().format('YYYY-MM-DD'),
+      end_date: dayjs().add(1, 'day').format('YYYY-MM-DD'),
+      reason: '',
+      status: 'pending'
+    }]);
+  };
+
+  const removeTimeOffSlot = (index: number) => {
+    setTimeOff(timeOff.filter((_, i) => i !== index));
+  };
+
+  const updateTimeOffSlot = (index: number, field: keyof TimeOff, value: any) => {
+    const updated = [...timeOff];
+    updated[index] = { ...updated[index], [field]: value };
+    setTimeOff(updated);
   };
 
   const handleSubmit = async (values: TherapistFormData) => {
@@ -392,6 +433,32 @@ const TherapistEdit: React.FC = () => {
         if (insertAvailabilityError) throw insertAvailabilityError;
       }
 
+      // Update time off
+      // First, remove all existing time off
+      const { error: deleteTimeOffError } = await supabaseClient
+        .from('therapist_time_off')
+        .delete()
+        .eq('therapist_id', id);
+
+      if (deleteTimeOffError) throw deleteTimeOffError;
+
+      // Then add the current time off
+      if (timeOff.length > 0) {
+        const timeOffInserts = timeOff.map(to => ({
+          therapist_id: id,
+          start_date: to.start_date,
+          end_date: to.end_date,
+          reason: to.reason,
+          status: to.status
+        }));
+
+        const { error: insertTimeOffError } = await supabaseClient
+          .from('therapist_time_off')
+          .insert(timeOffInserts);
+
+        if (insertTimeOffError) throw insertTimeOffError;
+      }
+
       message.success('Therapist profile updated successfully');
       navigate('/therapists');
 
@@ -453,444 +520,515 @@ const TherapistEdit: React.FC = () => {
           onFinish={handleSubmit}
           size="large"
         >
-          <Row gutter={24}>
-            {/* Left Column */}
-            <Col span={12}>
-              <Card title="Personal Information" style={{ marginBottom: '24px' }}>
-                {/* Profile Picture */}
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-                  <Avatar
-                    size={100}
-                    src={profileImage}
-                    icon={<UserOutlined />}
-                    style={{ marginBottom: '16px' }}
-                  />
-                  <br />
-                  <Upload
-                    accept="image/*"
-                    beforeUpload={handleImageUpload}
-                    showUploadList={false}
-                  >
-                    <Button icon={<UploadOutlined />}>
-                      Upload Photo
-                    </Button>
-                  </Upload>
-                </div>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="first_name"
-                      label="First Name"
-                      rules={[{ required: true, message: 'Please enter first name' }]}
-                    >
-                      <Input placeholder="Enter first name" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="last_name"
-                      label="Last Name"
-                      rules={[{ required: true, message: 'Please enter last name' }]}
-                    >
-                      <Input placeholder="Enter last name" />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item
-                  name="email"
-                  label="Email"
-                  rules={[
-                    { required: true, message: 'Please enter email' },
-                    { type: 'email', message: 'Please enter a valid email' }
-                  ]}
-                >
-                  <Input placeholder="Enter email address" />
-                </Form.Item>
-
-                <Form.Item
-                  name="phone"
-                  label="Phone Number"
-                >
-                  <Input placeholder="Enter phone number" />
-                </Form.Item>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="gender"
-                      label="Gender"
-                    >
-                      <Select placeholder="Select gender">
-                        <Option value="male">Male</Option>
-                        <Option value="female">Female</Option>
-                        <Option value="other">Other</Option>
-                        <Option value="prefer_not_to_say">Prefer not to say</Option>
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="years_experience"
-                      label="Years of Experience"
-                    >
-                      <InputNumber 
-                        placeholder="Years"
-                        min={0}
-                        max={50}
-                        style={{ width: '100%' }}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item
-                  name="business_abn"
-                  label="Business ABN"
-                  rules={[
-                    { required: true, message: 'Please enter business ABN' },
-                    { pattern: /^\d{11}$/, message: 'ABN must be 11 digits' }
-                  ]}
-                >
-                  <Input placeholder="Enter 11-digit ABN" maxLength={11} />
-                </Form.Item>
-
-                <Form.Item
-                  name="bio"
-                  label="Biography"
-                >
-                  <TextArea
-                    rows={4}
-                    placeholder="Enter therapist biography..."
-                    maxLength={500}
-                    showCount
-                  />
-                </Form.Item>
-
-                <Divider orientation="left">Certificates</Divider>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item label="Insurance Expiry Date" name="insurance_expiry_date">
-                      <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Insurance Certificate">
-                      <Upload
-                        listType="text"
-                        fileList={insuranceCertFile}
-                        beforeUpload={() => false}
-                        onChange={({ fileList }) => setInsuranceCertFile(fileList)}
-                        maxCount={1}
-                        accept=".pdf,.jpg,.jpeg,.png"
-                      >
-                        <Button icon={<UploadOutlined />}>Upload Certificate</Button>
-                      </Upload>
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item label="First Aid Expiry Date" name="first_aid_expiry_date">
-                      <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="First Aid Certificate">
-                      <Upload
-                        listType="text"
-                        fileList={firstAidCertFile}
-                        beforeUpload={() => false}
-                        onChange={({ fileList }) => setFirstAidCertFile(fileList)}
-                        maxCount={1}
-                        accept=".pdf,.jpg,.jpeg,.png"
-                      >
-                        <Button icon={<UploadOutlined />}>Upload Certificate</Button>
-                      </Upload>
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item label="Therapist Qualification Certificate">
-                  <Upload
-                    listType="text"
-                    fileList={qualificationCertFile}
-                    beforeUpload={() => false}
-                    onChange={({ fileList }) => setQualificationCertFile(fileList)}
-                    maxCount={1}
-                    accept=".pdf,.jpg,.jpeg,.png"
-                  >
-                    <Button icon={<UploadOutlined />}>Upload Certificate</Button>
-                  </Upload>
-                </Form.Item>
-
-                <Divider orientation="left">Banking Details</Divider>
-
-                <Form.Item label="Bank Account Name" name="bank_account_name">
-                  <Input prefix={<BankOutlined />} placeholder="Account holder name" />
-                </Form.Item>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="BSB"
-                      name="bsb"
-                      rules={[{ pattern: /^\d{3}-?\d{3}$/, message: 'BSB must be in format XXX-XXX or XXXXXX' }]}
-                    >
-                      <Input placeholder="XXX-XXX" />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="Bank Account Number" name="bank_account_number">
-                      <Input placeholder="Account number" />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Divider orientation="left">Hourly Rates</Divider>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item label="Hourly Rate" name="hourly_rate">
-                      <InputNumber
-                        prefix="$"
-                        style={{ width: '100%' }}
-                        min={0}
-                        step={0.01}
-                        disabled={!isSuperAdmin}
-                        placeholder={isSuperAdmin ? "Enter hourly rate" : "Only editable by superadmin"}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item label="After Hours Rate" name="afterhours_rate">
-                      <InputNumber
-                        prefix="$"
-                        style={{ width: '100%' }}
-                        min={0}
-                        step={0.01}
-                        disabled={!isSuperAdmin}
-                        placeholder={isSuperAdmin ? "Enter after hours rate" : "Only editable by superadmin"}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                {!isSuperAdmin && (
-                  <div style={{ padding: 12, backgroundColor: '#fff7e6', border: '1px solid #ffd591', borderRadius: 4, marginBottom: 16 }}>
-                    <Typography.Text type="warning">
-                      ⚠️ Only superadmin users can modify hourly rates
-                    </Typography.Text>
-                  </div>
-                )}
-              </Card>
-
-              {/* Status & Verification */}
-              <Card title="Status & Verification">
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="is_active"
-                      label="Active Status"
-                      valuePropName="checked"
-                    >
-                      <Switch 
-                        checkedChildren="Active" 
-                        unCheckedChildren="Inactive"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="address_verified"
-                      label="Address Verified"
-                      valuePropName="checked"
-                    >
-                      <Switch 
-                        checkedChildren="Verified" 
-                        unCheckedChildren="Unverified"
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-              </Card>
-            </Col>
-
-            {/* Right Column */}
-            <Col span={12}>
-              {/* Location & Service Area */}
-              <Card title="Location & Service Area" style={{ marginBottom: '24px' }}>
-                <Form.Item
-                  name="home_address"
-                  label="Home Address"
-                  help={geocodeError ? <span style={{ color: '#ff4d4f' }}>{geocodeError}</span> : 
-                        addressVerified ? <span style={{ color: '#52c41a' }}>✓ Address verified</span> : 
-                        'Enter address for automatic verification'}
-                >
-                  <TextArea 
-                    id="home_address"
-                    rows={3} 
-                    placeholder="Start typing address for autocomplete suggestions..."
-                  />
-                </Form.Item>
-
-                <div style={{ marginBottom: '16px' }}>
-                  <Button 
-                    type="default"
-                    loading={isGeocoding}
-                    onClick={() => {
-                      const address = form.getFieldValue('home_address');
-                      if (address) {
-                        geocodeAddress(address);
-                      } else {
-                        message.warning('Please enter an address first');
-                      }
-                    }}
-                    icon={<EnvironmentOutlined />}
-                    disabled={!form.getFieldValue('home_address')}
-                  >
-                    {isGeocoding ? 'Verifying...' : 'Verify Address'}
-                  </Button>
-                </div>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      name="latitude"
-                      label="Latitude"
-                    >
-                      <InputNumber 
-                        placeholder="Auto-populated"
-                        readOnly
-                        style={{ width: '100%', backgroundColor: '#f5f5f5' }}
-                        precision={6}
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      name="longitude"
-                      label="Longitude"
-                    >
-                      <InputNumber 
-                        placeholder="Auto-populated"
-                        readOnly
-                        style={{ width: '100%', backgroundColor: '#f5f5f5' }}
-                        precision={6}
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item
-                  name="service_radius_km"
-                  label="Service Radius (km)"
-                  help="Used as fallback when no polygon is defined"
-                >
-                  <InputNumber
-                    placeholder="Radius in kilometers"
-                    min={1}
-                    max={100}
-                    style={{ width: '100%' }}
-                  />
-                </Form.Item>
-              </Card>
-
-              {/* Service Area Polygon Editor */}
-              <ServiceAreaPolygonEditor
-                centerLat={coordinateFields.latitude}
-                centerLng={coordinateFields.longitude}
-                serviceRadiusKm={form.getFieldValue('service_radius_km') || 10}
-                existingPolygon={serviceAreaPolygon || undefined}
-                onPolygonChange={(polygon) => setServiceAreaPolygon(polygon)}
+          {/* Profile Header */}
+          <Card style={{ marginBottom: '24px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <Avatar
+                size={100}
+                src={profileImage}
+                icon={<UserOutlined />}
+                style={{ marginBottom: '16px' }}
               />
+              <br />
+              <Upload
+                accept="image/*"
+                beforeUpload={handleImageUpload}
+                showUploadList={false}
+              >
+                <Button icon={<UploadOutlined />}>
+                  Upload Photo
+                </Button>
+              </Upload>
+            </div>
+          </Card>
 
-              {/* Services */}
-              <Card title="Services Offered" style={{ marginBottom: '24px' }}>
-                <Checkbox.Group
-                  value={selectedServices}
-                  onChange={setSelectedServices}
-                  style={{ width: '100%' }}
-                >
-                  <Row gutter={[16, 8]}>
-                    {allServices.map(service => (
-                      <Col span={24} key={service.id}>
-                        <Checkbox value={service.id}>
-                          <strong>{service.name}</strong>
-                          {service.description && (
-                            <div style={{ fontSize: '12px', color: '#666' }}>
-                              {service.description}
-                            </div>
-                          )}
-                        </Checkbox>
-                      </Col>
-                    ))}
-                  </Row>
-                </Checkbox.Group>
-              </Card>
+          {/* Tabbed Form Content */}
+          <Card>
+            <Tabs
+              defaultActiveKey="bio"
+              items={[
+                {
+                  key: 'bio',
+                  label: 'Bio',
+                  children: (
+                    <div>
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item
+                            name="first_name"
+                            label="First Name"
+                            rules={[{ required: true, message: 'Please enter first name' }]}
+                          >
+                            <Input placeholder="Enter first name" />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            name="last_name"
+                            label="Last Name"
+                            rules={[{ required: true, message: 'Please enter last name' }]}
+                          >
+                            <Input placeholder="Enter last name" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
 
-              {/* Availability Schedule */}
-              <Card title="Availability Schedule">
-                <div style={{ marginBottom: '16px' }}>
-                  <Button 
-                    type="dashed" 
-                    icon={<PlusOutlined />}
-                    onClick={addAvailabilitySlot}
-                    block
-                  >
-                    Add Availability Slot
-                  </Button>
-                </div>
+                      <Form.Item
+                        name="email"
+                        label="Email"
+                        rules={[
+                          { required: true, message: 'Please enter email' },
+                          { type: 'email', message: 'Please enter a valid email' }
+                        ]}
+                      >
+                        <Input placeholder="Enter email address" />
+                      </Form.Item>
 
-                {availability.map((avail, index) => (
-                  <div key={index} style={{ marginBottom: '16px', padding: '12px', border: '1px solid #d9d9d9', borderRadius: '6px' }}>
-                    <Row gutter={16} align="middle">
-                      <Col span={8}>
-                        <Select
-                          value={avail.day_of_week}
-                          onChange={(value) => updateAvailabilitySlot(index, 'day_of_week', value)}
-                          style={{ width: '100%' }}
+                      <Form.Item name="phone" label="Phone Number">
+                        <Input placeholder="Enter phone number" />
+                      </Form.Item>
+
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item name="gender" label="Gender">
+                            <Select placeholder="Select gender">
+                              <Option value="male">Male</Option>
+                              <Option value="female">Female</Option>
+                              <Option value="other">Other</Option>
+                              <Option value="prefer_not_to_say">Prefer not to say</Option>
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item name="years_experience" label="Years of Experience">
+                            <InputNumber
+                              placeholder="Years"
+                              min={0}
+                              max={50}
+                              style={{ width: '100%' }}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Form.Item
+                        name="business_abn"
+                        label="Business ABN"
+                        rules={[
+                          { required: true, message: 'Please enter business ABN' },
+                          { pattern: /^\d{11}$/, message: 'ABN must be 11 digits' }
+                        ]}
+                      >
+                        <Input placeholder="Enter 11-digit ABN" maxLength={11} />
+                      </Form.Item>
+
+                      <Form.Item name="bio" label="Biography">
+                        <TextArea
+                          rows={4}
+                          placeholder="Enter therapist biography..."
+                          maxLength={500}
+                          showCount
+                        />
+                      </Form.Item>
+
+                      <Divider orientation="left">Certificates</Divider>
+
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item label="Insurance Expiry Date" name="insurance_expiry_date">
+                            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="Insurance Certificate">
+                            <Upload
+                              listType="text"
+                              fileList={insuranceCertFile}
+                              beforeUpload={() => false}
+                              onChange={({ fileList }) => setInsuranceCertFile(fileList)}
+                              maxCount={1}
+                              accept=".pdf,.jpg,.jpeg,.png"
+                            >
+                              <Button icon={<UploadOutlined />}>Upload Certificate</Button>
+                            </Upload>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item label="First Aid Expiry Date" name="first_aid_expiry_date">
+                            <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="First Aid Certificate">
+                            <Upload
+                              listType="text"
+                              fileList={firstAidCertFile}
+                              beforeUpload={() => false}
+                              onChange={({ fileList }) => setFirstAidCertFile(fileList)}
+                              maxCount={1}
+                              accept=".pdf,.jpg,.jpeg,.png"
+                            >
+                              <Button icon={<UploadOutlined />}>Upload Certificate</Button>
+                            </Upload>
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Form.Item label="Therapist Qualification Certificate">
+                        <Upload
+                          listType="text"
+                          fileList={qualificationCertFile}
+                          beforeUpload={() => false}
+                          onChange={({ fileList }) => setQualificationCertFile(fileList)}
+                          maxCount={1}
+                          accept=".pdf,.jpg,.jpeg,.png"
                         >
-                          {[0, 1, 2, 3, 4, 5, 6].map(day => (
-                            <Option key={day} value={day}>
-                              {getDayName(day)}
-                            </Option>
+                          <Button icon={<UploadOutlined />}>Upload Certificate</Button>
+                        </Upload>
+                      </Form.Item>
+
+                      <Divider orientation="left">Banking Details</Divider>
+
+                      <Form.Item label="Bank Account Name" name="bank_account_name">
+                        <Input prefix={<BankOutlined />} placeholder="Account holder name" />
+                      </Form.Item>
+
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item
+                            label="BSB"
+                            name="bsb"
+                            rules={[{ pattern: /^\d{3}-?\d{3}$/, message: 'BSB must be in format XXX-XXX or XXXXXX' }]}
+                          >
+                            <Input placeholder="XXX-XXX" />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="Bank Account Number" name="bank_account_number">
+                            <Input placeholder="Account number" />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Divider orientation="left">Hourly Rates</Divider>
+
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item label="Hourly Rate" name="hourly_rate">
+                            <InputNumber
+                              prefix="$"
+                              style={{ width: '100%' }}
+                              min={0}
+                              step={0.01}
+                              disabled={!isSuperAdmin}
+                              placeholder={isSuperAdmin ? "Enter hourly rate" : "Only editable by superadmin"}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item label="After Hours Rate" name="afterhours_rate">
+                            <InputNumber
+                              prefix="$"
+                              style={{ width: '100%' }}
+                              min={0}
+                              step={0.01}
+                              disabled={!isSuperAdmin}
+                              placeholder={isSuperAdmin ? "Enter after hours rate" : "Only editable by superadmin"}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      {!isSuperAdmin && (
+                        <div style={{ padding: 12, backgroundColor: '#fff7e6', border: '1px solid #ffd591', borderRadius: 4, marginBottom: 16 }}>
+                          <Typography.Text type="warning">
+                            ⚠️ Only superadmin users can modify hourly rates
+                          </Typography.Text>
+                        </div>
+                      )}
+
+                      <Divider orientation="left">Status & Verification</Divider>
+
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item
+                            name="is_active"
+                            label="Active Status"
+                            valuePropName="checked"
+                          >
+                            <Switch
+                              checkedChildren="Active"
+                              unCheckedChildren="Inactive"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            name="address_verified"
+                            label="Address Verified"
+                            valuePropName="checked"
+                          >
+                            <Switch
+                              checkedChildren="Verified"
+                              unCheckedChildren="Unverified"
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'services',
+                  label: 'Services',
+                  children: (
+                    <div>
+                      <Checkbox.Group
+                        value={selectedServices}
+                        onChange={setSelectedServices}
+                        style={{ width: '100%' }}
+                      >
+                        <Row gutter={[16, 8]}>
+                          {allServices.map(service => (
+                            <Col span={24} key={service.id}>
+                              <Checkbox value={service.id}>
+                                <strong>{service.name}</strong>
+                                {service.description && (
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    {service.description}
+                                  </div>
+                                )}
+                              </Checkbox>
+                            </Col>
                           ))}
-                        </Select>
-                      </Col>
-                      <Col span={6}>
-                        <TimePicker
-                          value={dayjs(avail.start_time, 'HH:mm')}
-                          onChange={(time) => updateAvailabilitySlot(index, 'start_time', time?.format('HH:mm'))}
-                          format="HH:mm"
+                        </Row>
+                      </Checkbox.Group>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'service-area',
+                  label: 'Service Area',
+                  children: (
+                    <div>
+                      <Form.Item
+                        name="home_address"
+                        label="Home Address"
+                        help={geocodeError ? <span style={{ color: '#ff4d4f' }}>{geocodeError}</span> :
+                              addressVerified ? <span style={{ color: '#52c41a' }}>✓ Address verified</span> :
+                              'Enter address for automatic verification'}
+                      >
+                        <TextArea
+                          id="home_address"
+                          rows={3}
+                          placeholder="Start typing address for autocomplete suggestions..."
+                        />
+                      </Form.Item>
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <Button
+                          type="default"
+                          loading={isGeocoding}
+                          onClick={() => {
+                            const address = form.getFieldValue('home_address');
+                            if (address) {
+                              geocodeAddress(address);
+                            } else {
+                              message.warning('Please enter an address first');
+                            }
+                          }}
+                          icon={<EnvironmentOutlined />}
+                          disabled={!form.getFieldValue('home_address')}
+                        >
+                          {isGeocoding ? 'Verifying...' : 'Verify Address'}
+                        </Button>
+                      </div>
+
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item name="latitude" label="Latitude">
+                            <InputNumber
+                              placeholder="Auto-populated"
+                              readOnly
+                              style={{ width: '100%', backgroundColor: '#f5f5f5' }}
+                              precision={6}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item name="longitude" label="Longitude">
+                            <InputNumber
+                              placeholder="Auto-populated"
+                              readOnly
+                              style={{ width: '100%', backgroundColor: '#f5f5f5' }}
+                              precision={6}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+
+                      <Form.Item
+                        name="service_radius_km"
+                        label="Service Radius (km)"
+                        help="Used as fallback when no polygon is defined"
+                      >
+                        <InputNumber
+                          placeholder="Radius in kilometers"
+                          min={1}
+                          max={100}
                           style={{ width: '100%' }}
                         />
-                      </Col>
-                      <Col span={6}>
-                        <TimePicker
-                          value={dayjs(avail.end_time, 'HH:mm')}
-                          onChange={(time) => updateAvailabilitySlot(index, 'end_time', time?.format('HH:mm'))}
-                          format="HH:mm"
-                          style={{ width: '100%' }}
-                        />
-                      </Col>
-                      <Col span={4}>
-                        <Button 
-                          type="text" 
-                          danger
-                          icon={<DeleteOutlined />}
-                          onClick={() => removeAvailabilitySlot(index)}
-                        />
-                      </Col>
-                    </Row>
-                  </div>
-                ))}
-              </Card>
-            </Col>
-          </Row>
+                      </Form.Item>
+
+                      <Divider orientation="left">Service Area Polygon</Divider>
+
+                      <ServiceAreaPolygonEditor
+                        centerLat={coordinateFields.latitude}
+                        centerLng={coordinateFields.longitude}
+                        serviceRadiusKm={form.getFieldValue('service_radius_km') || 10}
+                        existingPolygon={serviceAreaPolygon || undefined}
+                        onPolygonChange={(polygon) => setServiceAreaPolygon(polygon)}
+                      />
+                    </div>
+                  ),
+                },
+                {
+                  key: 'availability',
+                  label: 'Availability',
+                  children: (
+                    <div>
+                      <div style={{ marginBottom: '16px' }}>
+                        <Button
+                          type="dashed"
+                          icon={<PlusOutlined />}
+                          onClick={addAvailabilitySlot}
+                          block
+                        >
+                          Add Availability Slot
+                        </Button>
+                      </div>
+
+                      {availability.map((avail, index) => (
+                        <div key={index} style={{ marginBottom: '16px', padding: '12px', border: '1px solid #d9d9d9', borderRadius: '6px' }}>
+                          <Row gutter={16} align="middle">
+                            <Col span={8}>
+                              <Select
+                                value={avail.day_of_week}
+                                onChange={(value) => updateAvailabilitySlot(index, 'day_of_week', value)}
+                                style={{ width: '100%' }}
+                              >
+                                {[0, 1, 2, 3, 4, 5, 6].map(day => (
+                                  <Option key={day} value={day}>
+                                    {getDayName(day)}
+                                  </Option>
+                                ))}
+                              </Select>
+                            </Col>
+                            <Col span={6}>
+                              <TimePicker
+                                value={dayjs(avail.start_time, 'HH:mm')}
+                                onChange={(time) => updateAvailabilitySlot(index, 'start_time', time?.format('HH:mm'))}
+                                format="HH:mm"
+                                style={{ width: '100%' }}
+                              />
+                            </Col>
+                            <Col span={6}>
+                              <TimePicker
+                                value={dayjs(avail.end_time, 'HH:mm')}
+                                onChange={(time) => updateAvailabilitySlot(index, 'end_time', time?.format('HH:mm'))}
+                                format="HH:mm"
+                                style={{ width: '100%' }}
+                              />
+                            </Col>
+                            <Col span={4}>
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() => removeAvailabilitySlot(index)}
+                              />
+                            </Col>
+                          </Row>
+                        </div>
+                      ))}
+                    </div>
+                  ),
+                },
+                {
+                  key: 'time-off',
+                  label: 'Time Off',
+                  children: (
+                    <div>
+                      <div style={{ marginBottom: '16px' }}>
+                        <Button
+                          type="dashed"
+                          icon={<PlusOutlined />}
+                          onClick={addTimeOffSlot}
+                          block
+                        >
+                          Add Time Off Period
+                        </Button>
+                      </div>
+
+                      {timeOff.map((to, index) => (
+                        <div key={index} style={{ marginBottom: '16px', padding: '12px', border: '1px solid #d9d9d9', borderRadius: '6px' }}>
+                          <Row gutter={16} align="middle">
+                            <Col span={6}>
+                              <DatePicker
+                                value={dayjs(to.start_date)}
+                                onChange={(date) => updateTimeOffSlot(index, 'start_date', date?.format('YYYY-MM-DD'))}
+                                format="DD/MM/YYYY"
+                                style={{ width: '100%' }}
+                                placeholder="Start Date"
+                              />
+                            </Col>
+                            <Col span={6}>
+                              <DatePicker
+                                value={dayjs(to.end_date)}
+                                onChange={(date) => updateTimeOffSlot(index, 'end_date', date?.format('YYYY-MM-DD'))}
+                                format="DD/MM/YYYY"
+                                style={{ width: '100%' }}
+                                placeholder="End Date"
+                              />
+                            </Col>
+                            <Col span={6}>
+                              <Input
+                                value={to.reason}
+                                onChange={(e) => updateTimeOffSlot(index, 'reason', e.target.value)}
+                                placeholder="Reason (optional)"
+                              />
+                            </Col>
+                            <Col span={4}>
+                              <Select
+                                value={to.status}
+                                onChange={(value) => updateTimeOffSlot(index, 'status', value)}
+                                style={{ width: '100%' }}
+                              >
+                                <Option value="pending">Pending</Option>
+                                <Option value="approved">Approved</Option>
+                                <Option value="rejected">Rejected</Option>
+                              </Select>
+                            </Col>
+                            <Col span={2}>
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() => removeTimeOffSlot(index)}
+                              />
+                            </Col>
+                          </Row>
+                        </div>
+                      ))}
+                    </div>
+                  ),
+                },
+              ]}
+            />
+          </Card>
 
           {/* Submit Buttons */}
           <Card style={{ marginTop: '24px' }}>
