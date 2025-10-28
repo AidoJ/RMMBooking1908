@@ -28,7 +28,9 @@ import {
   LockOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  KeyOutlined
+  KeyOutlined,
+  DeleteOutlined,
+  SafetyOutlined
 } from '@ant-design/icons';
 import { useGetIdentity } from '@refinedev/core';
 import { RoleGuard } from '../../components/RoleGuard';
@@ -58,8 +60,10 @@ const UserManagementList: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [form] = Form.useForm();
+  const [passwordForm] = Form.useForm();
   const { data: identity } = useGetIdentity<any>();
 
   const isSuperAdmin = identity?.role === 'super_admin';
@@ -129,6 +133,70 @@ const UserManagementList: React.FC = () => {
     } catch (error: any) {
       console.error('Error unlocking account:', error);
       message.error('Failed to unlock account');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userEmail: string) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+
+      const response = await fetch('/.netlify/functions/user-management', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action: 'delete',
+          data: { id: userId }
+        })
+      });
+
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error);
+
+      setUsers(users.filter(user => user.id !== userId));
+      message.success(`User ${userEmail} deleted successfully`);
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      message.error(error.message || 'Failed to delete user');
+    }
+  };
+
+  const showPasswordResetModal = (user: AdminUser) => {
+    setSelectedUser(user);
+    passwordForm.resetFields();
+    setIsPasswordModalVisible(true);
+  };
+
+  const handleResetPassword = async (values: any) => {
+    try {
+      const token = localStorage.getItem('adminToken');
+
+      const response = await fetch('/.netlify/functions/user-management', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action: 'reset-password',
+          data: {
+            id: selectedUser?.id,
+            newPassword: values.newPassword
+          }
+        })
+      });
+
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error);
+
+      setIsPasswordModalVisible(false);
+      passwordForm.resetFields();
+      message.success('Password reset successfully');
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      message.error(error.message || 'Failed to reset password');
     }
   };
 
@@ -348,7 +416,7 @@ const UserManagementList: React.FC = () => {
     {
       title: 'Actions',
       key: 'actions',
-      width: 180,
+      width: 220,
       render: (record: AdminUser) => (
         <Space>
           {isSuperAdmin && (
@@ -367,6 +435,13 @@ const UserManagementList: React.FC = () => {
                   onClick={() => showEditModal(record)}
                 />
               </Tooltip>
+              <Tooltip title="Reset Password">
+                <Button
+                  type="text"
+                  icon={<SafetyOutlined />}
+                  onClick={() => showPasswordResetModal(record)}
+                />
+              </Tooltip>
               {isAccountLocked(record) && (
                 <Tooltip title="Unlock Account">
                   <Button
@@ -376,6 +451,22 @@ const UserManagementList: React.FC = () => {
                   />
                 </Tooltip>
               )}
+              <Popconfirm
+                title="Delete User"
+                description={`Are you sure you want to delete ${record.first_name} ${record.last_name}? This action cannot be undone.`}
+                onConfirm={() => handleDeleteUser(record.id, record.email)}
+                okText="Yes, Delete"
+                cancelText="Cancel"
+                okButtonProps={{ danger: true }}
+              >
+                <Tooltip title="Delete User">
+                  <Button
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                  />
+                </Tooltip>
+              </Popconfirm>
             </>
           )}
         </Space>
@@ -604,6 +695,65 @@ const UserManagementList: React.FC = () => {
                   {selectedUser ? 'Update User' : 'Create User'}
                 </Button>
                 <Button onClick={() => setIsModalVisible(false)} size="large">
+                  Cancel
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        <Modal
+          title={`Reset Password for ${selectedUser?.first_name} ${selectedUser?.last_name}`}
+          open={isPasswordModalVisible}
+          onCancel={() => setIsPasswordModalVisible(false)}
+          footer={null}
+          width={500}
+        >
+          <Form
+            form={passwordForm}
+            layout="vertical"
+            onFinish={handleResetPassword}
+          >
+            <Form.Item
+              name="newPassword"
+              label="New Password"
+              rules={[
+                { required: true, message: 'Please enter new password' },
+                { min: 8, message: 'Password must be at least 8 characters' },
+                {
+                  pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+                  message: 'Password must contain uppercase, lowercase, and numbers'
+                }
+              ]}
+            >
+              <Input.Password size="large" placeholder="Enter new password" />
+            </Form.Item>
+
+            <Form.Item
+              name="confirmPassword"
+              label="Confirm Password"
+              dependencies={['newPassword']}
+              rules={[
+                { required: true, message: 'Please confirm password' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('newPassword') === value) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(new Error('Passwords do not match'));
+                  },
+                }),
+              ]}
+            >
+              <Input.Password size="large" placeholder="Confirm new password" />
+            </Form.Item>
+
+            <Form.Item>
+              <Space>
+                <Button type="primary" htmlType="submit" size="large">
+                  Reset Password
+                </Button>
+                <Button onClick={() => setIsPasswordModalVisible(false)} size="large">
                   Cancel
                 </Button>
               </Space>
