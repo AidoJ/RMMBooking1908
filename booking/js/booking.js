@@ -1129,8 +1129,6 @@ console.log('Globals:', {
       if (currentDuration && parseInt(currentDuration) < minimumDuration) {
         document.getElementById('duration').value = '';
       }
-
-      updateContinueButton();
     }
   }
 
@@ -1161,7 +1159,6 @@ console.log('Globals:', {
       if (selectedCard && selectedCard.classList.contains('hidden')) {
         document.getElementById('minimumDurationInfo').classList.remove('show');
         document.getElementById('duration').value = '';
-        updateContinueButton();
       }
     }
   };
@@ -2983,7 +2980,7 @@ async function populateBookingSummary() {
   if (businessName) {
     bookingType = 'Hotel/Accommodation';
   } else {
-    bookingType = 'In-home Private Residence';
+    bookingType = 'In-home';
   }
 
   let businessLabel = businessName ? 'Hotel Name' : '';
@@ -3613,7 +3610,7 @@ if (confirmBtn) {
     if (businessName) {
       bookingType = 'Hotel/Accommodation';
     } else {
-      bookingType = 'In-home Private Residence';
+      bookingType = 'In-home';
     }
 
     console.log('📍 DEBUG (booking creation): Business name:', businessName, '| Booking type:', bookingType);
