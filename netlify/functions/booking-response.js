@@ -349,7 +349,7 @@ Client will be notified. Check email for full details.
                                   booking.booker_name?.split(' ')[0] ||
                                   'Valued Customer';
 
-        const customerSMSMessage = `Hi ${customerFirstName}, Great news your booking request ${booking.booking_id} has been confirmed.`;
+        const customerSMSMessage = `Hi ${customerFirstName}, Great news your booking request ${booking.booking_id} has been confirmed. Check your email for more details.`;
 
         await sendSMSNotification(booking.customer_phone, customerSMSMessage);
         console.log('✅ Customer SMS confirmation sent');
@@ -957,7 +957,8 @@ async function sendSMSNotification(phoneNumber, message) {
     console.log(`📱 Sending SMS notification to ${phoneNumber}`);
     console.log(`📄 Message preview: ${message.substring(0, 100)}...`);
     
-    const response = await fetch('https://rmmbookingplatform.netlify.app/.netlify/functions/send-sms', {
+    // Use relative URL to work on any domain (production, preview, localhost)
+    const response = await fetch('/.netlify/functions/send-sms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: phoneNumber, message: message })
