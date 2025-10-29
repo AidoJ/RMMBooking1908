@@ -342,13 +342,14 @@ Client will be notified. Check email for full details.
     if (booking.customer_phone) {
       try {
         console.log('📱 Sending SMS confirmation to customer:', booking.customer_phone);
-        
-        const customerSMSMessage = `🎉 BOOKING CONFIRMED!
 
-${therapist.first_name} ${therapist.last_name} has accepted your massage booking for ${new Date(booking.booking_time).toLocaleDateString()} at ${new Date(booking.booking_time).toLocaleTimeString()}.
+        // Get customer first name from either customers table or booking fields
+        const customerFirstName = booking.customers?.first_name ||
+                                  booking.first_name ||
+                                  booking.booker_name?.split(' ')[0] ||
+                                  'Valued Customer';
 
-Check your email for full details!
-- Rejuvenators`;
+        const customerSMSMessage = `Hi ${customerFirstName}, Great news your booking request ${booking.booking_id} has been confirmed.`;
 
         await sendSMSNotification(booking.customer_phone, customerSMSMessage);
         console.log('✅ Customer SMS confirmation sent');
