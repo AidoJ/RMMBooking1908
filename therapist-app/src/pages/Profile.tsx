@@ -24,6 +24,7 @@ import {
   UploadOutlined,
   BankOutlined,
   DollarOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { supabaseClient } from '../utility/supabaseClient';
@@ -66,6 +67,8 @@ export const Profile: React.FC = () => {
   const [insuranceCertFile, setInsuranceCertFile] = useState<any[]>([]);
   const [firstAidCertFile, setFirstAidCertFile] = useState<any[]>([]);
   const [qualificationCertFile, setQualificationCertFile] = useState<any[]>([]);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordForm] = Form.useForm();
 
   useEffect(() => {
     loadProfile();
@@ -259,6 +262,50 @@ export const Profile: React.FC = () => {
       message.error('Failed to save profile');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (values: any) => {
+    try {
+      setChangingPassword(true);
+
+      const userStr = localStorage.getItem('therapistUser');
+      if (!userStr) {
+        message.error('Please log in again');
+        return;
+      }
+
+      const userData = JSON.parse(userStr);
+      const userId = userData.user_id || userData.id;
+
+      // Call password update function
+      const token = localStorage.getItem('therapistToken');
+      const response = await fetch('/.netlify/functions/update-therapist-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          current_password: values.current_password,
+          new_password: values.new_password
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update password');
+      }
+
+      message.success('Password updated successfully!');
+      passwordForm.resetFields();
+    } catch (error: any) {
+      console.error('Error changing password:', error);
+      message.error(error.message || 'Failed to change password');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -533,6 +580,68 @@ export const Profile: React.FC = () => {
               icon={<SaveOutlined />}
             >
               {profile?.id ? 'Save Changes' : 'Create Profile'}
+            </Button>
+          </div>
+        </Form>
+      </Card>
+
+      <Card title="Change Password" style={{ marginTop: 24 }}>
+        <Form
+          form={passwordForm}
+          layout="vertical"
+          onFinish={handlePasswordChange}
+        >
+          <Form.Item
+            label="Current Password"
+            name="current_password"
+            rules={[{ required: true, message: 'Please enter your current password' }]}
+          >
+            <Input.Password prefix={<LockOutlined />} placeholder="Enter current password" />
+          </Form.Item>
+
+          <Form.Item
+            label="New Password"
+            name="new_password"
+            rules={[
+              { required: true, message: 'Please enter new password' },
+              { min: 8, message: 'Password must be at least 8 characters' },
+              {
+                pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+                message: 'Password must contain uppercase, lowercase, and numbers'
+              }
+            ]}
+            help="At least 8 characters, including uppercase, lowercase, and numbers"
+          >
+            <Input.Password prefix={<LockOutlined />} placeholder="Enter new password" />
+          </Form.Item>
+
+          <Form.Item
+            label="Confirm New Password"
+            name="confirm_password"
+            dependencies={['new_password']}
+            rules={[
+              { required: true, message: 'Please confirm your new password' },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('new_password') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('Passwords do not match'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password prefix={<LockOutlined />} placeholder="Confirm new password" />
+          </Form.Item>
+
+          <div style={{ textAlign: 'right' }}>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={changingPassword}
+              icon={<LockOutlined />}
+            >
+              Change Password
             </Button>
           </div>
         </Form>
