@@ -14,6 +14,11 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Twilio configuration
+const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
+
 // EmailJS configuration
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_puww2kb';
 const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || 'template_ai9rrg6';
@@ -951,35 +956,43 @@ Quick Response:
   }
 }
 
-// *** NEW: SMS notification function ***
+// *** SMS notification function using direct Twilio API (same as therapist-status-update.js) ***
 async function sendSMSNotification(phoneNumber, message) {
   try {
-    console.log(`📱 Sending SMS notification to ${phoneNumber}`);
-    console.log(`📄 Message preview: ${message.substring(0, 100)}...`);
-    
-    // Use relative URL to work on any domain (production, preview, localhost)
-    const response = await fetch('/.netlify/functions/send-sms', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: phoneNumber, message: message })
-    });
-    
-    // Check if response is JSON before parsing
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      const result = await response.json();
-      console.log('📱 SMS API response:', result);
-      return result;
-    } else {
-      // Response is not JSON, get as text
-      const text = await response.text();
-      console.log('📱 SMS API response (non-JSON):', text);
-      if (response.ok) {
-        return { success: true, message: text };
-      } else {
-        return { success: false, error: text };
-      }
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
+      console.error('❌ Twilio credentials not configured');
+      return { success: false, error: 'Twilio not configured' };
     }
+
+    console.log(`📱 Sending SMS notification to ${phoneNumber}`);
+    console.log(`📄 Message: ${message}`);
+
+    // Send SMS via Twilio API directly
+    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
+    const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
+
+    const response = await fetch(twilioUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        To: phoneNumber,
+        From: TWILIO_PHONE_NUMBER,
+        Body: message
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Twilio error: ${response.status} - ${errorText}`);
+    }
+
+    const result = await response.json();
+    console.log('✅ SMS sent successfully. SID:', result.sid);
+    return { success: true, sid: result.sid };
+
   } catch (error) {
     console.error('❌ Error sending SMS notification:', error);
     return { success: false, error: error.message };
