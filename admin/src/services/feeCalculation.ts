@@ -113,6 +113,8 @@ export function determineRateType(
 }
 
 export function getHourlyRate(rateType: string, settings: SystemSettings): number {
+  // DEPRECATED: This function is kept for backwards compatibility only
+  // Use getTherapistHourlyRate() instead which uses therapist profile rates
   switch (rateType) {
     case 'weekend':
       return settings.therapist_weekend_hourly_rate || settings.therapist_afterhours_hourly_rate;
@@ -124,29 +126,62 @@ export function getHourlyRate(rateType: string, settings: SystemSettings): numbe
   }
 }
 
+export function getTherapistHourlyRate(
+  rateType: 'daytime' | 'afterhours' | 'weekend',
+  therapistHourlyRate: number,
+  therapistAfterhoursRate: number
+): number {
+  switch (rateType) {
+    case 'weekend':
+    case 'afterhours':
+      return therapistAfterhoursRate;
+    case 'daytime':
+    default:
+      return therapistHourlyRate;
+  }
+}
+
 export async function calculateTherapistFee(
   bookingDate: string,
   bookingTime: string,
   totalDurationMinutes: number,
   therapistCount: number,
+  therapistId: string,
   serviceArrangement?: 'split' | 'multiply'
 ): Promise<FeeCalculationResult> {
-  const settings = await getSystemSettings();
-  
+  // Fetch therapist profile rates
+  const { data: therapist, error } = await supabaseClient
+    .from('therapist_profiles')
+    .select('hourly_rate, afterhours_rate, first_name, last_name')
+    .eq('id', therapistId)
+    .single();
+
+  if (error || !therapist) {
+    throw new Error(`Cannot find therapist rates for ID: ${therapistId}. Error: ${error?.message || 'Therapist not found'}`);
+  }
+
+  if (!therapist.hourly_rate || therapist.hourly_rate <= 0 || !therapist.afterhours_rate || therapist.afterhours_rate <= 0) {
+    throw new Error(`Invalid rates for therapist ${therapist.first_name} ${therapist.last_name}. Please ensure both hourly_rate and afterhours_rate are set.`);
+  }
+
+  const settings = await getSystemSettings(); // Still need for business hours determination
+
   // Calculate duration per therapist based on arrangement
   // Multiply: each therapist gets full duration; Split: divide
   const durationPerTherapist = (serviceArrangement === 'multiply')
     ? totalDurationMinutes
     : (totalDurationMinutes / Math.max(1, therapistCount));
   const hoursWorked = parseFloat((durationPerTherapist / 60).toFixed(2));
-  
-  // Determine rate type and hourly rate
+
+  // Determine rate type based on booking time
   const rateType = determineRateType(bookingDate, bookingTime, settings);
-  const hourlyRate = getHourlyRate(rateType, settings);
-  
+
+  // Use therapist-specific rates
+  const hourlyRate = getTherapistHourlyRate(rateType, therapist.hourly_rate, therapist.afterhours_rate);
+
   // Calculate fee
   const therapistFee = parseFloat((hoursWorked * hourlyRate).toFixed(2));
-  
+
   return {
     therapistFee,
     hourlyRate,

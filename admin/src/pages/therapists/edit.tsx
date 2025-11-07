@@ -735,7 +735,14 @@ const TherapistEdit: React.FC = () => {
 
                       <Row gutter={16}>
                         <Col span={12}>
-                          <Form.Item label="Hourly Rate" name="hourly_rate">
+                          <Form.Item
+                            label="Hourly Rate"
+                            name="hourly_rate"
+                            rules={[
+                              { required: true, message: 'Hourly rate is required' },
+                              { type: 'number', min: 0.01, message: 'Must be greater than $0' }
+                            ]}
+                          >
                             <InputNumber
                               prefix="$"
                               style={{ width: '100%' }}
@@ -747,7 +754,14 @@ const TherapistEdit: React.FC = () => {
                           </Form.Item>
                         </Col>
                         <Col span={12}>
-                          <Form.Item label="After Hours Rate" name="afterhours_rate">
+                          <Form.Item
+                            label="After Hours Rate"
+                            name="afterhours_rate"
+                            rules={[
+                              { required: true, message: 'After hours rate is required' },
+                              { type: 'number', min: 0.01, message: 'Must be greater than $0' }
+                            ]}
+                          >
                             <InputNumber
                               prefix="$"
                               style={{ width: '100%' }}

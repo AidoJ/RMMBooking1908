@@ -3005,8 +3005,13 @@ export const BookingEditPlatform: React.FC = () => {
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px', margin: '16px 0' }}>
                         {(availableTherapists.length > 0 ? availableTherapists : therapists).map((therapist) => {
                           const isSelected = booking.therapist_id === therapist.id;
-                          const hourlyRate = therapist.hourly_rate || 45;
-                        
+                          const hourlyRate = therapist.hourly_rate;
+
+                          // Validate therapist has rates set
+                          if (!hourlyRate || hourlyRate <= 0) {
+                            console.warn(`Therapist ${therapist.first_name} ${therapist.last_name} has no hourly rate set`);
+                          }
+
                         return (
                           <div 
                             key={therapist.id}

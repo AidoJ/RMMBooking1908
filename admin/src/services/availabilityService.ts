@@ -77,6 +77,9 @@ function isBusinessHours(date: string, time: string): boolean {
 
 /**
  * Get system settings for therapist rates
+ * NOTE: This function is deprecated and no longer used for rate calculation.
+ * Rates are now fetched from individual therapist profiles.
+ * Kept for backwards compatibility only.
  */
 async function getSystemRates(): Promise<{daytimeRate: number, weekendRate: number}> {
   try {
@@ -105,13 +108,20 @@ async function getSystemRates(): Promise<{daytimeRate: number, weekendRate: numb
 }
 
 /**
- * Get therapist's hourly rate based on time using system settings
+ * Get therapist's hourly rate based on time using therapist profile rates
  */
 async function getTherapistRate(therapist: any, date: string, time: string): Promise<number> {
-  const rates = await getSystemRates();
   const isBusinessTime = isBusinessHours(date, time);
 
-  return isBusinessTime ? rates.daytimeRate : rates.weekendRate;
+  // Use therapist profile rates
+  const rate = isBusinessTime ? therapist.hourly_rate : therapist.afterhours_rate;
+
+  // Validation: ensure rates exist
+  if (!rate || rate <= 0) {
+    throw new Error(`Missing or invalid rate for therapist ${therapist.first_name} ${therapist.last_name}. Please ensure hourly_rate and afterhours_rate are set in the therapist profile.`);
+  }
+
+  return rate;
 }
 
 /**
@@ -203,10 +213,10 @@ export async function getAvailableTherapists(
   requiredCount: number = 1
 ): Promise<TherapistAvailability[]> {
   try {
-    // Get all active therapists
+    // Get all active therapists with their hourly rates
     const { data: therapists, error } = await supabaseClient
       .from('therapist_profiles')
-      .select('id, first_name, last_name, email, gender, rating, is_active')
+      .select('id, first_name, last_name, email, gender, rating, is_active, hourly_rate, afterhours_rate')
       .eq('is_active', true);
 
     if (error) {

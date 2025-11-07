@@ -3,39 +3,64 @@
 // Step navigation logic for new booking form
 
 // Add this function at the very top-level scope so it is accessible everywhere
-function calculateTherapistFee(dateVal, timeVal, durationVal) {
-  if (!dateVal || !timeVal || !durationVal) return null;
-  
-  const dayOfWeek = new Date(dateVal).getDay();
-  const hour = parseInt(timeVal.split(':')[0], 10);
-  
-  // Determine if afterhours/weekend
-  let isAfterhours = false;
-  if (dayOfWeek === 0 || dayOfWeek === 6) {
-    isAfterhours = true;
-  } else {
-    if (window.businessOpeningHour !== undefined && window.businessClosingHour !== undefined) {
-      if (hour < window.businessOpeningHour || hour >= window.businessClosingHour) {
-        isAfterhours = true;
+async function calculateTherapistFee(dateVal, timeVal, durationVal, therapistId) {
+  if (!dateVal || !timeVal || !durationVal || !therapistId) {
+    console.warn('calculateTherapistFee: Missing required parameters');
+    return null;
+  }
+
+  try {
+    // Fetch therapist-specific rates from database
+    const { data: therapist, error } = await window.supabase
+      .from('therapist_profiles')
+      .select('hourly_rate, afterhours_rate, first_name, last_name')
+      .eq('id', therapistId)
+      .single();
+
+    if (error || !therapist) {
+      console.error('Failed to fetch therapist rates:', error);
+      return null;
+    }
+
+    if (!therapist.hourly_rate || therapist.hourly_rate <= 0 || !therapist.afterhours_rate || therapist.afterhours_rate <= 0) {
+      console.error(`Invalid rates for therapist ${therapist.first_name} ${therapist.last_name}`);
+      return null;
+    }
+
+    const dayOfWeek = new Date(dateVal).getDay();
+    const hour = parseInt(timeVal.split(':')[0], 10);
+
+    // Determine if afterhours/weekend
+    let isAfterhours = false;
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      isAfterhours = true;
+    } else {
+      if (window.businessOpeningHour !== undefined && window.businessClosingHour !== undefined) {
+        if (hour < window.businessOpeningHour || hour >= window.businessClosingHour) {
+          isAfterhours = true;
+        }
       }
     }
+
+    // Get appropriate hourly rate from THERAPIST PROFILE
+    const hourlyRate = isAfterhours ? therapist.afterhours_rate : therapist.hourly_rate;
+    if (!hourlyRate) return null;
+
+    // Calculate base fee: hourly rate (this is the base fee, not multiplied by duration)
+    let fee = hourlyRate;
+
+    // Apply duration uplift percentage if available
+    const duration = window.durationsCache.find(d => d.duration_minutes === Number(durationVal));
+    if (duration && duration.uplift_percentage) {
+      const durationUplift = hourlyRate * (Number(duration.uplift_percentage) / 100);
+      fee += durationUplift;
+    }
+
+    return Math.round(fee * 100) / 100;
+  } catch (error) {
+    console.error('Error calculating therapist fee:', error);
+    return null;
   }
-  
-  // Get appropriate hourly rate
-  const hourlyRate = isAfterhours ? window.therapistAfterhoursRate : window.therapistDaytimeRate;
-  if (!hourlyRate) return null;
-  
-  // Calculate base fee: hourly rate (this is the base fee, not multiplied by duration)
-  let fee = hourlyRate;
-  
-  // Apply duration uplift percentage if available
-  const duration = window.durationsCache.find(d => d.duration_minutes === Number(durationVal));
-  if (duration && duration.uplift_percentage) {
-    const durationUplift = hourlyRate * (Number(duration.uplift_percentage) / 100);
-    fee += durationUplift;
-  }
-  
-  return Math.round(fee * 100) / 100;
 }
 
 // Initialize EmailJS when the script loads
@@ -2994,6 +3019,7 @@ async function populateBookingSummary() {
   const time = document.getElementById('time').value;
   const parking = document.getElementById('parking').value;
   const therapist = document.querySelector('input[name="therapistId"]:checked')?.dataset?.name || '';
+  const therapistId = document.querySelector('input[name="therapistId"]:checked')?.value || '';
   const customerName = (document.getElementById('customerFirstName')?.value || '') + ' ' + (document.getElementById('customerLastName')?.value || '');
   const customerEmail = document.getElementById('customerEmail')?.value || '';
   const customerPhone = document.getElementById('customerPhone')?.value || '';
@@ -3002,16 +3028,17 @@ async function populateBookingSummary() {
   const notes = document.getElementById('notes')?.value || '';
   const price = document.getElementById('priceAmount').textContent;
   const priceBreakdown = document.getElementById('priceBreakdown').innerHTML;
-  
+
   // Debug: Log therapist selection
   console.log('🔍 Therapist selection debug:', {
     selectedRadio: document.querySelector('input[name="therapistId"]:checked'),
     therapistName: therapist,
+    therapistId: therapistId,
     allTherapistRadios: document.querySelectorAll('input[name="therapistId"]')
   });
-  
-  // Calculate therapist fee
-  const therapist_fee = calculateTherapistFee(date, time, duration);
+
+  // Calculate therapist fee (async call with therapist-specific rates)
+  const therapist_fee = await calculateTherapistFee(date, time, duration, therapistId);
   const therapist_fee_display = therapist_fee ? `$${therapist_fee.toFixed(2)}` : 'N/A';
   // Get customer_id and booking_id if available
   const customer_id = window.lastBookingCustomerId || '';
@@ -3635,9 +3662,9 @@ if (confirmBtn) {
         const bookerName = document.getElementById('bookerName')?.value || '';
         const notes = document.getElementById('notes')?.value || '';
     const price = document.getElementById('priceAmount').textContent ? parseFloat(document.getElementById('priceAmount').textContent) : null;
-        
-    // Calculate therapist fee
-        const therapist_fee = calculateTherapistFee(date, time, duration) || 0;
+
+    // Calculate therapist fee (async call with therapist-specific rates)
+        const therapist_fee = (await calculateTherapistFee(date, time, duration, therapistId)) || 0;
         
     // Compose booking_time as ISO string
     const booking_time = date && time ? `${date}T${time}:00` : null;
