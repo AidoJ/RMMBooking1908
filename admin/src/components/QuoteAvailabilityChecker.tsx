@@ -56,6 +56,7 @@ export interface TherapistAssignment {
   therapist_id: string;
   therapist_name: string;
   hourly_rate: number;
+  afterhours_rate: number;  // NEW: Store afterhours rate for dynamic display
   is_override: boolean;
   override_reason?: string;
 }
@@ -156,6 +157,7 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
       therapist_id: therapist.therapist_id,
       therapist_name: therapist.therapist_name,
       hourly_rate: therapist.hourly_rate,
+      afterhours_rate: therapist.afterhours_rate,
       is_override: !therapist.is_available,
     };
 
@@ -205,6 +207,7 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
       therapist_id: therapist.therapist_id,
       therapist_name: therapist.therapist_name,
       hourly_rate: therapist.hourly_rate,
+      afterhours_rate: therapist.afterhours_rate,
       is_override: true,
       override_reason: overrideReason,
     };
@@ -458,6 +461,22 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
     );
   }
 
+  // Helper function to get correct rate based on date/time
+  const getDisplayRate = (assignment: TherapistAssignment): number => {
+    const assignmentDate = dayjs(assignment.date);
+    const dayOfWeek = assignmentDate.day();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+    // Parse time to check if afterhours
+    const [hours] = assignment.start_time.split(':').map(Number);
+    const businessOpeningHour = 9;  // Default business hours
+    const businessClosingHour = 17;
+    const isAfterHours = hours < businessOpeningHour || hours >= businessClosingHour;
+
+    // Use afterhours_rate for weekends or afterhours, otherwise use hourly_rate
+    return (isWeekend || isAfterHours) ? assignment.afterhours_rate : assignment.hourly_rate;
+  };
+
   return (
     <div>
       {/* Summary Card */}
@@ -561,7 +580,8 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
               ? dayDurationMinutes
               : (dayDurationMinutes / Math.max(1, therapistsPerDay));
             const hours = durationPerTherapistMinutes / 60;
-            const totalFee = hours * assignment.hourly_rate;
+            const displayRate = getDisplayRate(assignment);
+            const totalFee = hours * displayRate;
 
             return (
               <div key={index} style={{ marginBottom: 12, padding: '12px', backgroundColor: '#f8f9fa', borderRadius: '6px' }}>
@@ -592,7 +612,7 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
                   </Col>
                   <Col span={10}>
                     <Text type="secondary">
-                      Rate: <Text strong>${assignment.hourly_rate}/hr</Text> = <Text strong style={{ color: '#52c41a' }}>${totalFee.toFixed(2)}</Text>
+                      Rate: <Text strong>${displayRate}/hr</Text> = <Text strong style={{ color: '#52c41a' }}>${totalFee.toFixed(2)}</Text>
                     </Text>
                   </Col>
                   <Col span={2} style={{ textAlign: 'right' }}>
@@ -627,7 +647,8 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
                     ? dayDurationMinutes
                     : (dayDurationMinutes / Math.max(1, therapistsPerDay));
                   const hours = durationPerTherapistMinutes / 60;
-                  return total + (hours * assignment.hourly_rate);
+                  const displayRate = getDisplayRate(assignment);
+                  return total + (hours * displayRate);
                 }, 0).toFixed(2)}
               </Text>
             </Col>

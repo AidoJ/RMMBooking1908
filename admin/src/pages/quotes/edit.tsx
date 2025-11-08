@@ -194,7 +194,9 @@ export const QuoteEdit: React.FC = () => {
               therapist_profiles!therapist_id (
                 id,
                 first_name,
-                last_name
+                last_name,
+                hourly_rate,
+                afterhours_rate
               )
             `)
             .eq('parent_quote_id', id)
@@ -212,7 +214,8 @@ export const QuoteEdit: React.FC = () => {
               start_time: booking.booking_time.split('T')[1].substring(0, 8), // Extract time part
               duration_minutes: booking.duration_minutes,
               day_number: booking.quote_day_number,
-              hourly_rate: booking.therapist_fee ? (booking.therapist_fee * 60 / booking.duration_minutes) : 0, // Calculate hourly rate from fee
+              hourly_rate: booking.therapist_profiles ? (booking.therapist_profiles as any).hourly_rate : 0,
+              afterhours_rate: booking.therapist_profiles ? (booking.therapist_profiles as any).afterhours_rate : 0,
               therapist_name: booking.therapist_profiles ?
                 `${(booking.therapist_profiles as any).first_name} ${(booking.therapist_profiles as any).last_name}` :
                 'Unknown Therapist',

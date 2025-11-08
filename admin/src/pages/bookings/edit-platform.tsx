@@ -517,7 +517,7 @@ export const BookingEditPlatform: React.FC = () => {
     try {
       const { data, error } = await supabaseClient
         .from('therapist_profiles')
-        .select('id, first_name, last_name, email, phone, is_active, hourly_rate')
+        .select('id, first_name, last_name, email, phone, is_active, hourly_rate, afterhours_rate')
         .eq('is_active', true)
         .order('first_name');
 
@@ -1492,6 +1492,25 @@ export const BookingEditPlatform: React.FC = () => {
       });
       return;
     }
+
+    // Get therapist profile rates
+    const assignedTherapist = therapists.find(t => t.id === booking.therapist_id);
+    if (!assignedTherapist || !assignedTherapist.hourly_rate || !assignedTherapist.afterhours_rate) {
+      console.warn('Therapist rates not found, using fallback', {
+        therapist_id: booking.therapist_id,
+        found: !!assignedTherapist,
+        rates: assignedTherapist ? { hourly_rate: assignedTherapist.hourly_rate, afterhours_rate: assignedTherapist.afterhours_rate } : null
+      });
+      setTherapistFeeBreakdown({
+        baseRate: 0,
+        afterHoursUplift: 0,
+        weekendUplift: 0,
+        durationMultiplier: 1,
+        totalFee: 0
+      });
+      return;
+    }
+
     // FE logic: determine after-hours/weekend
     const bookingTime = dayjs(booking.booking_time);
     const dayOfWeek = bookingTime.day();
@@ -1501,9 +1520,9 @@ export const BookingEditPlatform: React.FC = () => {
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isAfterHours = isWeekend || hour < opening || hour >= closing;
 
-    // Choose hourly rate based on after-hours (from settings)
-    const daytimeRate = businessSettings.therapistDaytimeRate ?? 45;
-    const afterhoursRate = businessSettings.therapistAfterhoursRate ?? 55;
+    // Choose hourly rate based on after-hours (from therapist profile)
+    const daytimeRate = assignedTherapist.hourly_rate;
+    const afterhoursRate = assignedTherapist.afterhours_rate;
     const hourlyRate = isAfterHours ? afterhoursRate : daytimeRate;
 
     // Duration uplift from duration_pricing (percentage applied to hourly rate)
