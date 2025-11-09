@@ -12,7 +12,9 @@ import {
   Tag,
   Spin,
   Button,
-  Divider,
+  Tabs,
+  Progress,
+  Alert,
 } from 'antd';
 import {
   DollarOutlined,
@@ -23,6 +25,11 @@ import {
   FallOutlined,
   DownloadOutlined,
   ReloadOutlined,
+  TeamOutlined,
+  GiftOutlined,
+  PercentageOutlined,
+  FileTextOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import { supabaseClient } from '../../utility';
 import dayjs, { Dayjs } from 'dayjs';
@@ -33,6 +40,8 @@ dayjs.extend(isoWeek);
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 const { Option } = Select;
+
+// ========== INTERFACES ==========
 
 interface RevenueData {
   totalRevenue: number;
@@ -51,7 +60,15 @@ interface TherapistPerformance {
   totalHours: number;
   totalFees: number;
   averageHourlyRate: number;
-  utilizationRate: number;
+}
+
+interface TherapistPayment {
+  therapist_name: string;
+  week: string;
+  calculated_fees: number;
+  claimed_fees: number;
+  variance: number;
+  status: string;
 }
 
 interface ServicePerformance {
@@ -64,14 +81,63 @@ interface ServicePerformance {
   averagePrice: number;
 }
 
-interface BookingAnalytics {
+interface BookingByDay {
   dayOfWeek: string;
   count: number;
   revenue: number;
 }
 
+interface BookingByHour {
+  hour: number;
+  count: number;
+}
+
+interface CustomerInsight {
+  totalCustomers: number;
+  newCustomers: number;
+  returningCustomers: number;
+  averageLifetimeValue: number;
+  retentionRate: number;
+  topCustomers: Array<{
+    name: string;
+    email: string;
+    bookings: number;
+    totalSpent: number;
+  }>;
+}
+
+interface DiscountData {
+  code: string;
+  usage_count: number;
+  total_discount: number;
+  revenue_generated: number;
+  roi: number;
+}
+
+interface GiftCardData {
+  total_sold: number;
+  total_sold_amount: number;
+  total_redeemed: number;
+  total_redeemed_amount: number;
+  unredeemed_balance: number;
+}
+
+interface QuoteData {
+  total_quotes: number;
+  accepted_quotes: number;
+  declined_quotes: number;
+  acceptance_rate: number;
+  average_quote_value: number;
+  total_quote_revenue: number;
+}
+
+// ========== MAIN COMPONENT ==========
+
 export const Reports: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
+
+  // Filter states
   const [dateRange, setDateRange] = useState<[Dayjs, Dayjs]>([
     dayjs().startOf('month'),
     dayjs().endOf('month'),
@@ -82,8 +148,14 @@ export const Reports: React.FC = () => {
   // Data states
   const [revenueData, setRevenueData] = useState<RevenueData | null>(null);
   const [therapistPerformance, setTherapistPerformance] = useState<TherapistPerformance[]>([]);
+  const [therapistPayments, setTherapistPayments] = useState<TherapistPayment[]>([]);
   const [servicePerformance, setServicePerformance] = useState<ServicePerformance[]>([]);
-  const [bookingAnalytics, setBookingAnalytics] = useState<BookingAnalytics[]>([]);
+  const [bookingByDay, setBookingByDay] = useState<BookingByDay[]>([]);
+  const [bookingByHour, setBookingByHour] = useState<BookingByHour[]>([]);
+  const [customerInsights, setCustomerInsights] = useState<CustomerInsight | null>(null);
+  const [discountData, setDiscountData] = useState<DiscountData[]>([]);
+  const [giftCardData, setGiftCardData] = useState<GiftCardData | null>(null);
+  const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
 
   // Filter options
   const [therapists, setTherapists] = useState<any[]>([]);
@@ -94,19 +166,17 @@ export const Reports: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadReports();
+    loadAllData();
   }, [dateRange, selectedTherapist, selectedService]);
 
   const loadFilterOptions = async () => {
     try {
-      // Load therapists
       const { data: therapistsData } = await supabaseClient
         .from('therapist_profiles')
         .select('id, first_name, last_name')
         .eq('is_active', true)
         .order('first_name');
 
-      // Load services
       const { data: servicesData } = await supabaseClient
         .from('services')
         .select('id, name')
@@ -120,14 +190,17 @@ export const Reports: React.FC = () => {
     }
   };
 
-  const loadReports = async () => {
+  const loadAllData = async () => {
     setLoading(true);
     try {
       await Promise.all([
         loadRevenueDashboard(),
         loadTherapistPerformance(),
+        loadTherapistPayments(),
         loadServicePerformance(),
         loadBookingAnalytics(),
+        loadCustomerInsights(),
+        loadMarketingData(),
       ]);
     } catch (error) {
       console.error('Error loading reports:', error);
@@ -136,6 +209,8 @@ export const Reports: React.FC = () => {
     }
   };
 
+  // ========== DATA LOADING FUNCTIONS ==========
+
   const loadRevenueDashboard = async () => {
     try {
       const startDate = dateRange[0].format('YYYY-MM-DD');
@@ -143,29 +218,20 @@ export const Reports: React.FC = () => {
 
       let query = supabaseClient
         .from('bookings')
-        .select('id, price, therapist_fee, status, booking_time, therapist_id, service_id')
+        .select('id, price, therapist_fee, status, booking_time')
         .gte('booking_time', startDate)
         .lte('booking_time', endDate + ' 23:59:59');
 
-      if (selectedTherapist !== 'all') {
-        query = query.eq('therapist_id', selectedTherapist);
-      }
+      if (selectedTherapist !== 'all') query = query.eq('therapist_id', selectedTherapist);
+      if (selectedService !== 'all') query = query.eq('service_id', selectedService);
 
-      if (selectedService !== 'all') {
-        query = query.eq('service_id', selectedService);
-      }
-
-      const { data: bookings, error } = await query;
-
-      if (error) throw error;
-
+      const { data: bookings } = await query;
       const completed = bookings?.filter(b => b.status === 'completed') || [];
-      const totalRevenue = completed.reduce((sum, b) => sum + (parseFloat(b.price?.toString() || '0')), 0);
-      const totalTherapistFees = completed.reduce((sum, b) => sum + (parseFloat(b.therapist_fee?.toString() || '0')), 0);
-      const netProfit = totalRevenue - totalTherapistFees;
-      const averageBookingValue = completed.length > 0 ? totalRevenue / completed.length : 0;
 
-      // Calculate previous period for comparison
+      const totalRevenue = completed.reduce((sum, b) => sum + parseFloat(b.price?.toString() || '0'), 0);
+      const totalTherapistFees = completed.reduce((sum, b) => sum + parseFloat(b.therapist_fee?.toString() || '0'), 0);
+
+      // Previous period comparison
       const daysDiff = dateRange[1].diff(dateRange[0], 'day');
       const prevStart = dateRange[0].subtract(daysDiff + 1, 'day');
       const prevEnd = dateRange[0].subtract(1, 'day');
@@ -177,16 +243,16 @@ export const Reports: React.FC = () => {
         .gte('booking_time', prevStart.format('YYYY-MM-DD'))
         .lte('booking_time', prevEnd.format('YYYY-MM-DD') + ' 23:59:59');
 
-      const prevRevenue = prevBookings?.reduce((sum, b) => sum + (parseFloat(b.price?.toString() || '0')), 0) || 0;
+      const prevRevenue = prevBookings?.reduce((sum, b) => sum + parseFloat(b.price?.toString() || '0'), 0) || 0;
       const revenueChange = prevRevenue > 0 ? ((totalRevenue - prevRevenue) / prevRevenue) * 100 : 0;
 
       setRevenueData({
         totalRevenue,
         totalBookings: bookings?.length || 0,
         completedBookings: completed.length,
-        averageBookingValue,
+        averageBookingValue: completed.length > 0 ? totalRevenue / completed.length : 0,
         totalTherapistFees,
-        netProfit,
+        netProfit: totalRevenue - totalTherapistFees,
         revenueChange,
       });
     } catch (error) {
@@ -199,61 +265,39 @@ export const Reports: React.FC = () => {
       const startDate = dateRange[0].format('YYYY-MM-DD');
       const endDate = dateRange[1].format('YYYY-MM-DD');
 
-      const { data: bookings, error } = await supabaseClient
+      const { data: bookings } = await supabaseClient
         .from('bookings')
         .select(`
-          id,
           therapist_id,
           duration_minutes,
           therapist_fee,
-          status,
-          therapist_profiles!therapist_id (
-            id,
-            first_name,
-            last_name
-          )
+          therapist_profiles!therapist_id (first_name, last_name)
         `)
         .eq('status', 'completed')
         .gte('booking_time', startDate)
         .lte('booking_time', endDate + ' 23:59:59');
 
-      if (error) throw error;
-
-      // Group by therapist
       const therapistMap = new Map<string, TherapistPerformance>();
 
-      bookings?.forEach(booking => {
-        const therapist = booking.therapist_profiles as any;
+      bookings?.forEach(b => {
+        const therapist = b.therapist_profiles as any;
         if (!therapist) return;
 
-        const therapistId = booking.therapist_id;
-        const therapistName = `${therapist.first_name} ${therapist.last_name}`;
+        const id = b.therapist_id;
+        const name = `${therapist.first_name} ${therapist.last_name}`;
 
-        if (!therapistMap.has(therapistId)) {
-          therapistMap.set(therapistId, {
-            id: therapistId,
-            name: therapistName,
-            completedJobs: 0,
-            totalHours: 0,
-            totalFees: 0,
-            averageHourlyRate: 0,
-            utilizationRate: 0,
-          });
+        if (!therapistMap.has(id)) {
+          therapistMap.set(id, { id, name, completedJobs: 0, totalHours: 0, totalFees: 0, averageHourlyRate: 0 });
         }
 
-        const perf = therapistMap.get(therapistId)!;
+        const perf = therapistMap.get(id)!;
         perf.completedJobs += 1;
-        perf.totalHours += (booking.duration_minutes || 0) / 60;
-        perf.totalFees += parseFloat(booking.therapist_fee?.toString() || '0');
+        perf.totalHours += (b.duration_minutes || 0) / 60;
+        perf.totalFees += parseFloat(b.therapist_fee?.toString() || '0');
       });
 
-      // Calculate averages
       therapistMap.forEach(perf => {
-        if (perf.totalHours > 0) {
-          perf.averageHourlyRate = perf.totalFees / perf.totalHours;
-        }
-        // Utilization rate would need available hours data - placeholder for now
-        perf.utilizationRate = 0;
+        if (perf.totalHours > 0) perf.averageHourlyRate = perf.totalFees / perf.totalHours;
       });
 
       setTherapistPerformance(Array.from(therapistMap.values()).sort((a, b) => b.totalFees - a.totalFees));
@@ -262,59 +306,80 @@ export const Reports: React.FC = () => {
     }
   };
 
+  const loadTherapistPayments = async () => {
+    try {
+      const startDate = dateRange[0].format('YYYY-MM-DD');
+      const endDate = dateRange[1].format('YYYY-MM-DD');
+
+      const { data: payments } = await supabaseClient
+        .from('therapist_payments')
+        .select(`
+          therapist_id,
+          week_start_date,
+          week_end_date,
+          calculated_fees,
+          therapist_invoiced_fees,
+          status,
+          therapist_profiles!therapist_id (first_name, last_name)
+        `)
+        .gte('week_start_date', startDate)
+        .lte('week_end_date', endDate);
+
+      const paymentsList: TherapistPayment[] = (payments || []).map(p => {
+        const therapist = p.therapist_profiles as any;
+        const calculated = parseFloat(p.calculated_fees?.toString() || '0');
+        const claimed = parseFloat(p.therapist_invoiced_fees?.toString() || '0');
+
+        return {
+          therapist_name: therapist ? `${therapist.first_name} ${therapist.last_name}` : 'Unknown',
+          week: `${dayjs(p.week_start_date).format('MMM DD')} - ${dayjs(p.week_end_date).format('MMM DD')}`,
+          calculated_fees: calculated,
+          claimed_fees: claimed,
+          variance: claimed - calculated,
+          status: p.status || 'draft',
+        };
+      });
+
+      setTherapistPayments(paymentsList);
+    } catch (error) {
+      console.error('Error loading therapist payments:', error);
+    }
+  };
+
   const loadServicePerformance = async () => {
     try {
       const startDate = dateRange[0].format('YYYY-MM-DD');
       const endDate = dateRange[1].format('YYYY-MM-DD');
 
-      const { data: bookings, error } = await supabaseClient
+      const { data: bookings } = await supabaseClient
         .from('bookings')
         .select(`
-          id,
           service_id,
           price,
           therapist_fee,
-          status,
-          services!service_id (
-            id,
-            name
-          )
+          services!service_id (name)
         `)
         .eq('status', 'completed')
         .gte('booking_time', startDate)
         .lte('booking_time', endDate + ' 23:59:59');
 
-      if (error) throw error;
-
-      // Group by service
       const serviceMap = new Map<string, ServicePerformance>();
 
-      bookings?.forEach(booking => {
-        const service = booking.services as any;
+      bookings?.forEach(b => {
+        const service = b.services as any;
         if (!service) return;
 
-        const serviceId = booking.service_id;
-        const serviceName = service.name;
-
-        if (!serviceMap.has(serviceId)) {
-          serviceMap.set(serviceId, {
-            id: serviceId,
-            name: serviceName,
-            bookings: 0,
-            revenue: 0,
-            therapistFees: 0,
-            netProfit: 0,
-            averagePrice: 0,
-          });
+        const id = b.service_id;
+        if (!serviceMap.has(id)) {
+          serviceMap.set(id, { id, name: service.name, bookings: 0, revenue: 0, therapistFees: 0, netProfit: 0, averagePrice: 0 });
         }
 
-        const perf = serviceMap.get(serviceId)!;
+        const perf = serviceMap.get(id)!;
         perf.bookings += 1;
-        perf.revenue += parseFloat(booking.price?.toString() || '0');
-        perf.therapistFees += parseFloat(booking.therapist_fee?.toString() || '0');
+        perf.revenue += parseFloat(b.price?.toString() || '0');
+        perf.therapistFees += parseFloat(b.therapist_fee?.toString() || '0');
       });
 
-      // Calculate derived metrics
       serviceMap.forEach(perf => {
         perf.netProfit = perf.revenue - perf.therapistFees;
         perf.averagePrice = perf.bookings > 0 ? perf.revenue / perf.bookings : 0;
@@ -331,312 +396,659 @@ export const Reports: React.FC = () => {
       const startDate = dateRange[0].format('YYYY-MM-DD');
       const endDate = dateRange[1].format('YYYY-MM-DD');
 
-      const { data: bookings, error } = await supabaseClient
+      const { data: bookings } = await supabaseClient
         .from('bookings')
-        .select('id, booking_time, price, status')
+        .select('booking_time, price')
         .eq('status', 'completed')
         .gte('booking_time', startDate)
         .lte('booking_time', endDate + ' 23:59:59');
 
-      if (error) throw error;
-
-      // Group by day of week
+      // By day of week
       const dayMap = new Map<number, { count: number; revenue: number }>();
       const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-      bookings?.forEach(booking => {
-        const dayOfWeek = dayjs(booking.booking_time).day();
+      // By hour of day
+      const hourMap = new Map<number, number>();
+      for (let i = 0; i < 24; i++) hourMap.set(i, 0);
 
-        if (!dayMap.has(dayOfWeek)) {
-          dayMap.set(dayOfWeek, { count: 0, revenue: 0 });
-        }
+      bookings?.forEach(b => {
+        const dt = dayjs(b.booking_time);
+        const dayOfWeek = dt.day();
+        const hour = dt.hour();
 
-        const data = dayMap.get(dayOfWeek)!;
-        data.count += 1;
-        data.revenue += parseFloat(booking.price?.toString() || '0');
+        if (!dayMap.has(dayOfWeek)) dayMap.set(dayOfWeek, { count: 0, revenue: 0 });
+        const dayData = dayMap.get(dayOfWeek)!;
+        dayData.count += 1;
+        dayData.revenue += parseFloat(b.price?.toString() || '0');
+
+        hourMap.set(hour, (hourMap.get(hour) || 0) + 1);
       });
 
-      const analytics: BookingAnalytics[] = [];
-      days.forEach((dayName, index) => {
-        const data = dayMap.get(index) || { count: 0, revenue: 0 };
-        analytics.push({
-          dayOfWeek: dayName,
-          count: data.count,
-          revenue: data.revenue,
-        });
+      const byDay: BookingByDay[] = days.map((dayName, idx) => {
+        const data = dayMap.get(idx) || { count: 0, revenue: 0 };
+        return { dayOfWeek: dayName, count: data.count, revenue: data.revenue };
       });
 
-      setBookingAnalytics(analytics);
+      const byHour: BookingByHour[] = Array.from(hourMap.entries()).map(([hour, count]) => ({ hour, count }));
+
+      setBookingByDay(byDay);
+      setBookingByHour(byHour);
     } catch (error) {
       console.error('Error loading booking analytics:', error);
     }
   };
 
-  const therapistColumns = [
-    {
-      title: 'Therapist',
-      dataIndex: 'name',
-      key: 'name',
-    },
-    {
-      title: 'Jobs',
-      dataIndex: 'completedJobs',
-      key: 'jobs',
-      align: 'center' as const,
-    },
-    {
-      title: 'Hours',
-      dataIndex: 'totalHours',
-      key: 'hours',
-      render: (hours: number) => hours.toFixed(1),
-    },
-    {
-      title: 'Avg Hourly Rate',
-      dataIndex: 'averageHourlyRate',
-      key: 'avgRate',
-      render: (rate: number) => `$${rate.toFixed(2)}`,
-    },
-    {
-      title: 'Total Fees',
-      dataIndex: 'totalFees',
-      key: 'fees',
-      render: (fees: number) => <Text strong style={{ color: '#52c41a' }}>${fees.toFixed(2)}</Text>,
-    },
-  ];
+  const loadCustomerInsights = async () => {
+    try {
+      const startDate = dateRange[0].format('YYYY-MM-DD');
+      const endDate = dateRange[1].format('YYYY-MM-DD');
 
-  const serviceColumns = [
-    {
-      title: 'Service',
-      dataIndex: 'name',
-      key: 'name',
-    },
-    {
-      title: 'Bookings',
-      dataIndex: 'bookings',
-      key: 'bookings',
-      align: 'center' as const,
-    },
-    {
-      title: 'Revenue',
-      dataIndex: 'revenue',
-      key: 'revenue',
-      render: (revenue: number) => `$${revenue.toFixed(2)}`,
-    },
-    {
-      title: 'Therapist Fees',
-      dataIndex: 'therapistFees',
-      key: 'fees',
-      render: (fees: number) => `$${fees.toFixed(2)}`,
-    },
-    {
-      title: 'Net Profit',
-      dataIndex: 'netProfit',
-      key: 'profit',
-      render: (profit: number) => (
-        <Text strong style={{ color: profit >= 0 ? '#52c41a' : '#ff4d4f' }}>
-          ${profit.toFixed(2)}
-        </Text>
-      ),
-    },
-    {
-      title: 'Avg Price',
-      dataIndex: 'averagePrice',
-      key: 'avgPrice',
-      render: (price: number) => `$${price.toFixed(2)}`,
-    },
-  ];
+      // Get all customers with bookings
+      const { data: bookings } = await supabaseClient
+        .from('bookings')
+        .select(`
+          customer_id,
+          price,
+          created_at,
+          customers!customer_id (id, first_name, last_name, email, created_at)
+        `)
+        .eq('status', 'completed')
+        .gte('booking_time', startDate)
+        .lte('booking_time', endDate + ' 23:59:59');
 
-  const analyticsColumns = [
-    {
-      title: 'Day',
-      dataIndex: 'dayOfWeek',
-      key: 'day',
-    },
-    {
-      title: 'Bookings',
-      dataIndex: 'count',
-      key: 'count',
-      align: 'center' as const,
-      render: (count: number) => <Tag color="blue">{count}</Tag>,
-    },
-    {
-      title: 'Revenue',
-      dataIndex: 'revenue',
-      key: 'revenue',
-      render: (revenue: number) => `$${revenue.toFixed(2)}`,
-    },
-  ];
+      const customerMap = new Map<string, { name: string; email: string; bookings: number; totalSpent: number; firstBooking: string }>();
+
+      bookings?.forEach(b => {
+        const customer = b.customers as any;
+        if (!customer) return;
+
+        const id = b.customer_id;
+        if (!customerMap.has(id)) {
+          customerMap.set(id, {
+            name: `${customer.first_name} ${customer.last_name}`,
+            email: customer.email,
+            bookings: 0,
+            totalSpent: 0,
+            firstBooking: b.created_at,
+          });
+        }
+
+        const cust = customerMap.get(id)!;
+        cust.bookings += 1;
+        cust.totalSpent += parseFloat(b.price?.toString() || '0');
+      });
+
+      const totalCustomers = customerMap.size;
+      const newCustomers = Array.from(customerMap.values()).filter(c => dayjs(c.firstBooking).isAfter(dateRange[0])).length;
+      const returningCustomers = totalCustomers - newCustomers;
+      const averageLifetimeValue = totalCustomers > 0 ? Array.from(customerMap.values()).reduce((sum, c) => sum + c.totalSpent, 0) / totalCustomers : 0;
+      const retentionRate = totalCustomers > 0 ? (returningCustomers / totalCustomers) * 100 : 0;
+
+      const topCustomers = Array.from(customerMap.values())
+        .sort((a, b) => b.totalSpent - a.totalSpent)
+        .slice(0, 10);
+
+      setCustomerInsights({
+        totalCustomers,
+        newCustomers,
+        returningCustomers,
+        averageLifetimeValue,
+        retentionRate,
+        topCustomers,
+      });
+    } catch (error) {
+      console.error('Error loading customer insights:', error);
+    }
+  };
+
+  const loadMarketingData = async () => {
+    try {
+      const startDate = dateRange[0].format('YYYY-MM-DD');
+      const endDate = dateRange[1].format('YYYY-MM-DD');
+
+      // Discount codes
+      const { data: discountUsage } = await supabaseClient
+        .from('discount_code_usage')
+        .select(`
+          discount_code_id,
+          discount_applied,
+          booking_id,
+          discount_codes!discount_code_id (code)
+        `)
+        .gte('used_at', startDate)
+        .lte('used_at', endDate + ' 23:59:59');
+
+      const discountMap = new Map<string, DiscountData>();
+
+      discountUsage?.forEach(usage => {
+        const dc = usage.discount_codes as any;
+        if (!dc) return;
+
+        const code = dc.code;
+        if (!discountMap.has(code)) {
+          discountMap.set(code, { code, usage_count: 0, total_discount: 0, revenue_generated: 0, roi: 0 });
+        }
+
+        const data = discountMap.get(code)!;
+        data.usage_count += 1;
+        data.total_discount += parseFloat(usage.discount_applied?.toString() || '0');
+      });
+
+      // Get revenue for bookings with discounts
+      for (const [code, data] of discountMap.entries()) {
+        const { data: bookings } = await supabaseClient
+          .from('bookings')
+          .select('price')
+          .eq('discount_code', code)
+          .eq('status', 'completed');
+
+        data.revenue_generated = bookings?.reduce((sum, b) => sum + parseFloat(b.price?.toString() || '0'), 0) || 0;
+        data.roi = data.total_discount > 0 ? (data.revenue_generated / data.total_discount) * 100 : 0;
+      }
+
+      setDiscountData(Array.from(discountMap.values()));
+
+      // Gift cards
+      const { data: giftCards } = await supabaseClient
+        .from('gift_cards')
+        .select('initial_balance, current_balance, payment_status, created_at')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate + ' 23:59:59');
+
+      const soldCards = giftCards?.filter(gc => gc.payment_status === 'completed') || [];
+      const total_sold = soldCards.length;
+      const total_sold_amount = soldCards.reduce((sum, gc) => sum + parseFloat(gc.initial_balance?.toString() || '0'), 0);
+      const total_redeemed = soldCards.filter(gc => gc.current_balance < gc.initial_balance).length;
+      const total_redeemed_amount = soldCards.reduce((sum, gc) => sum + (parseFloat(gc.initial_balance?.toString() || '0') - parseFloat(gc.current_balance?.toString() || '0')), 0);
+      const unredeemed_balance = total_sold_amount - total_redeemed_amount;
+
+      setGiftCardData({
+        total_sold,
+        total_sold_amount,
+        total_redeemed,
+        total_redeemed_amount,
+        unredeemed_balance,
+      });
+
+      // Quotes
+      const { data: quotes } = await supabaseClient
+        .from('quotes')
+        .select('status, total_amount')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate + ' 23:59:59');
+
+      const total_quotes = quotes?.length || 0;
+      const accepted_quotes = quotes?.filter(q => q.status === 'accepted').length || 0;
+      const declined_quotes = quotes?.filter(q => q.status === 'declined').length || 0;
+      const acceptance_rate = total_quotes > 0 ? (accepted_quotes / total_quotes) * 100 : 0;
+      const average_quote_value = accepted_quotes > 0 ? quotes?.filter(q => q.status === 'accepted').reduce((sum, q) => sum + parseFloat(q.total_amount?.toString() || '0'), 0) / accepted_quotes : 0;
+      const total_quote_revenue = quotes?.filter(q => q.status === 'accepted').reduce((sum, q) => sum + parseFloat(q.total_amount?.toString() || '0'), 0) || 0;
+
+      setQuoteData({
+        total_quotes,
+        accepted_quotes,
+        declined_quotes,
+        acceptance_rate,
+        average_quote_value,
+        total_quote_revenue,
+      });
+    } catch (error) {
+      console.error('Error loading marketing data:', error);
+    }
+  };
+
+  // ========== RENDER FUNCTIONS ==========
+
+  const renderFilterBar = () => (
+    <Card style={{ marginBottom: 24 }}>
+      <Space wrap>
+        <RangePicker
+          value={dateRange}
+          onChange={(dates) => {
+            if (dates && dates[0] && dates[1]) setDateRange([dates[0], dates[1]]);
+          }}
+          format="YYYY-MM-DD"
+          presets={[
+            { label: 'Today', value: [dayjs(), dayjs()] },
+            { label: 'This Week', value: [dayjs().startOf('week'), dayjs().endOf('week')] },
+            { label: 'This Month', value: [dayjs().startOf('month'), dayjs().endOf('month')] },
+            { label: 'Last Month', value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
+            { label: 'Last 3 Months', value: [dayjs().subtract(3, 'month').startOf('month'), dayjs().endOf('month')] },
+          ]}
+        />
+        <Select style={{ width: 200 }} value={selectedTherapist} onChange={setSelectedTherapist}>
+          <Option value="all">All Therapists</Option>
+          {therapists.map(t => (
+            <Option key={t.id} value={t.id}>{t.first_name} {t.last_name}</Option>
+          ))}
+        </Select>
+        <Select style={{ width: 200 }} value={selectedService} onChange={setSelectedService}>
+          <Option value="all">All Services</Option>
+          {services.map(s => (
+            <Option key={s.id} value={s.id}>{s.name}</Option>
+          ))}
+        </Select>
+        <Button icon={<ReloadOutlined />} onClick={loadAllData} loading={loading}>Refresh</Button>
+      </Space>
+    </Card>
+  );
+
+  const renderOverviewTab = () => (
+    <>
+      <Card title="Revenue Dashboard" style={{ marginBottom: 24 }}>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} lg={8}>
+            <Statistic
+              title="Total Revenue"
+              value={revenueData?.totalRevenue || 0}
+              precision={2}
+              prefix="$"
+              valueStyle={{ color: '#3f8600' }}
+              suffix={
+                revenueData && revenueData.revenueChange !== 0 ? (
+                  <Tag color={revenueData.revenueChange > 0 ? 'green' : 'red'} style={{ marginLeft: 8 }}>
+                    {revenueData.revenueChange > 0 ? <RiseOutlined /> : <FallOutlined />}
+                    {Math.abs(revenueData.revenueChange).toFixed(1)}%
+                  </Tag>
+                ) : undefined
+              }
+            />
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Statistic
+              title="Completed Bookings"
+              value={revenueData?.completedBookings || 0}
+              prefix={<ShoppingOutlined />}
+              suffix={`/ ${revenueData?.totalBookings || 0}`}
+            />
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Statistic
+              title="Average Booking Value"
+              value={revenueData?.averageBookingValue || 0}
+              precision={2}
+              prefix="$"
+            />
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Statistic
+              title="Therapist Fees"
+              value={revenueData?.totalTherapistFees || 0}
+              precision={2}
+              prefix="$"
+              valueStyle={{ color: '#cf1322' }}
+            />
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Statistic
+              title="Net Profit"
+              value={revenueData?.netProfit || 0}
+              precision={2}
+              prefix="$"
+              valueStyle={{ color: (revenueData?.netProfit || 0) >= 0 ? '#3f8600' : '#cf1322' }}
+            />
+          </Col>
+          <Col xs={24} sm={12} lg={8}>
+            <Statistic
+              title="Profit Margin"
+              value={revenueData && revenueData.totalRevenue > 0 ? ((revenueData.netProfit / revenueData.totalRevenue) * 100) : 0}
+              precision={1}
+              suffix="%"
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Col>
+        </Row>
+      </Card>
+
+      <Alert
+        message="Quick Business Snapshot"
+        description="This overview provides key metrics for the selected date range. Use the tabs above to dive deeper into specific areas."
+        type="info"
+        showIcon
+        style={{ marginBottom: 24 }}
+      />
+    </>
+  );
+
+  const renderFinancialsTab = () => (
+    <>
+      <Card title="Financial Summary" style={{ marginBottom: 24 }}>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={8}>
+            <Card>
+              <Statistic
+                title="Total Revenue"
+                value={revenueData?.totalRevenue || 0}
+                precision={2}
+                prefix={<DollarOutlined />}
+                valueStyle={{ color: '#3f8600' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} md={8}>
+            <Card>
+              <Statistic
+                title="Total Costs (Therapist Fees)"
+                value={revenueData?.totalTherapistFees || 0}
+                precision={2}
+                prefix={<DollarOutlined />}
+                valueStyle={{ color: '#cf1322' }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} md={8}>
+            <Card>
+              <Statistic
+                title="Net Profit"
+                value={revenueData?.netProfit || 0}
+                precision={2}
+                prefix={<DollarOutlined />}
+                valueStyle={{ color: (revenueData?.netProfit || 0) >= 0 ? '#3f8600' : '#cf1322' }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </Card>
+
+      <Card title="Profit & Loss Statement">
+        <Table
+          dataSource={[
+            { category: 'Revenue', subcategory: 'Customer Payments', amount: revenueData?.totalRevenue || 0, type: 'income' },
+            { category: 'Costs', subcategory: 'Therapist Fees', amount: revenueData?.totalTherapistFees || 0, type: 'expense' },
+            { category: 'Net', subcategory: 'Profit/Loss', amount: revenueData?.netProfit || 0, type: revenueData && revenueData.netProfit >= 0 ? 'income' : 'expense' },
+          ]}
+          columns={[
+            { title: 'Category', dataIndex: 'category', key: 'category' },
+            { title: 'Item', dataIndex: 'subcategory', key: 'subcategory' },
+            {
+              title: 'Amount',
+              dataIndex: 'amount',
+              key: 'amount',
+              render: (amount: number, record: any) => (
+                <Text strong style={{ color: record.type === 'income' ? '#3f8600' : '#cf1322' }}>
+                  ${amount.toFixed(2)}
+                </Text>
+              ),
+            },
+          ]}
+          pagination={false}
+          rowKey="subcategory"
+        />
+      </Card>
+    </>
+  );
+
+  const renderTeamTab = () => (
+    <>
+      <Card title="Therapist Performance" style={{ marginBottom: 24 }} extra={<Button icon={<DownloadOutlined />} size="small">Export</Button>}>
+        <Table
+          dataSource={therapistPerformance}
+          columns={[
+            { title: 'Therapist', dataIndex: 'name', key: 'name' },
+            { title: 'Jobs', dataIndex: 'completedJobs', key: 'jobs', align: 'center' },
+            { title: 'Hours', dataIndex: 'totalHours', key: 'hours', render: (h: number) => h.toFixed(1) },
+            { title: 'Avg Hourly Rate', dataIndex: 'averageHourlyRate', key: 'avgRate', render: (r: number) => `$${r.toFixed(2)}` },
+            { title: 'Total Fees', dataIndex: 'totalFees', key: 'fees', render: (f: number) => <Text strong style={{ color: '#52c41a' }}>${f.toFixed(2)}</Text> },
+          ]}
+          rowKey="id"
+          pagination={false}
+        />
+      </Card>
+
+      <Card title="Payment Reconciliation">
+        <Table
+          dataSource={therapistPayments}
+          columns={[
+            { title: 'Therapist', dataIndex: 'therapist_name', key: 'name' },
+            { title: 'Week', dataIndex: 'week', key: 'week' },
+            { title: 'System Calculated', dataIndex: 'calculated_fees', key: 'calc', render: (f: number) => `$${f.toFixed(2)}` },
+            { title: 'Therapist Claimed', dataIndex: 'claimed_fees', key: 'claimed', render: (f: number) => `$${f.toFixed(2)}` },
+            {
+              title: 'Variance',
+              dataIndex: 'variance',
+              key: 'variance',
+              render: (v: number) => (
+                <Text strong style={{ color: Math.abs(v) > 0.01 ? '#ff4d4f' : '#52c41a' }}>
+                  {v > 0 ? '+' : ''}${v.toFixed(2)}
+                </Text>
+              ),
+            },
+            {
+              title: 'Status',
+              dataIndex: 'status',
+              key: 'status',
+              render: (s: string) => (
+                <Tag color={s === 'paid' ? 'green' : s === 'approved' ? 'blue' : 'orange'}>{s.toUpperCase()}</Tag>
+              ),
+            },
+          ]}
+          rowKey={(record, idx) => `${record.therapist_name}-${idx}`}
+          pagination={{ pageSize: 10 }}
+        />
+      </Card>
+    </>
+  );
+
+  const renderServicesTab = () => (
+    <>
+      <Card title="Service Performance" style={{ marginBottom: 24 }} extra={<Button icon={<DownloadOutlined />} size="small">Export</Button>}>
+        <Table
+          dataSource={servicePerformance}
+          columns={[
+            { title: 'Service', dataIndex: 'name', key: 'name' },
+            { title: 'Bookings', dataIndex: 'bookings', key: 'bookings', align: 'center' },
+            { title: 'Revenue', dataIndex: 'revenue', key: 'revenue', render: (r: number) => `$${r.toFixed(2)}` },
+            { title: 'Therapist Fees', dataIndex: 'therapistFees', key: 'fees', render: (f: number) => `$${f.toFixed(2)}` },
+            {
+              title: 'Net Profit',
+              dataIndex: 'netProfit',
+              key: 'profit',
+              render: (p: number) => <Text strong style={{ color: p >= 0 ? '#52c41a' : '#ff4d4f' }}>${p.toFixed(2)}</Text>,
+            },
+            { title: 'Avg Price', dataIndex: 'averagePrice', key: 'avgPrice', render: (p: number) => `$${p.toFixed(2)}` },
+          ]}
+          rowKey="id"
+          pagination={false}
+        />
+      </Card>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={12}>
+          <Card title="Bookings by Day of Week">
+            <Table
+              dataSource={bookingByDay}
+              columns={[
+                { title: 'Day', dataIndex: 'dayOfWeek', key: 'day' },
+                { title: 'Bookings', dataIndex: 'count', key: 'count', align: 'center', render: (c: number) => <Tag color="blue">{c}</Tag> },
+                { title: 'Revenue', dataIndex: 'revenue', key: 'revenue', render: (r: number) => `$${r.toFixed(2)}` },
+              ]}
+              rowKey="dayOfWeek"
+              pagination={false}
+              size="small"
+            />
+          </Card>
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title="Bookings by Hour of Day">
+            <div style={{ maxHeight: 400, overflowY: 'auto' }}>
+              {bookingByHour.map(({ hour, count }) => (
+                <div key={hour} style={{ marginBottom: 8 }}>
+                  <Text>{hour.toString().padStart(2, '0')}:00</Text>
+                  <Progress percent={(count / Math.max(...bookingByHour.map(b => b.count))) * 100} format={() => count} />
+                </div>
+              ))}
+            </div>
+          </Card>
+        </Col>
+      </Row>
+    </>
+  );
+
+  const renderCustomersTab = () => (
+    <>
+      <Card title="Customer Overview" style={{ marginBottom: 24 }}>
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} lg={6}>
+            <Statistic title="Total Customers" value={customerInsights?.totalCustomers || 0} prefix={<UserOutlined />} />
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Statistic title="New Customers" value={customerInsights?.newCustomers || 0} valueStyle={{ color: '#3f8600' }} />
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Statistic title="Returning Customers" value={customerInsights?.returningCustomers || 0} valueStyle={{ color: '#1890ff' }} />
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Statistic
+              title="Retention Rate"
+              value={customerInsights?.retentionRate || 0}
+              precision={1}
+              suffix="%"
+              valueStyle={{ color: '#722ed1' }}
+            />
+          </Col>
+        </Row>
+      </Card>
+
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={12}>
+          <Card>
+            <Statistic
+              title="Average Customer Lifetime Value"
+              value={customerInsights?.averageLifetimeValue || 0}
+              precision={2}
+              prefix="$"
+              valueStyle={{ color: '#3f8600', fontSize: 28 }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} lg={12}>
+          <Card title="Top 10 Customers by Spend">
+            <Table
+              dataSource={customerInsights?.topCustomers || []}
+              columns={[
+                { title: 'Name', dataIndex: 'name', key: 'name' },
+                { title: 'Bookings', dataIndex: 'bookings', key: 'bookings', align: 'center' },
+                { title: 'Total Spent', dataIndex: 'totalSpent', key: 'spent', render: (s: number) => `$${s.toFixed(2)}` },
+              ]}
+              rowKey="email"
+              pagination={false}
+              size="small"
+            />
+          </Card>
+        </Col>
+      </Row>
+    </>
+  );
+
+  const renderMarketingTab = () => (
+    <>
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} lg={12}>
+          <Card title="Gift Card Performance" extra={<GiftOutlined style={{ fontSize: 24, color: '#722ed1' }} />}>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Statistic title="Sold" value={giftCardData?.total_sold || 0} prefix={<ShoppingOutlined />} />
+              </Col>
+              <Col span={12}>
+                <Statistic title="Total Sold" value={giftCardData?.total_sold_amount || 0} precision={2} prefix="$" />
+              </Col>
+              <Col span={12}>
+                <Statistic title="Redeemed" value={giftCardData?.total_redeemed || 0} valueStyle={{ color: '#1890ff' }} />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Unredeemed (Profit)"
+                  value={giftCardData?.unredeemed_balance || 0}
+                  precision={2}
+                  prefix="$"
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+
+        <Col xs={24} lg={12}>
+          <Card title="Quote Performance" extra={<FileTextOutlined style={{ fontSize: 24, color: '#1890ff' }} />}>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Statistic title="Total Quotes" value={quoteData?.total_quotes || 0} />
+              </Col>
+              <Col span={12}>
+                <Statistic title="Accepted" value={quoteData?.accepted_quotes || 0} valueStyle={{ color: '#52c41a' }} />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Acceptance Rate"
+                  value={quoteData?.acceptance_rate || 0}
+                  precision={1}
+                  suffix="%"
+                  valueStyle={{ color: '#722ed1' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Quote Revenue"
+                  value={quoteData?.total_quote_revenue || 0}
+                  precision={2}
+                  prefix="$"
+                  valueStyle={{ color: '#3f8600' }}
+                />
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+      </Row>
+
+      <Card title="Discount Code Performance" extra={<Button icon={<DownloadOutlined />} size="small">Export</Button>}>
+        <Table
+          dataSource={discountData}
+          columns={[
+            { title: 'Code', dataIndex: 'code', key: 'code' },
+            { title: 'Usage', dataIndex: 'usage_count', key: 'usage', align: 'center' },
+            { title: 'Total Discount', dataIndex: 'total_discount', key: 'discount', render: (d: number) => `$${d.toFixed(2)}` },
+            { title: 'Revenue Generated', dataIndex: 'revenue_generated', key: 'revenue', render: (r: number) => `$${r.toFixed(2)}` },
+            {
+              title: 'ROI',
+              dataIndex: 'roi',
+              key: 'roi',
+              render: (roi: number) => (
+                <Tag color={roi >= 100 ? 'green' : 'orange'}>{roi.toFixed(0)}%</Tag>
+              ),
+            },
+          ]}
+          rowKey="code"
+          pagination={{ pageSize: 10 }}
+        />
+      </Card>
+    </>
+  );
+
+  // ========== MAIN RENDER ==========
 
   return (
     <div style={{ padding: '24px' }}>
       <Title level={2}>Business Reports</Title>
 
-      {/* Filter Bar */}
-      <Card style={{ marginBottom: 24 }}>
-        <Space wrap>
-          <RangePicker
-            value={dateRange}
-            onChange={(dates) => {
-              if (dates && dates[0] && dates[1]) {
-                setDateRange([dates[0], dates[1]]);
-              }
-            }}
-            format="YYYY-MM-DD"
-            presets={[
-              { label: 'Today', value: [dayjs(), dayjs()] },
-              { label: 'This Week', value: [dayjs().startOf('week'), dayjs().endOf('week')] },
-              { label: 'This Month', value: [dayjs().startOf('month'), dayjs().endOf('month')] },
-              { label: 'Last Month', value: [dayjs().subtract(1, 'month').startOf('month'), dayjs().subtract(1, 'month').endOf('month')] },
-            ]}
-          />
-          <Select
-            style={{ width: 200 }}
-            value={selectedTherapist}
-            onChange={setSelectedTherapist}
-            placeholder="All Therapists"
-          >
-            <Option value="all">All Therapists</Option>
-            {therapists.map(t => (
-              <Option key={t.id} value={t.id}>
-                {t.first_name} {t.last_name}
-              </Option>
-            ))}
-          </Select>
-          <Select
-            style={{ width: 200 }}
-            value={selectedService}
-            onChange={setSelectedService}
-            placeholder="All Services"
-          >
-            <Option value="all">All Services</Option>
-            {services.map(s => (
-              <Option key={s.id} value={s.id}>
-                {s.name}
-              </Option>
-            ))}
-          </Select>
-          <Button icon={<ReloadOutlined />} onClick={loadReports} loading={loading}>
-            Refresh
-          </Button>
-        </Space>
-      </Card>
+      {renderFilterBar()}
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '50px' }}>
           <Spin size="large" />
         </div>
       ) : (
-        <>
-          {/* 1. Revenue Dashboard */}
-          <Card title="Revenue Dashboard" style={{ marginBottom: 24 }}>
-            <Row gutter={[16, 16]}>
-              <Col xs={24} sm={12} lg={8}>
-                <Statistic
-                  title="Total Revenue"
-                  value={revenueData?.totalRevenue || 0}
-                  precision={2}
-                  prefix="$"
-                  valueStyle={{ color: '#3f8600' }}
-                  suffix={
-                    revenueData && revenueData.revenueChange !== 0 ? (
-                      <Tag color={revenueData.revenueChange > 0 ? 'green' : 'red'} style={{ marginLeft: 8 }}>
-                        {revenueData.revenueChange > 0 ? <RiseOutlined /> : <FallOutlined />}
-                        {Math.abs(revenueData.revenueChange).toFixed(1)}%
-                      </Tag>
-                    ) : undefined
-                  }
-                />
-              </Col>
-              <Col xs={24} sm={12} lg={8}>
-                <Statistic
-                  title="Completed Bookings"
-                  value={revenueData?.completedBookings || 0}
-                  prefix={<ShoppingOutlined />}
-                  suffix={`/ ${revenueData?.totalBookings || 0}`}
-                />
-              </Col>
-              <Col xs={24} sm={12} lg={8}>
-                <Statistic
-                  title="Average Booking Value"
-                  value={revenueData?.averageBookingValue || 0}
-                  precision={2}
-                  prefix="$"
-                />
-              </Col>
-              <Col xs={24} sm={12} lg={8}>
-                <Statistic
-                  title="Therapist Fees"
-                  value={revenueData?.totalTherapistFees || 0}
-                  precision={2}
-                  prefix="$"
-                  valueStyle={{ color: '#cf1322' }}
-                />
-              </Col>
-              <Col xs={24} sm={12} lg={8}>
-                <Statistic
-                  title="Net Profit"
-                  value={revenueData?.netProfit || 0}
-                  precision={2}
-                  prefix="$"
-                  valueStyle={{ color: (revenueData?.netProfit || 0) >= 0 ? '#3f8600' : '#cf1322' }}
-                />
-              </Col>
-              <Col xs={24} sm={12} lg={8}>
-                <Statistic
-                  title="Profit Margin"
-                  value={revenueData && revenueData.totalRevenue > 0 ? ((revenueData.netProfit / revenueData.totalRevenue) * 100) : 0}
-                  precision={1}
-                  suffix="%"
-                  valueStyle={{ color: '#1890ff' }}
-                />
-              </Col>
-            </Row>
-          </Card>
-
-          {/* 2. Therapist Performance */}
-          <Card
-            title="Therapist Performance"
-            style={{ marginBottom: 24 }}
-            extra={<Button icon={<DownloadOutlined />} size="small">Export</Button>}
-          >
-            <Table
-              dataSource={therapistPerformance}
-              columns={therapistColumns}
-              rowKey="id"
-              pagination={false}
-              locale={{ emptyText: 'No data for selected period' }}
-            />
-          </Card>
-
-          {/* 3. Service Performance */}
-          <Card
-            title="Service Performance"
-            style={{ marginBottom: 24 }}
-            extra={<Button icon={<DownloadOutlined />} size="small">Export</Button>}
-          >
-            <Table
-              dataSource={servicePerformance}
-              columns={serviceColumns}
-              rowKey="id"
-              pagination={false}
-              locale={{ emptyText: 'No data for selected period' }}
-            />
-          </Card>
-
-          {/* 4. Booking Analytics */}
-          <Card
-            title="Booking Analytics - By Day of Week"
-            style={{ marginBottom: 24 }}
-          >
-            <Table
-              dataSource={bookingAnalytics}
-              columns={analyticsColumns}
-              rowKey="dayOfWeek"
-              pagination={false}
-              locale={{ emptyText: 'No data for selected period' }}
-            />
-          </Card>
-        </>
+        <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            { key: 'overview', label: <span><DollarOutlined /> Overview</span>, children: renderOverviewTab() },
+            { key: 'financials', label: <span><CalendarOutlined /> Financials</span>, children: renderFinancialsTab() },
+            { key: 'team', label: <span><TeamOutlined /> Team Performance</span>, children: renderTeamTab() },
+            { key: 'services', label: <span><ShoppingOutlined /> Services & Bookings</span>, children: renderServicesTab() },
+            { key: 'customers', label: <span><UserOutlined /> Customers</span>, children: renderCustomersTab() },
+            { key: 'marketing', label: <span><GiftOutlined /> Marketing</span>, children: renderMarketingTab() },
+          ]}
+        />
       )}
     </div>
   );
