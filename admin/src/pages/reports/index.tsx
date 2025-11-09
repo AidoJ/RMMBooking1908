@@ -131,6 +131,42 @@ interface QuoteData {
   total_quote_revenue: number;
 }
 
+interface QuoteMetrics {
+  // Status counts
+  total_quotes: number;
+  draft_quotes: number;
+  sent_quotes: number;
+  accepted_quotes: number;
+  declined_quotes: number;
+  pending_quotes: number;
+
+  // Response time metrics (in hours)
+  avg_draft_to_sent: number;
+  avg_sent_to_response: number;
+  avg_response_to_completed: number;
+  avg_total_cycle_time: number;
+
+  // Value metrics
+  total_quote_value: number;
+  accepted_quote_value: number;
+  average_quote_value: number;
+  acceptance_rate: number;
+
+  // Recent quotes for table
+  recentQuotes: Array<{
+    id: string;
+    quote_number: string;
+    customer_name: string;
+    total_price: number;
+    status: string;
+    created_at: string;
+    sent_at: string | null;
+    accepted_at: string | null;
+    completed_at: string | null;
+    days_in_current_status: number;
+  }>;
+}
+
 // ========== MAIN COMPONENT ==========
 
 export const Reports: React.FC = () => {
@@ -156,6 +192,7 @@ export const Reports: React.FC = () => {
   const [discountData, setDiscountData] = useState<DiscountData[]>([]);
   const [giftCardData, setGiftCardData] = useState<GiftCardData | null>(null);
   const [quoteData, setQuoteData] = useState<QuoteData | null>(null);
+  const [quoteMetrics, setQuoteMetrics] = useState<QuoteMetrics | null>(null);
 
   // Filter options
   const [therapists, setTherapists] = useState<any[]>([]);
@@ -201,6 +238,7 @@ export const Reports: React.FC = () => {
         loadBookingAnalytics(),
         loadCustomerInsights(),
         loadMarketingData(),
+        loadQuoteMetrics(),
       ]);
     } catch (error) {
       console.error('Error loading reports:', error);
@@ -594,6 +632,156 @@ export const Reports: React.FC = () => {
       });
     } catch (error) {
       console.error('Error loading marketing data:', error);
+    }
+  };
+
+  const loadQuoteMetrics = async () => {
+    try {
+      const startDate = dateRange[0].format('YYYY-MM-DD');
+      const endDate = dateRange[1].format('YYYY-MM-DD');
+
+      // Fetch all quotes with timestamps
+      const { data: quotes } = await supabaseClient
+        .from('quotes')
+        .select('id, quote_number, customer_name, status, total_amount, created_at, sent_at, accepted_at, completed_at, declined_at')
+        .gte('created_at', startDate)
+        .lte('created_at', endDate + ' 23:59:59')
+        .order('created_at', { ascending: false });
+
+      if (!quotes || quotes.length === 0) {
+        setQuoteMetrics({
+          total_quotes: 0,
+          draft_quotes: 0,
+          sent_quotes: 0,
+          accepted_quotes: 0,
+          declined_quotes: 0,
+          pending_quotes: 0,
+          avg_draft_to_sent: 0,
+          avg_sent_to_response: 0,
+          avg_response_to_completed: 0,
+          avg_total_cycle_time: 0,
+          total_quote_value: 0,
+          accepted_quote_value: 0,
+          average_quote_value: 0,
+          acceptance_rate: 0,
+          recentQuotes: [],
+        });
+        return;
+      }
+
+      // Status counts
+      const total_quotes = quotes.length;
+      const draft_quotes = quotes.filter(q => q.status === 'draft').length;
+      const sent_quotes = quotes.filter(q => q.status === 'sent' || q.sent_at !== null).length;
+      const accepted_quotes = quotes.filter(q => q.status === 'accepted').length;
+      const declined_quotes = quotes.filter(q => q.status === 'declined').length;
+      const pending_quotes = quotes.filter(q => q.status === 'sent' && !q.accepted_at && !q.declined_at).length;
+
+      // Calculate response times (in hours)
+      const draftToSentTimes: number[] = [];
+      const sentToResponseTimes: number[] = [];
+      const responseToCompletedTimes: number[] = [];
+      const totalCycleTimes: number[] = [];
+
+      quotes.forEach(quote => {
+        const createdAt = new Date(quote.created_at);
+        const sentAt = quote.sent_at ? new Date(quote.sent_at) : null;
+        const responseAt = quote.accepted_at ? new Date(quote.accepted_at) : (quote.declined_at ? new Date(quote.declined_at) : null);
+        const completedAt = quote.completed_at ? new Date(quote.completed_at) : null;
+
+        // Draft to Sent
+        if (sentAt) {
+          const hours = (sentAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+          draftToSentTimes.push(hours);
+        }
+
+        // Sent to Response
+        if (sentAt && responseAt) {
+          const hours = (responseAt.getTime() - sentAt.getTime()) / (1000 * 60 * 60);
+          sentToResponseTimes.push(hours);
+        }
+
+        // Response to Completed
+        if (responseAt && completedAt) {
+          const hours = (completedAt.getTime() - responseAt.getTime()) / (1000 * 60 * 60);
+          responseToCompletedTimes.push(hours);
+        }
+
+        // Total cycle time
+        if (completedAt) {
+          const hours = (completedAt.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+          totalCycleTimes.push(hours);
+        }
+      });
+
+      const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a, b) => a + b, 0) / arr.length : 0;
+
+      const avg_draft_to_sent = avg(draftToSentTimes);
+      const avg_sent_to_response = avg(sentToResponseTimes);
+      const avg_response_to_completed = avg(responseToCompletedTimes);
+      const avg_total_cycle_time = avg(totalCycleTimes);
+
+      // Value metrics
+      const total_quote_value = quotes.reduce((sum, q) => sum + parseFloat(q.total_amount?.toString() || '0'), 0);
+      const accepted_quote_value = quotes
+        .filter(q => q.status === 'accepted')
+        .reduce((sum, q) => sum + parseFloat(q.total_amount?.toString() || '0'), 0);
+      const average_quote_value = total_quotes > 0 ? total_quote_value / total_quotes : 0;
+      const acceptance_rate = total_quotes > 0 ? (accepted_quotes / total_quotes) * 100 : 0;
+
+      // Prepare recent quotes for table
+      const recentQuotes = quotes.slice(0, 10).map(quote => {
+        const now = new Date();
+        let referenceDate: Date;
+
+        // Determine which date to use for "days in current status"
+        if (quote.completed_at) {
+          referenceDate = new Date(quote.completed_at);
+        } else if (quote.declined_at) {
+          referenceDate = new Date(quote.declined_at);
+        } else if (quote.accepted_at) {
+          referenceDate = new Date(quote.accepted_at);
+        } else if (quote.sent_at) {
+          referenceDate = new Date(quote.sent_at);
+        } else {
+          referenceDate = new Date(quote.created_at);
+        }
+
+        const days_in_current_status = Math.floor((now.getTime() - referenceDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        return {
+          id: quote.id,
+          quote_number: quote.quote_number || quote.id.slice(0, 8),
+          customer_name: quote.customer_name || 'Unknown',
+          total_price: parseFloat(quote.total_amount?.toString() || '0'),
+          status: quote.status,
+          created_at: quote.created_at,
+          sent_at: quote.sent_at,
+          accepted_at: quote.accepted_at,
+          completed_at: quote.completed_at,
+          days_in_current_status,
+        };
+      });
+
+      setQuoteMetrics({
+        total_quotes,
+        draft_quotes,
+        sent_quotes,
+        accepted_quotes,
+        declined_quotes,
+        pending_quotes,
+        avg_draft_to_sent,
+        avg_sent_to_response,
+        avg_response_to_completed,
+        avg_total_cycle_time,
+        total_quote_value,
+        accepted_quote_value,
+        average_quote_value,
+        acceptance_rate,
+        recentQuotes,
+      });
+    } catch (error) {
+      console.error('Error loading quote metrics:', error);
     }
   };
 
@@ -1024,6 +1212,266 @@ export const Reports: React.FC = () => {
     </>
   );
 
+  const renderQuotesTab = () => (
+    <>
+      {/* Status Overview Cards */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={12} sm={8} lg={4}>
+          <Card>
+            <Statistic
+              title="Total Quotes"
+              value={quoteMetrics?.total_quotes || 0}
+              prefix={<FileTextOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={8} lg={4}>
+          <Card>
+            <Statistic
+              title="Draft"
+              value={quoteMetrics?.draft_quotes || 0}
+              valueStyle={{ color: '#8c8c8c' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={8} lg={4}>
+          <Card>
+            <Statistic
+              title="Sent"
+              value={quoteMetrics?.sent_quotes || 0}
+              valueStyle={{ color: '#1890ff' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={8} lg={4}>
+          <Card>
+            <Statistic
+              title="Pending"
+              value={quoteMetrics?.pending_quotes || 0}
+              valueStyle={{ color: '#faad14' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={8} lg={4}>
+          <Card>
+            <Statistic
+              title="Accepted"
+              value={quoteMetrics?.accepted_quotes || 0}
+              valueStyle={{ color: '#52c41a' }}
+              prefix={<RiseOutlined />}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} sm={8} lg={4}>
+          <Card>
+            <Statistic
+              title="Declined"
+              value={quoteMetrics?.declined_quotes || 0}
+              valueStyle={{ color: '#ff4d4f' }}
+              prefix={<FallOutlined />}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Response Time Metrics */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24}>
+          <Card title="Response Time Metrics" extra={<ClockCircleOutlined style={{ fontSize: 24, color: '#1890ff' }} />}>
+            <Row gutter={[16, 16]}>
+              <Col xs={12} lg={6}>
+                <Statistic
+                  title="Draft → Sent"
+                  value={(quoteMetrics?.avg_draft_to_sent || 0).toFixed(1)}
+                  suffix="hrs"
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Col>
+              <Col xs={12} lg={6}>
+                <Statistic
+                  title="Sent → Response"
+                  value={(quoteMetrics?.avg_sent_to_response || 0).toFixed(1)}
+                  suffix="hrs"
+                  valueStyle={{ color: '#722ed1' }}
+                />
+              </Col>
+              <Col xs={12} lg={6}>
+                <Statistic
+                  title="Response → Complete"
+                  value={(quoteMetrics?.avg_response_to_completed || 0).toFixed(1)}
+                  suffix="hrs"
+                  valueStyle={{ color: '#13c2c2' }}
+                />
+              </Col>
+              <Col xs={12} lg={6}>
+                <Statistic
+                  title="Total Cycle Time"
+                  value={(quoteMetrics?.avg_total_cycle_time || 0).toFixed(1)}
+                  suffix="hrs"
+                  valueStyle={{ color: '#52c41a', fontWeight: 'bold' }}
+                />
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Value Metrics */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} lg={12}>
+          <Card title="Quote Value Metrics" extra={<DollarOutlined style={{ fontSize: 24, color: '#52c41a' }} />}>
+            <Row gutter={[16, 16]}>
+              <Col span={12}>
+                <Statistic
+                  title="Total Quote Value"
+                  value={quoteMetrics?.total_quote_value || 0}
+                  precision={2}
+                  prefix="$"
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Accepted Value"
+                  value={quoteMetrics?.accepted_quote_value || 0}
+                  precision={2}
+                  prefix="$"
+                  valueStyle={{ color: '#52c41a' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Average Quote"
+                  value={quoteMetrics?.average_quote_value || 0}
+                  precision={2}
+                  prefix="$"
+                  valueStyle={{ color: '#1890ff' }}
+                />
+              </Col>
+              <Col span={12}>
+                <Statistic
+                  title="Acceptance Rate"
+                  value={quoteMetrics?.acceptance_rate || 0}
+                  precision={1}
+                  suffix="%"
+                  valueStyle={{ color: '#722ed1' }}
+                />
+              </Col>
+            </Row>
+          </Card>
+        </Col>
+
+        <Col xs={24} lg={12}>
+          <Card title="Conversion Funnel" extra={<PercentageOutlined style={{ fontSize: 24, color: '#722ed1' }} />}>
+            <div style={{ padding: '20px 0' }}>
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>Draft → Sent</Text>
+                <Progress
+                  percent={quoteMetrics && quoteMetrics.total_quotes > 0 ? (quoteMetrics.sent_quotes / quoteMetrics.total_quotes) * 100 : 0}
+                  strokeColor="#1890ff"
+                  format={(percent) => `${percent?.toFixed(0)}%`}
+                />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <Text strong>Sent → Accepted</Text>
+                <Progress
+                  percent={quoteMetrics && quoteMetrics.sent_quotes > 0 ? (quoteMetrics.accepted_quotes / quoteMetrics.sent_quotes) * 100 : 0}
+                  strokeColor="#52c41a"
+                  format={(percent) => `${percent?.toFixed(0)}%`}
+                />
+              </div>
+              <div>
+                <Text strong>Overall Acceptance</Text>
+                <Progress
+                  percent={quoteMetrics?.acceptance_rate || 0}
+                  strokeColor="#722ed1"
+                  format={(percent) => `${percent?.toFixed(0)}%`}
+                />
+              </div>
+            </div>
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Recent Quotes Table */}
+      <Card
+        title="Recent Quotes"
+        extra={<Button icon={<DownloadOutlined />} size="small">Export</Button>}
+      >
+        <Table
+          dataSource={quoteMetrics?.recentQuotes || []}
+          columns={[
+            {
+              title: 'Quote #',
+              dataIndex: 'quote_number',
+              key: 'quote_number',
+              width: 120,
+            },
+            {
+              title: 'Customer',
+              dataIndex: 'customer_name',
+              key: 'customer_name',
+            },
+            {
+              title: 'Value',
+              dataIndex: 'total_price',
+              key: 'total_price',
+              render: (val: number) => `$${val.toFixed(2)}`,
+              align: 'right' as const,
+            },
+            {
+              title: 'Status',
+              dataIndex: 'status',
+              key: 'status',
+              render: (status: string) => {
+                const colors: Record<string, string> = {
+                  draft: 'default',
+                  sent: 'blue',
+                  accepted: 'green',
+                  declined: 'red',
+                  completed: 'success',
+                };
+                return <Tag color={colors[status] || 'default'}>{status.toUpperCase()}</Tag>;
+              },
+            },
+            {
+              title: 'Created',
+              dataIndex: 'created_at',
+              key: 'created_at',
+              render: (date: string) => dayjs(date).format('MMM DD, YYYY'),
+            },
+            {
+              title: 'Sent',
+              dataIndex: 'sent_at',
+              key: 'sent_at',
+              render: (date: string | null) => date ? dayjs(date).format('MMM DD, YYYY') : '-',
+            },
+            {
+              title: 'Response',
+              dataIndex: 'accepted_at',
+              key: 'response_at',
+              render: (_: any, record: any) => {
+                const responseDate = record.accepted_at || record.declined_at;
+                return responseDate ? dayjs(responseDate).format('MMM DD, YYYY') : '-';
+              },
+            },
+            {
+              title: 'Days in Status',
+              dataIndex: 'days_in_current_status',
+              key: 'days_in_status',
+              render: (days: number) => {
+                const color = days > 7 ? '#ff4d4f' : days > 3 ? '#faad14' : '#52c41a';
+                return <Tag color={color}>{days}d</Tag>;
+              },
+              align: 'center' as const,
+            },
+          ]}
+          rowKey="id"
+          pagination={{ pageSize: 10 }}
+        />
+      </Card>
+    </>
+  );
+
   // ========== STYLED TAB LABELS ==========
 
   const createTabLabel = (icon: React.ReactNode, text: string, color: string, bgColor: string) => (
@@ -1086,6 +1534,11 @@ export const Reports: React.FC = () => {
               key: 'customers',
               label: createTabLabel(<UserOutlined />, 'Customers', '#eb2f96', '#fff0f6'),
               children: renderCustomersTab()
+            },
+            {
+              key: 'quotes',
+              label: createTabLabel(<FileTextOutlined />, 'Quotes', '#f5222d', '#fff1f0'),
+              children: renderQuotesTab()
             },
             {
               key: 'marketing',
