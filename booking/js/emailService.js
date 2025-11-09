@@ -200,12 +200,31 @@ async sendTherapistBookingRequestSMS(therapistPhone, bookingData, therapistData,
     if (!formattedPhone) {
       return { success: false, error: 'Invalid phone number format' };
     }
-    
-    // Generate shortened Accept/Decline URLs for SMS (optimized for character count)
+
+    // Generate full Accept/Decline URLs
     const baseUrl = window.location.origin;
-    const acceptUrl = `${baseUrl}/.netlify/functions/booking-response?action=accept&booking=${bookingData.booking_id}&therapist=${therapistData.id}`;
-    const declineUrl = `${baseUrl}/.netlify/functions/booking-response?action=decline&booking=${bookingData.booking_id}&therapist=${therapistData.id}`;
-    
+    const fullAcceptUrl = `${baseUrl}/.netlify/functions/booking-response?action=accept&booking=${bookingData.booking_id}&therapist=${therapistData.id}`;
+    const fullDeclineUrl = `${baseUrl}/.netlify/functions/booking-response?action=decline&booking=${bookingData.booking_id}&therapist=${therapistData.id}`;
+
+    // Create short links for SMS
+    console.log('🔗 Creating short links for accept/decline...');
+    let acceptUrl = fullAcceptUrl;
+    let declineUrl = fullDeclineUrl;
+
+    try {
+      const [acceptResult, declineResult] = await Promise.all([
+        this.createShortLink(fullAcceptUrl, { booking_id: bookingData.booking_id, action: 'accept' }),
+        this.createShortLink(fullDeclineUrl, { booking_id: bookingData.booking_id, action: 'decline' })
+      ]);
+
+      if (acceptResult.success) acceptUrl = acceptResult.shortUrl;
+      if (declineResult.success) declineUrl = declineResult.shortUrl;
+
+      console.log('✅ Short links created:', { acceptUrl, declineUrl });
+    } catch (shortLinkError) {
+      console.warn('⚠️ Failed to create short links, using full URLs:', shortLinkError);
+    }
+
     // Format date and time properly for SMS
     // bookingData has separate booking_date (e.g. "2025-10-26") and booking_time (e.g. "09:00")
     const dateTimeString = `${bookingData.booking_date}T${bookingData.booking_time}:00`;
@@ -257,10 +276,10 @@ ${bookingData.first_name} ${bookingData.last_name}, ${formattedTime}, ${formatte
 // NEW: Format phone number helper function
 formatPhoneNumber(phone) {
   if (!phone) return null;
-  
+
   // Remove all non-digits
   const cleaned = phone.replace(/\D/g, '');
-  
+
   // Add Australian country code if missing
   if (cleaned.length === 10 && cleaned.startsWith('0')) {
     return '+61' + cleaned.substring(1); // Remove leading 0, add +61
@@ -271,8 +290,38 @@ formatPhoneNumber(phone) {
   } else if (cleaned.startsWith('+61')) {
     return cleaned; // Already formatted
   }
-  
+
   return phone; // Return as-is if unsure
+},
+
+// Create a short link for a URL
+async createShortLink(url, metadata = {}) {
+  try {
+    const response = await fetch('/.netlify/functions/create-short-link', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url,
+        expiresInDays: 30,
+        metadata
+      })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      return {
+        success: true,
+        shortUrl: result.shortUrl
+      };
+    } else {
+      console.error('❌ Failed to create short link:', result.error);
+      return { success: false, error: result.error };
+    }
+  } catch (error) {
+    console.error('❌ Error creating short link:', error);
+    return { success: false, error: error.message };
+  }
 },
 
   // Send Email 3: Booking Confirmation to Customer (when therapist accepts)
