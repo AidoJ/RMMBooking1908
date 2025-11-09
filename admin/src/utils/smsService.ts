@@ -7,15 +7,28 @@ export class SMSService {
   static async sendBookingRequestToTherapist(booking: any, therapist: any): Promise<{ success: boolean; error?: string }> {
     try {
       console.log('📱 Sending booking request SMS to therapist:', therapist.phone);
-      
+
       if (!therapist.phone) {
         return { success: false, error: 'Therapist phone number not available' };
       }
 
+      // Generate full URLs for accept/decline
       const baseUrl = 'https://rmmbookingplatform.netlify.app/.netlify/functions/therapist-response';
-      const acceptLink = `${baseUrl}?booking_id=${booking.booking_id}&action=accept&therapist_id=${therapist.id}`;
-      const declineLink = `${baseUrl}?booking_id=${booking.booking_id}&action=decline&therapist_id=${therapist.id}`;
-      
+      const acceptUrl = `${baseUrl}?booking_id=${booking.booking_id}&action=accept&therapist_id=${therapist.id}`;
+      const declineUrl = `${baseUrl}?booking_id=${booking.booking_id}&action=decline&therapist_id=${therapist.id}`;
+
+      // Create short links for both URLs
+      console.log('🔗 Creating short links for accept/decline...');
+      const [acceptLinkResult, declineLinkResult] = await Promise.all([
+        this.createShortLink(acceptUrl, { booking_id: booking.booking_id, action: 'accept' }),
+        this.createShortLink(declineUrl, { booking_id: booking.booking_id, action: 'decline' })
+      ]);
+
+      const acceptLink = acceptLinkResult.success ? acceptLinkResult.shortUrl : acceptUrl;
+      const declineLink = declineLinkResult.success ? declineLinkResult.shortUrl : declineUrl;
+
+      console.log('✅ Short links created:', { acceptLink, declineLink });
+
       const message = `📱 NEW BOOKING REQUEST
 
 Booking ID: ${booking.booking_id}
@@ -161,10 +174,10 @@ You've declined booking ${booking.booking_id}. The client has been notified.
    */
   static formatPhoneNumber(phone: string): string {
     if (!phone) return '';
-    
+
     // Remove all non-digit characters
     const cleaned = phone.replace(/\D/g, '');
-    
+
     // Handle Australian phone numbers
     if (cleaned.length === 10 && cleaned.startsWith('0')) {
       return '+61' + cleaned.substring(1);
@@ -174,6 +187,38 @@ You've declined booking ${booking.booking_id}. The client has been notified.
       return phone;
     } else {
       return phone;
+    }
+  }
+
+  /**
+   * Create a short link for a URL
+   */
+  private static async createShortLink(url: string, metadata: any = {}): Promise<{ success: boolean; shortUrl?: string; error?: string }> {
+    try {
+      const response = await fetch('https://rmmbookingplatform.netlify.app/.netlify/functions/create-short-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url,
+          expiresInDays: 30, // Links expire after 30 days
+          metadata
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        return {
+          success: true,
+          shortUrl: result.shortUrl
+        };
+      } else {
+        console.error('❌ Failed to create short link:', result.error);
+        return { success: false, error: result.error };
+      }
+    } catch (error) {
+      console.error('❌ Error creating short link:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 }
