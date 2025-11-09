@@ -1024,6 +1024,26 @@ export const Reports: React.FC = () => {
     </>
   );
 
+  // ========== STYLED TAB LABELS ==========
+
+  const createTabLabel = (icon: React.ReactNode, text: string, color: string, bgColor: string) => (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '8px',
+      padding: '6px 16px',
+      borderRadius: '8px',
+      fontWeight: 600,
+      fontSize: '14px',
+      background: bgColor,
+      color: color,
+      transition: 'all 0.3s ease',
+    }}>
+      <span style={{ fontSize: '16px' }}>{icon}</span>
+      <span>{text}</span>
+    </span>
+  );
+
   // ========== MAIN RENDER ==========
 
   return (
@@ -1040,13 +1060,38 @@ export const Reports: React.FC = () => {
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
+          size="large"
           items={[
-            { key: 'overview', label: <span><DollarOutlined /> Overview</span>, children: renderOverviewTab() },
-            { key: 'financials', label: <span><CalendarOutlined /> Financials</span>, children: renderFinancialsTab() },
-            { key: 'team', label: <span><TeamOutlined /> Team Performance</span>, children: renderTeamTab() },
-            { key: 'services', label: <span><ShoppingOutlined /> Services & Bookings</span>, children: renderServicesTab() },
-            { key: 'customers', label: <span><UserOutlined /> Customers</span>, children: renderCustomersTab() },
-            { key: 'marketing', label: <span><GiftOutlined /> Marketing</span>, children: renderMarketingTab() },
+            {
+              key: 'overview',
+              label: createTabLabel(<DollarOutlined />, 'Overview', '#1890ff', '#e6f4ff'),
+              children: renderOverviewTab()
+            },
+            {
+              key: 'financials',
+              label: createTabLabel(<CalendarOutlined />, 'Financials', '#52c41a', '#f6ffed'),
+              children: renderFinancialsTab()
+            },
+            {
+              key: 'team',
+              label: createTabLabel(<TeamOutlined />, 'Team Performance', '#722ed1', '#f9f0ff'),
+              children: renderTeamTab()
+            },
+            {
+              key: 'services',
+              label: createTabLabel(<ShoppingOutlined />, 'Services & Bookings', '#fa8c16', '#fff7e6'),
+              children: renderServicesTab()
+            },
+            {
+              key: 'customers',
+              label: createTabLabel(<UserOutlined />, 'Customers', '#eb2f96', '#fff0f6'),
+              children: renderCustomersTab()
+            },
+            {
+              key: 'marketing',
+              label: createTabLabel(<GiftOutlined />, 'Marketing', '#13c2c2', '#e6fffb'),
+              children: renderMarketingTab()
+            },
           ]}
         />
       )}
