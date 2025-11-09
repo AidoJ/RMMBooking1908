@@ -65,6 +65,12 @@
 
 # IMPORTANT: Order matters! Most specific routes first
 
+# Short link redirect handler - MUST come first
+[[redirects]]
+  from = "/s/:code"
+  to = "/.netlify/functions/s?code=:code"
+  status = 200
+
 # Admin panel SPA routing - must come BEFORE root catch-all
 [[redirects]]
   from = "/admin/*"

@@ -12,8 +12,8 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 exports.handler = async (event, context) => {
-  // Extract short code from path
-  const shortCode = event.path.replace('/.netlify/functions/s/', '').split('?')[0];
+  // Extract short code from query parameter (via Netlify redirect)
+  const shortCode = event.queryStringParameters?.code;
 
   console.log('🔗 Short link redirect request for:', shortCode);
 
