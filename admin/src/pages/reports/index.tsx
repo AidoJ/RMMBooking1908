@@ -641,12 +641,18 @@ export const Reports: React.FC = () => {
       const endDate = dateRange[1].format('YYYY-MM-DD');
 
       // Fetch all quotes with timestamps
-      const { data: quotes } = await supabaseClient
+      const { data: quotes, error: quotesError } = await supabaseClient
         .from('quotes')
-        .select('id, quote_number, customer_name, status, total_amount, created_at, sent_at, accepted_at, completed_at, declined_at')
+        .select('id, quote_number, customer_name, status, total_amount, created_at, quote_sent_at, quote_accepted_at')
         .gte('created_at', startDate)
         .lte('created_at', endDate + ' 23:59:59')
         .order('created_at', { ascending: false });
+
+      if (quotesError) {
+        console.error('Error fetching quotes:', quotesError);
+      }
+
+      console.log('📊 Loaded quotes for reports:', quotes?.length || 0);
 
       if (!quotes || quotes.length === 0) {
         setQuoteMetrics({
@@ -671,11 +677,11 @@ export const Reports: React.FC = () => {
 
       // Status counts
       const total_quotes = quotes.length;
-      const draft_quotes = quotes.filter(q => q.status === 'draft').length;
-      const sent_quotes = quotes.filter(q => q.status === 'sent' || q.sent_at !== null).length;
+      const draft_quotes = quotes.filter(q => q.status === 'draft' || q.status === 'new').length;
+      const sent_quotes = quotes.filter(q => q.status === 'sent' || q.quote_sent_at !== null).length;
       const accepted_quotes = quotes.filter(q => q.status === 'accepted').length;
       const declined_quotes = quotes.filter(q => q.status === 'declined').length;
-      const pending_quotes = quotes.filter(q => q.status === 'sent' && !q.accepted_at && !q.declined_at).length;
+      const pending_quotes = quotes.filter(q => q.status === 'sent' && !q.quote_accepted_at).length;
 
       // Calculate response times (in hours)
       const draftToSentTimes: number[] = [];
@@ -685,9 +691,9 @@ export const Reports: React.FC = () => {
 
       quotes.forEach(quote => {
         const createdAt = new Date(quote.created_at);
-        const sentAt = quote.sent_at ? new Date(quote.sent_at) : null;
-        const responseAt = quote.accepted_at ? new Date(quote.accepted_at) : (quote.declined_at ? new Date(quote.declined_at) : null);
-        const completedAt = quote.completed_at ? new Date(quote.completed_at) : null;
+        const sentAt = quote.quote_sent_at ? new Date(quote.quote_sent_at) : null;
+        const responseAt = quote.quote_accepted_at ? new Date(quote.quote_accepted_at) : null;
+        const completedAt = null; // No completed_at field yet
 
         // Draft to Sent
         if (sentAt) {
@@ -735,14 +741,10 @@ export const Reports: React.FC = () => {
         let referenceDate: Date;
 
         // Determine which date to use for "days in current status"
-        if (quote.completed_at) {
-          referenceDate = new Date(quote.completed_at);
-        } else if (quote.declined_at) {
-          referenceDate = new Date(quote.declined_at);
-        } else if (quote.accepted_at) {
-          referenceDate = new Date(quote.accepted_at);
-        } else if (quote.sent_at) {
-          referenceDate = new Date(quote.sent_at);
+        if (quote.quote_accepted_at) {
+          referenceDate = new Date(quote.quote_accepted_at);
+        } else if (quote.quote_sent_at) {
+          referenceDate = new Date(quote.quote_sent_at);
         } else {
           referenceDate = new Date(quote.created_at);
         }
@@ -756,9 +758,9 @@ export const Reports: React.FC = () => {
           total_price: parseFloat(quote.total_amount?.toString() || '0'),
           status: quote.status,
           created_at: quote.created_at,
-          sent_at: quote.sent_at,
-          accepted_at: quote.accepted_at,
-          completed_at: quote.completed_at,
+          sent_at: quote.quote_sent_at,
+          accepted_at: quote.quote_accepted_at,
+          completed_at: null,
           days_in_current_status,
         };
       });
