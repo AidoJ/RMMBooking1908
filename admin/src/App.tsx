@@ -74,6 +74,9 @@ import TherapistPayments from "./pages/therapist-payments";
 // Import the user management components
 import { UserManagementList } from "./pages/user-management";
 
+// Import the reports component
+import { Reports } from "./pages/reports";
+
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
   const { id } = useParams();
@@ -84,7 +87,6 @@ const BookingShowWrapper = () => {
 
 // Super Admin only pages
 const ActivityLogs = () => <div style={{padding: 24}}><h1>Activity Logs</h1><p>System activity monitoring will go here</p></div>;
-const Reports = () => <div style={{padding: 24}}><h1>Business Reports</h1><p>Analytics and business reports will go here</p></div>;
 
 function App() {
   return (
