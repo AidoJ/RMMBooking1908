@@ -640,10 +640,10 @@ export const Reports: React.FC = () => {
       const startDate = dateRange[0].format('YYYY-MM-DD');
       const endDate = dateRange[1].format('YYYY-MM-DD');
 
-      // Fetch all quotes with timestamps
+      // Fetch all quotes with timestamps - use * to get all fields like list page does
       const { data: quotes, error: quotesError } = await supabaseClient
         .from('quotes')
-        .select('id, quote_number, customer_name, status, total_amount, created_at, quote_sent_at, quote_accepted_at')
+        .select('*')
         .gte('created_at', startDate)
         .lte('created_at', endDate + ' 23:59:59')
         .order('created_at', { ascending: false });
@@ -652,7 +652,7 @@ export const Reports: React.FC = () => {
         console.error('Error fetching quotes:', quotesError);
       }
 
-      console.log('📊 Loaded quotes for reports:', quotes?.length || 0);
+      console.log('📊 Loaded quotes for reports:', quotes?.length || 0, quotes?.[0]);
 
       if (!quotes || quotes.length === 0) {
         setQuoteMetrics({
@@ -727,11 +727,17 @@ export const Reports: React.FC = () => {
       const avg_response_to_completed = avg(responseToCompletedTimes);
       const avg_total_cycle_time = avg(totalCycleTimes);
 
-      // Value metrics
-      const total_quote_value = quotes.reduce((sum, q) => sum + parseFloat(q.total_amount?.toString() || '0'), 0);
+      // Value metrics - use final_amount if available, fallback to total_amount
+      const total_quote_value = quotes.reduce((sum, q) => {
+        const amount = parseFloat(q.final_amount?.toString() || q.total_amount?.toString() || '0');
+        return sum + amount;
+      }, 0);
       const accepted_quote_value = quotes
         .filter(q => q.status === 'accepted')
-        .reduce((sum, q) => sum + parseFloat(q.total_amount?.toString() || '0'), 0);
+        .reduce((sum, q) => {
+          const amount = parseFloat(q.final_amount?.toString() || q.total_amount?.toString() || '0');
+          return sum + amount;
+        }, 0);
       const average_quote_value = total_quotes > 0 ? total_quote_value / total_quotes : 0;
       const acceptance_rate = total_quotes > 0 ? (accepted_quotes / total_quotes) * 100 : 0;
 
@@ -753,13 +759,13 @@ export const Reports: React.FC = () => {
 
         return {
           id: quote.id,
-          quote_number: quote.quote_number || quote.id.slice(0, 8),
-          customer_name: quote.customer_name || 'Unknown',
-          total_price: parseFloat(quote.total_amount?.toString() || '0'),
-          status: quote.status,
+          quote_number: quote.quote_number || `Q-${quote.id.slice(0, 8)}`,
+          customer_name: quote.customer_name || quote.company_name || 'Unknown',
+          total_price: parseFloat(quote.final_amount?.toString() || quote.total_amount?.toString() || '0'),
+          status: quote.status || 'new',
           created_at: quote.created_at,
-          sent_at: quote.quote_sent_at,
-          accepted_at: quote.quote_accepted_at,
+          sent_at: quote.quote_sent_at || null,
+          accepted_at: quote.quote_accepted_at || null,
           completed_at: null,
           days_in_current_status,
         };
