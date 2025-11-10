@@ -35,8 +35,7 @@ import {
   ExclamationCircleOutlined,
   SwapOutlined,
   FileTextOutlined,
-  ExperimentOutlined,
-  RocketOutlined
+  FormOutlined
 } from '@ant-design/icons';
 import { useGetIdentity, useNavigation } from '@refinedev/core';
 import { useNavigate } from 'react-router';
@@ -819,61 +818,19 @@ export const EnhancedBookingList = () => {
               )}
             </>
           )}
-          
-          {/* Admin Edit Button */}
+
+          {/* Edit Booking Button */}
           {(canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
             <Tooltip title={isQuote(record) ? "Edit Quote" : "Edit Booking"}>
               <Button
                 type="text"
-                icon={<EditOutlined />}
-                onClick={() => edit('bookings', record.id)}
-              />
-            </Tooltip>
-          )}
-
-          {/* Test New Edit Page Button */}
-          {(canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
-            <Tooltip title="🧪 Test New Edit Page (Beta)">
-              <Button
-                type="text"
-                icon={<ExperimentOutlined />}
-                style={{ color: '#722ed1' }}
+                icon={<FormOutlined />}
+                style={{ color: '#1890ff' }}
                 onClick={() => {
-                  // Navigate to new edit page using React Router
-                  navigate(`/bookings/edit-new/${record.id}`);
-                }}
-              />
-            </Tooltip>
-          )}
-
-          {/* Test Platform Edit Page Button */}
-          {(canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
-            <Tooltip title="🚀 Test Platform Edit (Phase 1)">
-              <Button
-                type="text"
-                icon={<RocketOutlined />}
-                style={{ color: '#007e8c' }}
-                onClick={() => {
-                  // Navigate to new platform edit page using React Router
                   navigate(`/bookings/edit-platform/${record.id}`);
                 }}
               />
             </Tooltip>
-          )}
-
-          {/* Admin Status Menu */}
-          {(canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
-            <Dropdown
-              menu={{
-                items: statusMenuItems.map(item => ({
-                  ...item,
-                  onClick: () => handleStatusChange(record.id, item.key),
-                  disabled: record.status === item.key,
-                })),
-              }}
-            >
-              <Button type="text" icon={<MoreOutlined />} />
-            </Dropdown>
           )}
         </Space>
       ),
