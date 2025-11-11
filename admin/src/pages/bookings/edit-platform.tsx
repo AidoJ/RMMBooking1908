@@ -2190,14 +2190,13 @@ export const BookingEditPlatform: React.FC = () => {
 
       // Send SMS notifications
       if (notificationOptions.sendSMS) {
-        if (notificationOptions.notifyCustomer && booking.therapist_details) {
-          await SMSService.sendBookingUpdateToCustomer(booking, booking.therapist_details, 'confirmed');
+        if (notificationOptions.notifyCustomer) {
+          await SMSService.sendAdminBookingUpdateToCustomer(booking, booking.therapist_details);
           sentCount++;
         }
 
         if (notificationOptions.notifyTherapist && booking.therapist_details) {
-          // SMS to therapist if needed
-          await SMSService.sendBookingUpdateToTherapist(booking, booking.therapist_details);
+          await SMSService.sendAdminBookingUpdateToTherapist(booking, booking.therapist_details);
           sentCount++;
         }
       }

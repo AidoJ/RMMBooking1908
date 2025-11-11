@@ -170,6 +170,76 @@ You've declined booking ${booking.booking_id}. The client has been notified.
   }
 
   /**
+   * Send booking update notification SMS to customer (Admin Edit)
+   */
+  static async sendAdminBookingUpdateToCustomer(booking: any, therapist: any): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('📱 Sending admin booking update SMS to customer:', booking.customer_phone);
+
+      if (!booking.customer_phone && !booking.customer_details?.phone) {
+        return { success: false, error: 'Customer phone number not available' };
+      }
+
+      const customerPhone = booking.customer_phone || booking.customer_details?.phone;
+      const therapistName = therapist ? `${therapist.first_name} ${therapist.last_name}` : booking.therapist_name || 'Your therapist';
+
+      const message = `📋 BOOKING UPDATED
+
+Your massage booking has been updated.
+
+Booking ID: ${booking.booking_id || booking.id}
+Therapist: ${therapistName}
+Date: ${new Date(booking.booking_time).toLocaleDateString()}
+Time: ${new Date(booking.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+
+Check your email for full details.
+- Rejuvenators`;
+
+      const result = await this.sendSMS(customerPhone, message);
+      return result;
+
+    } catch (error) {
+      console.error('❌ Error sending admin booking update SMS to customer:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  /**
+   * Send booking update notification SMS to therapist (Admin Edit)
+   */
+  static async sendAdminBookingUpdateToTherapist(booking: any, therapist: any): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log('📱 Sending admin booking update SMS to therapist:', therapist.phone);
+
+      if (!therapist.phone) {
+        return { success: false, error: 'Therapist phone number not available' };
+      }
+
+      const customerName = booking.customer_name || `${booking.first_name || ''} ${booking.last_name || ''}`.trim();
+
+      const message = `📋 BOOKING UPDATED
+
+A booking assigned to you has been updated.
+
+Booking ID: ${booking.booking_id || booking.id}
+Client: ${customerName}
+Date: ${new Date(booking.booking_time).toLocaleDateString()}
+Time: ${new Date(booking.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+Fee: $${booking.therapist_fee || 'TBD'}
+
+Check your email for full details.
+- Rejuvenators`;
+
+      const result = await this.sendSMS(therapist.phone, message);
+      return result;
+
+    } catch (error) {
+      console.error('❌ Error sending admin booking update SMS to therapist:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
+
+  /**
    * Format phone number for SMS sending
    */
   static formatPhoneNumber(phone: string): string {
