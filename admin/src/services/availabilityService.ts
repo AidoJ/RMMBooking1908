@@ -28,6 +28,7 @@ export interface TherapistAvailability {
   is_available: boolean;
   conflict_reason?: string;
   hourly_rate: number;
+  afterhours_rate: number;
   is_afterhours: boolean;
 }
 
@@ -269,9 +270,9 @@ export async function getAvailableTherapists(
         }
       }
 
-      const hourlyRate = await getTherapistRate(therapist, date, startTime);
       const isAfterHours = !isBusinessHours(date, startTime);
 
+      // Include both rates from therapist profile
       availabilityResults.push({
         therapist_id: therapist.id,
         therapist_name: `${therapist.first_name} ${therapist.last_name}`,
@@ -280,7 +281,8 @@ export async function getAvailableTherapists(
         rating: therapist.rating || 0,
         is_available: isAvailable,
         conflict_reason: conflictReason,
-        hourly_rate: hourlyRate,
+        hourly_rate: therapist.hourly_rate || 0,
+        afterhours_rate: therapist.afterhours_rate || 0,
         is_afterhours: isAfterHours
       });
     }
