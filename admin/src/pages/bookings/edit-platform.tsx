@@ -2119,9 +2119,21 @@ export const BookingEditPlatform: React.FC = () => {
   const handleSendNotification = async () => {
     if (!booking) return;
 
+    // Validate at least one recipient is selected
+    if (!notificationOptions.notifyCustomer && !notificationOptions.notifyTherapist) {
+      message.warning('Please select at least one recipient');
+      return;
+    }
+
+    // Validate at least one method is selected
+    if (!notificationOptions.sendEmail && !notificationOptions.sendSMS) {
+      message.warning('Please select at least one notification method');
+      return;
+    }
+
     try {
       setSendingNotifications(true);
-      
+
       const bookingData: BookingData = {
         id: booking.id,
         customer_name: booking.customer_name || 'Unknown Customer',
@@ -2140,9 +2152,25 @@ export const BookingEditPlatform: React.FC = () => {
         therapist_fee: booking.therapist_fee || 0,
       };
 
+      let sentCount = 0;
+
+      // Format changes for email display
+      const formattedChanges = detectedChanges.map(change => ({
+        fieldLabel: change,
+        originalValue: 'Previous value',
+        newValue: 'Updated value'
+      }));
+
+      // Send email notifications
       if (notificationOptions.sendEmail) {
-        await EmailService.sendBookingUpdateToCustomer(bookingData, detectedChanges);
-        if (booking.therapist_details) {
+        // Send to customer if selected
+        if (notificationOptions.notifyCustomer) {
+          await EmailService.sendAdminEditCustomerNotification(bookingData, formattedChanges);
+          sentCount++;
+        }
+
+        // Send to therapist if selected and therapist exists
+        if (notificationOptions.notifyTherapist && booking.therapist_details) {
           const therapistData: TherapistData = {
             id: booking.therapist_id,
             first_name: booking.therapist_details.first_name || '',
@@ -2150,18 +2178,31 @@ export const BookingEditPlatform: React.FC = () => {
             email: booking.therapist_details.email || '',
             phone: booking.therapist_details.phone || '',
           };
-          await EmailService.sendBookingUpdateToTherapist(bookingData, therapistData, detectedChanges);
+          await EmailService.sendAdminEditTherapistNotification(
+            bookingData,
+            therapistData,
+            formattedChanges,
+            booking.therapist_fee
+          );
+          sentCount++;
         }
       }
 
+      // Send SMS notifications
       if (notificationOptions.sendSMS) {
-        // Use existing SMS methods
-        if (booking.therapist_details) {
+        if (notificationOptions.notifyCustomer && booking.therapist_details) {
           await SMSService.sendBookingUpdateToCustomer(booking, booking.therapist_details, 'confirmed');
+          sentCount++;
+        }
+
+        if (notificationOptions.notifyTherapist && booking.therapist_details) {
+          // SMS to therapist if needed
+          await SMSService.sendBookingUpdateToTherapist(booking, booking.therapist_details);
+          sentCount++;
         }
       }
 
-      message.success('Notifications sent successfully');
+      message.success(`${sentCount} notification${sentCount !== 1 ? 's' : ''} sent successfully`);
       setShowNotificationModal(false);
     } catch (error) {
       console.error('Error sending notifications:', error);
@@ -3745,7 +3786,11 @@ export const BookingEditPlatform: React.FC = () => {
                 <Button block style={{ textAlign: 'left' }}>
                   👨‍⚕️ Reassign Therapist
                 </Button>
-                <Button block style={{ textAlign: 'left' }}>
+                <Button
+                  block
+                  style={{ textAlign: 'left' }}
+                  onClick={() => setShowNotificationModal(true)}
+                >
                   📧 Send Notification
                 </Button>
                 <Button block style={{ textAlign: 'left' }}>
@@ -4115,6 +4160,102 @@ export const BookingEditPlatform: React.FC = () => {
             >
               {proceedingWithChanges ? 'Processing...' : 'Confirm Changes and Save'}
             </Button>
+          </div>
+        </Modal>
+
+        {/* Send Notification Modal */}
+        <Modal
+          title="📧 Send Notifications"
+          open={showNotificationModal}
+          onOk={handleSendNotification}
+          onCancel={() => setShowNotificationModal(false)}
+          confirmLoading={sendingNotifications}
+          okText="Send Notifications"
+          cancelText="Cancel"
+          width={500}
+        >
+          <div style={{ padding: '16px 0' }}>
+            <p style={{ marginBottom: '20px', color: '#6b7280' }}>
+              Select who should receive notifications about this booking update:
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600 }}>
+                  Recipients
+                </h4>
+                <Checkbox
+                  checked={notificationOptions.notifyCustomer}
+                  onChange={(e) => setNotificationOptions({
+                    ...notificationOptions,
+                    notifyCustomer: e.target.checked
+                  })}
+                  style={{ display: 'block', marginBottom: '8px' }}
+                >
+                  Send to Customer
+                </Checkbox>
+                <Checkbox
+                  checked={notificationOptions.notifyTherapist}
+                  onChange={(e) => setNotificationOptions({
+                    ...notificationOptions,
+                    notifyTherapist: e.target.checked
+                  })}
+                  style={{ display: 'block' }}
+                  disabled={!booking?.therapist_id}
+                >
+                  Send to Therapist {!booking?.therapist_id && '(No therapist assigned)'}
+                </Checkbox>
+              </div>
+
+              <div style={{
+                padding: '16px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600 }}>
+                  Notification Methods
+                </h4>
+                <Checkbox
+                  checked={notificationOptions.sendEmail}
+                  onChange={(e) => setNotificationOptions({
+                    ...notificationOptions,
+                    sendEmail: e.target.checked
+                  })}
+                  style={{ display: 'block', marginBottom: '8px' }}
+                >
+                  Send Email
+                </Checkbox>
+                <Checkbox
+                  checked={notificationOptions.sendSMS}
+                  onChange={(e) => setNotificationOptions({
+                    ...notificationOptions,
+                    sendSMS: e.target.checked
+                  })}
+                  style={{ display: 'block' }}
+                >
+                  Send SMS
+                </Checkbox>
+              </div>
+            </div>
+
+            {(!notificationOptions.notifyCustomer && !notificationOptions.notifyTherapist) && (
+              <div style={{
+                marginTop: '16px',
+                padding: '12px',
+                backgroundColor: '#fef3c7',
+                border: '1px solid #fbbf24',
+                borderRadius: '6px',
+                color: '#92400e'
+              }}>
+                ⚠️ Please select at least one recipient
+              </div>
+            )}
           </div>
         </Modal>
 
