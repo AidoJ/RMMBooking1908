@@ -192,7 +192,10 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
   };
 
   const confirmOverride = () => {
-    if (!overrideSelection || !overrideReason.trim()) {
+    // Handle overrideReason as array (since Select has mode="tags")
+    const reasonText = Array.isArray(overrideReason) ? overrideReason[0] : overrideReason;
+
+    if (!overrideSelection || !reasonText || !reasonText.trim()) {
       message.error('Please provide a reason for the override');
       return;
     }
@@ -209,7 +212,7 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
       hourly_rate: therapist.hourly_rate,
       afterhours_rate: therapist.afterhours_rate,
       is_override: true,
-      override_reason: overrideReason,
+      override_reason: reasonText,
     };
 
     const newAssignments = [...assignments];
