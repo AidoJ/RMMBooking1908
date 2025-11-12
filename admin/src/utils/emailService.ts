@@ -1232,7 +1232,7 @@ export const EmailService = {
 
       const response = await window.emailjs.send(
         EMAILJS_SERVICE_ID,
-        'Booking Cancellation-Customer',
+        'Booking-cancel-client',
         templateParams
       );
 
@@ -1273,7 +1273,7 @@ export const EmailService = {
 
       const response = await window.emailjs.send(
         EMAILJS_SERVICE_ID,
-        'Booking Cancellation-Therapist',
+        'Booking-cancel-therapist',
         templateParams
       );
 
