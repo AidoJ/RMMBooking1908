@@ -3923,15 +3923,39 @@ if (confirmBtn) {
     // Move to confirmation step (no alert needed - Step 10 will display messages)
     showStep('step10');
 
-    // If in admin mode, redirect to admin panel after showing success message
+    // If in admin mode, close window and return to admin panel after showing success message
     if (window.isAdminMode) {
-      console.log('🔐 Admin mode - redirecting to admin panel in 3 seconds...');
+      console.log('🔐 Admin mode - closing booking window in 3 seconds...');
+
+      // Add a message to the confirmation page
       setTimeout(() => {
-        const adminUrl = window.location.hostname === 'localhost'
-          ? 'http://localhost:5173/bookings'
-          : 'https://rmmadmin.netlify.app/bookings';
-        window.location.href = adminUrl;
-      }, 3000); // Wait 3 seconds to show success message
+        const step10 = document.getElementById('step10');
+        if (step10) {
+          const returnMessage = document.createElement('div');
+          returnMessage.style.cssText = 'background: #f0fdf4; border: 2px solid #86efac; color: #166534; padding: 16px; border-radius: 8px; margin-top: 20px; text-align: center;';
+          returnMessage.innerHTML = `
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">✅ Returning to Admin Panel...</div>
+            <div style="font-size: 14px;">This window will close automatically.</div>
+          `;
+          step10.appendChild(returnMessage);
+        }
+
+        // Close the window after 2 more seconds
+        setTimeout(() => {
+          // If window was opened by another window (window.opener exists), close it
+          if (window.opener) {
+            window.opener.focus(); // Focus on the admin panel
+            window.close();
+          } else {
+            // Otherwise try to go back in history or close
+            if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              window.close();
+            }
+          }
+        }, 2000);
+      }, 3000); // Wait 3 seconds to show success message first
     }
         
       } catch (error) {
