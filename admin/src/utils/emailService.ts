@@ -1283,5 +1283,70 @@ export const EmailService = {
       console.error('❌ Error sending therapist cancellation email:', error);
       return { success: false, error: (error as Error).message };
     }
+  },
+
+  /**
+   * Send individual booking invoice to customer
+   */
+  async sendIndividualInvoice(invoiceData: any): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      const templateParams = {
+        to_email: invoiceData.customer_email,
+        to_name: invoiceData.customer_name,
+        from_name: 'Rejuvenators Mobile Massage',
+
+        // Invoice details
+        invoice_number: invoiceData.invoice_number,
+        booking_id: invoiceData.booking_id,
+        invoice_date: invoiceData.invoice_date,
+        payment_due_date: invoiceData.payment_due_date,
+
+        // Customer details
+        customer_name: invoiceData.customer_name,
+        customer_email: invoiceData.customer_email,
+        customer_phone: invoiceData.customer_phone,
+
+        // Service details
+        service_name: invoiceData.service_name,
+        duration: invoiceData.duration,
+        booking_date: invoiceData.booking_date,
+        booking_time: invoiceData.booking_time,
+        address: invoiceData.address,
+        business_name: invoiceData.business_name,
+        room_number: invoiceData.room_number,
+
+        // Therapist details
+        therapist_name: invoiceData.therapist_name,
+        therapist_email: invoiceData.therapist_email,
+
+        // Pricing
+        service_fee: invoiceData.service_fee,
+        discount_amount: invoiceData.discount_amount,
+        subtotal: invoiceData.subtotal,
+        gst_amount: invoiceData.gst_amount,
+        total_amount: invoiceData.total_amount,
+
+        // Bank details
+        bank_account_name: invoiceData.bank_account_name,
+        bank_account_bsb: invoiceData.bank_account_bsb,
+        bank_account_no: invoiceData.bank_account_no
+      };
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        'Individual Invoice',
+        templateParams
+      );
+
+      console.log('✅ Individual invoice sent:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending individual invoice:', error);
+      return { success: false, error: (error as Error).message };
+    }
   }
 };

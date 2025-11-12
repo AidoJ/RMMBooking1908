@@ -245,6 +245,8 @@ export const BookingEditPlatform: React.FC = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [sendingInvoice, setSendingInvoice] = useState(false);
 
   // New state for hybrid platform
   const [activeStep, setActiveStep] = useState('customer');
@@ -2289,6 +2291,101 @@ export const BookingEditPlatform: React.FC = () => {
     }
   };
 
+  const handleSendInvoice = async () => {
+    if (!booking) return;
+
+    try {
+      setSendingInvoice(true);
+
+      // Generate invoice number if not exists
+      const invoiceNumber = booking.invoice_number || `INV-${booking.booking_id || booking.id}`;
+
+      // Calculate pricing breakdown
+      const serviceFee = booking.price || 0;
+      const discount = booking.discount_amount || 0;
+      const subtotal = serviceFee - discount;
+      const gstRate = 0.10;
+      const gstAmount = subtotal * gstRate;
+      const totalAmount = subtotal + gstAmount;
+
+      // Get bank details from system settings
+      const { data: bankSettings } = await supabaseClient
+        .from('system_settings')
+        .select('key, value')
+        .in('key', ['bank_account_name', 'bank_account_bsb', 'bank_account_no']);
+
+      const bankDetails = {
+        account_name: bankSettings?.find(s => s.key === 'bank_account_name')?.value || 'Rejuvenators Mobile Massage',
+        bsb: bankSettings?.find(s => s.key === 'bank_account_bsb')?.value || 'XXX-XXX',
+        account_no: bankSettings?.find(s => s.key === 'bank_account_no')?.value || 'XXXXXXXXX'
+      };
+
+      // Prepare invoice data
+      const invoiceData = {
+        invoice_number: invoiceNumber,
+        booking_id: booking.booking_id || booking.id,
+        invoice_date: new Date().toLocaleDateString('en-AU', { year: 'numeric', month: 'long', day: 'numeric' }),
+        payment_due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-AU', { year: 'numeric', month: 'long', day: 'numeric' }),
+
+        // Customer details
+        customer_name: booking.customer_name || 'Unknown Customer',
+        customer_email: booking.customer_details?.email || booking.customer_email || '',
+        customer_phone: booking.customer_details?.phone || booking.customer_phone || '',
+
+        // Service details
+        service_name: booking.service_name || 'Unknown Service',
+        duration: `${booking.duration_minutes || 60} minutes`,
+        booking_date: new Date(booking.booking_time).toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        booking_time: new Date(booking.booking_time).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }),
+        address: booking.address || '',
+        business_name: booking.business_name || 'N/A',
+        room_number: booking.room_number || 'N/A',
+
+        // Therapist details
+        therapist_name: booking.therapist_name || 'To be assigned',
+        therapist_email: booking.therapist_details?.email || '',
+
+        // Pricing
+        service_fee: `$${serviceFee.toFixed(2)}`,
+        discount_amount: discount > 0 ? `-$${discount.toFixed(2)}` : '$0.00',
+        subtotal: `$${subtotal.toFixed(2)}`,
+        gst_amount: `$${gstAmount.toFixed(2)}`,
+        total_amount: `$${totalAmount.toFixed(2)}`,
+
+        // Bank details
+        bank_account_name: bankDetails.account_name,
+        bank_account_bsb: bankDetails.bsb,
+        bank_account_no: bankDetails.account_no
+      };
+
+      // Send invoice email
+      await EmailService.sendIndividualInvoice(invoiceData);
+
+      // Update booking with invoice number if it didn't have one
+      if (!booking.invoice_number) {
+        await supabaseClient
+          .from('bookings')
+          .update({
+            invoice_number: invoiceNumber,
+            invoice_sent_at: new Date().toISOString()
+          })
+          .eq('id', booking.id);
+      }
+
+      message.success('Invoice sent successfully');
+      setShowInvoiceModal(false);
+
+      // Refresh booking data
+      fetchBooking();
+
+    } catch (error) {
+      console.error('Error sending invoice:', error);
+      message.error('Failed to send invoice');
+    } finally {
+      setSendingInvoice(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
@@ -3875,8 +3972,12 @@ export const BookingEditPlatform: React.FC = () => {
                 >
                   📧 Send Notification
                 </Button>
-                <Button block style={{ textAlign: 'left' }}>
-                  🧾 Generate Invoice
+                <Button
+                  block
+                  style={{ textAlign: 'left' }}
+                  onClick={() => setShowInvoiceModal(true)}
+                >
+                  🧾 Send Invoice
                 </Button>
                 <Button block style={{ textAlign: 'left' }}>
                   💰 Apply Discount
@@ -4409,6 +4510,113 @@ export const BookingEditPlatform: React.FC = () => {
                   <strong>Date:</strong> {new Date(booking.booking_time).toLocaleDateString()}
                 </p>
               </div>
+            )}
+          </div>
+        </Modal>
+
+        {/* Send Invoice Modal */}
+        <Modal
+          title="🧾 Send Invoice"
+          open={showInvoiceModal}
+          onOk={handleSendInvoice}
+          onCancel={() => setShowInvoiceModal(false)}
+          confirmLoading={sendingInvoice}
+          okText="Send Invoice"
+          cancelText="Cancel"
+          width={600}
+        >
+          <div style={{ padding: '16px 0' }}>
+            <p style={{ marginBottom: '20px', color: '#6b7280' }}>
+              Send an invoice to the customer for this booking. The invoice will be sent to their email address.
+            </p>
+
+            {booking && (
+              <>
+                {/* Invoice Preview */}
+                <div style={{
+                  padding: '20px',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
+                  marginBottom: '20px'
+                }}>
+                  <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 600, color: '#007e8c' }}>
+                    Invoice Details
+                  </h4>
+
+                  <div style={{ display: 'grid', gap: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#6b7280' }}>Invoice Number:</span>
+                      <span style={{ fontWeight: 600 }}>{booking.invoice_number || `INV-${booking.booking_id || booking.id}`}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#6b7280' }}>Customer:</span>
+                      <span style={{ fontWeight: 600 }}>{booking.customer_name}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#6b7280' }}>Email:</span>
+                      <span style={{ fontWeight: 600 }}>{booking.customer_details?.email || booking.customer_email}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#6b7280' }}>Service:</span>
+                      <span style={{ fontWeight: 600 }}>{booking.service_name}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#6b7280' }}>Date:</span>
+                      <span style={{ fontWeight: 600 }}>{new Date(booking.booking_time).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Pricing Breakdown */}
+                <div style={{
+                  padding: '20px',
+                  backgroundColor: '#e6fffa',
+                  borderRadius: '8px',
+                  border: '2px solid #38b2ac',
+                }}>
+                  <h4 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: 600, color: '#234e52' }}>
+                    Amount Breakdown
+                  </h4>
+
+                  <div style={{ display: 'grid', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #b2f5ea' }}>
+                      <span>Service Fee:</span>
+                      <span>${(booking.price || 0).toFixed(2)}</span>
+                    </div>
+                    {booking.discount_amount && booking.discount_amount > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #b2f5ea', color: '#dc2626' }}>
+                        <span>Discount:</span>
+                        <span>-${booking.discount_amount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #b2f5ea' }}>
+                      <span>Subtotal:</span>
+                      <span>${((booking.price || 0) - (booking.discount_amount || 0)).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid #b2f5ea' }}>
+                      <span>GST (10%):</span>
+                      <span>${(((booking.price || 0) - (booking.discount_amount || 0)) * 0.10).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: 700, paddingTop: '8px', color: '#234e52' }}>
+                      <span>Total Amount:</span>
+                      <span>${(((booking.price || 0) - (booking.discount_amount || 0)) * 1.10).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{
+                  marginTop: '20px',
+                  padding: '12px',
+                  backgroundColor: '#fef3c7',
+                  borderRadius: '6px',
+                  border: '1px solid #fbbf24'
+                }}>
+                  <p style={{ color: '#78350f', fontSize: '13px', margin: 0 }}>
+                    📧 The invoice will be sent to: <strong>{booking.customer_details?.email || booking.customer_email}</strong>
+                  </p>
+                </div>
+              </>
             )}
           </div>
         </Modal>
