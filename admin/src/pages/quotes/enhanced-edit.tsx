@@ -2082,6 +2082,9 @@ export const EnhancedQuoteEdit: React.FC = () => {
                 total_sessions: (values as any).total_sessions || form?.getFieldValue('total_sessions'),
                 therapists_needed: (values as any).therapists_needed || form?.getFieldValue('therapists_needed'),
                 service_arrangement: (values as any).service_arrangement || form?.getFieldValue('service_arrangement'),
+                // Include geolocation coordinates from GooglePlacesAutocomplete
+                latitude: eventLatitude ?? form?.getFieldValue('latitude'),
+                longitude: eventLongitude ?? form?.getFieldValue('longitude'),
               };
 
               console.log('💾 Submitting quote with calculated values:', {
@@ -2092,7 +2095,9 @@ export const EnhancedQuoteEdit: React.FC = () => {
                 session_duration_minutes: submissionValues.session_duration_minutes,
                 total_sessions: submissionValues.total_sessions,
                 therapists_needed: submissionValues.therapists_needed,
-                service_arrangement: submissionValues.service_arrangement
+                service_arrangement: submissionValues.service_arrangement,
+                latitude: submissionValues.latitude,
+                longitude: submissionValues.longitude
               });
 
               // Verify values are correct before sending
@@ -2114,6 +2119,13 @@ export const EnhancedQuoteEdit: React.FC = () => {
               <InputNumber />
             </Form.Item>
             <Form.Item name="duration_minutes" style={{ display: 'none' }}>
+              <InputNumber />
+            </Form.Item>
+            {/* Hidden geolocation fields from GooglePlacesAutocomplete */}
+            <Form.Item name="latitude" style={{ display: 'none' }}>
+              <InputNumber />
+            </Form.Item>
+            <Form.Item name="longitude" style={{ display: 'none' }}>
               <InputNumber />
             </Form.Item>
 
