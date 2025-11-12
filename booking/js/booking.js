@@ -628,8 +628,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         break;
       case 'step8': // Payment
-        // Check if card has been authorized
-        if (!cardAuthorized) {
+        // Check if card has been authorized (or if using non-card payment in admin mode)
+        const selectedPaymentMethod = window.isAdminMode
+          ? (document.getElementById('paymentMethod')?.value || 'card')
+          : 'card';
+
+        // Only require card authorization if payment method is 'card'
+        if (selectedPaymentMethod === 'card' && !cardAuthorized) {
           isValid = false;
           const statusDiv = document.getElementById('cardAuthStatus');
           if (statusDiv) {
@@ -641,6 +646,10 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
             statusDiv.style.display = 'block';
           }
+        } else if (selectedPaymentMethod !== 'card') {
+          // For non-card payments, ensure cardAuthorized is set (bypass validation)
+          console.log('✅ Non-card payment method selected, bypassing card authorization');
+          window.cardAuthorized = true;
         }
         break;
     }
