@@ -936,10 +936,16 @@ export const EnhancedBookingList = () => {
                   <Button
                     type="primary"
                     icon={<PlusOutlined />}
-                    href="https://rmmbook.netlify.app"
-                    target="_blank"
+                    onClick={() => {
+                      // Open booking platform with admin mode parameter
+                      // Use production URL in production, local for development
+                      const bookingUrl = process.env.NODE_ENV === 'production'
+                        ? 'https://rmmbook.netlify.app?admin=true'
+                        : 'http://localhost:8080?admin=true';
+                      window.open(bookingUrl, '_blank');
+                    }}
                   >
-                    Create New Booking
+                    Create New Booking (Admin)
                   </Button>
                 )}
               </Space>

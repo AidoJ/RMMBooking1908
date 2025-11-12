@@ -2,6 +2,14 @@
 
 // Step navigation logic for new booking form
 
+// Admin mode detection from URL parameter
+const urlParams = new URLSearchParams(window.location.search);
+const isAdminMode = urlParams.get('admin') === 'true';
+console.log('🔐 Admin mode:', isAdminMode);
+
+// Store admin mode globally
+window.isAdminMode = isAdminMode;
+
 // Add this function at the very top-level scope so it is accessible everywhere
 async function calculateTherapistFee(dateVal, timeVal, durationVal, therapistId) {
   if (!dateVal || !timeVal || !durationVal || !therapistId) {
@@ -317,6 +325,56 @@ document.addEventListener('DOMContentLoaded', function () {
   // Initialize with Step 0 active
   console.log('🎯 About to call showStep("step0")');
   showStep('step0');
+
+  // Initialize admin mode UI if in admin mode
+  if (window.isAdminMode) {
+    console.log('🔐 Initializing admin mode UI...');
+    const adminPaymentSelector = document.getElementById('adminPaymentMethodSelector');
+    if (adminPaymentSelector) {
+      adminPaymentSelector.style.display = 'block';
+    }
+
+    // Add payment method change listener
+    const paymentMethodSelect = document.getElementById('paymentMethod');
+    if (paymentMethodSelect) {
+      paymentMethodSelect.addEventListener('change', function() {
+        const selectedMethod = this.value;
+        console.log('💳 Payment method changed to:', selectedMethod);
+
+        const cardContainer = document.querySelector('.card-input-container');
+        const authorizeBtn = document.getElementById('authorizeCardBtn');
+        const proceedBtn = document.getElementById('proceedToSummaryBtn');
+
+        if (selectedMethod === 'card') {
+          // Show Stripe card elements for credit card
+          if (cardContainer) cardContainer.style.display = 'block';
+          if (authorizeBtn) authorizeBtn.parentElement.style.display = 'block';
+
+          // Reset card authorization
+          window.cardAuthorized = false;
+          if (proceedBtn) {
+            proceedBtn.disabled = true;
+            proceedBtn.style.opacity = '0.5';
+            proceedBtn.style.cursor = 'not-allowed';
+          }
+        } else {
+          // Hide Stripe card elements for bank_transfer or invoice
+          if (cardContainer) cardContainer.style.display = 'none';
+          if (authorizeBtn) authorizeBtn.parentElement.style.display = 'none';
+
+          // Enable proceed button directly (no card authorization needed)
+          if (proceedBtn) {
+            proceedBtn.disabled = false;
+            proceedBtn.style.opacity = '1';
+            proceedBtn.style.cursor = 'pointer';
+          }
+
+          // Set card authorized flag (bypasses card check)
+          window.cardAuthorized = true;
+        }
+      });
+    }
+  }
 
   // Disable past dates on the date picker and clear any default value
   const today = new Date();
@@ -3757,7 +3815,11 @@ if (confirmBtn) {
       // Acknowledgement fields
             terms_acceptance: document.getElementById('termsAcceptance').value === 'yes',
       status: 'requested',
-      payment_status: 'pending'
+      payment_status: 'pending',
+      // Payment method - get from admin selector if in admin mode, otherwise default to 'card'
+      payment_method: window.isAdminMode
+        ? (document.getElementById('paymentMethod')?.value || 'card')
+        : 'card'
     };
         
         // Generate booking ID BEFORE inserting
@@ -3770,18 +3832,30 @@ if (confirmBtn) {
         
     window.lastBookingCustomerId = customer_id || '';
 
-        // Card already authorized in step 8
-        if (!cardAuthorized || !authorizedPaymentIntentId) {
-          throw new Error('Card authorization missing. Please go back to the payment step.');
-        }
+        // Check if using card payment method
+        const selectedPaymentMethod = payload.payment_method || 'card';
 
-        console.log('✅ Using pre-authorized card:', authorizedPaymentIntentId);
-        
-        // Create booking with card authorized (payment pending)
-        confirmBtn.textContent = 'Creating Booking Request...';
-        payload.payment_status = 'authorized'; // Card authorized, payment pending
-        payload.status = 'requested'; // Waiting for therapist acceptance
-        payload.payment_intent_id = authorizedPaymentIntentId;
+        if (selectedPaymentMethod === 'card') {
+          // Card payment - require authorization
+          if (!cardAuthorized || !authorizedPaymentIntentId) {
+            throw new Error('Card authorization missing. Please go back to the payment step.');
+          }
+
+          console.log('✅ Using pre-authorized card:', authorizedPaymentIntentId);
+
+          // Create booking with card authorized (payment pending)
+          confirmBtn.textContent = 'Creating Booking Request...';
+          payload.payment_status = 'authorized'; // Card authorized, payment pending
+          payload.status = 'requested'; // Waiting for therapist acceptance
+          payload.payment_intent_id = authorizedPaymentIntentId;
+        } else {
+          // Bank transfer or invoice - no card authorization needed
+          console.log('✅ Using non-card payment method:', selectedPaymentMethod);
+          confirmBtn.textContent = 'Creating Booking Request...';
+          payload.payment_status = 'pending'; // Payment pending (will be paid via bank transfer or invoice)
+          payload.status = 'requested'; // Waiting for therapist acceptance
+          // No payment_intent_id for non-card payments
+        }
         
         // Insert booking using Netlify function (bypasses RLS)
         console.log('📝 Creating booking via Netlify function...');
@@ -3839,6 +3913,17 @@ if (confirmBtn) {
 
     // Move to confirmation step (no alert needed - Step 10 will display messages)
     showStep('step10');
+
+    // If in admin mode, redirect to admin panel after showing success message
+    if (window.isAdminMode) {
+      console.log('🔐 Admin mode - redirecting to admin panel in 3 seconds...');
+      setTimeout(() => {
+        const adminUrl = window.location.hostname === 'localhost'
+          ? 'http://localhost:5173/bookings'
+          : 'https://rmmadmin.netlify.app/bookings';
+        window.location.href = adminUrl;
+      }, 3000); // Wait 3 seconds to show success message
+    }
         
       } catch (error) {
         console.error('❌ Error in booking submission:', error);

@@ -430,6 +430,17 @@
       </div>
       <div class="step-content" autocomplete="off" name="no-autofill-payment">
         <div class="payment-info">
+          <!-- Admin-only Payment Method Selector -->
+          <div id="adminPaymentMethodSelector" style="display: none; margin-bottom: 24px;">
+            <label for="paymentMethod" style="display: block; font-weight: 600; margin-bottom: 8px; color: #1f2937;">Payment Method</label>
+            <select id="paymentMethod" style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background-color: white;">
+              <option value="card">Credit Card (Stripe)</option>
+              <option value="bank_transfer">EFT/Bank Transfer</option>
+              <option value="invoice">Invoice (Pay Later)</option>
+            </select>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">Select how the customer will pay for this booking.</p>
+          </div>
+
           <div class="payment-security">
             <div class="security-badge">
               <span class="security-icon">🔒</span>
@@ -437,7 +448,7 @@
             </div>
             <p class="security-note">Your payment information is encrypted and secure. We use industry-standard security measures to protect your data.</p>
           </div>
-          
+
           <div class="card-input-container">
             <label for="card-element">Card Details</label>
             <div id="card-element" class="card-element"></div>
