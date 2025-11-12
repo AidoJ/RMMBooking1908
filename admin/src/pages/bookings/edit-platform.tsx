@@ -247,6 +247,9 @@ export const BookingEditPlatform: React.FC = () => {
   const [cancelReason, setCancelReason] = useState('');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [sendingInvoice, setSendingInvoice] = useState(false);
+  const [showMarkPaidModal, setShowMarkPaidModal] = useState(false);
+  const [markingPaid, setMarkingPaid] = useState(false);
+  const [paymentNotes, setPaymentNotes] = useState('');
 
   // New state for hybrid platform
   const [activeStep, setActiveStep] = useState('customer');
@@ -2386,6 +2389,41 @@ export const BookingEditPlatform: React.FC = () => {
     }
   };
 
+  const handleMarkAsPaid = async () => {
+    if (!booking) return;
+
+    try {
+      setMarkingPaid(true);
+
+      // Update booking payment status to paid
+      const { error: updateError } = await supabaseClient
+        .from('bookings')
+        .update({
+          payment_status: 'paid',
+          payment_notes: paymentNotes.trim() || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      message.success('Booking marked as paid');
+      setShowMarkPaidModal(false);
+      setPaymentNotes('');
+
+      // Refresh booking data
+      fetchBookingDetails();
+
+    } catch (error) {
+      console.error('Error marking booking as paid:', error);
+      message.error('Failed to mark booking as paid');
+    } finally {
+      setMarkingPaid(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
@@ -3930,7 +3968,8 @@ export const BookingEditPlatform: React.FC = () => {
                 <Button
                   block
                   style={{ textAlign: 'left' }}
-                  disabled={booking?.status === 'cancelled'}
+                  onClick={() => setShowMarkPaidModal(true)}
+                  disabled={booking?.status === 'cancelled' || booking?.payment_status === 'paid'}
                 >
                   💳 Mark as Paid
                 </Button>
@@ -4414,6 +4453,73 @@ export const BookingEditPlatform: React.FC = () => {
               }}>
                 ⚠️ Please select at least one recipient
               </div>
+            )}
+          </div>
+        </Modal>
+
+        {/* Mark as Paid Modal */}
+        <Modal
+          title="💳 Mark as Paid"
+          open={showMarkPaidModal}
+          onOk={handleMarkAsPaid}
+          onCancel={() => {
+            setShowMarkPaidModal(false);
+            setPaymentNotes('');
+          }}
+          confirmLoading={markingPaid}
+          okText="Mark as Paid"
+          cancelText="Cancel"
+          okButtonProps={{ style: { background: '#10b981', borderColor: '#10b981' } }}
+          width={500}
+        >
+          <div style={{ padding: '16px 0' }}>
+            <p style={{ marginBottom: '16px' }}>
+              Are you sure you want to mark this booking as paid?
+            </p>
+
+            {booking && (
+              <>
+                <div style={{
+                  background: '#f0fdf4',
+                  border: '2px solid #86efac',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginBottom: '20px'
+                }}>
+                  <h4 style={{ color: '#15803d', fontSize: '16px', marginBottom: '12px', fontWeight: 600 }}>
+                    📋 Booking Details
+                  </h4>
+                  <div style={{ fontSize: '14px', color: '#166534', lineHeight: '1.8' }}>
+                    <p><strong>Booking ID:</strong> {booking.booking_id || booking.id}</p>
+                    <p><strong>Customer:</strong> {booking.customer_name}</p>
+                    <p><strong>Service:</strong> {booking.service_name}</p>
+                    <p><strong>Amount:</strong> ${booking.price?.toFixed(2) || '0.00'}</p>
+                    <p><strong>Date:</strong> {new Date(booking.booking_time).toLocaleDateString('en-AU', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}</p>
+                  </div>
+                </div>
+
+                <div>
+                  <p style={{ fontWeight: 600, marginBottom: '8px', color: '#374151' }}>
+                    Payment Notes (Optional)
+                  </p>
+                  <Input.TextArea
+                    value={paymentNotes}
+                    onChange={(e) => setPaymentNotes(e.target.value)}
+                    placeholder="Enter payment reference, method, or any notes..."
+                    rows={3}
+                    maxLength={500}
+                    showCount
+                  />
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                    E.g., "Paid via bank transfer - Ref: 123456" or "Cash payment received"
+                  </p>
+                </div>
+              </>
             )}
           </div>
         </Modal>
