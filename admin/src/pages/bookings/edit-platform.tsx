@@ -242,6 +242,9 @@ export const BookingEditPlatform: React.FC = () => {
   const [customDuration, setCustomDuration] = useState(false);
   const [showSendEmailModal, setShowSendEmailModal] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
 
   // New state for hybrid platform
   const [activeStep, setActiveStep] = useState('customer');
@@ -2211,6 +2214,81 @@ export const BookingEditPlatform: React.FC = () => {
     }
   };
 
+  const handleCancelBooking = async () => {
+    if (!booking) return;
+
+    if (!cancelReason.trim()) {
+      message.warning('Please provide a reason for cancellation');
+      return;
+    }
+
+    try {
+      setCancelling(true);
+
+      // Update booking status to cancelled
+      const { error: updateError } = await supabaseClient
+        .from('bookings')
+        .update({
+          status: 'cancelled',
+          cancellation_reason: cancelReason,
+          cancelled_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', booking.id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Send cancellation notifications
+      const bookingData: BookingData = {
+        id: booking.id,
+        booking_id: booking.booking_id,
+        customer_name: booking.customer_name || 'Unknown Customer',
+        customer_email: booking.customer_details?.email || booking.customer_email || '',
+        customer_phone: booking.customer_details?.phone || booking.customer_phone || '',
+        therapist_name: booking.therapist_name || 'No Therapist Assigned',
+        therapist_email: booking.therapist_details?.email || '',
+        service_name: booking.service_name || 'Unknown Service',
+        booking_time: booking.booking_time,
+        duration_minutes: booking.duration_minutes || 60,
+        address: booking.address || '',
+        business_name: booking.business_name || '',
+        room_number: booking.room_number || '',
+        notes: booking.notes || '',
+        price: booking.price || 0,
+        therapist_fee: booking.therapist_fee || 0,
+      };
+
+      // Send cancellation emails
+      await EmailService.sendBookingCancellationToCustomer(bookingData, cancelReason);
+
+      if (booking.therapist_details) {
+        const therapistData: TherapistData = {
+          id: booking.therapist_id,
+          first_name: booking.therapist_details.first_name || '',
+          last_name: booking.therapist_details.last_name || '',
+          email: booking.therapist_details.email || '',
+          phone: booking.therapist_details.phone || '',
+        };
+        await EmailService.sendBookingCancellationToTherapist(bookingData, therapistData, cancelReason);
+      }
+
+      message.success('Booking cancelled and notifications sent');
+      setShowCancelModal(false);
+      setCancelReason('');
+
+      // Refresh booking data
+      fetchBooking();
+
+    } catch (error) {
+      console.error('Error cancelling booking:', error);
+      message.error('Failed to cancel booking');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
@@ -3779,7 +3857,12 @@ export const BookingEditPlatform: React.FC = () => {
                 <Button block style={{ textAlign: 'left' }}>
                   ✅ Confirm Booking
                 </Button>
-                <Button block style={{ textAlign: 'left' }}>
+                <Button
+                  block
+                  style={{ textAlign: 'left' }}
+                  onClick={() => setShowCancelModal(true)}
+                  danger
+                >
                   ❌ Cancel Booking
                 </Button>
                 <Button block style={{ textAlign: 'left' }}>
@@ -4253,6 +4336,78 @@ export const BookingEditPlatform: React.FC = () => {
                 color: '#92400e'
               }}>
                 ⚠️ Please select at least one recipient
+              </div>
+            )}
+          </div>
+        </Modal>
+
+        {/* Cancel Booking Modal */}
+        <Modal
+          title="❌ Cancel Booking"
+          open={showCancelModal}
+          onOk={handleCancelBooking}
+          onCancel={() => {
+            setShowCancelModal(false);
+            setCancelReason('');
+          }}
+          confirmLoading={cancelling}
+          okText="Cancel Booking"
+          cancelText="Keep Booking"
+          okButtonProps={{ danger: true }}
+          width={500}
+        >
+          <div style={{ padding: '16px 0' }}>
+            <p style={{ marginBottom: '20px', color: '#6b7280' }}>
+              Are you sure you want to cancel this booking? This action cannot be undone.
+            </p>
+
+            <div style={{
+              padding: '16px',
+              backgroundColor: '#fef2f2',
+              borderRadius: '8px',
+              border: '1px solid #fecaca',
+              marginBottom: '20px'
+            }}>
+              <p style={{ color: '#dc2626', fontSize: '14px', margin: 0 }}>
+                <strong>⚠️ Warning:</strong> Both the customer and therapist will be notified of this cancellation.
+              </p>
+            </div>
+
+            <div>
+              <p style={{ marginBottom: '8px', fontWeight: 600 }}>Cancellation Reason *</p>
+              <Input.TextArea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Please provide a reason for cancellation..."
+                rows={4}
+                maxLength={500}
+                showCount
+              />
+            </div>
+
+            {booking && (
+              <div style={{
+                marginTop: '20px',
+                padding: '16px',
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600 }}>
+                  Booking Details
+                </h4>
+                <p style={{ margin: '4px 0', fontSize: '13px', color: '#6b7280' }}>
+                  <strong>ID:</strong> {booking.booking_id}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '13px', color: '#6b7280' }}>
+                  <strong>Customer:</strong> {booking.customer_name}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '13px', color: '#6b7280' }}>
+                  <strong>Therapist:</strong> {booking.therapist_name || 'Not assigned'}
+                </p>
+                <p style={{ margin: '4px 0', fontSize: '13px', color: '#6b7280' }}>
+                  <strong>Date:</strong> {new Date(booking.booking_time).toLocaleDateString()}
+                </p>
               </div>
             )}
           </div>

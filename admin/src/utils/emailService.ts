@@ -1202,5 +1202,86 @@ export const EmailService = {
       console.error('❌ Error sending admin edit new therapist assignment:', error);
       return { success: false, error: (error as Error).message };
     }
+  },
+
+  /**
+   * Send booking cancellation notification to customer
+   */
+  async sendBookingCancellationToCustomer(bookingData: BookingData, cancellationReason: string): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      const templateParams = {
+        to_email: bookingData.customer_email,
+        to_name: bookingData.customer_name,
+        customer_name: bookingData.customer_name,
+        booking_id: bookingData.booking_id || bookingData.id,
+        service_name: bookingData.service_name,
+        duration: `${bookingData.duration_minutes || 60} minutes`,
+        booking_date: new Date(bookingData.booking_time).toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        booking_time: new Date(bookingData.booking_time).toLocaleTimeString('en-AU', {hour: '2-digit', minute:'2-digit'}),
+        address: bookingData.address,
+        business_name: bookingData.business_name || 'N/A',
+        room_number: bookingData.room_number || 'N/A',
+        therapist_name: bookingData.therapist_name || 'Your therapist',
+        cancellation_reason: cancellationReason,
+        price: bookingData.price ? `$${bookingData.price.toFixed(2)}` : 'TBD'
+      };
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        'Booking Cancellation-Customer',
+        templateParams
+      );
+
+      console.log('✅ Customer cancellation email sent:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending customer cancellation email:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  /**
+   * Send booking cancellation notification to therapist
+   */
+  async sendBookingCancellationToTherapist(bookingData: BookingData, therapistData: TherapistData, cancellationReason: string): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      const templateParams = {
+        to_email: therapistData.email,
+        to_name: `${therapistData.first_name} ${therapistData.last_name}`,
+        therapist_name: `${therapistData.first_name} ${therapistData.last_name}`,
+        customer_name: bookingData.customer_name,
+        customer_phone: bookingData.customer_phone || 'Not provided',
+        booking_id: bookingData.booking_id || bookingData.id,
+        service_name: bookingData.service_name,
+        duration: `${bookingData.duration_minutes || 60} minutes`,
+        booking_date: new Date(bookingData.booking_time).toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+        booking_time: new Date(bookingData.booking_time).toLocaleTimeString('en-AU', {hour: '2-digit', minute:'2-digit'}),
+        address: bookingData.address,
+        business_name: bookingData.business_name || 'N/A',
+        room_number: bookingData.room_number || 'N/A',
+        therapist_fee: bookingData.therapist_fee ? `$${bookingData.therapist_fee.toFixed(2)}` : 'TBD',
+        cancellation_reason: cancellationReason
+      };
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        'Booking Cancellation-Therapist',
+        templateParams
+      );
+
+      console.log('✅ Therapist cancellation email sent:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending therapist cancellation email:', error);
+      return { success: false, error: (error as Error).message };
+    }
   }
 };
