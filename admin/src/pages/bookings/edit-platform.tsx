@@ -2281,7 +2281,7 @@ export const BookingEditPlatform: React.FC = () => {
       setCancelReason('');
 
       // Refresh booking data
-      fetchBooking();
+      fetchBookingDetails();
 
     } catch (error) {
       console.error('Error cancelling booking:', error);
@@ -2312,12 +2312,12 @@ export const BookingEditPlatform: React.FC = () => {
       const { data: bankSettings } = await supabaseClient
         .from('system_settings')
         .select('key, value')
-        .in('key', ['bank_account_name', 'bank_account_bsb', 'bank_account_no']);
+        .in('key', ['bank_account_name', 'bank_account_bsb', 'bank_account_number']);
 
       const bankDetails = {
         account_name: bankSettings?.find(s => s.key === 'bank_account_name')?.value || 'Rejuvenators Mobile Massage',
         bsb: bankSettings?.find(s => s.key === 'bank_account_bsb')?.value || 'XXX-XXX',
-        account_no: bankSettings?.find(s => s.key === 'bank_account_no')?.value || 'XXXXXXXXX'
+        account_no: bankSettings?.find(s => s.key === 'bank_account_number')?.value || 'XXXXXXXXX'
       };
 
       // Prepare invoice data
@@ -2376,7 +2376,7 @@ export const BookingEditPlatform: React.FC = () => {
       setShowInvoiceModal(false);
 
       // Refresh booking data
-      fetchBooking();
+      fetchBookingDetails();
 
     } catch (error) {
       console.error('Error sending invoice:', error);
