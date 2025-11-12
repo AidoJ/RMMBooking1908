@@ -211,13 +211,15 @@ export async function getAvailableTherapists(
   date: string,
   startTime: string,
   durationMinutes: number,
-  requiredCount: number = 1
+  requiredCount: number = 1,
+  latitude?: number | null,
+  longitude?: number | null
 ): Promise<TherapistAvailability[]> {
   try {
-    // Get all active therapists with their hourly rates
+    // Get all active therapists with their hourly rates and location data
     const { data: therapists, error } = await supabaseClient
       .from('therapist_profiles')
-      .select('id, first_name, last_name, email, gender, rating, is_active, hourly_rate, afterhours_rate')
+      .select('id, first_name, last_name, email, gender, rating, is_active, hourly_rate, afterhours_rate, latitude, longitude, service_radius_km')
       .eq('is_active', true);
 
     if (error) {
@@ -229,9 +231,41 @@ export async function getAvailableTherapists(
       return [];
     }
 
+    // Filter by geolocation if coordinates are provided
+    let filteredTherapists = therapists;
+    if (latitude && longitude) {
+      console.log(`🌍 Filtering therapists by location: ${latitude}, ${longitude}`);
+
+      // Haversine distance calculation
+      const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a =
+          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+          Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+      };
+
+      filteredTherapists = therapists.filter(t => {
+        if (t.latitude == null || t.longitude == null || t.service_radius_km == null) {
+          console.log(`⚠️ Therapist ${t.id} (${t.first_name} ${t.last_name}) missing location data - excluded from location filtering`);
+          return false;
+        }
+        const dist = getDistanceKm(latitude, longitude, t.latitude, t.longitude);
+        const inRange = dist <= t.service_radius_km;
+        console.log(`📍 Therapist ${t.first_name} ${t.last_name}: distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km - ${inRange ? 'IN RANGE' : 'OUT OF RANGE'}`);
+        return inRange;
+      });
+
+      console.log(`✅ Location filtering: ${filteredTherapists.length} of ${therapists.length} therapists service this area`);
+    }
+
     const availabilityResults: TherapistAvailability[] = [];
 
-    for (const therapist of therapists) {
+    for (const therapist of filteredTherapists) {
       let isAvailable = true;
       let conflictReason = '';
 
@@ -308,7 +342,7 @@ function calculateTherapistsNeeded(sessionsCount: number, sessionDurationMinutes
 /**
  * Check availability for an entire quote (all days)
  */
-export async function checkQuoteAvailability(quoteId: string): Promise<QuoteAvailabilityResult> {
+export async function checkQuoteAvailability(quoteId: string, latitude?: number | null, longitude?: number | null): Promise<QuoteAvailabilityResult> {
   try {
     // Get quote details
     const { data: quote, error: quoteError } = await supabaseClient
@@ -375,7 +409,9 @@ export async function checkQuoteAvailability(quoteId: string): Promise<QuoteAvai
         day.event_date,
         day.start_time,
         quote.session_duration_minutes,
-        therapistsRequired
+        therapistsRequired,
+        latitude,
+        longitude
       );
 
       const availableCount = availableTherapists.filter(t => t.is_available).length;
@@ -443,7 +479,9 @@ export async function suggestAlternatives(
   originalTime: string,
   durationMinutes: number,
   therapistsRequired: number,
-  daysToCheck: number = 7
+  daysToCheck: number = 7,
+  latitude?: number | null,
+  longitude?: number | null
 ): Promise<string[]> {
   const alternatives: string[] = [];
   const startDate = dayjs(originalDate);
@@ -458,7 +496,9 @@ export async function suggestAlternatives(
       dateStr,
       originalTime,
       durationMinutes,
-      therapistsRequired
+      therapistsRequired,
+      latitude,
+      longitude
     );
 
     if (available.filter(t => t.is_available).length >= therapistsRequired) {

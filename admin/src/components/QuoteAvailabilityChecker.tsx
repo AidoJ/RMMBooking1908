@@ -48,6 +48,8 @@ interface QuoteAvailabilityCheckerProps {
   onAvailabilityDeclined: () => void;
   existingAssignments?: TherapistAssignment[]; // For loading existing assignments from sent quotes
   onAssignmentsChanged?: () => void; // Callback when assignments modified after quote sent
+  eventLatitude?: number | null; // Event location latitude for geolocation filtering
+  eventLongitude?: number | null; // Event location longitude for geolocation filtering
 }
 
 export interface TherapistAssignment {
@@ -67,6 +69,8 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
   onAvailabilityDeclined,
   existingAssignments,
   onAssignmentsChanged,
+  eventLatitude,
+  eventLongitude,
 }) => {
   const [loading, setLoading] = useState(false);
   const [availability, setAvailability] = useState<QuoteAvailabilityResult | null>(null);
@@ -96,7 +100,7 @@ export const QuoteAvailabilityChecker: React.FC<QuoteAvailabilityCheckerProps> =
   const checkAvailability = async () => {
     setLoading(true);
     try {
-      const result = await checkQuoteAvailability(quoteId);
+      const result = await checkQuoteAvailability(quoteId, eventLatitude, eventLongitude);
       setAvailability(result);
 
       // Only reset assignments if there are no existing assignments to preserve

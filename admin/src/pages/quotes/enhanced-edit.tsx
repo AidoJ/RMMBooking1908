@@ -50,6 +50,7 @@ import { EmailService } from '../../utils/emailService';
 import { supabaseClient } from '../../utility';
 import { getSystemSetting } from '../../utils/systemSettings';
 import { calculateQuoteTotalFromQuoteDates } from '../../services/quoteFinancialCalculation';
+import GooglePlacesAutocomplete from '../../components/GooglePlacesAutocomplete';
 import dayjs from 'dayjs';
 import './enhanced-edit.css';
 
@@ -74,6 +75,8 @@ export const EnhancedQuoteEdit: React.FC = () => {
   const [workflowStep, setWorkflowStep] = useState(2); // Current step in workflow
   const [expandedSections, setExpandedSections] = useState<string[]>(['customer', 'event', 'schedule']);
   const [diaryLocks, setDiaryLocks] = useState<{ [key: string]: boolean }>({});
+  const [eventLatitude, setEventLatitude] = useState<number | null>(null);
+  const [eventLongitude, setEventLongitude] = useState<number | null>(null);
   const [timeValidation, setTimeValidation] = useState<{
     eventDuration: number;
     serviceDuration: number;
@@ -748,6 +751,14 @@ export const EnhancedQuoteEdit: React.FC = () => {
       const originalDates = [...quotesData.quote_dates];
       setOriginalQuoteDates(originalDates);
       setCurrentQuoteDates(originalDates);
+    }
+  }, [quotesData]);
+
+  // Load event coordinates when quote data loads
+  useEffect(() => {
+    if (quotesData) {
+      setEventLatitude((quotesData as any).latitude || null);
+      setEventLongitude((quotesData as any).longitude || null);
     }
   }, [quotesData]);
 
@@ -1975,6 +1986,8 @@ export const EnhancedQuoteEdit: React.FC = () => {
         
         <QuoteAvailabilityChecker
           quoteId={id}
+          eventLatitude={eventLatitude}
+          eventLongitude={eventLongitude}
         onAvailabilityConfirmed={async (assignments) => {
           // NEW WORKFLOW: Don't create bookings yet, just confirm availability
           const now = new Date().toLocaleDateString();
@@ -2141,7 +2154,24 @@ export const EnhancedQuoteEdit: React.FC = () => {
                 <Row gutter={[16, 16]}>
                   <Col span={24}>
                     <Form.Item label="Event Location" name="event_location" rules={[{ required: true }]}>
-                      <Input />
+                      <GooglePlacesAutocomplete
+                        value={form?.getFieldValue('event_location') || ''}
+                        placeholder="Start typing the event address..."
+                        onChange={(value) => {
+                          form?.setFieldsValue({ event_location: value });
+                        }}
+                        onPlaceSelect={(place) => {
+                          console.log('📍 Event location selected:', place);
+                          form?.setFieldsValue({
+                            event_location: place.address,
+                            event_address: place.address,
+                            latitude: place.lat,
+                            longitude: place.lng
+                          });
+                          setEventLatitude(place.lat);
+                          setEventLongitude(place.lng);
+                        }}
+                      />
                     </Form.Item>
                   </Col>
                   <Col span={12}>
