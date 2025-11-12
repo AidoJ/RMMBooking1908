@@ -35,7 +35,8 @@ import {
   ExclamationCircleOutlined,
   SwapOutlined,
   FileTextOutlined,
-  FormOutlined
+  FormOutlined,
+  UndoOutlined
 } from '@ant-design/icons';
 import { useGetIdentity, useNavigation } from '@refinedev/core';
 import { useNavigate } from 'react-router';
@@ -160,6 +161,10 @@ export const EnhancedBookingList = () => {
     pageSize: 20,
     total: 0
   });
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreReason, setRestoreReason] = useState('');
+  const [bookingToRestore, setBookingToRestore] = useState<BookingRecord | null>(null);
 
   const userRole = identity?.role;
 
@@ -517,10 +522,10 @@ export const EnhancedBookingList = () => {
     try {
       const { error } = await supabaseClient
         .from('bookings')
-        .update({ 
+        .update({
           booking_type: 'booking',
           status: 'confirmed',
-          updated_at: new Date().toISOString() 
+          updated_at: new Date().toISOString()
         })
         .eq('id', quoteId);
 
@@ -531,6 +536,42 @@ export const EnhancedBookingList = () => {
     } catch (error) {
       console.error('Error converting quote to booking:', error);
       message.error('Failed to convert quote to booking');
+    }
+  };
+
+  const handleRestoreBooking = async () => {
+    if (!bookingToRestore) return;
+
+    if (!restoreReason.trim()) {
+      message.warning('Please provide a reason for restoring this booking');
+      return;
+    }
+
+    try {
+      setRestoring(true);
+
+      const { error } = await supabaseClient
+        .from('bookings')
+        .update({
+          status: 'confirmed',
+          restored_at: new Date().toISOString(),
+          restored_reason: restoreReason,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingToRestore.id);
+
+      if (error) throw error;
+
+      message.success('Booking restored successfully');
+      setShowRestoreModal(false);
+      setRestoreReason('');
+      setBookingToRestore(null);
+      fetchBookings();
+    } catch (error) {
+      console.error('Error restoring booking:', error);
+      message.error('Failed to restore booking');
+    } finally {
+      setRestoring(false);
     }
   };
 
@@ -819,13 +860,29 @@ export const EnhancedBookingList = () => {
             </>
           )}
 
-          {/* Edit Booking Button */}
+          {/* Restore Booking Button - Only show for cancelled bookings */}
+          {record.status === 'cancelled' && (canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
+            <Tooltip title="Restore Booking">
+              <Button
+                type="text"
+                icon={<UndoOutlined />}
+                style={{ color: '#52c41a' }}
+                onClick={() => {
+                  setBookingToRestore(record);
+                  setShowRestoreModal(true);
+                }}
+              />
+            </Tooltip>
+          )}
+
+          {/* Edit Booking Button - Disabled for cancelled bookings */}
           {(canAccess(userRole, 'canEditAllBookings') || userRole === 'super_admin') && (
-            <Tooltip title={isQuote(record) ? "Edit Quote" : "Edit Booking"}>
+            <Tooltip title={record.status === 'cancelled' ? "Cannot edit cancelled booking" : (isQuote(record) ? "Edit Quote" : "Edit Booking")}>
               <Button
                 type="text"
                 icon={<FormOutlined />}
-                style={{ color: '#1890ff' }}
+                style={{ color: record.status === 'cancelled' ? '#d9d9d9' : '#1890ff' }}
+                disabled={record.status === 'cancelled'}
                 onClick={() => {
                   navigate(`/bookings/edit-platform/${record.id}`);
                 }}
@@ -1063,6 +1120,93 @@ export const EnhancedBookingList = () => {
             scroll={{ x: 1200 }}
           />
         </Card>
+
+        {/* Restore Booking Modal */}
+        <Modal
+          title="🔄 Restore Booking"
+          open={showRestoreModal}
+          onOk={handleRestoreBooking}
+          onCancel={() => {
+            setShowRestoreModal(false);
+            setRestoreReason('');
+            setBookingToRestore(null);
+          }}
+          confirmLoading={restoring}
+          okText="Restore Booking"
+          cancelText="Cancel"
+          okButtonProps={{ style: { background: '#52c41a', borderColor: '#52c41a' } }}
+          width={550}
+        >
+          <div style={{ padding: '16px 0' }}>
+            <p style={{ marginBottom: '20px', fontSize: '15px' }}>
+              Are you sure you want to restore this cancelled booking?
+            </p>
+
+            {bookingToRestore && (
+              <>
+                {/* Booking Details Card */}
+                <div style={{
+                  background: '#f0fdf4',
+                  border: '2px solid #86efac',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginBottom: '20px'
+                }}>
+                  <h4 style={{ color: '#15803d', fontSize: '16px', marginBottom: '12px', fontWeight: 600 }}>
+                    📋 Booking Details
+                  </h4>
+                  <div style={{ fontSize: '14px', color: '#166534', lineHeight: '1.8' }}>
+                    <p><strong>Booking ID:</strong> {bookingToRestore.booking_id || bookingToRestore.id}</p>
+                    <p><strong>Customer:</strong> {bookingToRestore.customer_name}</p>
+                    <p><strong>Service:</strong> {bookingToRestore.service_name}</p>
+                    <p><strong>Date:</strong> {new Date(bookingToRestore.booking_time).toLocaleDateString('en-AU', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}</p>
+                  </div>
+                </div>
+
+                {/* Cancellation Info */}
+                {bookingToRestore.cancellation_reason && (
+                  <div style={{
+                    background: '#fef2f2',
+                    border: '2px solid #fecaca',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    marginBottom: '20px'
+                  }}>
+                    <h4 style={{ color: '#991b1b', fontSize: '14px', marginBottom: '8px', fontWeight: 600 }}>
+                      Previous Cancellation Reason:
+                    </h4>
+                    <p style={{ fontSize: '13px', color: '#7f1d1d', margin: 0 }}>
+                      {bookingToRestore.cancellation_reason}
+                    </p>
+                  </div>
+                )}
+
+                {/* Restore Reason Input */}
+                <div>
+                  <p style={{ fontWeight: 600, marginBottom: '8px', color: '#374151' }}>
+                    Restore Reason <span style={{ color: '#dc2626' }}>*</span>
+                  </p>
+                  <Input.TextArea
+                    value={restoreReason}
+                    onChange={(e) => setRestoreReason(e.target.value)}
+                    placeholder="Enter reason for restoring this booking..."
+                    rows={4}
+                    maxLength={500}
+                    showCount
+                  />
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                    E.g., "Customer requested to reinstate", "Cancellation made in error", etc.
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </Modal>
         </>
       )}
     </div>
