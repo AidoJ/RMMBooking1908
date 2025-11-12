@@ -2395,20 +2395,36 @@ export const BookingEditPlatform: React.FC = () => {
     try {
       setMarkingPaid(true);
 
+      console.log('💳 Current payment_status:', booking.payment_status);
+      console.log('📋 Current booking status:', booking.status);
+
+      // Build update data
+      const updateData: any = {
+        payment_status: 'paid',
+        payment_notes: paymentNotes.trim() || null,
+        updated_at: new Date().toISOString()
+      };
+
+      // If booking is requested and payment is now paid, confirm it
+      if (booking.status === 'requested') {
+        updateData.status = 'confirmed';
+        console.log('✅ Auto-confirming booking (payment received)');
+      }
+
+      console.log('📝 Updating booking with:', updateData);
+
       // Update booking payment status to paid
       const { error: updateError } = await supabaseClient
         .from('bookings')
-        .update({
-          payment_status: 'paid',
-          payment_notes: paymentNotes.trim() || null,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', booking.id);
 
       if (updateError) {
+        console.error('❌ Supabase update error:', updateError);
         throw updateError;
       }
 
+      console.log('✅ Booking marked as paid successfully');
       message.success('Booking marked as paid');
       setShowMarkPaidModal(false);
       setPaymentNotes('');
@@ -2416,9 +2432,15 @@ export const BookingEditPlatform: React.FC = () => {
       // Refresh booking data
       fetchBookingDetails();
 
-    } catch (error) {
-      console.error('Error marking booking as paid:', error);
-      message.error('Failed to mark booking as paid');
+    } catch (error: any) {
+      console.error('❌ Error marking booking as paid:', error);
+      console.error('Error message:', error?.message);
+      console.error('Error details:', error?.details);
+      console.error('Error hint:', error?.hint);
+      console.error('Error code:', error?.code);
+
+      const errorMessage = error?.message || error?.details || 'Unknown error';
+      message.error(`Failed to mark booking as paid: ${errorMessage}`);
     } finally {
       setMarkingPaid(false);
     }
