@@ -2426,25 +2426,7 @@ export const BookingEditPlatform: React.FC = () => {
             </Text>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <Button 
-              style={{ 
-                border: '2px solid rgba(255,255,255,0.3)', 
-                background: 'rgba(255,255,255,0.1)', 
-                color: 'white' 
-              }}
-            >
-              📊 View History
-            </Button>
-            <Button 
-              style={{ 
-                border: '2px solid rgba(255,255,255,0.3)', 
-                background: 'rgba(255,255,255,0.1)', 
-                color: 'white' 
-              }}
-            >
-              📧 Send Email
-            </Button>
-            <Button 
+            <Button
               type="primary"
               icon={<SaveOutlined />}
               onClick={handleSave}
@@ -3945,25 +3927,21 @@ export const BookingEditPlatform: React.FC = () => {
               bodyStyle={{ padding: '20px' }}
             >
               <div style={{ display: 'grid', gap: '12px' }}>
-                <Button block style={{ textAlign: 'left' }}>
-                  📅 Reschedule
-                </Button>
-                <Button block style={{ textAlign: 'left' }}>
+                <Button
+                  block
+                  style={{ textAlign: 'left' }}
+                  disabled={booking?.status === 'cancelled'}
+                >
                   💳 Mark as Paid
-                </Button>
-                <Button block style={{ textAlign: 'left' }}>
-                  ✅ Confirm Booking
                 </Button>
                 <Button
                   block
                   style={{ textAlign: 'left' }}
                   onClick={() => setShowCancelModal(true)}
                   danger
+                  disabled={booking?.status === 'cancelled'}
                 >
                   ❌ Cancel Booking
-                </Button>
-                <Button block style={{ textAlign: 'left' }}>
-                  👨‍⚕️ Reassign Therapist
                 </Button>
                 <Button
                   block
@@ -3976,11 +3954,9 @@ export const BookingEditPlatform: React.FC = () => {
                   block
                   style={{ textAlign: 'left' }}
                   onClick={() => setShowInvoiceModal(true)}
+                  disabled={booking?.status === 'cancelled'}
                 >
                   🧾 Send Invoice
-                </Button>
-                <Button block style={{ textAlign: 'left' }}>
-                  💰 Apply Discount
                 </Button>
               </div>
             </Card>
