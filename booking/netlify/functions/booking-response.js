@@ -239,9 +239,6 @@ async function handleBookingAccept(booking, therapist, headers) {
   try {
     console.log('✅ Processing booking acceptance:', booking.booking_id, 'by', therapist.first_name, therapist.last_name);
 
-    // Check if this is a recurring booking
-    const isRecurring = booking.is_recurring === true;
-
     // Update both therapist_id and responding_therapist_id
     const acceptUpdateData = {
       status: 'confirmed',
@@ -265,39 +262,20 @@ async function handleBookingAccept(booking, therapist, headers) {
 
     console.log('✅ Booking status updated successfully');
 
-    // If recurring, update all booking occurrences
-    let occurrences = [];
-    if (isRecurring) {
-      console.log('🔄 Recurring booking - updating all occurrences');
+    // Update all booking occurrences to match parent status (if any exist)
+    console.log('🔄 Updating any child occurrences to confirmed status');
+    const { error: occurrencesUpdateError } = await supabase
+      .from('booking_occurrences')
+      .update({
+        status: 'confirmed',
+        updated_at: new Date().toISOString()
+      })
+      .eq('booking_id', booking.booking_id);
 
-      // Fetch all occurrences for this booking
-      const { data: fetchedOccurrences, error: fetchError } = await supabase
-        .from('booking_occurrences')
-        .select('*')
-        .eq('booking_id', booking.booking_id)
-        .order('occurrence_number');
-
-      if (fetchError) {
-        console.error('❌ Error fetching occurrences:', fetchError);
-      } else {
-        occurrences = fetchedOccurrences || [];
-        console.log(`✅ Found ${occurrences.length} occurrences to update`);
-
-        // Update all occurrences to confirmed status
-        const { error: occurrencesUpdateError } = await supabase
-          .from('booking_occurrences')
-          .update({
-            status: 'confirmed',
-            updated_at: new Date().toISOString()
-          })
-          .eq('booking_id', booking.booking_id);
-
-        if (occurrencesUpdateError) {
-          console.error('❌ Error updating occurrences:', occurrencesUpdateError);
-        } else {
-          console.log('✅ All occurrences updated to confirmed');
-        }
-      }
+    if (occurrencesUpdateError) {
+      console.error('❌ Error updating occurrences:', occurrencesUpdateError);
+    } else {
+      console.log('✅ All occurrences updated to confirmed');
     }
 
     // Add status history
@@ -528,23 +506,20 @@ You'll be notified once someone accepts!
       throw new Error('Failed to decline booking');
     }
 
-    // If recurring, update all booking occurrences to declined
-    if (booking.is_recurring === true) {
-      console.log('🔄 Recurring booking - updating all occurrences to declined');
+    // Update all booking occurrences to match parent status (if any exist)
+    console.log('🔄 Updating any child occurrences to declined status');
+    const { error: occurrencesUpdateError } = await supabase
+      .from('booking_occurrences')
+      .update({
+        status: 'declined',
+        updated_at: new Date().toISOString()
+      })
+      .eq('booking_id', booking.booking_id);
 
-      const { error: occurrencesUpdateError } = await supabase
-        .from('booking_occurrences')
-        .update({
-          status: 'declined',
-          updated_at: new Date().toISOString()
-        })
-        .eq('booking_id', booking.booking_id);
-
-      if (occurrencesUpdateError) {
-        console.error('❌ Error updating occurrences to declined:', occurrencesUpdateError);
-      } else {
-        console.log('✅ All occurrences updated to declined');
-      }
+    if (occurrencesUpdateError) {
+      console.error('❌ Error updating occurrences to declined:', occurrencesUpdateError);
+    } else {
+      console.log('✅ All occurrences updated to declined');
     }
 
     await addStatusHistory(booking.id, 'declined', therapist.id, 'No alternatives available or customer declined fallback');
