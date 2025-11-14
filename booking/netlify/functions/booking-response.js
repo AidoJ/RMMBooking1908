@@ -889,6 +889,26 @@ async function sendClientDeclineEmail(booking) {
       address: booking.address
     };
 
+    // Add recurring booking information if applicable
+    if (booking.is_recurring === true || booking.is_recurring === 'true') {
+      // Fetch all occurrences for this booking
+      const { data: occurrences } = await supabase
+        .from('booking_occurrences')
+        .select('occurrence_number, occurrence_date, occurrence_time')
+        .eq('booking_id', booking.booking_id)
+        .order('occurrence_number');
+
+      templateParams.is_recurring = true;
+      templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
+
+      // Generate sessions list
+      if (occurrences && occurrences.length > 0) {
+        templateParams.sessions_list = occurrences.map(occ =>
+          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+        ).join('\n');
+      }
+    }
+
     await sendEmail(EMAILJS_BOOKING_DECLINED_TEMPLATE_ID, templateParams);
     console.log('📧 Decline email sent to client:', booking.customer_email);
 
@@ -914,6 +934,26 @@ async function sendClientLookingForAlternateEmail(booking) {
       date_time: new Date(booking.booking_time).toLocaleString(),
       address: booking.address
     };
+
+    // Add recurring booking information if applicable
+    if (booking.is_recurring === true || booking.is_recurring === 'true') {
+      // Fetch all occurrences for this booking
+      const { data: occurrences } = await supabase
+        .from('booking_occurrences')
+        .select('occurrence_number, occurrence_date, occurrence_time')
+        .eq('booking_id', booking.booking_id)
+        .order('occurrence_number');
+
+      templateParams.is_recurring = true;
+      templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
+
+      // Generate sessions list
+      if (occurrences && occurrences.length > 0) {
+        templateParams.sessions_list = occurrences.map(occ =>
+          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+        ).join('\n');
+      }
+    }
 
     await sendEmail(EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID, templateParams);
     console.log('📧 "Looking for alternate" email sent to client:', booking.customer_email);

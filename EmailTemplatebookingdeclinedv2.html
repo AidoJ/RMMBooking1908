@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Update</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; }
+        .header { background-color: #dc3545; color: white; padding: 30px 20px; text-align: center; }
+        .content { padding: 30px 20px; }
+        .booking-details { background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc3545; }
+        .info-box { background-color: #f8d7da; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc3545; }
+        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
+        .highlight { color: #007e8c; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Booking Update</h1>
+            <p>Unfortunately, we couldn't find an available therapist</p>
+        </div>
+        
+        <div class="content">
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                Dear <span class="highlight">{{customer_name}}</span>,
+            </p>
+            
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                We regret to inform you that we were unable to find an available therapist for your booking request. 
+                This can happen due to high demand, therapist availability, or location constraints.
+            </p>
+            
+            <div class="booking-details">
+                <h3 style="color: #dc3545; margin-top: 0;">📋 Your Booking Request</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 8px 0;"><strong>Booking ID:</strong></td><td style="padding: 8px 0;">{{booking_id}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Service:</strong></td><td style="padding: 8px 0;">{{service}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Duration:</strong></td><td style="padding: 8px 0;">{{duration}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Date & Time:</strong></td><td style="padding: 8px 0;">{{date_time}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Address:</strong></td><td style="padding: 8px 0;">{{address}}</td></tr>
+                </table>
+
+                {{#is_recurring}}
+                <!-- Recurring Series Info -->
+                <div style="background-color: #e3f2fd; padding: 15px; margin-top: 15px; border-radius: 8px; border-left: 4px solid #2196F3;">
+                    <h4 style="color: #1976D2; margin-top: 0; margin-bottom: 10px;">🔄 Recurring Booking Series</h4>
+                    <p style="margin: 5px 0; color: #1565C0;"><strong>This was a series of {{total_occurrences}} recurring sessions</strong></p>
+
+                    <!-- All Sessions List -->
+                    <div style="background-color: #ffffff; padding: 12px; margin-top: 12px; border-radius: 6px;">
+                        <h5 style="color: #1976D2; margin-top: 0; margin-bottom: 8px; font-size: 14px;">📅 All Sessions That Were Declined:</h5>
+                        <pre style="margin: 0; font-family: Arial, sans-serif; font-size: 13px; color: #1565C0; white-space: pre-wrap; line-height: 1.6;">{{sessions_list}}</pre>
+                    </div>
+
+                    <p style="margin: 10px 0 5px 0; color: #d32f2f; font-size: 13px; font-weight: 600;">All {{total_occurrences}} sessions have been declined.</p>
+                </div>
+                {{/is_recurring}}
+            </div>
+
+            <div class="info-box">
+                <h3 style="color: #dc3545; margin-top: 0;">💡 What You Can Do</h3>
+                <ul style="color: #721c24; margin: 10px 0; padding-left: 20px;">
+                    <li><strong>Try a different time:</strong> Consider booking for a different day or time</li>
+                    <li><strong>Check availability:</strong> Visit our website to see real-time therapist availability</li>
+                    <li><strong>Contact us:</strong> Call us at 1300 302542 to discuss alternative options</li>
+                    <li><strong>Book in advance:</strong> Early bookings have better therapist availability</li>
+                </ul>
+            </div>
+            
+            <div style="background-color: #d1ecf1; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #17a2b8;">
+                <h3 style="color: #0c5460; margin-top: 0;">🎁 Special Offer</h3>
+                <p style="color: #0c5460; margin: 10px 0;">
+                    As a gesture of goodwill, we'd like to offer you a <strong>10% discount</strong> on your next booking 
+                    when you rebook within the next 21 days. Simply use this code RETRY10DISC when booking.
+                </p>
+            </div>
+            
+            <p style="font-size: 14px; color: #6c757d; text-align: center; margin-top: 20px;">
+                <strong>We apologize for any inconvenience.</strong> We're committed to providing you with the best possible service.
+            </p>
+        </div>
+        
+        <div class="footer">
+            <p>Thank you for considering Rejuvenators Mobile Massage</p>
+            <p>For assistance, call 1300 302542 or email info@rejuvenators.com</p>
+        </div>
+    </div>
+</body>
+</html> 
+ 

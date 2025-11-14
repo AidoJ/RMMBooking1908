@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Request Confirmation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+            padding: 20px 0;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        
+        .header {
+            background-color: #007e8c;
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .brand-logo {
+            display: block;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .brand-text {
+            text-align: center;
+        }
+        
+        .brand-name {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+        }
+        
+        .brand-tagline {
+            font-size: 22px;
+            font-weight: 500;
+            font-style: italic;
+            opacity: 0.9;
+        }
+        
+        .header h2 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .welcome-section {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .welcome-section h3 {
+            color: #007e8c;
+            font-size: 22px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .welcome-section p {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .booking-details {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            border-left: 4px solid #007e8c;
+        }
+        
+        .booking-details h4 {
+            color: #007e8c;
+            font-size: 20px;
+            margin-bottom: 25px;
+            font-weight: 600;
+        }
+        
+        .detail-row {
+            display: block;
+            padding: 12px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+            font-size: 14px;
+            display: inline-block;
+            width: 180px;
+        }
+        
+        .detail-value {
+            color: #333;
+            font-size: 14px;
+            display: inline-block;
+            margin-left: 20px;
+        }
+        
+        .pricing-section {
+            background-color: #e3f2fd;
+            border: 2px solid #007e8c;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        
+        .pricing-section h4 {
+            color: #007e8c;
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+        
+        .pricing-row {
+            display: block;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 126, 140, 0.2);
+        }
+        
+        .pricing-row:last-child {
+            border-bottom: none;
+        }
+        
+        .pricing-label {
+            font-weight: 600;
+            color: #007e8c;
+            font-size: 14px;
+            display: inline-block;
+            width: 120px;
+        }
+        
+        .pricing-value {
+            color: #007e8c;
+            font-size: 16px;
+            font-weight: 600;
+            display: inline-block;
+            margin-left: 20px;
+        }
+        
+        .next-steps {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        
+        .next-steps h4 {
+            color: #856404;
+            font-size: 16px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .next-steps ul {
+            color: #856404;
+            font-size: 14px;
+            padding-left: 20px;
+        }
+        
+        .next-steps li {
+            margin-bottom: 5px;
+        }
+        
+        .footer {
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .footer p {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .company-name {
+            color: #007e8c;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .contact-info {
+            color: #007e8c;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .content {
+                padding: 20px 15px;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .booking-details {
+                padding: 20px;
+            }
+            
+            .detail-row {
+                text-align: left;
+            }
+            
+            .detail-label {
+                display: block;
+                width: auto;
+                margin-bottom: 5px;
+            }
+            
+            .detail-value {
+                display: block;
+                margin-left: 0;
+            }
+            
+            .pricing-label {
+                display: block;
+                width: auto;
+                margin-bottom: 5px;
+            }
+            
+            .pricing-value {
+                display: block;
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- EmailJS Recipient Fields - DO NOT CHANGE -->
+    <input type="hidden" name="to_email" value="{{to_email}}" />
+    <input type="hidden" name="to_name" value="{{to_name}}" />
+    <input type="hidden" name="from_name" value="Rejuvenators Mobile Massage" />
+    <input type="hidden" name="reply_to" value="info@rejuvenators.com" />
+    
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="brand-logo">
+                <div class="brand-text">
+                    <div class="brand-name">REJUVENATORS®</div>
+                    <div class="brand-tagline">Mobile Therapies</div>
+                </div>
+            </div>
+            <h2>New Booking Request Received</h2>
+            
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <!-- Welcome Section -->
+            <div class="welcome-section">
+                <h3>Hello {{customer_name}}!</h3>
+                <p>Your booking request has been successfully received and is now being processed. We're excited to help you relax and rejuvenate!</p>
+            </div>
+            
+            <!-- Booking Details -->
+            <div class="booking-details">
+                <h4>Booking Details</h4>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Booking ID:</span>
+                    <span class="detail-value">{{booking_id}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Customer Code:</span>
+                    <span class="detail-value">{{customer_code}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Business Name:</span>
+                    <span class="detail-value">{{business_name}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Address:</span>
+                    <span class="detail-value">{{address}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Service:</span>
+                    <span class="detail-value">{{service}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Duration:</span>
+                    <span class="detail-value">{{duration}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Therapist Gender Preference:</span>
+                    <span class="detail-value">{{gender_preference}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Date & Time:</span>
+                    <span class="detail-value">{{date_time}}</span>
+                </div>
+
+                {{#is_recurring}}
+                <!-- Recurring Booking Information -->
+                <div style="background-color: #e3f2fd; border-left: 4px solid #2196F3; padding: 15px; margin: 15px 0; border-radius: 8px;">
+                    <div style="color: #1976D2; font-weight: 600; font-size: 16px; margin-bottom: 10px;">
+                        🔄 Recurring Booking Series
+                    </div>
+                    <div style="color: #1565C0; font-size: 14px; margin-bottom: 8px;">
+                        <strong>Total Sessions:</strong> {{total_occurrences}} bookings
+                    </div>
+                    <div style="color: #1565C0; font-size: 14px; margin-bottom: 8px;">
+                        <strong>Frequency:</strong> {{#if_daily}}Daily (consecutive days){{/if_daily}}{{#if_weekly}}Weekly (same day & time){{/if_weekly}}{{#if_biweekly}}Every 2 Weeks (fortnightly){{/if_biweekly}}{{#if_monthly}}Monthly (every 4 weeks){{/if_monthly}}{{#if_custom}}Every {{custom_interval}} days{{/if_custom}}
+                    </div>
+                    <div style="color: #1565C0; font-size: 14px; margin-bottom: 8px;">
+                        <strong>Same Therapist:</strong> All sessions with {{therapist}}
+                    </div>
+                    <div style="color: #1565C0; font-size: 14px;">
+                        <strong>Payment:</strong> Each session charged separately when confirmed
+                    </div>
+                    <div style="background-color: #fff; padding: 12px; margin-top: 12px; border-radius: 6px; font-size: 13px; color: #424242;">
+                        <strong style="color: #1976D2;">ℹ️ Note:</strong> You will receive separate confirmations for each session in the series. Each booking can be managed independently.
+                    </div>
+                </div>
+                {{/is_recurring}}
+
+                <div class="detail-row">
+                    <span class="detail-label">Parking:</span>
+                    <span class="detail-value">{{parking}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Therapist:</span>
+                    <span class="detail-value">{{therapist}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Customer Name:</span>
+                    <span class="detail-value">{{customer_name}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Email:</span>
+                    <span class="detail-value">{{customer_email}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Phone:</span>
+                    <span class="detail-value">{{phone}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Room Number:</span>
+                    <span class="detail-value">{{room_number}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Booker Name:</span>
+                    <span class="detail-value">{{booker_name}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Notes:</span>
+                    <span class="detail-value">{{notes}}</span>
+                </div>
+            </div>
+            
+            <!-- Pricing Information -->
+            <div class="pricing-section">
+                <h4>Pricing Information</h4>
+                
+                <div class="pricing-row">
+                    <span class="pricing-label">Your Service Fees:</span>
+                    <span class="pricing-value">{{estimated_price}}</span>
+                </div>
+                
+                            </div>
+            
+            <!-- Next Steps -->
+            <div class="next-steps">
+                <h4>What happens next?</h4>
+                <ul>
+                    <li>We'll review your booking request and confirm availability</li>
+                    <li>Our therapist will be notified of your booking</li>
+                  <li>Once confirmed - Your cerdit/debit card will be charged the Service Fees shown above or we will invoice or provide EFT details for payment</li>
+                    <li>You'll receive a confirmation email once everything is confirmed</li>
+                    
+                </ul>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>Thank you for booking with <span class="company-name">Rejuvenators Mobile Massage</span>.</p>
+            <p>We will contact you shortly to confirm your booking.</p>
+            <div class="contact-info">
+                📧 info@rejuvenators.com | 📞 1300 302 542
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
