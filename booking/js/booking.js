@@ -3190,6 +3190,22 @@ async function authorizeCard() {
     cardAuthorized = true;
     authorizedPaymentIntentId = paymentIntent.id;
 
+    // For recurring bookings, save payment method for future charges
+    if (window.recurringBooking?.enabled) {
+      console.log('🔄 Recurring booking detected - saving payment method for future charges');
+
+      // Extract payment method from the payment intent
+      const paymentMethodId = paymentIntent.payment_method;
+
+      if (paymentMethodId) {
+        // Store payment method ID globally for use in booking creation
+        window.stripePaymentMethodId = paymentMethodId;
+        console.log('✅ Payment method saved:', paymentMethodId);
+      } else {
+        console.warn('⚠️ Could not extract payment method from payment intent');
+      }
+    }
+
     // Update UI to show success
     authorizeBtn.style.display = 'none';
     statusDiv.innerHTML = `
@@ -4033,7 +4049,12 @@ if (confirmBtn) {
       // Payment method - get from admin selector if in admin mode, otherwise default to 'card'
       payment_method: window.isAdminMode
         ? (document.getElementById('paymentMethod')?.value || 'card')
-        : 'card'
+        : 'card',
+      // Recurring booking fields
+      is_recurring: window.recurringBooking?.enabled || false,
+      recurring_frequency: window.recurringBooking?.enabled ? window.recurringBooking.frequency : null,
+      total_occurrences: window.recurringBooking?.enabled ? window.recurringBooking.count : 1,
+      recurring_dates: window.recurringBooking?.enabled ? window.recurringBooking.dates : null
     };
         
         // Generate booking ID BEFORE inserting
@@ -4062,6 +4083,12 @@ if (confirmBtn) {
           payload.payment_status = 'authorized'; // Card authorized, payment pending
           payload.status = 'requested'; // Waiting for therapist acceptance
           payload.payment_intent_id = authorizedPaymentIntentId;
+
+          // For recurring bookings, include payment method for future charges
+          if (window.recurringBooking?.enabled && window.stripePaymentMethodId) {
+            payload.stripe_payment_method_id = window.stripePaymentMethodId;
+            console.log('🔄 Including payment method for recurring bookings:', window.stripePaymentMethodId);
+          }
         } else {
           // Bank transfer or invoice - no card authorization needed
           console.log('✅ Using non-card payment method:', selectedPaymentMethod);
