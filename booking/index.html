@@ -192,9 +192,61 @@
             <option value="unknown">Unknown</option>
           </select>
         </div>
+
+        <!-- Recurring Booking Section -->
+        <div class="form-group recurring-section" style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <input type="checkbox" id="recurringToggle" style="width: 20px; height: 20px; cursor: pointer;" />
+            <label for="recurringToggle" style="margin: 0; cursor: pointer; font-weight: 600; font-size: 16px;">
+              🔄 Make this a recurring booking
+            </label>
+          </div>
+          <p style="margin: 0 0 20px 0; color: #666; font-size: 14px;">Book multiple sessions in advance with the same therapist - perfect for regular wellness routines.</p>
+
+          <div id="recurringOptions" style="display: none;">
+            <div class="form-group">
+              <label for="recurringFrequency">Frequency</label>
+              <select id="recurringFrequency" onchange="updateRecurringPreview()">
+                <option value="daily">Daily (consecutive days)</option>
+                <option value="weekly" selected>Weekly (same day & time each week)</option>
+                <option value="biweekly">Bi-weekly (every 2 weeks)</option>
+                <option value="monthly">Monthly (every 4 weeks)</option>
+                <option value="custom">Custom interval</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="customIntervalGroup" style="display: none;">
+              <label for="customInterval">Days between sessions</label>
+              <input type="number" id="customInterval" min="1" max="30" value="3" onchange="updateRecurringPreview()" />
+            </div>
+
+            <div class="form-group">
+              <label for="recurringCount">Number of sessions</label>
+              <select id="recurringCount" onchange="updateRecurringPreview()">
+                <option value="2">2 sessions</option>
+                <option value="3">3 sessions</option>
+                <option value="4">4 sessions</option>
+                <option value="5">5 sessions</option>
+                <option value="6" selected>6 sessions</option>
+                <option value="7">7 sessions</option>
+                <option value="8">8 sessions</option>
+                <option value="9">9 sessions</option>
+                <option value="10">10 sessions</option>
+                <option value="11">11 sessions</option>
+                <option value="12">12 sessions</option>
+              </select>
+            </div>
+
+            <div id="recurringPreview" class="recurring-preview" style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #dee2e6;">
+              <h4 style="margin: 0 0 10px 0; color: #007e8c; font-size: 14px;">📅 Your Session Schedule:</h4>
+              <div id="recurringDatesList" style="font-size: 13px; line-height: 1.8;"></div>
+            </div>
+          </div>
+        </div>
+
         <div id="priceDisplay" class="price-display">
           <div class="price-header">
-            <strong>Estimated Price: $<span id="priceAmount"></span></strong>
+            <strong>Estimated Session Price: $<span id="priceAmount"></span></strong>
           </div>
           <div id="priceBreakdown" class="price-breakdown-aligned"></div>
         </div>

@@ -452,9 +452,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }, 10000);
     }
-    
+
     setupPriceListeners();
-    
+    setupRecurringBookingListeners();
+
     // Remove loading indicator
     const loadingIndicator = document.getElementById('loading-indicator');
     if (loadingIndicator) {
@@ -1049,11 +1050,16 @@ console.log('Globals:', {
         </div>
       `;
     }).join('');
-    
+
     // Show discount section after price is calculated
     const discountSection = document.getElementById('discountSection');
     if (discountSection && price > 0) {
       discountSection.style.display = 'block';
+    }
+
+    // Update recurring price display if enabled
+    if (window.recurringBooking && window.recurringBooking.enabled) {
+      updateRecurringPriceDisplay();
     }
   }
 
@@ -1171,7 +1177,206 @@ console.log('Globals:', {
     document.getElementById('giftCardStatus').style.display = 'none';
     calculatePrice();
   }
-  
+
+  // ========== RECURRING BOOKING FUNCTIONALITY ==========
+
+  // Initialize recurring booking state
+  window.recurringBooking = {
+    enabled: false,
+    frequency: 'weekly',
+    customInterval: 3,
+    count: 6,
+    dates: []
+  };
+
+  // Setup recurring booking listeners
+  function setupRecurringBookingListeners() {
+    const recurringToggle = document.getElementById('recurringToggle');
+    const recurringOptions = document.getElementById('recurringOptions');
+    const recurringFrequency = document.getElementById('recurringFrequency');
+    const customIntervalGroup = document.getElementById('customIntervalGroup');
+    const customInterval = document.getElementById('customInterval');
+    const recurringCount = document.getElementById('recurringCount');
+
+    if (!recurringToggle) {
+      console.log('⚠️ Recurring toggle not found');
+      return;
+    }
+
+    // Toggle recurring options visibility
+    recurringToggle.addEventListener('change', function() {
+      window.recurringBooking.enabled = this.checked;
+      recurringOptions.style.display = this.checked ? 'block' : 'none';
+
+      if (this.checked) {
+        updateRecurringPreview();
+      } else {
+        // Reset to single booking price display
+        calculatePrice();
+      }
+    });
+
+    // Show/hide custom interval field based on frequency selection
+    recurringFrequency.addEventListener('change', function() {
+      customIntervalGroup.style.display = this.value === 'custom' ? 'block' : 'none';
+      window.recurringBooking.frequency = this.value;
+      updateRecurringPreview();
+    });
+
+    // Update preview when custom interval changes
+    customInterval.addEventListener('change', function() {
+      window.recurringBooking.customInterval = parseInt(this.value) || 3;
+      updateRecurringPreview();
+    });
+
+    // Update preview when occurrence count changes
+    recurringCount.addEventListener('change', function() {
+      window.recurringBooking.count = parseInt(this.value) || 6;
+      updateRecurringPreview();
+    });
+
+    // Update recurring preview when date changes
+    const dateInput = document.getElementById('date');
+    if (dateInput) {
+      dateInput.addEventListener('change', function() {
+        if (window.recurringBooking.enabled) {
+          updateRecurringPreview();
+        }
+      });
+    }
+
+    console.log('✅ Recurring booking listeners setup complete');
+  }
+
+  // Generate recurring dates based on frequency
+  function generateRecurringDates(startDate, frequency, customInterval, count) {
+    const dates = [];
+    const start = new Date(startDate);
+
+    // Validate start date
+    if (isNaN(start.getTime())) {
+      return dates;
+    }
+
+    // Add first date (the selected date)
+    dates.push(new Date(start));
+
+    // Generate subsequent dates
+    for (let i = 1; i < count; i++) {
+      const nextDate = new Date(dates[i - 1]);
+
+      switch(frequency) {
+        case 'daily':
+          nextDate.setDate(nextDate.getDate() + 1);
+          break;
+        case 'weekly':
+          nextDate.setDate(nextDate.getDate() + 7);
+          break;
+        case 'biweekly':
+          nextDate.setDate(nextDate.getDate() + 14);
+          break;
+        case 'monthly':
+          nextDate.setDate(nextDate.getDate() + 28); // 4 weeks
+          break;
+        case 'custom':
+          nextDate.setDate(nextDate.getDate() + customInterval);
+          break;
+      }
+
+      dates.push(nextDate);
+    }
+
+    return dates;
+  }
+
+  // Format date for display
+  function formatDateForDisplay(date) {
+    const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+    return date.toLocaleDateString('en-AU', options);
+  }
+
+  // Update recurring preview - make global so HTML onclick can call it
+  window.updateRecurringPreview = function() {
+    const dateInput = document.getElementById('date');
+    const timeInput = document.getElementById('time');
+    const recurringDatesList = document.getElementById('recurringDatesList');
+    const recurringPreview = document.getElementById('recurringPreview');
+
+    if (!dateInput || !dateInput.value) {
+      recurringDatesList.innerHTML = '<p style="color: #666; font-style: italic;">Please select a date first</p>';
+      return;
+    }
+
+    const selectedDate = dateInput.value;
+    const selectedTime = timeInput.value || 'Time not selected';
+    const frequency = document.getElementById('recurringFrequency').value;
+    const customInterval = parseInt(document.getElementById('customInterval').value) || 3;
+    const count = parseInt(document.getElementById('recurringCount').value) || 6;
+
+    // Generate dates
+    const dates = generateRecurringDates(selectedDate, frequency, customInterval, count);
+    window.recurringBooking.dates = dates;
+    window.recurringBooking.frequency = frequency;
+    window.recurringBooking.customInterval = customInterval;
+    window.recurringBooking.count = count;
+
+    // Display dates
+    if (dates.length > 0) {
+      let html = '<ul style="margin: 0; padding-left: 20px;">';
+      dates.forEach((date, index) => {
+        html += `<li style="margin-bottom: 4px;"><strong>Session ${index + 1}:</strong> ${formatDateForDisplay(date)} at ${selectedTime}</li>`;
+      });
+      html += '</ul>';
+      recurringDatesList.innerHTML = html;
+
+      // Show preview section
+      recurringPreview.style.display = 'block';
+
+      // Update price display to show per-session pricing
+      updateRecurringPriceDisplay();
+    } else {
+      recurringDatesList.innerHTML = '<p style="color: #dc2626;">Unable to generate dates. Please check your selections.</p>';
+    }
+  }
+
+  // Update price display for recurring bookings
+  function updateRecurringPriceDisplay() {
+    if (!window.recurringBooking.enabled) {
+      return;
+    }
+
+    // Get current price (already calculated by calculatePrice)
+    const priceAmountEl = document.getElementById('priceAmount');
+    const priceDisplayEl = document.getElementById('priceDisplay');
+
+    if (!priceAmountEl || !priceDisplayEl) {
+      return;
+    }
+
+    const sessionPrice = priceAmountEl.textContent;
+    const count = window.recurringBooking.count;
+    const totalPrice = (parseFloat(sessionPrice) * count).toFixed(2);
+
+    // Update the price header to clarify this is per-session
+    const priceHeader = priceDisplayEl.querySelector('.price-header');
+    if (priceHeader) {
+      priceHeader.innerHTML = `
+        <strong>Estimated Session Price: $${sessionPrice}</strong>
+        <div style="font-size: 14px; color: #666; margin-top: 8px;">
+          ${count} sessions × $${sessionPrice} = $${totalPrice} total (charged per session as confirmed)
+        </div>
+        <div style="font-size: 13px; color: #007e8c; margin-top: 4px; font-style: italic;">
+          💳 Each session charged separately after therapist confirms
+        </div>
+      `;
+    }
+  }
+
+  // Call setupRecurringBookingListeners after DOMContentLoaded
+  // We'll add this at the end of the initialization
+
+  // ========== END RECURRING BOOKING FUNCTIONALITY ==========
+
   // Helper function to get emoji for service
   function getServiceEmoji(serviceName) {
     const name = serviceName.toLowerCase();
