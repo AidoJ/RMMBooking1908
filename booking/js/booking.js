@@ -642,7 +642,7 @@ document.addEventListener('DOMContentLoaded', function () {
             statusDiv.innerHTML = `
               <div style="background: #fef2f2; border: 2px solid #fecaca; color: #991b1b;">
                 <div style="font-size: 16px; font-weight: 600;">⚠️ Please authorize your card first</div>
-                <div style="font-size: 14px; margin-top: 4px;">Click the "Authorize Card" button to secure your payment method.</div>
+                <div style="font-size: 14px; margin-top: 4px;">Click the "Authorise Card" button to secure your payment method.</div>
               </div>
             `;
             statusDiv.style.display = 'block';
@@ -1361,7 +1361,7 @@ console.log('Globals:', {
     const priceHeader = priceDisplayEl.querySelector('.price-header');
     if (priceHeader) {
       priceHeader.innerHTML = `
-        <strong>Estimated Session Price: $${sessionPrice}</strong>
+        <strong>Estimated Session Price: $<span id="priceAmount">${sessionPrice}</span></strong>
         <div style="font-size: 14px; color: #666; margin-top: 8px;">
           ${count} sessions × $${sessionPrice} = $${totalPrice} total (charged per session as confirmed)
         </div>
@@ -3120,7 +3120,7 @@ async function authorizeCard() {
 
   // Disable button and show processing state
   authorizeBtn.disabled = true;
-  authorizeBtn.textContent = 'Authorizing Card...';
+  authorizeBtn.textContent = 'Authorising Card...';
   statusDiv.style.display = 'none';
 
   try {
@@ -3233,7 +3233,7 @@ async function authorizeCard() {
     statusDiv.innerHTML = `
       <div style="background: #fef2f2; border: 2px solid #fecaca; color: #991b1b;">
         <div style="font-size: 20px; margin-bottom: 8px;">❌</div>
-        <div style="font-weight: 700; font-size: 16px; margin-bottom: 8px;">Authorization Failed</div>
+        <div style="font-weight: 700; font-size: 16px; margin-bottom: 8px;">Authorisation Failed</div>
         <div style="font-size: 14px; color: #b91c1c;">
           ${error.message}
         </div>
@@ -3243,7 +3243,7 @@ async function authorizeCard() {
 
     // Re-enable button to allow retry
     authorizeBtn.disabled = false;
-    authorizeBtn.textContent = '🔒 Authorize Card';
+    authorizeBtn.textContent = '🔒 Authorise Card';
 
     return false;
   }
