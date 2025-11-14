@@ -780,6 +780,28 @@ async function sendClientConfirmationEmail(booking, therapist) {
       estimated_price: booking.price ? '$' + booking.price.toFixed(2) : 'N/A'
     };
 
+    // Add recurring booking information if applicable
+    if (booking.is_recurring === true || booking.is_recurring === 'true') {
+      // Fetch all occurrences for this booking
+      const { data: occurrences } = await supabase
+        .from('booking_occurrences')
+        .select('occurrence_number, occurrence_date, occurrence_time')
+        .eq('booking_id', booking.booking_id)
+        .order('occurrence_number');
+
+      templateParams.is_recurring = true;
+      templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
+
+      // Generate sessions list
+      if (occurrences && occurrences.length > 0) {
+        templateParams.sessions_list = occurrences.map(occ =>
+          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+        ).join('\n');
+      } else {
+        templateParams.sessions_list = 'Sessions details not available';
+      }
+    }
+
     const result = await sendEmail(EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID, templateParams);
     return result;
 
@@ -814,6 +836,31 @@ async function sendTherapistConfirmationEmail(booking, therapist) {
       room_number: booking.room_number || 'N/A',
       therapist_fee: booking.therapist_fee ? '$' + booking.therapist_fee.toFixed(2) : 'TBD'
     };
+
+    // Add recurring booking information if applicable
+    if (booking.is_recurring === true || booking.is_recurring === 'true') {
+      // Fetch all occurrences for this booking
+      const { data: occurrences } = await supabase
+        .from('booking_occurrences')
+        .select('occurrence_number, occurrence_date, occurrence_time')
+        .eq('booking_id', booking.booking_id)
+        .order('occurrence_number');
+
+      templateParams.is_recurring = true;
+      templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
+
+      // Generate sessions list
+      if (occurrences && occurrences.length > 0) {
+        templateParams.sessions_list = occurrences.map(occ =>
+          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+        ).join('\n');
+      }
+
+      // Calculate total series earnings
+      const feePerSession = booking.therapist_fee || 0;
+      const totalEarnings = (feePerSession * templateParams.total_occurrences).toFixed(2);
+      templateParams.total_series_earnings = totalEarnings;
+    }
 
     const result = await sendEmail(EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID, templateParams);
     return result;
@@ -905,6 +952,31 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
       accept_url: acceptUrl,
       decline_url: declineUrl
     };
+
+    // Add recurring booking information if applicable
+    if (booking.is_recurring === true || booking.is_recurring === 'true') {
+      // Fetch all occurrences for this booking
+      const { data: occurrences } = await supabase
+        .from('booking_occurrences')
+        .select('occurrence_number, occurrence_date, occurrence_time')
+        .eq('booking_id', booking.booking_id)
+        .order('occurrence_number');
+
+      templateParams.is_recurring = true;
+      templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
+
+      // Generate sessions list
+      if (occurrences && occurrences.length > 0) {
+        templateParams.sessions_list = occurrences.map(occ =>
+          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+        ).join('\n');
+      }
+
+      // Calculate total series earnings
+      const feePerSession = booking.therapist_fee || 0;
+      const totalEarnings = (feePerSession * templateParams.total_occurrences).toFixed(2);
+      templateParams.total_series_earnings = totalEarnings;
+    }
 
     const result = await sendEmail(EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID, templateParams);
     console.log('📧 Booking request sent to therapist:', therapist.email);
