@@ -128,8 +128,8 @@ exports.handler = async function(event, context) {
 
     console.log('✅ Booking cancelled successfully');
 
-    // TODO: Send cancellation emails to client and therapist
-    // await sendCancellationEmails(booking);
+    // Send cancellation emails to client and therapist
+    await sendCancellationEmails(booking);
 
     return {
       statusCode: 200,
@@ -146,6 +146,166 @@ exports.handler = async function(event, context) {
     };
   }
 };
+
+async function sendCancellationEmails(booking) {
+  try {
+    console.log('📧 Sending cancellation emails...');
+
+    const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
+
+    // Fetch occurrences if recurring
+    let occurrences = [];
+    let sessionsList = '';
+    let totalSeriesEarnings = 0;
+
+    if (isRecurring) {
+      const { data: occurrencesData } = await supabase
+        .from('booking_occurrences')
+        .select('occurrence_number, occurrence_date, occurrence_time')
+        .eq('booking_id', booking.booking_id)
+        .order('occurrence_number');
+
+      occurrences = occurrencesData || [];
+
+      // Generate sessions list
+      sessionsList = occurrences.map(occ =>
+        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+      ).join('\n');
+
+      // Calculate total series earnings for therapist
+      if (booking.therapist_fee) {
+        totalSeriesEarnings = (parseFloat(booking.therapist_fee) * occurrences.length).toFixed(2);
+      }
+    }
+
+    // Prepare email data for client
+    const clientEmailData = {
+      to_email: booking.customers?.email || booking.customer_email,
+      to_name: `${booking.customers?.first_name || booking.first_name || ''} ${booking.customers?.last_name || booking.last_name || ''}`.trim(),
+      customer_name: `${booking.customers?.first_name || booking.first_name || ''} ${booking.customers?.last_name || booking.last_name || ''}`.trim(),
+      booking_id: booking.booking_id || booking.id,
+      service_name: booking.services?.name || 'Massage Service',
+      duration: `${booking.duration_minutes || 60} minutes`,
+      booking_date: new Date(booking.booking_time).toLocaleDateString('en-AU', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }),
+      booking_time: new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      address: booking.address || 'N/A',
+      business_name: booking.business_name || 'N/A',
+      room_number: booking.room_number || 'N/A',
+      therapist_name: booking.therapist_profiles
+        ? `${booking.therapist_profiles.first_name} ${booking.therapist_profiles.last_name}`
+        : 'Your therapist',
+      cancellation_reason: booking.cancellation_reason || 'Booking was cancelled',
+      price: booking.price ? `$${booking.price.toFixed(2)}` : 'TBD',
+      is_recurring: isRecurring,
+      total_occurrences: booking.total_occurrences || occurrences.length,
+      sessions_list: sessionsList
+    };
+
+    // Prepare email data for therapist
+    const therapistEmailData = {
+      to_email: booking.therapist_profiles?.email,
+      to_name: booking.therapist_profiles
+        ? `${booking.therapist_profiles.first_name} ${booking.therapist_profiles.last_name}`
+        : 'Therapist',
+      therapist_name: booking.therapist_profiles
+        ? `${booking.therapist_profiles.first_name} ${booking.therapist_profiles.last_name}`
+        : 'Therapist',
+      customer_name: `${booking.customers?.first_name || booking.first_name || ''} ${booking.customers?.last_name || booking.last_name || ''}`.trim(),
+      customer_phone: booking.customers?.phone || booking.customer_phone || 'Not provided',
+      booking_id: booking.booking_id || booking.id,
+      service_name: booking.services?.name || 'Massage Service',
+      duration: `${booking.duration_minutes || 60} minutes`,
+      booking_date: new Date(booking.booking_time).toLocaleDateString('en-AU', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }),
+      booking_time: new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      address: booking.address || 'N/A',
+      business_name: booking.business_name || 'N/A',
+      room_number: booking.room_number || 'N/A',
+      therapist_fee: booking.therapist_fee ? `$${booking.therapist_fee.toFixed(2)}` : 'TBD',
+      cancellation_reason: booking.cancellation_reason || 'Booking was cancelled',
+      is_recurring: isRecurring,
+      total_occurrences: booking.total_occurrences || occurrences.length,
+      sessions_list: sessionsList,
+      total_series_earnings: totalSeriesEarnings
+    };
+
+    // Send emails via EmailJS
+    const emailjsPublicKey = process.env.EMAILJS_PUBLIC_KEY || 'vV7S35LxwKq1mGjT_';
+    const emailjsServiceId = process.env.EMAILJS_SERVICE_ID || 'service_mmwvuem';
+    const clientTemplateId = 'Booking-cancel-client';
+    const therapistTemplateId = 'Booking-cancel-therapist';
+
+    // Send client email
+    try {
+      const clientResponse = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          service_id: emailjsServiceId,
+          template_id: clientTemplateId,
+          user_id: emailjsPublicKey,
+          template_params: clientEmailData
+        })
+      });
+
+      if (clientResponse.ok) {
+        console.log('✅ Client cancellation email sent successfully');
+      } else {
+        console.error('❌ Failed to send client cancellation email:', await clientResponse.text());
+      }
+    } catch (error) {
+      console.error('❌ Error sending client cancellation email:', error);
+    }
+
+    // Send therapist email (if therapist is assigned)
+    if (booking.therapist_profiles?.email) {
+      try {
+        const therapistResponse = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            service_id: emailjsServiceId,
+            template_id: therapistTemplateId,
+            user_id: emailjsPublicKey,
+            template_params: therapistEmailData
+          })
+        });
+
+        if (therapistResponse.ok) {
+          console.log('✅ Therapist cancellation email sent successfully');
+        } else {
+          console.error('❌ Failed to send therapist cancellation email:', await therapistResponse.text());
+        }
+      } catch (error) {
+        console.error('❌ Error sending therapist cancellation email:', error);
+      }
+    }
+
+    console.log('✅ Cancellation emails processed');
+  } catch (error) {
+    console.error('❌ Error in sendCancellationEmails:', error);
+    // Don't throw - we don't want email failures to prevent cancellation
+  }
+}
 
 function generateSuccessPage(booking) {
   const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
