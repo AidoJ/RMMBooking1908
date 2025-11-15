@@ -65,7 +65,22 @@ const EmailService = {
         base_price: bookingData.base_price || bookingData.total_price || 'N/A'
         // NOTE: Excluding therapist_fee from customer email
       };
-      
+
+      // Add recurring booking information if applicable
+      if (bookingData.is_recurring || bookingData.recurring_dates) {
+        templateParams.is_recurring = true;
+        templateParams.total_occurrences = bookingData.total_occurrences || bookingData.recurring_count || 1;
+
+        // Generate sessions list from recurring_dates
+        if (bookingData.recurring_dates && Array.isArray(bookingData.recurring_dates)) {
+          templateParams.sessions_list = bookingData.recurring_dates.map((date, index) =>
+            `Session ${index + 1}: ${new Date(date).toLocaleString()}`
+          ).join('\n');
+        } else {
+          templateParams.sessions_list = 'Sessions details not available';
+        }
+      }
+
       console.log('📧 Template parameters:', templateParams);
       
       const response = await emailjs.send(
