@@ -1,0 +1,326 @@
+<<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Cancellation - {{booking_id}}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #2d3748;
+            background-color: #f7fafc;
+            padding: 20px 0;
+        }
+
+        .email-container {
+            max-width: 650px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: #dc2626;
+            color: white;
+            padding: 35px 30px;
+            text-align: center;
+        }
+
+        .brand-name {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            margin-bottom: 4px;
+        }
+
+        .brand-tagline {
+            font-size: 22px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            margin-bottom: 20px;
+        }
+
+        .header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 15px 0 8px 0;
+        }
+
+        .booking-ref {
+            font-size: 14px;
+            opacity: 0.85;
+            font-weight: 500;
+        }
+
+        .content {
+            padding: 35px 30px;
+        }
+
+        .greeting {
+            margin-bottom: 25px;
+        }
+
+        .greeting h3 {
+            color: #1a202c;
+            font-size: 20px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .greeting p {
+            font-size: 15px;
+            color: #718096;
+        }
+
+        .info-card {
+            background-color: #f7fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #dc2626;
+        }
+
+        .info-card h4 {
+            color: #dc2626;
+            font-size: 16px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 12px;
+            font-size: 14px;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .detail-value {
+            color: #1a202c;
+        }
+
+        .cancellation-notice {
+            background-color: #fef2f2;
+            border: 2px solid #fecaca;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+
+        .cancellation-notice h4 {
+            color: #991b1b;
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        .cancellation-reason {
+            background-color: #ffffff;
+            padding: 18px;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #4a5568;
+            line-height: 1.8;
+        }
+
+        .notice-box {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+
+        .notice-box p {
+            font-size: 14px;
+            color: #78350f;
+            margin: 6px 0;
+            line-height: 1.6;
+        }
+
+        .notice-box strong {
+            color: #78350f;
+            font-weight: 700;
+        }
+
+        .footer {
+            background-color: #f7fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer p {
+            color: #718096;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        .company-name {
+            color: #007e8c;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .contact-info {
+            color: #007e8c;
+            font-weight: 600;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .content {
+                padding: 25px 15px;
+            }
+
+            .header {
+                padding: 25px 15px;
+            }
+
+            .brand-name {
+                font-size: 22px;
+            }
+
+            .header h2 {
+                font-size: 20px;
+            }
+
+            .info-card, .cancellation-notice {
+                padding: 18px 15px;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .detail-label {
+                margin-bottom: 2px;
+                font-weight: 700;
+            }
+
+            .detail-value {
+                padding-left: 0;
+                margin-bottom: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- EmailJS Recipient Fields -->
+    <input type="hidden" name="to_email" value="{{to_email}}" />
+    <input type="hidden" name="to_name" value="{{to_name}}" />
+    <input type="hidden" name="from_name" value="Rejuvenators Mobile Massage" />
+    <input type="hidden" name="reply_to" value="info@rejuvenators.com" />
+
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="brand-name">REJUVENATORS®</div>
+            <div class="brand-tagline">Mobile Therapies</div>
+            <h2> Booking Cancelled</h2>
+            <p class="booking-ref">Booking: {{booking_id}}</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Greeting -->
+            <div class="greeting">
+                <h3>Hello {{customer_name}},</h3>
+                <p>We wish to advise and confirm that your booking has been cancelled.</p>
+            </div>
+
+            <!-- Cancelled Booking Details -->
+            <div class="info-card">
+                <h4>📋 Cancelled Booking Details</h4>
+                <div class="detail-grid">
+                    <span class="detail-label">Booking ID:</span>
+                    <span class="detail-value">{{booking_id}}</span>
+
+                    <span class="detail-label">Service:</span>
+                    <span class="detail-value">{{service_name}}</span>
+
+                    <span class="detail-label">Duration:</span>
+                    <span class="detail-value">{{duration}}</span>
+
+                    <span class="detail-label">Date:</span>
+                    <span class="detail-value">{{booking_date}}</span>
+
+                    <span class="detail-label">Time:</span>
+                    <span class="detail-value">{{booking_time}}</span>
+
+                    <span class="detail-label">Location:</span>
+                    <span class="detail-value">{{address}}</span>
+
+                    <span class="detail-label">Business Name:</span>
+                    <span class="detail-value">{{business_name}}</span>
+
+                    <span class="detail-label">Room Number:</span>
+                    <span class="detail-value">{{room_number}}</span>
+
+                    <span class="detail-label">Therapist:</span>
+                    <span class="detail-value">{{therapist_name}}</span>
+                </div>
+
+                {{#is_recurring}}
+                <!-- Recurring Series Info -->
+                <div style="background-color: #e3f2fd; padding: 18px; margin-top: 20px; border-radius: 6px; border-left: 4px solid #2196F3;">
+                    <h4 style="color: #1976D2; margin-top: 0; margin-bottom: 12px; font-size: 16px; font-weight: 600;">🔄 Recurring Booking Series Cancelled</h4>
+                    <p style="margin: 5px 0; color: #1565C0; font-size: 14px;"><strong>All {{total_occurrences}} sessions in this series have been cancelled</strong></p>
+
+                    <!-- All Sessions List -->
+                    <div style="background-color: #ffffff; padding: 15px; margin-top: 15px; border-radius: 6px;">
+                        <h5 style="color: #1976D2; margin-top: 0; margin-bottom: 10px; font-size: 14px; font-weight: 600;">📅 All Cancelled Sessions:</h5>
+                        <pre style="margin: 0; font-family: Arial, sans-serif; font-size: 13px; color: #1565C0; white-space: pre-wrap; line-height: 1.6;">{{sessions_list}}</pre>
+                    </div>
+
+                    <p style="margin: 12px 0 5px 0; color: #d32f2f; font-size: 13px; font-weight: 600;">❌ All {{total_occurrences}} sessions have been cancelled</p>
+                </div>
+                {{/is_recurring}}
+            </div>
+
+            <!-- Cancellation Reason -->
+            <div class="cancellation-notice">
+                <h4>Reason for Cancellation</h4>
+                <div class="cancellation-reason">
+                    {{cancellation_reason}}
+                </div>
+            </div>
+
+            <!-- Next Steps -->
+            <div class="notice-box">
+                <p><strong>📞 Need to Rebook?</strong></p>
+                <p>If you would like to schedule a new booking, please contact us or visit our website to book another massage session.</p>
+                <p style="margin-top: 12px;">If you have any questions about this cancellation, please don't hesitate to reach out to our team.</p>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p style="font-size: 14px; margin-bottom: 15px;">We appreciate your understanding - <span class="company-name">Rejuvenators Mobile Massage</span></p>
+            <p>We hope to serve you again in the future.</p>
+            <div class="contact-info">
+                📧 info@rejuvenators.com | 📞 1300 302 542
+            </div>
+        </div>
+    </div>
+</body>
+</html>
