@@ -766,6 +766,13 @@ async function sendClientConfirmationEmail(booking, therapist) {
       serviceName = booking.services.name;
     }
 
+    // Generate cancel URL
+    const baseUrl = process.env.URL || 'https://rmmbook.netlify.app';
+    const cancelUrl = `${baseUrl}/.netlify/functions/cancel-booking?booking_id=${booking.booking_id}`;
+
+    // Generate intake form URL
+    const intakeFormUrl = `${baseUrl}/therapist/clientintake?booking=${booking.id || booking.booking_id}`;
+
     const templateParams = {
       to_email: booking.customer_email,
       to_name: booking.first_name + ' ' + booking.last_name,
@@ -777,7 +784,9 @@ async function sendClientConfirmationEmail(booking, therapist) {
       address: booking.address,
       room_number: booking.room_number || 'N/A',
       therapist: therapist.first_name + ' ' + therapist.last_name,
-      estimated_price: booking.price ? '$' + booking.price.toFixed(2) : 'N/A'
+      estimated_price: booking.price ? '$' + booking.price.toFixed(2) : 'N/A',
+      cancel_url: cancelUrl,
+      intake_form_url: intakeFormUrl
     };
 
     // Add recurring booking information if applicable
