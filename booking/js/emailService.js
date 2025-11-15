@@ -138,7 +138,7 @@ async sendTherapistBookingRequest(bookingData, therapistData, timeoutMinutes) {
       client_name: `${bookingData.first_name || ''} ${bookingData.last_name || ''}`.trim(),
       client_phone: clientPhone,
       service_name: bookingData.service_name || 'Massage Service',
-      duration: `${bookingData.duration_minutes || 60} minutes`,
+      duration: `${bookingData.duration_minutes} minutes`,
       booking_date: bookingData.booking_date || new Date().toLocaleDateString(),
       booking_time: bookingData.booking_time || '09:00',
       address: bookingData.address || 'Address not provided',
@@ -153,7 +153,27 @@ async sendTherapistBookingRequest(bookingData, therapistData, timeoutMinutes) {
       accept_url: acceptUrl,
       decline_url: declineUrl
     };
-    
+
+    // Add recurring booking information if applicable
+    if (bookingData.is_recurring || bookingData.recurring_dates) {
+      templateParams.is_recurring = true;
+      templateParams.total_occurrences = bookingData.total_occurrences || bookingData.recurring_count || 1;
+
+      // Generate sessions list from recurring_dates
+      if (bookingData.recurring_dates && Array.isArray(bookingData.recurring_dates)) {
+        templateParams.sessions_list = bookingData.recurring_dates.map((date, index) =>
+          `Session ${index + 1}: ${new Date(date).toLocaleString()}`
+        ).join('\n');
+      }
+
+      // Calculate total series earnings
+      if (bookingData.therapist_fee) {
+        const feePerSession = parseFloat(bookingData.therapist_fee);
+        const totalEarnings = (feePerSession * templateParams.total_occurrences).toFixed(2);
+        templateParams.total_series_earnings = totalEarnings;
+      }
+    }
+
     console.log('📧 Therapist email template parameters:', templateParams);
     console.log('📧 Using template ID:', EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID);
     

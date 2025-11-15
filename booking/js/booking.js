@@ -3779,7 +3779,13 @@ async function sendBookingNotifications(bookingData, bookingId) {
       parking: bookingData.parking || 'N/A',
       booker_name: bookingData.booker_name || '',
       notes: bookingData.notes || '',
-      duration_minutes: bookingData.duration_minutes || '60'
+      duration_minutes: bookingData.duration_minutes,
+      // Recurring booking fields (passed through from bookingData)
+      is_recurring: bookingData.is_recurring || false,
+      recurring_dates: bookingData.recurring_dates || null,
+      total_occurrences: bookingData.total_occurrences || null,
+      recurring_frequency: bookingData.recurring_frequency || null,
+      recurring_count: bookingData.total_occurrences || null // Alias for emailService.js
     };
     
     // Send client confirmation email (existing)
