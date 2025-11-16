@@ -132,10 +132,16 @@ exports.handler = async (event, context) => {
       // Non-recurring booking - standard flow
       console.log('📝 Creating standard (non-recurring) booking');
 
+      // Remove recurring-specific fields that don't exist in bookings table
+      const cleanBookingData = { ...bookingData };
+      delete cleanBookingData.recurring_dates;
+      delete cleanBookingData.recurring_frequency;
+      delete cleanBookingData.recurring_count;
+
       // Insert booking into database (service role bypasses RLS)
       const { data, error } = await supabase
         .from('bookings')
-        .insert([bookingData])
+        .insert([cleanBookingData])
         .select();
 
       if (error) {
