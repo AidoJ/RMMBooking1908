@@ -670,6 +670,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // Get duration label with descriptive names
+  function getDurationLabel(minutes) {
+    const labels = {
+      60: '60 min — Essential',
+      75: '75 min — Signature (most popular)',
+      90: '90 min — Bliss',
+      120: '120 min — Ultimate',
+      180: '180 (group events only)',
+      240: '240 (group events only)',
+      300: '300 (group events only)'
+    };
+    return labels[minutes] || `${minutes} minutes`;
+  }
+
   // Fetch and populate services and durations from Supabase
   window.populateTherapyOptions = async function populateTherapyOptions() {
     try {
@@ -808,7 +822,7 @@ document.addEventListener('DOMContentLoaded', function () {
         durations.forEach(duration => {
           const opt = document.createElement('option');
           opt.value = duration.duration_minutes;
-            opt.textContent = `${duration.duration_minutes} minutes`;
+            opt.textContent = getDurationLabel(duration.duration_minutes);
           durationSelect.appendChild(opt);
         });
         } else {
@@ -821,7 +835,7 @@ document.addEventListener('DOMContentLoaded', function () {
           fallbackDurations.forEach(duration => {
             const opt = document.createElement('option');
             opt.value = duration.duration_minutes;
-            opt.textContent = `${duration.duration_minutes} minutes`;
+            opt.textContent = getDurationLabel(duration.duration_minutes);
             durationSelect.appendChild(opt);
           });
           console.warn('⚠️ Using fallback durations due to connection issues');
@@ -1522,7 +1536,7 @@ console.log('Globals:', {
     window.durationsCache.forEach(duration => {
       const opt = document.createElement('option');
       opt.value = duration.duration_minutes;
-      opt.textContent = `${duration.duration_minutes} minutes`;
+      opt.textContent = getDurationLabel(duration.duration_minutes);
       durationSelect.appendChild(opt);
     });
   }
@@ -1533,22 +1547,22 @@ console.log('Globals:', {
     if (!durationSelect || !window.durationsCache) return;
 
     const minimumDurationNum = parseInt(minimumDuration);
-    
+
     // Clear current options
     durationSelect.innerHTML = '<option value="">Select duration...</option>';
-    
+
     // Add duration options, hiding those below minimum
     window.durationsCache.forEach(duration => {
       const durationMinutes = duration.duration_minutes;
       const opt = document.createElement('option');
       opt.value = durationMinutes;
-      opt.textContent = `${durationMinutes} minutes`;
-      
+      opt.textContent = getDurationLabel(durationMinutes);
+
       // Hide options below minimum duration
       if (durationMinutes < minimumDurationNum) {
         opt.style.display = 'none';
       }
-      
+
       durationSelect.appendChild(opt);
     });
   }
@@ -3332,6 +3346,11 @@ async function populateBookingSummary() {
   const customer_id = window.lastBookingCustomerId || '';
   const booking_id = window.lastBookingId || '';
   const customer_code = window.lastCustomerCode || '';
+
+  // Check for recurring booking
+  const isRecurring = window.recurringBooking?.enabled || false;
+  const recurringSessionsHTML = isRecurring ? generateRecurringSessionsHTML() : '';
+
   summaryDiv.innerHTML = `
     <h3>Booking Details</h3>
     ${booking_id ? `<p><strong>Booking ID:</strong> ${booking_id}</p>` : ''}
@@ -3339,9 +3358,10 @@ async function populateBookingSummary() {
     ${businessName ? `<p><strong>${businessLabel}:</strong> ${businessName}</p>` : ''}
     <p><strong>Address:</strong> ${address}</p>
     <p><strong>Service:</strong> ${service}</p>
-    <p><strong>Duration:</strong> ${duration} minutes</p>
+    <p><strong>Duration:</strong> ${getDurationLabel(parseInt(duration))}</p>
     <p><strong>Therapist Gender Preference:</strong> ${gender}</p>
     <p><strong>Date & Time:</strong> ${date} at ${time}</p>
+    ${recurringSessionsHTML}
     <p><strong>Parking:</strong> ${parking}</p>
     <p><strong>Therapist:</strong> ${therapist || 'Not selected'}</p>
     <p><strong>Name:</strong> ${customerName}</p>
@@ -3354,6 +3374,38 @@ async function populateBookingSummary() {
     ${priceBreakdown ? `<div style="margin-left: 20px; font-size: 0.9em; color: #666;">${priceBreakdown}</div>` : ''}
     ${generatePricingSummaryHTML()}
       `;
+}
+
+// Generate recurring sessions HTML for booking summary
+function generateRecurringSessionsHTML() {
+  if (!window.recurringBooking?.enabled || !window.recurringBooking?.dates) {
+    return '';
+  }
+
+  const dates = window.recurringBooking.dates;
+  const count = window.recurringBooking.count;
+  const time = document.getElementById('time').value;
+
+  let html = '<div style="background-color: #e3f2fd; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #2196F3;">';
+  html += '<h4 style="color: #1976D2; margin-top: 0; margin-bottom: 10px; font-size: 16px;">🔄 Recurring Booking Series</h4>';
+  html += `<p style="margin: 5px 0; color: #1565C0; font-weight: 600;">Total Sessions: ${count}</p>`;
+  html += '<div style="background-color: #ffffff; padding: 12px; margin-top: 12px; border-radius: 6px;">';
+  html += '<h5 style="color: #1976D2; margin-top: 0; margin-bottom: 8px; font-size: 14px;">📅 All Scheduled Sessions:</h5>';
+  html += '<ul style="margin: 0; padding-left: 20px; color: #1565C0; font-size: 13px; line-height: 1.8;">';
+
+  dates.forEach((date, index) => {
+    const sessionDate = new Date(date);
+    const formattedDate = sessionDate.toLocaleDateString('en-AU', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+    html += `<li>Session ${index + 1}: ${formattedDate} at ${time}</li>`;
+  });
+
+  html += '</ul></div></div>';
+  return html;
 }
 
 // Generate pricing summary HTML for booking summary
