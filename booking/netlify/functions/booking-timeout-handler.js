@@ -91,7 +91,7 @@ async function findBookingsNeedingTimeout(timeoutMinutes) {
     const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
     const { data: firstTimeoutBookings, error: error1 } = await supabase
       .from('bookings')
-      .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
+      .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email), booking_occurrences(*)')
       .eq('status', 'requested')
       .is('therapist_response_time', null) // IMPORTANT: Only if therapist hasn't responded yet
       .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
@@ -108,7 +108,7 @@ async function findBookingsNeedingTimeout(timeoutMinutes) {
     // EXCLUDE quote-based bookings (BK-Q pattern) as they follow quote workflow
     const { data: secondTimeoutBookings, error: error2 } = await supabase
       .from('bookings')
-      .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
+      .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email), booking_occurrences(*)')
       .in('status', ['timeout_reassigned', 'seeking_alternate'])
       .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
       .lt('created_at', secondTimeoutCutoff.toISOString());
@@ -410,31 +410,22 @@ async function sendClientLookingForAlternateEmail(booking) {
       serviceName = booking.services.name;
     }
 
-    // Check if recurring and fetch occurrences
-    console.log('🔍 Checking recurring status:', { is_recurring: booking.is_recurring, total_occurrences: booking.total_occurrences });
-    const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
+    // Check if recurring - use booking_occurrences from joined query
+    const occurrences = booking.booking_occurrences || [];
+    const isRecurring = occurrences.length > 0;
     let sessionsList = '';
-    console.log('🔄 isRecurring evaluated to:', isRecurring);
+
+    console.log('🔍 [TIMEOUT] Recurring check:', {
+      has_occurrences: occurrences.length > 0,
+      total_occurrences: occurrences.length,
+      is_recurring: booking.is_recurring
+    });
 
     if (isRecurring) {
-      console.log('📧 Fetching occurrences for booking:', booking.booking_id);
-      const { data: occurrences, error: occError } = await supabase
-        .from('booking_occurrences')
-        .select('occurrence_number, occurrence_date, occurrence_time')
-        .eq('booking_id', booking.booking_id)
-        .order('occurrence_number');
-
-      if (occError) {
-        console.error('❌ Error fetching occurrences:', occError);
-      } else {
-        console.log(`✅ Found ${occurrences ? occurrences.length : 0} occurrences`);
-      }
-
-      if (occurrences && occurrences.length > 0) {
-        sessionsList = occurrences.map(occ =>
-          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
-        ).join('\n');
-      }
+      sessionsList = occurrences.map(occ =>
+        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+      ).join('\n');
+      console.log(`✅ Built sessions list with ${occurrences.length} sessions`);
     }
 
     const templateParams = {
@@ -447,7 +438,7 @@ async function sendClientLookingForAlternateEmail(booking) {
       date_time: new Date(booking.booking_time).toLocaleString(),
       address: booking.address,
       is_recurring: isRecurring,
-      total_occurrences: booking.total_occurrences || 1,
+      total_occurrences: occurrences.length || 1,
       sessions_list: sessionsList
     };
 
@@ -468,31 +459,22 @@ async function sendClientDeclineEmail(booking) {
       serviceName = booking.services.name;
     }
 
-    // Check if recurring and fetch occurrences
-    console.log('🔍 Decline email - checking recurring status:', { is_recurring: booking.is_recurring, total_occurrences: booking.total_occurrences });
-    const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
+    // Check if recurring - use booking_occurrences from joined query
+    const occurrences = booking.booking_occurrences || [];
+    const isRecurring = occurrences.length > 0;
     let sessionsList = '';
-    console.log('🔄 Decline email - isRecurring evaluated to:', isRecurring);
+
+    console.log('🔍 [TIMEOUT DECLINE] Recurring check:', {
+      has_occurrences: occurrences.length > 0,
+      total_occurrences: occurrences.length,
+      is_recurring: booking.is_recurring
+    });
 
     if (isRecurring) {
-      console.log('📧 Fetching occurrences for booking:', booking.booking_id);
-      const { data: occurrences, error: occError } = await supabase
-        .from('booking_occurrences')
-        .select('occurrence_number, occurrence_date, occurrence_time')
-        .eq('booking_id', booking.booking_id)
-        .order('occurrence_number');
-
-      if (occError) {
-        console.error('❌ Error fetching occurrences:', occError);
-      } else {
-        console.log(`✅ Found ${occurrences ? occurrences.length : 0} occurrences`);
-      }
-
-      if (occurrences && occurrences.length > 0) {
-        sessionsList = occurrences.map(occ =>
-          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
-        ).join('\n');
-      }
+      sessionsList = occurrences.map(occ =>
+        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+      ).join('\n');
+      console.log(`✅ Built sessions list with ${occurrences.length} sessions`);
     }
 
     const templateParams = {
@@ -505,7 +487,7 @@ async function sendClientDeclineEmail(booking) {
       date_time: new Date(booking.booking_time).toLocaleString(),
       address: booking.address,
       is_recurring: isRecurring,
-      total_occurrences: booking.total_occurrences || 1,
+      total_occurrences: occurrences.length || 1,
       sessions_list: sessionsList
     };
 
@@ -526,36 +508,27 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
     const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
     const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
 
-    // Check if recurring and fetch occurrences
-    console.log('🔍 Therapist request - checking recurring status:', { is_recurring: booking.is_recurring, total_occurrences: booking.total_occurrences });
-    const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
+    // Check if recurring - use booking_occurrences from joined query
+    const occurrences = booking.booking_occurrences || [];
+    const isRecurring = occurrences.length > 0;
     let sessionsList = '';
     let totalSeriesEarnings = 0;
-    console.log('🔄 Therapist request - isRecurring evaluated to:', isRecurring);
+
+    console.log('🔍 [TIMEOUT THERAPIST] Recurring check:', {
+      has_occurrences: occurrences.length > 0,
+      total_occurrences: occurrences.length,
+      is_recurring: booking.is_recurring
+    });
 
     if (isRecurring) {
-      console.log('📧 Fetching occurrences for booking:', booking.booking_id);
-      const { data: occurrences, error: occError } = await supabase
-        .from('booking_occurrences')
-        .select('occurrence_number, occurrence_date, occurrence_time')
-        .eq('booking_id', booking.booking_id)
-        .order('occurrence_number');
+      sessionsList = occurrences.map(occ =>
+        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+      ).join('\n');
 
-      if (occError) {
-        console.error('❌ Error fetching occurrences:', occError);
-      } else {
-        console.log(`✅ Found ${occurrences ? occurrences.length : 0} occurrences`);
+      if (booking.therapist_fee) {
+        totalSeriesEarnings = (parseFloat(booking.therapist_fee) * occurrences.length).toFixed(2);
       }
-
-      if (occurrences && occurrences.length > 0) {
-        sessionsList = occurrences.map(occ =>
-          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
-        ).join('\n');
-
-        if (booking.therapist_fee) {
-          totalSeriesEarnings = (parseFloat(booking.therapist_fee) * occurrences.length).toFixed(2);
-        }
-      }
+      console.log(`✅ Built sessions list with ${occurrences.length} sessions, total earnings: $${totalSeriesEarnings}`);
     }
 
     const templateParams = {
@@ -581,7 +554,7 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
       accept_url: acceptUrl,
       decline_url: declineUrl,
       is_recurring: isRecurring,
-      total_occurrences: booking.total_occurrences || 1,
+      total_occurrences: occurrences.length || 1,
       sessions_list: sessionsList,
       total_series_earnings: totalSeriesEarnings
     };
