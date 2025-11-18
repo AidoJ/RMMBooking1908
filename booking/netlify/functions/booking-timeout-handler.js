@@ -410,6 +410,24 @@ async function sendClientLookingForAlternateEmail(booking) {
       serviceName = booking.services.name;
     }
 
+    // Check if recurring and fetch occurrences
+    const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
+    let sessionsList = '';
+
+    if (isRecurring) {
+      const { data: occurrences } = await supabase
+        .from('booking_occurrences')
+        .select('occurrence_number, occurrence_date, occurrence_time')
+        .eq('booking_id', booking.booking_id)
+        .order('occurrence_number');
+
+      if (occurrences && occurrences.length > 0) {
+        sessionsList = occurrences.map(occ =>
+          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+        ).join('\n');
+      }
+    }
+
     const templateParams = {
       to_email: booking.customer_email,
       to_name: booking.first_name + ' ' + booking.last_name,
@@ -418,7 +436,10 @@ async function sendClientLookingForAlternateEmail(booking) {
       service: serviceName,
       duration: booking.duration_minutes + ' minutes',
       date_time: new Date(booking.booking_time).toLocaleString(),
-      address: booking.address
+      address: booking.address,
+      is_recurring: isRecurring,
+      total_occurrences: booking.total_occurrences || 1,
+      sessions_list: sessionsList
     };
 
     const result = await sendEmail(EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID, templateParams);
@@ -438,6 +459,24 @@ async function sendClientDeclineEmail(booking) {
       serviceName = booking.services.name;
     }
 
+    // Check if recurring and fetch occurrences
+    const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
+    let sessionsList = '';
+
+    if (isRecurring) {
+      const { data: occurrences } = await supabase
+        .from('booking_occurrences')
+        .select('occurrence_number, occurrence_date, occurrence_time')
+        .eq('booking_id', booking.booking_id)
+        .order('occurrence_number');
+
+      if (occurrences && occurrences.length > 0) {
+        sessionsList = occurrences.map(occ =>
+          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+        ).join('\n');
+      }
+    }
+
     const templateParams = {
       to_email: booking.customer_email,
       to_name: booking.first_name + ' ' + booking.last_name,
@@ -446,7 +485,10 @@ async function sendClientDeclineEmail(booking) {
       service: serviceName,
       duration: booking.duration_minutes + ' minutes',
       date_time: new Date(booking.booking_time).toLocaleString(),
-      address: booking.address
+      address: booking.address,
+      is_recurring: isRecurring,
+      total_occurrences: booking.total_occurrences || 1,
+      sessions_list: sessionsList
     };
 
     const result = await sendEmail(EMAILJS_BOOKING_DECLINED_TEMPLATE_ID, templateParams);
@@ -465,6 +507,29 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
     const baseUrl = process.env.URL || 'https://your-site.netlify.app';
     const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
     const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
+
+    // Check if recurring and fetch occurrences
+    const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
+    let sessionsList = '';
+    let totalSeriesEarnings = 0;
+
+    if (isRecurring) {
+      const { data: occurrences } = await supabase
+        .from('booking_occurrences')
+        .select('occurrence_number, occurrence_date, occurrence_time')
+        .eq('booking_id', booking.booking_id)
+        .order('occurrence_number');
+
+      if (occurrences && occurrences.length > 0) {
+        sessionsList = occurrences.map(occ =>
+          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+        ).join('\n');
+
+        if (booking.therapist_fee) {
+          totalSeriesEarnings = (parseFloat(booking.therapist_fee) * occurrences.length).toFixed(2);
+        }
+      }
+    }
 
     const templateParams = {
       to_email: therapist.email,
@@ -487,7 +552,11 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
       therapist_fee: booking.therapist_fee ? '$' + booking.therapist_fee.toFixed(2) : 'TBD',
       timeout_minutes: timeoutMinutes,
       accept_url: acceptUrl,
-      decline_url: declineUrl
+      decline_url: declineUrl,
+      is_recurring: isRecurring,
+      total_occurrences: booking.total_occurrences || 1,
+      sessions_list: sessionsList,
+      total_series_earnings: totalSeriesEarnings
     };
 
     const result = await sendEmail(EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID, templateParams);

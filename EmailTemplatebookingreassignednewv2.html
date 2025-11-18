@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Booking Assignment</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #2d3748;
+            background-color: #f7fafc;
+            padding: 20px 0;
+        }
+
+        .email-container {
+            max-width: 650px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: #7234FE;
+            color: white;
+            padding: 35px 30px;
+            text-align: center;
+        }
+
+        .brand-name {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            margin-bottom: 4px;
+        }
+
+        .header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 15px 0 8px 0;
+        }
+
+        .booking-ref {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        .content {
+            padding: 35px 30px;
+        }
+
+        .greeting h3 {
+            color: #1a202c;
+            font-size: 20px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .info-card {
+            background-color: #f7fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #7234FE;
+        }
+
+        .info-card h4 {
+            color: #7234FE;
+            font-size: 16px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 12px;
+            font-size: 14px;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .detail-value {
+            color: #1a202c;
+        }
+
+        .urgent-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #f59e0b;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .urgent-box p {
+            font-size: 14px;
+            color: #78350f;
+            margin: 6px 0;
+        }
+
+        .fee-box {
+            background-color: #d1fae5;
+            border-left: 4px solid #10b981;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .fee-amount {
+            font-size: 32px;
+            font-weight: 700;
+            color: #047857;
+            margin: 10px 0;
+        }
+
+        .footer {
+            background-color: #f7fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer p {
+            color: #718096;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 600px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- EmailJS Recipient Fields -->
+    <input type="hidden" name="to_email" value="{{to_email}}" />
+    <input type="hidden" name="to_name" value="{{to_name}}" />
+    <input type="hidden" name="from_name" value="Rejuvenators Mobile Massage" />
+    <input type="hidden" name="reply_to" value="info@rejuvenators.com" />
+
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="brand-name">REJUVENATORS®</div>
+            <h2>🔄 New Booking Assignment</h2>
+            <p class="booking-ref">Booking: {{booking_id}}</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <div class="greeting">
+                <h3>Hello {{therapist_name}},</h3>
+                <p style="color: #4a5568; margin-top: 10px;">You have been assigned a new booking that was previously assigned to another therapist.</p>
+            </div>
+
+            <div class="urgent-box">
+                <strong style="color: #92400e;">⚠️ Assignment Notice</strong>
+                <p style="margin-top: 8px;">This booking has been transferred to you. Please review all details carefully.</p>
+            </div>
+
+            <!-- Booking Details -->
+            <div class="info-card">
+                <h4>📋 Booking Details</h4>
+                <div class="detail-grid">
+                    <span class="detail-label">Booking ID:</span>
+                    <span class="detail-value">{{booking_id}}</span>
+
+                    <span class="detail-label">Service:</span>
+                    <span class="detail-value">{{service_name}}</span>
+
+                    <span class="detail-label">Duration:</span>
+                    <span class="detail-value">{{duration}}</span>
+
+                    <span class="detail-label">Date:</span>
+                    <span class="detail-value">{{booking_date}}</span>
+
+                    <span class="detail-label">Time:</span>
+                    <span class="detail-value">{{booking_time}}</span>
+
+                    <span class="detail-label">Location:</span>
+                    <span class="detail-value">{{address}}</span>
+
+                    <span class="detail-label">Business Name:</span>
+                    <span class="detail-value">{{business_name}}</span>
+
+                    <span class="detail-label">Room Number:</span>
+                    <span class="detail-value">{{room_number}}</span>
+                </div>
+
+                {{#is_recurring}}
+                <!-- Recurring Series Info -->
+                <div style="background-color: #e3f2fd; padding: 18px; margin-top: 20px; border-radius: 6px; border-left: 4px solid #2196F3;">
+                    <h4 style="color: #1976D2; margin-top: 0; margin-bottom: 12px; font-size: 16px; font-weight: 600;">🔄 Recurring Booking Series</h4>
+                    <p style="margin: 5px 0; color: #1565C0; font-size: 14px;"><strong>ALL {{total_occurrences}} sessions have been assigned to you</strong></p>
+
+                    <!-- All Sessions List -->
+                    <div style="background-color: #ffffff; padding: 15px; margin-top: 15px; border-radius: 6px;">
+                        <h5 style="color: #1976D2; margin-top: 0; margin-bottom: 10px; font-size: 14px; font-weight: 600;">📅 All Scheduled Sessions:</h5>
+                        <pre style="margin: 0; font-family: Arial, sans-serif; font-size: 13px; color: #1565C0; white-space: pre-wrap; line-height: 1.6;">{{sessions_list}}</pre>
+                    </div>
+
+                    <p style="margin: 12px 0 5px 0; color: #1976D2; font-size: 13px; font-weight: 600;">💰 Total series earnings: ${{total_series_earnings}}</p>
+                </div>
+                {{/is_recurring}}
+            </div>
+
+            <!-- Client Info -->
+            <div class="info-card">
+                <h4>👤 Client Information</h4>
+                <p style="font-size: 18px; font-weight: 600; color: #7234FE; text-align: center; margin: 10px 0;">
+                    {{customer_name}}
+                </p>
+                <p style="text-align: center; color: #4a5568;">
+                    📞 {{customer_phone}}<br>
+                    📧 {{customer_email}}
+                </p>
+            </div>
+
+            <!-- Fee Details -->
+            <div class="fee-box">
+                <h4 style="color: #047857; margin-bottom: 10px;">💰 Your Earnings</h4>
+                <div class="fee-amount">{{therapist_fee}}</div>
+                <p style="color: #065f46; font-size: 13px;">
+                    {{#is_recurring}}
+                    Per session fee (Total series: ${{total_series_earnings}})
+                    {{/is_recurring}}
+                    {{^is_recurring}}
+                    For this booking
+                    {{/is_recurring}}
+                </p>
+            </div>
+
+            {{#notes}}
+            <div style="margin: 20px 0; padding: 15px; background-color: #fef3c7; border-radius: 6px; border-left: 4px solid #f59e0b;">
+                <strong style="color: #92400e;">📝 Additional Notes:</strong>
+                <p style="color: #78350f; margin-top: 8px;">{{notes}}</p>
+            </div>
+            {{/notes}}
+
+            <p style="font-size: 14px; color: #6c757d; text-align: center; margin-top: 20px;">
+                <strong>Need support?</strong> Contact us at 1300 302542 or info@rejuvenators.com
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p style="font-size: 14px; margin-bottom: 15px;">Thank you for your flexibility - <span style="color: #7234FE; font-weight: 600;">Rejuvenators Mobile Massage</span></p>
+            <p>We appreciate your willingness to help!</p>
+        </div>
+    </div>
+</body>
+</html>

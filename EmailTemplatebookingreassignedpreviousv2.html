@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Reassigned</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #2d3748;
+            background-color: #f7fafc;
+            padding: 20px 0;
+        }
+
+        .email-container {
+            max-width: 650px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: #f59e0b;
+            color: white;
+            padding: 35px 30px;
+            text-align: center;
+        }
+
+        .brand-name {
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            margin-bottom: 4px;
+        }
+
+        .header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 15px 0 8px 0;
+        }
+
+        .booking-ref {
+            font-size: 14px;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        .content {
+            padding: 35px 30px;
+        }
+
+        .greeting h3 {
+            color: #1a202c;
+            font-size: 20px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .info-card {
+            background-color: #f7fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #f59e0b;
+        }
+
+        .info-card h4 {
+            color: #f59e0b;
+            font-size: 16px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 12px;
+            font-size: 14px;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #4a5568;
+        }
+
+        .detail-value {
+            color: #1a202c;
+        }
+
+        .reassign-box {
+            background-color: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .reassign-box h4 {
+            color: #92400e;
+            margin-bottom: 10px;
+        }
+
+        .reassign-box p {
+            color: #78350f;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .footer {
+            background-color: #f7fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .footer p {
+            color: #718096;
+            font-size: 13px;
+            margin-bottom: 8px;
+        }
+
+        @media (max-width: 600px) {
+            .detail-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- EmailJS Recipient Fields -->
+    <input type="hidden" name="to_email" value="{{to_email}}" />
+    <input type="hidden" name="to_name" value="{{to_name}}" />
+    <input type="hidden" name="from_name" value="Rejuvenators Mobile Massage" />
+    <input type="hidden" name="reply_to" value="info@rejuvenators.com" />
+
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="brand-name">REJUVENATORS®</div>
+            <h2>🔄 Booking Reassigned</h2>
+            <p class="booking-ref">Booking: {{booking_id}}</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <div class="greeting">
+                <h3>Hello {{therapist_name}},</h3>
+                <p style="color: #4a5568; margin-top: 10px;">This booking has been reassigned to another therapist. You are no longer required to attend this appointment.</p>
+            </div>
+
+            <div class="reassign-box">
+                <h4>🔄 Reassignment Information</h4>
+                <p><strong>Reassigned to:</strong> {{new_therapist_name}}</p>
+                <p><strong>Reason:</strong> {{reason}}</p>
+            </div>
+
+            <!-- Original Booking Details -->
+            <div class="info-card">
+                <h4>📋 Original Booking Details</h4>
+                <div class="detail-grid">
+                    <span class="detail-label">Booking ID:</span>
+                    <span class="detail-value">{{booking_id}}</span>
+
+                    <span class="detail-label">Service:</span>
+                    <span class="detail-value">{{service_name}}</span>
+
+                    <span class="detail-label">Date:</span>
+                    <span class="detail-value">{{booking_date}}</span>
+
+                    <span class="detail-label">Time:</span>
+                    <span class="detail-value">{{booking_time}}</span>
+
+                    <span class="detail-label">Client:</span>
+                    <span class="detail-value">{{customer_name}}</span>
+
+                    <span class="detail-label">Location:</span>
+                    <span class="detail-value">{{address}}</span>
+                </div>
+
+                {{#is_recurring}}
+                <!-- Recurring Series Info -->
+                <div style="background-color: #e3f2fd; padding: 18px; margin-top: 20px; border-radius: 6px; border-left: 4px solid #2196F3;">
+                    <h4 style="color: #1976D2; margin-top: 0; margin-bottom: 12px; font-size: 16px; font-weight: 600;">🔄 Recurring Series Reassignment</h4>
+                    <p style="margin: 5px 0; color: #1565C0; font-size: 14px;"><strong>All {{total_occurrences}} sessions have been reassigned</strong></p>
+
+                    <!-- All Sessions List -->
+                    <div style="background-color: #ffffff; padding: 15px; margin-top: 15px; border-radius: 6px;">
+                        <h5 style="color: #1976D2; margin-top: 0; margin-bottom: 10px; font-size: 14px; font-weight: 600;">📅 Reassigned Sessions:</h5>
+                        <pre style="margin: 0; font-family: Arial, sans-serif; font-size: 13px; color: #1565C0; white-space: pre-wrap; line-height: 1.6;">{{sessions_list}}</pre>
+                    </div>
+
+                    <p style="margin: 12px 0 5px 0; color: #d32f2f; font-size: 13px; font-weight: 600;">❌ This entire series has been reassigned to {{new_therapist_name}}</p>
+                </div>
+                {{/is_recurring}}
+            </div>
+
+            <div style="background-color: #e0f2fe; padding: 20px; border-radius: 6px; border-left: 4px solid #0284c7; margin: 20px 0;">
+                <strong style="color: #075985;">ℹ️ What this means:</strong>
+                <p style="color: #0c4a6e; margin-top: 8px; font-size: 14px;">
+                    You no longer need to prepare for or attend this appointment{{#is_recurring}} series{{/is_recurring}}. Your schedule has been updated accordingly.
+                </p>
+            </div>
+
+            <p style="font-size: 14px; color: #6c757d; text-align: center; margin-top: 20px;">
+                <strong>Questions?</strong> Contact us at 1300 302542 or info@rejuvenators.com
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p style="font-size: 14px; margin-bottom: 15px;">Thank you for your understanding - <span style="color: #f59e0b; font-weight: 600;">Rejuvenators Mobile Massage</span></p>
+            <p>We appreciate your flexibility and continued partnership.</p>
+        </div>
+    </div>
+</body>
+</html>
