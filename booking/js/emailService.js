@@ -289,11 +289,17 @@ async sendTherapistBookingRequestSMS(therapistPhone, bookingData, therapistData,
     const fee = bookingData.therapist_fee ?
       '$' + parseFloat(bookingData.therapist_fee).toFixed(0) : 'TBD';
 
+    // Check if this is a recurring booking
+    const isRecurring = bookingData.is_recurring || bookingData.recurring_dates;
+    const totalOccurrences = bookingData.total_occurrences || bookingData.recurring_count || 0;
+    const recurringNote = isRecurring && totalOccurrences > 1
+      ? `\n⚠️ NOTE: RECURRING SERIES (${totalOccurrences} sessions)\n`
+      : '';
+
     // SMS message format: name, time, date, duration, location, fee
     const message = `📱 NEW BOOKING ${bookingData.booking_id}
 
-${bookingData.first_name} ${bookingData.last_name}, ${formattedTime}, ${formattedDate}, ${duration} mins, ${address}, ${fee}
-
+${bookingData.first_name} ${bookingData.last_name}, ${formattedTime}, ${formattedDate}, ${duration} mins, ${address}, ${fee}${recurringNote}
 ✅ Accept: ${acceptUrl}
 ❌ Decline: ${declineUrl}
 
