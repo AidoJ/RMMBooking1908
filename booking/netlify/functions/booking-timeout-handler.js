@@ -411,15 +411,24 @@ async function sendClientLookingForAlternateEmail(booking) {
     }
 
     // Check if recurring and fetch occurrences
+    console.log('🔍 Checking recurring status:', { is_recurring: booking.is_recurring, total_occurrences: booking.total_occurrences });
     const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
     let sessionsList = '';
+    console.log('🔄 isRecurring evaluated to:', isRecurring);
 
     if (isRecurring) {
-      const { data: occurrences } = await supabase
+      console.log('📧 Fetching occurrences for booking:', booking.booking_id);
+      const { data: occurrences, error: occError } = await supabase
         .from('booking_occurrences')
         .select('occurrence_number, occurrence_date, occurrence_time')
         .eq('booking_id', booking.booking_id)
         .order('occurrence_number');
+
+      if (occError) {
+        console.error('❌ Error fetching occurrences:', occError);
+      } else {
+        console.log(`✅ Found ${occurrences ? occurrences.length : 0} occurrences`);
+      }
 
       if (occurrences && occurrences.length > 0) {
         sessionsList = occurrences.map(occ =>
@@ -460,15 +469,24 @@ async function sendClientDeclineEmail(booking) {
     }
 
     // Check if recurring and fetch occurrences
+    console.log('🔍 Decline email - checking recurring status:', { is_recurring: booking.is_recurring, total_occurrences: booking.total_occurrences });
     const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
     let sessionsList = '';
+    console.log('🔄 Decline email - isRecurring evaluated to:', isRecurring);
 
     if (isRecurring) {
-      const { data: occurrences } = await supabase
+      console.log('📧 Fetching occurrences for booking:', booking.booking_id);
+      const { data: occurrences, error: occError } = await supabase
         .from('booking_occurrences')
         .select('occurrence_number, occurrence_date, occurrence_time')
         .eq('booking_id', booking.booking_id)
         .order('occurrence_number');
+
+      if (occError) {
+        console.error('❌ Error fetching occurrences:', occError);
+      } else {
+        console.log(`✅ Found ${occurrences ? occurrences.length : 0} occurrences`);
+      }
 
       if (occurrences && occurrences.length > 0) {
         sessionsList = occurrences.map(occ =>
@@ -509,16 +527,25 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
     const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
 
     // Check if recurring and fetch occurrences
+    console.log('🔍 Therapist request - checking recurring status:', { is_recurring: booking.is_recurring, total_occurrences: booking.total_occurrences });
     const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
     let sessionsList = '';
     let totalSeriesEarnings = 0;
+    console.log('🔄 Therapist request - isRecurring evaluated to:', isRecurring);
 
     if (isRecurring) {
-      const { data: occurrences } = await supabase
+      console.log('📧 Fetching occurrences for booking:', booking.booking_id);
+      const { data: occurrences, error: occError } = await supabase
         .from('booking_occurrences')
         .select('occurrence_number, occurrence_date, occurrence_time')
         .eq('booking_id', booking.booking_id)
         .order('occurrence_number');
+
+      if (occError) {
+        console.error('❌ Error fetching occurrences:', occError);
+      } else {
+        console.log(`✅ Found ${occurrences ? occurrences.length : 0} occurrences`);
+      }
 
       if (occurrences && occurrences.length > 0) {
         sessionsList = occurrences.map(occ =>
