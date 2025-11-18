@@ -1,5 +1,6 @@
-// COMPLETE UPDATED booking-timeout-handler.js - Fixed first therapist timeout logic
+// COMPLETE UPDATED booking-timeout-handler.js - Fixed first therapist timeout logic + recurring support v2
 // Replace your entire netlify/functions/booking-timeout-handler.js with this code
+// FORCE DEPLOY: 2025-11-18 20:25 - Added booking_occurrences join
 
 const { createClient } = require('@supabase/supabase-js');
 
@@ -86,15 +87,17 @@ async function findBookingsNeedingTimeout(timeoutMinutes) {
     console.log('📅 Second timeout cutoff:', secondTimeoutCutoff.toISOString());
 
     // FIXED: Find bookings for FIRST timeout (status = 'requested' and past first timeout AND no therapist response)
-    // EXCLUDE quote-based bookings (those with parent_quote_id) as they follow quote workflow
+    // EXCLUDE quote-based bookings (BK-Q pattern) as they follow quote workflow
+    // CRITICAL: Also exclude bookings that might be in the process of being accepted (updated_at within last 2 minutes)
+    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
     const { data: firstTimeoutBookings, error: error1 } = await supabase
       .from('bookings')
-      .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
+      .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email), booking_occurrences(*)')
       .eq('status', 'requested')
       .is('therapist_response_time', null) // IMPORTANT: Only if therapist hasn't responded yet
-      .is('parent_quote_id', null) // EXCLUDE quote-based bookings
-      .not('booking_id', 'like', 'BK-%') // Extra safety: exclude BK- pattern quote bookings
-      .lt('created_at', firstTimeoutCutoff.toISOString());
+      .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
+      .lt('created_at', firstTimeoutCutoff.toISOString())
+      .or('updated_at.is.null,updated_at.lt.' + twoMinutesAgo.toISOString()); // Exclude recently updated bookings
 
     if (error1) {
       console.error('❌ Error fetching first timeout bookings:', error1);
@@ -103,13 +106,12 @@ async function findBookingsNeedingTimeout(timeoutMinutes) {
     }
 
     // Find bookings for SECOND timeout (status = 'timeout_reassigned' or 'seeking_alternate' and past second timeout)
-    // EXCLUDE quote-based bookings (those with parent_quote_id) as they follow quote workflow
+    // EXCLUDE quote-based bookings (BK-Q pattern) as they follow quote workflow
     const { data: secondTimeoutBookings, error: error2 } = await supabase
       .from('bookings')
-      .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
+      .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email), booking_occurrences(*)')
       .in('status', ['timeout_reassigned', 'seeking_alternate'])
-      .is('parent_quote_id', null) // EXCLUDE quote-based bookings
-      .not('booking_id', 'like', 'BK-%') // Extra safety: exclude BK- pattern quote bookings
+      .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
       .lt('created_at', secondTimeoutCutoff.toISOString());
 
     if (error2) {
@@ -409,6 +411,24 @@ async function sendClientLookingForAlternateEmail(booking) {
       serviceName = booking.services.name;
     }
 
+    // Check if recurring - use booking_occurrences from joined query
+    const occurrences = booking.booking_occurrences || [];
+    const isRecurring = occurrences.length > 0;
+    let sessionsList = '';
+
+    console.log('🔍 [TIMEOUT] Recurring check:', {
+      has_occurrences: occurrences.length > 0,
+      total_occurrences: occurrences.length,
+      is_recurring: booking.is_recurring
+    });
+
+    if (isRecurring) {
+      sessionsList = occurrences.map(occ =>
+        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+      ).join('\n');
+      console.log(`✅ Built sessions list with ${occurrences.length} sessions`);
+    }
+
     const templateParams = {
       to_email: booking.customer_email,
       to_name: booking.first_name + ' ' + booking.last_name,
@@ -417,7 +437,10 @@ async function sendClientLookingForAlternateEmail(booking) {
       service: serviceName,
       duration: booking.duration_minutes + ' minutes',
       date_time: new Date(booking.booking_time).toLocaleString(),
-      address: booking.address
+      address: booking.address,
+      is_recurring: isRecurring,
+      total_occurrences: occurrences.length || 1,
+      sessions_list: sessionsList
     };
 
     const result = await sendEmail(EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID, templateParams);
@@ -437,6 +460,24 @@ async function sendClientDeclineEmail(booking) {
       serviceName = booking.services.name;
     }
 
+    // Check if recurring - use booking_occurrences from joined query
+    const occurrences = booking.booking_occurrences || [];
+    const isRecurring = occurrences.length > 0;
+    let sessionsList = '';
+
+    console.log('🔍 [TIMEOUT DECLINE] Recurring check:', {
+      has_occurrences: occurrences.length > 0,
+      total_occurrences: occurrences.length,
+      is_recurring: booking.is_recurring
+    });
+
+    if (isRecurring) {
+      sessionsList = occurrences.map(occ =>
+        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+      ).join('\n');
+      console.log(`✅ Built sessions list with ${occurrences.length} sessions`);
+    }
+
     const templateParams = {
       to_email: booking.customer_email,
       to_name: booking.first_name + ' ' + booking.last_name,
@@ -445,7 +486,10 @@ async function sendClientDeclineEmail(booking) {
       service: serviceName,
       duration: booking.duration_minutes + ' minutes',
       date_time: new Date(booking.booking_time).toLocaleString(),
-      address: booking.address
+      address: booking.address,
+      is_recurring: isRecurring,
+      total_occurrences: occurrences.length || 1,
+      sessions_list: sessionsList
     };
 
     const result = await sendEmail(EMAILJS_BOOKING_DECLINED_TEMPLATE_ID, templateParams);
@@ -462,8 +506,31 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
   try {
     // Generate Accept/Decline URLs
     const baseUrl = process.env.URL || 'https://your-site.netlify.app';
-    const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking=' + booking.booking_id + '&therapist=' + therapist.id;
-    const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking=' + booking.booking_id + '&therapist=' + therapist.id;
+    const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
+    const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
+
+    // Check if recurring - use booking_occurrences from joined query
+    const occurrences = booking.booking_occurrences || [];
+    const isRecurring = occurrences.length > 0;
+    let sessionsList = '';
+    let totalSeriesEarnings = 0;
+
+    console.log('🔍 [TIMEOUT THERAPIST] Recurring check:', {
+      has_occurrences: occurrences.length > 0,
+      total_occurrences: occurrences.length,
+      is_recurring: booking.is_recurring
+    });
+
+    if (isRecurring) {
+      sessionsList = occurrences.map(occ =>
+        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+      ).join('\n');
+
+      if (booking.therapist_fee) {
+        totalSeriesEarnings = (parseFloat(booking.therapist_fee) * occurrences.length).toFixed(2);
+      }
+      console.log(`✅ Built sessions list with ${occurrences.length} sessions, total earnings: $${totalSeriesEarnings}`);
+    }
 
     const templateParams = {
       to_email: therapist.email,
@@ -486,7 +553,11 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
       therapist_fee: booking.therapist_fee ? '$' + booking.therapist_fee.toFixed(2) : 'TBD',
       timeout_minutes: timeoutMinutes,
       accept_url: acceptUrl,
-      decline_url: declineUrl
+      decline_url: declineUrl,
+      is_recurring: isRecurring,
+      total_occurrences: occurrences.length || 1,
+      sessions_list: sessionsList,
+      total_series_earnings: totalSeriesEarnings
     };
 
     const result = await sendEmail(EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID, templateParams);
