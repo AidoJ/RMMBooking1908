@@ -1,4 +1,4 @@
-// COMPLETE UPDATED booking-timeout-handler.js - Fixed first therapist timeout logic
+// COMPLETE UPDATED booking-timeout-handler.js - Fixed first therapist timeout logic + recurring support
 // Replace your entire netlify/functions/booking-timeout-handler.js with this code
 
 const { createClient } = require('@supabase/supabase-js');
