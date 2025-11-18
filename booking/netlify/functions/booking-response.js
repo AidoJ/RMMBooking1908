@@ -88,6 +88,15 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // DEBUG: Check if recurring fields are present
+    console.log('🔍 BOOKING OBJECT DEBUG:', {
+      booking_id: booking.booking_id,
+      is_recurring: booking.is_recurring,
+      total_occurrences: booking.total_occurrences,
+      has_is_recurring_field: 'is_recurring' in booking,
+      typeof_is_recurring: typeof booking.is_recurring
+    });
+
     console.log('📋 Booking status:', booking.status, 'Original therapist:', booking.therapist_id, 'Responding therapist:', therapistId);
 
     // Verify therapist access based on booking status
@@ -933,6 +942,12 @@ async function sendClientLookingForAlternateEmail(booking) {
       serviceName = booking.services.name;
     }
 
+    console.log('🔍 [sendClientLookingForAlternateEmail] Checking recurring status:', {
+      is_recurring: booking.is_recurring,
+      total_occurrences: booking.total_occurrences,
+      typeof_is_recurring: typeof booking.is_recurring
+    });
+
     const templateParams = {
       to_email: booking.customer_email,
       to_name: booking.first_name + ' ' + booking.last_name,
@@ -945,13 +960,23 @@ async function sendClientLookingForAlternateEmail(booking) {
     };
 
     // Add recurring booking information if applicable
-    if (booking.is_recurring === true || booking.is_recurring === 'true') {
+    const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
+    console.log('🔄 [sendClientLookingForAlternateEmail] isRecurring evaluated to:', isRecurring);
+
+    if (isRecurring) {
+      console.log('📧 Fetching occurrences for booking:', booking.booking_id);
       // Fetch all occurrences for this booking
-      const { data: occurrences } = await supabase
+      const { data: occurrences, error: occError } = await supabase
         .from('booking_occurrences')
         .select('occurrence_number, occurrence_date, occurrence_time')
         .eq('booking_id', booking.booking_id)
         .order('occurrence_number');
+
+      if (occError) {
+        console.error('❌ Error fetching occurrences:', occError);
+      } else {
+        console.log(`✅ Found ${occurrences ? occurrences.length : 0} occurrences`);
+      }
 
       templateParams.is_recurring = true;
       templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
@@ -974,6 +999,12 @@ async function sendClientLookingForAlternateEmail(booking) {
 
 async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
   try {
+    console.log('🔍 [sendTherapistBookingRequest] Checking recurring status:', {
+      is_recurring: booking.is_recurring,
+      total_occurrences: booking.total_occurrences,
+      typeof_is_recurring: typeof booking.is_recurring
+    });
+
     const baseUrl = process.env.URL || 'https://your-site.netlify.app';
     const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking=' + booking.booking_id + '&therapist=' + therapist.id;
     const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking=' + booking.booking_id + '&therapist=' + therapist.id;
@@ -1003,13 +1034,23 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
     };
 
     // Add recurring booking information if applicable
-    if (booking.is_recurring === true || booking.is_recurring === 'true') {
+    const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
+    console.log('🔄 [sendTherapistBookingRequest] isRecurring evaluated to:', isRecurring);
+
+    if (isRecurring) {
+      console.log('📧 Fetching occurrences for booking:', booking.booking_id);
       // Fetch all occurrences for this booking
-      const { data: occurrences } = await supabase
+      const { data: occurrences, error: occError } = await supabase
         .from('booking_occurrences')
         .select('occurrence_number, occurrence_date, occurrence_time')
         .eq('booking_id', booking.booking_id)
         .order('occurrence_number');
+
+      if (occError) {
+        console.error('❌ Error fetching occurrences:', occError);
+      } else {
+        console.log(`✅ Found ${occurrences ? occurrences.length : 0} occurrences`);
+      }
 
       templateParams.is_recurring = true;
       templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
