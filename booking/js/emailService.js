@@ -71,6 +71,15 @@ const EmailService = {
         templateParams.is_recurring = true;
         templateParams.total_occurrences = bookingData.total_occurrences || bookingData.recurring_count || 1;
 
+        // Add frequency conditional variables for email template
+        const frequency = bookingData.recurring_frequency || bookingData.frequency;
+        templateParams.if_daily = frequency === 'daily';
+        templateParams.if_weekly = frequency === 'weekly';
+        templateParams.if_biweekly = frequency === 'biweekly';
+        templateParams.if_monthly = frequency === 'monthly';
+        templateParams.if_custom = frequency === 'custom';
+        templateParams.custom_interval = bookingData.custom_interval || bookingData.recurring_interval;
+
         // Generate sessions list from recurring_dates
         if (bookingData.recurring_dates && Array.isArray(bookingData.recurring_dates)) {
           templateParams.sessions_list = bookingData.recurring_dates.map((date, index) =>
@@ -158,6 +167,15 @@ async sendTherapistBookingRequest(bookingData, therapistData, timeoutMinutes) {
     if (bookingData.is_recurring || bookingData.recurring_dates) {
       templateParams.is_recurring = true;
       templateParams.total_occurrences = bookingData.total_occurrences || bookingData.recurring_count || 1;
+
+      // Add frequency conditional variables for email template
+      const frequency = bookingData.recurring_frequency || bookingData.frequency;
+      templateParams.if_daily = frequency === 'daily';
+      templateParams.if_weekly = frequency === 'weekly';
+      templateParams.if_biweekly = frequency === 'biweekly';
+      templateParams.if_monthly = frequency === 'monthly';
+      templateParams.if_custom = frequency === 'custom';
+      templateParams.custom_interval = bookingData.custom_interval || bookingData.recurring_interval;
 
       // Generate sessions list from recurring_dates
       if (bookingData.recurring_dates && Array.isArray(bookingData.recurring_dates)) {
