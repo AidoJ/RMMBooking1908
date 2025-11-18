@@ -671,7 +671,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Get duration label with descriptive names
-  function getDurationLabel(minutes) {
+  window.getDurationLabel = function getDurationLabel(minutes) {
     const labels = {
       60: '60 min — Essential',
       75: '75 min — Signature (most popular)',
@@ -682,7 +682,7 @@ document.addEventListener('DOMContentLoaded', function () {
       300: '300 (group events only)'
     };
     return labels[minutes] || `${minutes} minutes`;
-  }
+  };
 
   // Fetch and populate services and durations from Supabase
   window.populateTherapyOptions = async function populateTherapyOptions() {
@@ -3358,7 +3358,7 @@ async function populateBookingSummary() {
     ${businessName ? `<p><strong>${businessLabel}:</strong> ${businessName}</p>` : ''}
     <p><strong>Address:</strong> ${address}</p>
     <p><strong>Service:</strong> ${service}</p>
-    <p><strong>Duration:</strong> ${getDurationLabel(parseInt(duration))}</p>
+    <p><strong>Duration:</strong> ${window.getDurationLabel(parseInt(duration))}</p>
     <p><strong>Therapist Gender Preference:</strong> ${gender}</p>
     <p><strong>Date & Time:</strong> ${date} at ${time}</p>
     ${recurringSessionsHTML}
