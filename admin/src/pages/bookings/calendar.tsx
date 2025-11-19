@@ -180,8 +180,8 @@ export const CalendarBookingManagement: React.FC = () => {
           booking_occurrences(*)
         `)
         // Fetch all bookings - we'll filter by occurrence dates client-side
-        .gte('booking_time', startDate.subtract(6, 'month').toISOString()) // Fetch wider range
-        .lte('booking_time', endDate.add(6, 'month').toISOString());
+        .gte('booking_time', startDate.clone().subtract(6, 'month').toISOString()) // Fetch wider range
+        .lte('booking_time', endDate.clone().add(6, 'month').toISOString());
 
       // Role-based filtering
       if (isTherapist(userRole) && identity?.id) {
