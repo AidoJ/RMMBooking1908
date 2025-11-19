@@ -202,44 +202,46 @@ export const CalendarBookingManagement: React.FC = () => {
           : 'Unassigned';
 
         const duration = booking.duration_minutes || 60;
+        const isRecurring = booking.booking_occurrences && booking.booking_occurrences.length > 0;
 
-        // Create event for the parent booking (first session)
-        const startTime = dayjs(booking.booking_time);
-        const endTime = startTime.add(duration, 'minute');
+        // For recurring bookings, ONLY show occurrences (not parent booking)
+        if (isRecurring) {
+          // Add "Initial booking" event from parent booking date
+          const initialStartTime = dayjs(booking.booking_time);
+          const initialEndTime = initialStartTime.add(duration, 'minute');
 
-        events.push({
-          id: booking.id,
-          title: `${customerName} - ${booking.services?.name || 'Service'}`,
-          start: startTime.toISOString(),
-          end: endTime.toISOString(),
-          status: booking.status,
-          therapist_id: booking.therapist_id,
-          therapist_name: therapistName,
-          customer_name: customerName,
-          service_name: booking.services?.name || 'Unknown Service',
-          price: parseFloat(booking.price) || 0,
-          therapist_fee: parseFloat(booking.therapist_fee) || 0,
-          address: booking.address || '',
-          business_name: booking.business_name || '',
-          room_number: booking.room_number || '',
-          phone: booking.customers?.phone || booking.customer_phone || '',
-          notes: booking.notes || '',
-          backgroundColor: getTherapistColor(booking.therapist_id),
-          borderColor: getTherapistColor(booking.therapist_id),
-          duration_minutes: duration,
-          startTime: startTime,
-          endTime: endTime,
-        });
+          events.push({
+            id: booking.id, // Use parent ID so clicking works
+            title: `${customerName} - ${booking.services?.name || 'Service'} (Initial)`,
+            start: initialStartTime.toISOString(),
+            end: initialEndTime.toISOString(),
+            status: booking.status,
+            therapist_id: booking.therapist_id,
+            therapist_name: therapistName,
+            customer_name: customerName,
+            service_name: booking.services?.name || 'Unknown Service',
+            price: parseFloat(booking.price) || 0,
+            therapist_fee: parseFloat(booking.therapist_fee) || 0,
+            address: booking.address || '',
+            business_name: booking.business_name || '',
+            room_number: booking.room_number || '',
+            phone: booking.customers?.phone || booking.customer_phone || '',
+            notes: booking.notes || '',
+            backgroundColor: getTherapistColor(booking.therapist_id),
+            borderColor: getTherapistColor(booking.therapist_id),
+            duration_minutes: duration,
+            startTime: initialStartTime,
+            endTime: initialEndTime,
+          });
 
-        // If this is a recurring booking, add events for each occurrence
-        if (booking.booking_occurrences && booking.booking_occurrences.length > 0) {
+          // Add repeat events from occurrences
           booking.booking_occurrences.forEach((occurrence: any) => {
             const occStartTime = dayjs(`${occurrence.occurrence_date}T${occurrence.occurrence_time}`);
             const occEndTime = occStartTime.add(duration, 'minute');
 
             events.push({
-              id: `${booking.id}-occ-${occurrence.occurrence_number}`,
-              title: `${customerName} - ${booking.services?.name || 'Service'} (Session ${occurrence.occurrence_number})`,
+              id: booking.id, // Use parent ID so clicking navigates to booking details
+              title: `${customerName} - ${booking.services?.name || 'Service'} (Repeat ${occurrence.occurrence_number})`,
               start: occStartTime.toISOString(),
               end: occEndTime.toISOString(),
               status: booking.status,
@@ -260,6 +262,34 @@ export const CalendarBookingManagement: React.FC = () => {
               startTime: occStartTime,
               endTime: occEndTime,
             });
+          });
+        } else {
+          // Non-recurring booking - show normally
+          const startTime = dayjs(booking.booking_time);
+          const endTime = startTime.add(duration, 'minute');
+
+          events.push({
+            id: booking.id,
+            title: `${customerName} - ${booking.services?.name || 'Service'}`,
+            start: startTime.toISOString(),
+            end: endTime.toISOString(),
+            status: booking.status,
+            therapist_id: booking.therapist_id,
+            therapist_name: therapistName,
+            customer_name: customerName,
+            service_name: booking.services?.name || 'Unknown Service',
+            price: parseFloat(booking.price) || 0,
+            therapist_fee: parseFloat(booking.therapist_fee) || 0,
+            address: booking.address || '',
+            business_name: booking.business_name || '',
+            room_number: booking.room_number || '',
+            phone: booking.customers?.phone || booking.customer_phone || '',
+            notes: booking.notes || '',
+            backgroundColor: getTherapistColor(booking.therapist_id),
+            borderColor: getTherapistColor(booking.therapist_id),
+            duration_minutes: duration,
+            startTime: startTime,
+            endTime: endTime,
           });
         }
       });

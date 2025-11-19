@@ -95,33 +95,47 @@ export const Calendar: React.FC = () => {
       (data || []).forEach((b: any) => {
         const customerName = b.booker_name || `${b.first_name || ''} ${b.last_name || ''}`.trim() || 'Guest';
         const serviceName = b.services?.name || 'Unknown Service';
+        const isRecurring = b.booking_occurrences && b.booking_occurrences.length > 0;
 
-        // Add parent booking (first session)
-        bookingsData.push({
-          id: b.id,
-          booking_time: b.booking_time,
-          status: b.status,
-          customer_name: customerName,
-          service_name: serviceName,
-          address: b.address,
-          therapist_fee: b.therapist_fee || 0,
-          duration_minutes: b.duration_minutes || 60
-        });
+        if (isRecurring) {
+          // For recurring bookings, show initial booking + repeats
+          // Add initial booking
+          bookingsData.push({
+            id: b.id, // Use parent ID for navigation
+            booking_time: b.booking_time,
+            status: b.status,
+            customer_name: customerName,
+            service_name: `${serviceName} (Initial)`,
+            address: b.address,
+            therapist_fee: b.therapist_fee || 0,
+            duration_minutes: b.duration_minutes || 60
+          });
 
-        // If recurring, add each occurrence as a separate event
-        if (b.booking_occurrences && b.booking_occurrences.length > 0) {
+          // Add repeat events from occurrences
           b.booking_occurrences.forEach((occ: any) => {
             const occTime = dayjs(`${occ.occurrence_date}T${occ.occurrence_time}`).toISOString();
             bookingsData.push({
-              id: `${b.id}-occ-${occ.occurrence_number}`,
+              id: b.id, // Use parent ID so clicking works
               booking_time: occTime,
               status: b.status,
               customer_name: customerName,
-              service_name: `${serviceName} (Session ${occ.occurrence_number})`,
+              service_name: `${serviceName} (Repeat ${occ.occurrence_number})`,
               address: b.address,
               therapist_fee: b.therapist_fee || 0,
               duration_minutes: b.duration_minutes || 60
             });
+          });
+        } else {
+          // Non-recurring booking - show normally
+          bookingsData.push({
+            id: b.id,
+            booking_time: b.booking_time,
+            status: b.status,
+            customer_name: customerName,
+            service_name: serviceName,
+            address: b.address,
+            therapist_fee: b.therapist_fee || 0,
+            duration_minutes: b.duration_minutes || 60
           });
         }
       });
