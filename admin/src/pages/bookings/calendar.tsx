@@ -90,7 +90,7 @@ export const CalendarBookingManagement: React.FC = () => {
   const [therapists, setTherapists] = useState<Therapist[]>([]);
   const [selectedTherapistId, setSelectedTherapistId] = useState<string>('all');
   const [currentDate, setCurrentDate] = useState(dayjs());
-  const [calendarView, setCalendarView] = useState<'week' | 'day' | 'schedule'>('schedule');
+  const [calendarView, setCalendarView] = useState<'week' | 'day' | 'schedule' | 'month'>('schedule');
   const [bookings, setBookings] = useState<BookingEvent[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<BookingEvent | null>(null);
   const [showBookingDrawer, setShowBookingDrawer] = useState(false);
@@ -158,12 +158,18 @@ export const CalendarBookingManagement: React.FC = () => {
       if (calendarView === 'week') {
         startDate = currentDate.startOf('week');
         endDate = currentDate.endOf('week');
+      } else if (calendarView === 'month') {
+        startDate = currentDate.startOf('month');
+        endDate = currentDate.endOf('month');
       } else {
         // For schedule and day views, fetch current day and surrounding days for context
         startDate = currentDate.subtract(1, 'day').startOf('day');
         endDate = currentDate.add(1, 'day').endOf('day');
       }
 
+      // Fetch bookings where EITHER the parent booking OR any occurrence falls in date range
+      // We need to fetch a wider range and filter client-side because Supabase doesn't support
+      // OR conditions across parent and child tables easily
       let query = supabaseClient
         .from('bookings')
         .select(`
@@ -173,8 +179,9 @@ export const CalendarBookingManagement: React.FC = () => {
           services(name),
           booking_occurrences(*)
         `)
-        .gte('booking_time', startDate.toISOString())
-        .lte('booking_time', endDate.toISOString());
+        // Fetch all bookings - we'll filter by occurrence dates client-side
+        .gte('booking_time', startDate.subtract(6, 'month').toISOString()) // Fetch wider range
+        .lte('booking_time', endDate.add(6, 'month').toISOString());
 
       // Role-based filtering
       if (isTherapist(userRole) && identity?.id) {
@@ -294,7 +301,13 @@ export const CalendarBookingManagement: React.FC = () => {
         }
       });
 
-      setBookings(events);
+      // Filter events to only those within the current view's date range
+      const filteredEvents = events.filter(event => {
+        const eventDate = dayjs(event.start);
+        return eventDate.isSameOrAfter(startDate, 'day') && eventDate.isSameOrBefore(endDate, 'day');
+      });
+
+      setBookings(filteredEvents);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       message.error('Failed to load bookings');
@@ -358,23 +371,49 @@ export const CalendarBookingManagement: React.FC = () => {
   };
 
   const generateWeekDays = (): CalendarDay[] => {
-    const startOfWeek = currentDate.startOf('week');
     const days: CalendarDay[] = [];
-    
-    for (let i = 0; i < 7; i++) {
-      const date = startOfWeek.add(i, 'day');
-      const dayBookings = bookings.filter(booking => 
-        dayjs(booking.start).isSame(date, 'day')
-      );
-      
-      days.push({
-        date,
-        bookings: dayBookings,
-        isToday: date.isSame(dayjs(), 'day'),
-        isSelected: date.isSame(currentDate, 'day'),
-      });
+
+    if (calendarView === 'month') {
+      // Generate full month grid (including padding days from prev/next month)
+      const startOfMonth = currentDate.startOf('month');
+      const endOfMonth = currentDate.endOf('month');
+      const startDate = startOfMonth.startOf('week'); // Start from Sunday of first week
+      const endDate = endOfMonth.endOf('week'); // End on Saturday of last week
+
+      let currentDay = startDate;
+      while (currentDay.isSameOrBefore(endDate)) {
+        const dayBookings = bookings.filter(booking =>
+          dayjs(booking.start).isSame(currentDay, 'day')
+        );
+
+        days.push({
+          date: currentDay,
+          bookings: dayBookings,
+          isToday: currentDay.isSame(dayjs(), 'day'),
+          isSelected: currentDay.isSame(currentDate, 'day'),
+        });
+
+        currentDay = currentDay.add(1, 'day');
+      }
+    } else {
+      // Week view - generate 7 days
+      const startOfWeek = currentDate.startOf('week');
+
+      for (let i = 0; i < 7; i++) {
+        const date = startOfWeek.add(i, 'day');
+        const dayBookings = bookings.filter(booking =>
+          dayjs(booking.start).isSame(date, 'day')
+        );
+
+        days.push({
+          date,
+          bookings: dayBookings,
+          isToday: date.isSame(dayjs(), 'day'),
+          isSelected: date.isSame(currentDate, 'day'),
+        });
+      }
     }
-    
+
     return days;
   };
 
@@ -386,6 +425,8 @@ export const CalendarBookingManagement: React.FC = () => {
   const handlePrev = () => {
     if (calendarView === 'week') {
       setCurrentDate(currentDate.subtract(1, 'week'));
+    } else if (calendarView === 'month') {
+      setCurrentDate(currentDate.subtract(1, 'month'));
     } else {
       // For schedule and day views, move by day
       setCurrentDate(currentDate.subtract(1, 'day'));
@@ -395,6 +436,8 @@ export const CalendarBookingManagement: React.FC = () => {
   const handleNext = () => {
     if (calendarView === 'week') {
       setCurrentDate(currentDate.add(1, 'week'));
+    } else if (calendarView === 'month') {
+      setCurrentDate(currentDate.add(1, 'month'));
     } else {
       // For schedule and day views, move by day
       setCurrentDate(currentDate.add(1, 'day'));
@@ -693,8 +736,9 @@ export const CalendarBookingManagement: React.FC = () => {
                   style={{ width: 120 }}
                 >
                   <Option value="schedule">Schedule</Option>
-                  <Option value="week">Week</Option>
                   <Option value="day">Day</Option>
+                  <Option value="week">Week</Option>
+                  <Option value="month">Month</Option>
                 </Select>
               </Space>
             </Col>
@@ -724,8 +768,9 @@ export const CalendarBookingManagement: React.FC = () => {
         {/* Calendar Content */}
         <Card>
           {calendarView === 'schedule' && renderScheduleView()}
-          {calendarView === 'week' && renderWeekView()}
           {calendarView === 'day' && renderScheduleView()}
+          {calendarView === 'week' && renderWeekView()}
+          {calendarView === 'month' && renderWeekView()}
         </Card>
 
         {/* Booking Details Drawer */}
