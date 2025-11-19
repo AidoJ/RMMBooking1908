@@ -71,10 +71,10 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Get booking details
+    // Get booking details (including recurring occurrences)
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('*, services(*), customers(*)')
+      .select('*, services(*), customers(*), booking_occurrences(*)')
       .eq('booking_id', bookingId)
       .single();
 
@@ -779,6 +779,20 @@ async function sendClientConfirmationEmail(booking, therapist) {
       intake_form_url: intakeFormUrl
     };
 
+    // Add recurring booking information if applicable
+    const occurrences = booking.booking_occurrences || [];
+    const isRecurring = occurrences.length > 0;
+
+    if (isRecurring) {
+      templateParams.is_recurring = true;
+      templateParams.total_occurrences = occurrences.length;
+
+      // Generate sessions list
+      templateParams.sessions_list = occurrences.map(occ =>
+        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+      ).join('\n');
+    }
+
     const result = await sendEmail(EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID, templateParams);
     return result;
 
@@ -815,6 +829,25 @@ async function sendTherapistConfirmationEmail(booking, therapist) {
       room_number: booking.room_number || 'N/A',
       therapist_fee: booking.therapist_fee ? '$' + booking.therapist_fee.toFixed(2) : 'TBD'
     };
+
+    // Add recurring booking information if applicable
+    const occurrences = booking.booking_occurrences || [];
+    const isRecurring = occurrences.length > 0;
+
+    if (isRecurring) {
+      templateParams.is_recurring = true;
+      templateParams.total_occurrences = occurrences.length;
+
+      // Generate sessions list
+      templateParams.sessions_list = occurrences.map(occ =>
+        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+      ).join('\n');
+
+      // Calculate total series earnings
+      const feePerSession = booking.therapist_fee || 0;
+      const totalEarnings = (feePerSession * templateParams.total_occurrences).toFixed(2);
+      templateParams.total_series_earnings = totalEarnings;
+    }
 
     console.log('📧 Template params:', JSON.stringify(templateParams, null, 2));
 
