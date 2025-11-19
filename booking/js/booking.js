@@ -1263,6 +1263,7 @@ console.log('Globals:', {
   }
 
   // Generate recurring dates based on frequency
+  // Note: This generates REPEAT dates only (not including the initial booking date)
   function generateRecurringDates(startDate, frequency, customInterval, count) {
     const dates = [];
     const start = new Date(startDate);
@@ -1272,28 +1273,26 @@ console.log('Globals:', {
       return dates;
     }
 
-    // Add first date (the selected date)
-    dates.push(new Date(start));
-
-    // Generate subsequent dates
-    for (let i = 1; i < count; i++) {
-      const nextDate = new Date(dates[i - 1]);
+    // Generate repeat dates (starting from first repeat, NOT including initial date)
+    for (let i = 0; i < count; i++) {
+      const nextDate = new Date(start);
+      const repeatNumber = i + 1; // First repeat is 1, second is 2, etc.
 
       switch(frequency) {
         case 'daily':
-          nextDate.setDate(nextDate.getDate() + 1);
+          nextDate.setDate(nextDate.getDate() + repeatNumber);
           break;
         case 'weekly':
-          nextDate.setDate(nextDate.getDate() + 7);
+          nextDate.setDate(nextDate.getDate() + (7 * repeatNumber));
           break;
         case 'biweekly':
-          nextDate.setDate(nextDate.getDate() + 14);
+          nextDate.setDate(nextDate.getDate() + (14 * repeatNumber));
           break;
         case 'monthly':
-          nextDate.setDate(nextDate.getDate() + 28); // 4 weeks
+          nextDate.setDate(nextDate.getDate() + (28 * repeatNumber)); // 4 weeks
           break;
         case 'custom':
-          nextDate.setDate(nextDate.getDate() + customInterval);
+          nextDate.setDate(nextDate.getDate() + (customInterval * repeatNumber));
           break;
       }
 
@@ -1334,13 +1333,18 @@ console.log('Globals:', {
     window.recurringBooking.customInterval = customInterval;
     window.recurringBooking.count = count;
 
-    // Display dates
+    // Display dates (initial booking + repeats)
     if (dates.length > 0) {
       let html = '<ul style="margin: 0; padding-left: 20px;">';
+      // Show initial booking first
+      const initialDate = new Date(selectedDate);
+      html += `<li style="margin-bottom: 4px;"><strong>Initial booking:</strong> ${formatDateForDisplay(initialDate)} at ${selectedTime}</li>`;
+      // Then show repeats
       dates.forEach((date, index) => {
-        html += `<li style="margin-bottom: 4px;"><strong>Session ${index + 1}:</strong> ${formatDateForDisplay(date)} at ${selectedTime}</li>`;
+        html += `<li style="margin-bottom: 4px;"><strong>Repeat ${index + 1}:</strong> ${formatDateForDisplay(date)} at ${selectedTime}</li>`;
       });
       html += '</ul>';
+      html += `<p style="margin-top: 10px; font-weight: 600; color: #007e8c;">Total: ${dates.length + 1} sessions (1 initial + ${dates.length} repeats)</p>`;
       recurringDatesList.innerHTML = html;
 
       // Show preview section
@@ -4111,8 +4115,8 @@ if (confirmBtn) {
       // Recurring booking fields
       is_recurring: window.recurringBooking?.enabled || false,
       recurring_frequency: window.recurringBooking?.enabled ? window.recurringBooking.frequency : null,
-      total_occurrences: window.recurringBooking?.enabled ? window.recurringBooking.count : 1,
-      recurring_dates: window.recurringBooking?.enabled ? window.recurringBooking.dates : null
+      total_occurrences: window.recurringBooking?.enabled ? (window.recurringBooking.count + 1) : 1, // count = repeats, so total = count + 1 (initial)
+      recurring_dates: window.recurringBooking?.enabled ? window.recurringBooking.dates : null // dates array contains ONLY repeat dates (not initial)
     };
         
         // Generate booking ID BEFORE inserting
