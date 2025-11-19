@@ -156,15 +156,15 @@ export const CalendarBookingManagement: React.FC = () => {
       let startDate, endDate;
 
       if (calendarView === 'week') {
-        startDate = currentDate.startOf('week');
-        endDate = currentDate.endOf('week');
+        startDate = currentDate.clone().startOf('week');
+        endDate = currentDate.clone().endOf('week');
       } else if (calendarView === 'month') {
-        startDate = currentDate.startOf('month');
-        endDate = currentDate.endOf('month');
+        startDate = currentDate.clone().startOf('month');
+        endDate = currentDate.clone().endOf('month');
       } else {
         // For schedule and day views, fetch current day and surrounding days for context
-        startDate = currentDate.subtract(1, 'day').startOf('day');
-        endDate = currentDate.add(1, 'day').endOf('day');
+        startDate = currentDate.clone().subtract(1, 'day').startOf('day');
+        endDate = currentDate.clone().add(1, 'day').endOf('day');
       }
 
       // Fetch bookings where EITHER the parent booking OR any occurrence falls in date range
