@@ -75,7 +75,8 @@ export const Calendar: React.FC = () => {
           booker_name,
           first_name,
           last_name,
-          services(name)
+          services(name),
+          booking_occurrences(*)
         `)
         .eq('therapist_id', profile.id)
         .gte('booking_time', rangeStart)
@@ -88,17 +89,42 @@ export const Calendar: React.FC = () => {
         return;
       }
 
-      // Process bookings data
-      const bookingsData = (data || []).map((b: any) => ({
-        id: b.id,
-        booking_time: b.booking_time,
-        status: b.status,
-        customer_name: b.booker_name || `${b.first_name || ''} ${b.last_name || ''}`.trim() || 'Guest',
-        service_name: b.services?.name || 'Unknown Service',
-        address: b.address,
-        therapist_fee: b.therapist_fee || 0,
-        duration_minutes: b.duration_minutes || 60
-      }));
+      // Process bookings data - expand recurring bookings into multiple events
+      const bookingsData: Booking[] = [];
+
+      (data || []).forEach((b: any) => {
+        const customerName = b.booker_name || `${b.first_name || ''} ${b.last_name || ''}`.trim() || 'Guest';
+        const serviceName = b.services?.name || 'Unknown Service';
+
+        // Add parent booking (first session)
+        bookingsData.push({
+          id: b.id,
+          booking_time: b.booking_time,
+          status: b.status,
+          customer_name: customerName,
+          service_name: serviceName,
+          address: b.address,
+          therapist_fee: b.therapist_fee || 0,
+          duration_minutes: b.duration_minutes || 60
+        });
+
+        // If recurring, add each occurrence as a separate event
+        if (b.booking_occurrences && b.booking_occurrences.length > 0) {
+          b.booking_occurrences.forEach((occ: any) => {
+            const occTime = dayjs(`${occ.occurrence_date}T${occ.occurrence_time}`).toISOString();
+            bookingsData.push({
+              id: `${b.id}-occ-${occ.occurrence_number}`,
+              booking_time: occTime,
+              status: b.status,
+              customer_name: customerName,
+              service_name: `${serviceName} (Session ${occ.occurrence_number})`,
+              address: b.address,
+              therapist_fee: b.therapist_fee || 0,
+              duration_minutes: b.duration_minutes || 60
+            });
+          });
+        }
+      });
 
       setBookings(bookingsData);
     } catch (error) {

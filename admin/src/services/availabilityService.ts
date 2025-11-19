@@ -170,7 +170,7 @@ async function checkTherapistTimeOff(
 }
 
 /**
- * Check for existing booking conflicts
+ * Check for existing booking conflicts (including recurring booking occurrences)
  */
 async function checkBookingConflicts(
   therapistId: string,
@@ -181,6 +181,7 @@ async function checkBookingConflicts(
   const startDateTime = dayjs(`${date}T${startTime}`);
   const endDateTime = startDateTime.add(durationMinutes, 'minute');
 
+  // Check main bookings table
   const { data: conflicts } = await supabaseClient
     .from('bookings')
     .select('booking_time, duration_minutes')
@@ -189,12 +190,16 @@ async function checkBookingConflicts(
     .gte('booking_time', startDateTime.subtract(30, 'minute').toISOString()) // Buffer before
     .lte('booking_time', endDateTime.add(30, 'minute').toISOString()); // Buffer after
 
-  if (!conflicts || conflicts.length === 0) {
-    return false;
-  }
+  // ALSO check booking_occurrences table for recurring bookings
+  const { data: occurrenceConflicts } = await supabaseClient
+    .from('booking_occurrences')
+    .select('occurrence_date, occurrence_time, bookings!inner(therapist_id, duration_minutes, status)')
+    .eq('bookings.therapist_id', therapistId)
+    .in('bookings.status', ['confirmed', 'requested'])
+    .eq('occurrence_date', date); // Check if any occurrence falls on the requested date
 
-  // Check for actual time overlaps with buffer
-  return conflicts.some(booking => {
+  // Check for time overlaps in main bookings
+  const hasMainBookingConflict = conflicts && conflicts.some(booking => {
     const bookingStart = dayjs(booking.booking_time);
     const bookingEnd = bookingStart.add(booking.duration_minutes + 30, 'minute'); // Add buffer
     const requestStart = startDateTime.subtract(30, 'minute'); // Add buffer
@@ -202,6 +207,18 @@ async function checkBookingConflicts(
 
     return requestStart.isBefore(bookingEnd) && requestEnd.isAfter(bookingStart);
   });
+
+  // Check for time overlaps in recurring occurrences
+  const hasOccurrenceConflict = occurrenceConflicts && occurrenceConflicts.some(occurrence => {
+    const occurrenceStart = dayjs(`${occurrence.occurrence_date}T${occurrence.occurrence_time}`);
+    const occurrenceEnd = occurrenceStart.add((occurrence.bookings as any).duration_minutes + 30, 'minute');
+    const requestStart = startDateTime.subtract(30, 'minute');
+    const requestEnd = endDateTime.add(30, 'minute');
+
+    return requestStart.isBefore(occurrenceEnd) && requestEnd.isAfter(occurrenceStart);
+  });
+
+  return hasMainBookingConflict || hasOccurrenceConflict;
 }
 
 /**

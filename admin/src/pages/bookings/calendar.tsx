@@ -170,7 +170,8 @@ export const CalendarBookingManagement: React.FC = () => {
           *,
           therapist_profiles!bookings_therapist_id_fkey(first_name, last_name),
           customers(first_name, last_name, phone),
-          services(name)
+          services(name),
+          booking_occurrences(*)
         `)
         .gte('booking_time', startDate.toISOString())
         .lte('booking_time', endDate.toISOString());
@@ -185,16 +186,14 @@ export const CalendarBookingManagement: React.FC = () => {
       }
 
       const { data, error } = await query;
-      
+
       if (error) throw error;
 
       // Transform bookings into calendar events
-      const events: BookingEvent[] = (data || []).map(booking => {
-        const startTime = dayjs(booking.booking_time);
-        const duration = booking.duration_minutes || 60;
-        const endTime = startTime.add(duration, 'minute');
-        
-        const customerName = booking.customers 
+      const events: BookingEvent[] = [];
+
+      (data || []).forEach(booking => {
+        const customerName = booking.customers
           ? `${booking.customers.first_name} ${booking.customers.last_name}`
           : booking.booker_name || `${booking.first_name || ''} ${booking.last_name || ''}`.trim() || 'Unknown Customer';
 
@@ -202,7 +201,13 @@ export const CalendarBookingManagement: React.FC = () => {
           ? `${booking.therapist_profiles.first_name} ${booking.therapist_profiles.last_name}`
           : 'Unassigned';
 
-        return {
+        const duration = booking.duration_minutes || 60;
+
+        // Create event for the parent booking (first session)
+        const startTime = dayjs(booking.booking_time);
+        const endTime = startTime.add(duration, 'minute');
+
+        events.push({
           id: booking.id,
           title: `${customerName} - ${booking.services?.name || 'Service'}`,
           start: startTime.toISOString(),
@@ -224,7 +229,39 @@ export const CalendarBookingManagement: React.FC = () => {
           duration_minutes: duration,
           startTime: startTime,
           endTime: endTime,
-        };
+        });
+
+        // If this is a recurring booking, add events for each occurrence
+        if (booking.booking_occurrences && booking.booking_occurrences.length > 0) {
+          booking.booking_occurrences.forEach((occurrence: any) => {
+            const occStartTime = dayjs(`${occurrence.occurrence_date}T${occurrence.occurrence_time}`);
+            const occEndTime = occStartTime.add(duration, 'minute');
+
+            events.push({
+              id: `${booking.id}-occ-${occurrence.occurrence_number}`,
+              title: `${customerName} - ${booking.services?.name || 'Service'} (Session ${occurrence.occurrence_number})`,
+              start: occStartTime.toISOString(),
+              end: occEndTime.toISOString(),
+              status: booking.status,
+              therapist_id: booking.therapist_id,
+              therapist_name: therapistName,
+              customer_name: customerName,
+              service_name: booking.services?.name || 'Unknown Service',
+              price: parseFloat(booking.price) || 0,
+              therapist_fee: parseFloat(booking.therapist_fee) || 0,
+              address: booking.address || '',
+              business_name: booking.business_name || '',
+              room_number: booking.room_number || '',
+              phone: booking.customers?.phone || booking.customer_phone || '',
+              notes: booking.notes || '',
+              backgroundColor: getTherapistColor(booking.therapist_id),
+              borderColor: getTherapistColor(booking.therapist_id),
+              duration_minutes: duration,
+              startTime: occStartTime,
+              endTime: occEndTime,
+            });
+          });
+        }
       });
 
       setBookings(events);
