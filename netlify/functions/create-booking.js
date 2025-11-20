@@ -4,39 +4,6 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Service role bypasses RLS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Helper function to get next sequential booking ID
-async function getNextBookingId() {
-  const now = new Date();
-  const year = String(now.getFullYear()).slice(-2);
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const yearMonth = `${year}${month}`;
-
-  // Query for the last booking ID in the current month
-  const { data: lastBooking, error } = await supabase
-    .from('bookings')
-    .select('booking_id')
-    .ilike('booking_id', `RB${yearMonth}%`)
-    .order('booking_id', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (error) {
-    console.error('Error fetching last booking ID:', error);
-    return `RB${yearMonth}001`;
-  }
-
-  let nextNumber = 1;
-
-  if (lastBooking && lastBooking.booking_id) {
-    const match = lastBooking.booking_id.match(/RB\d{4}(\d{3,})$/);
-    if (match) {
-      nextNumber = parseInt(match[1], 10) + 1;
-    }
-  }
-
-  return `RB${yearMonth}${String(nextNumber).padStart(3, '0')}`;
-}
-
 exports.handler = async (event, context) => {
   // Enable CORS
   const headers = {
@@ -97,15 +64,19 @@ exports.handler = async (event, context) => {
       bookingsToInsert.push(initialBooking);
 
       // 2. Create repeat bookings (occurrence_number = 1, 2, 3...)
-      // Each repeat gets its own sequential booking_id
+      // Extract base number from initial booking_id and increment for each repeat
+      const baseNumber = parseInt(initialBookingId.substring(6, 9), 10); // Extract "001" from "RB2511001"
+      const yearMonth = initialBookingId.substring(2, 6); // Extract "2511" from "RB2511001"
+
       for (let i = 0; i < recurringDates.length; i++) {
         const occurrenceDate = new Date(recurringDates[i]);
         const dateOnly = occurrenceDate.toISOString().split('T')[0];
         const timeOnly = baseBookingData.booking_time.split('T')[1].substring(0, 5); // Extract HH:MM
         const dateTime = `${dateOnly}T${timeOnly}:00`;
 
-        // Get next sequential booking_id (e.g., RB2511002, RB2511003, etc.)
-        const repeatBookingId = await getNextBookingId();
+        // Generate sequential booking_id: RB2511001 -> RB2511002, RB2511003, etc.
+        const repeatNumber = baseNumber + i + 1;
+        const repeatBookingId = `RB${yearMonth}${String(repeatNumber).padStart(3, '0')}`;
 
         const repeatBooking = {
           ...baseBookingData,
@@ -167,7 +138,12 @@ exports.handler = async (event, context) => {
       delete cleanBookingData.recurring_count;
 
       // Add request_id with REQ prefix (convert RB2511001 -> REQ2511001)
-      cleanBookingData.request_id = bookingData.booking_id.replace('RB', 'REQ');
+      if (bookingData.booking_id && bookingData.booking_id.startsWith('RB')) {
+        cleanBookingData.request_id = bookingData.booking_id.replace('RB', 'REQ');
+      } else {
+        // For other booking types (quotes, etc.), use booking_id as-is
+        cleanBookingData.request_id = bookingData.booking_id;
+      }
       cleanBookingData.occurrence_number = null; // NULL for non-recurring bookings
 
       // Insert booking into database (service role bypasses RLS)
