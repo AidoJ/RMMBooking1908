@@ -37,6 +37,11 @@ import { supabaseClient } from '../../utility';
 import { UserIdentity, canAccess, isTherapist, isAdmin } from '../../utils/roleUtils';
 import { RoleGuard } from '../../components/RoleGuard';
 import dayjs, { Dayjs } from 'dayjs';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 
 const { Title, Text } = Typography;
 const { Option } = Select;
