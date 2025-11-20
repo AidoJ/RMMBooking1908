@@ -67,7 +67,7 @@ const EmailService = {
       };
 
       // Add recurring booking information if applicable
-      if (bookingData.is_recurring || bookingData.recurring_dates) {
+      if (bookingData.is_recurring || bookingData.recurring_dates || bookingData.series_bookings) {
         templateParams.is_recurring = true;
         templateParams.total_occurrences = bookingData.total_occurrences || bookingData.recurring_count || 1;
 
@@ -80,8 +80,26 @@ const EmailService = {
         templateParams.if_custom = frequency === 'custom';
         templateParams.custom_interval = bookingData.custom_interval || bookingData.recurring_interval;
 
-        // Generate sessions list from recurring_dates
-        if (bookingData.recurring_dates && Array.isArray(bookingData.recurring_dates)) {
+        // Generate sessions list - NEW MODEL: from series_bookings array
+        if (bookingData.series_bookings && Array.isArray(bookingData.series_bookings)) {
+          templateParams.sessions_list = bookingData.series_bookings
+            .sort((a, b) => (a.occurrence_number || 0) - (b.occurrence_number || 0))
+            .map(booking => {
+              const occNum = booking.occurrence_number;
+              const label = occNum === 0 ? 'Initial booking' : `Repeat ${occNum}`;
+              const dateTime = new Date(booking.booking_time);
+              return `${label}: ${dateTime.toLocaleString('en-AU', {
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+              })}`;
+            }).join('\n');
+        }
+        // LEGACY: Generate sessions list from recurring_dates (for old bookings)
+        else if (bookingData.recurring_dates && Array.isArray(bookingData.recurring_dates)) {
           templateParams.sessions_list = bookingData.recurring_dates.map((date, index) =>
             `Session ${index + 1}: ${new Date(date).toLocaleString()}`
           ).join('\n');

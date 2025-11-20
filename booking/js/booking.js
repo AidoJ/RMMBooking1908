@@ -3836,9 +3836,10 @@ async function sendBookingNotifications(bookingData, bookingId) {
       booker_name: bookingData.booker_name || '',
       notes: bookingData.notes || '',
       duration_minutes: bookingData.duration_minutes,
-      // Recurring booking fields (passed through from bookingData)
+      // Recurring booking fields - use series_bookings if available (new model)
       is_recurring: bookingData.is_recurring || false,
-      recurring_dates: bookingData.recurring_dates || null,
+      series_bookings: bookingData.series_bookings || null, // NEW: array of all bookings in series
+      recurring_dates: bookingData.recurring_dates || null, // Legacy for old bookings
       total_occurrences: bookingData.total_occurrences || null,
       recurring_frequency: bookingData.recurring_frequency || null,
       recurring_count: bookingData.total_occurrences || null // Alias for emailService.js
@@ -4206,7 +4207,9 @@ if (confirmBtn) {
       service_name: serviceName,
       therapist_name: therapistName,
       booking_date: date,
-      booking_time: time
+      booking_time: time,
+      // Include series data for recurring bookings
+      series_bookings: bookingResult.series || null
     };
     const emailResult = await sendBookingNotifications(emailData, bookingIdFormatted);
     console.log('📧 Enhanced email notification result:', emailResult);
