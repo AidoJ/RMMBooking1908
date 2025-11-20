@@ -98,7 +98,7 @@ async function findBookingsNeedingTimeout(timeoutMinutes) {
       .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
       .lt('created_at', firstTimeoutCutoff.toISOString())
       .or('updated_at.is.null,updated_at.lt.' + twoMinutesAgo.toISOString()) // Exclude recently updated bookings
-      .is('occurrence_number', 0); // NEW: Only check timeout on initial booking (occurrence_number = 0), not repeats
+      .or('occurrence_number.is.null,occurrence_number.eq.0'); // NEW: Only check timeout on initial booking or non-recurring (NULL)
 
     if (error1) {
       console.error('❌ Error fetching first timeout bookings:', error1);
@@ -114,7 +114,7 @@ async function findBookingsNeedingTimeout(timeoutMinutes) {
       .in('status', ['timeout_reassigned', 'seeking_alternate'])
       .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
       .lt('created_at', secondTimeoutCutoff.toISOString())
-      .is('occurrence_number', 0); // NEW: Only check timeout on initial booking, not repeats
+      .or('occurrence_number.is.null,occurrence_number.eq.0'); // Only initial or non-recurring
 
     if (error2) {
       console.error('❌ Error fetching second timeout bookings:', error2);

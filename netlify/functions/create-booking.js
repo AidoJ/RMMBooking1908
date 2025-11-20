@@ -4,6 +4,39 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Service role bypasses RLS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Helper function to get next sequential booking ID
+async function getNextBookingId() {
+  const now = new Date();
+  const year = String(now.getFullYear()).slice(-2);
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const yearMonth = `${year}${month}`;
+
+  // Query for the last booking ID in the current month
+  const { data: lastBooking, error } = await supabase
+    .from('bookings')
+    .select('booking_id')
+    .ilike('booking_id', `RB${yearMonth}%`)
+    .order('booking_id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching last booking ID:', error);
+    return `RB${yearMonth}001`;
+  }
+
+  let nextNumber = 1;
+
+  if (lastBooking && lastBooking.booking_id) {
+    const match = lastBooking.booking_id.match(/RB\d{4}(\d{3,})$/);
+    if (match) {
+      nextNumber = parseInt(match[1], 10) + 1;
+    }
+  }
+
+  return `RB${yearMonth}${String(nextNumber).padStart(3, '0')}`;
+}
+
 exports.handler = async (event, context) => {
   // Enable CORS
   const headers = {
@@ -40,7 +73,10 @@ exports.handler = async (event, context) => {
 
       // Extract recurring-specific data
       const recurringDates = bookingData.recurring_dates || [];
-      const requestId = bookingData.booking_id; // Use initial booking_id as request_id for entire series
+
+      // Generate request_id with REQ prefix (not RB) to avoid confusion with booking_id
+      const initialBookingId = bookingData.booking_id; // e.g., RB2511001
+      const requestId = initialBookingId.replace('RB', 'REQ'); // e.g., REQ2511001
 
       // Prepare base booking data (remove recurring-specific fields)
       const baseBookingData = { ...bookingData };
@@ -54,26 +90,27 @@ exports.handler = async (event, context) => {
       // 1. Create initial booking (occurrence_number = 0)
       const initialBooking = {
         ...baseBookingData,
-        request_id: requestId,
+        request_id: requestId, // REQ2511001
         occurrence_number: 0,
         // Initial booking keeps payment_status from payment (authorized/paid)
       };
       bookingsToInsert.push(initialBooking);
 
       // 2. Create repeat bookings (occurrence_number = 1, 2, 3...)
+      // Each repeat gets its own sequential booking_id
       for (let i = 0; i < recurringDates.length; i++) {
         const occurrenceDate = new Date(recurringDates[i]);
         const dateOnly = occurrenceDate.toISOString().split('T')[0];
         const timeOnly = baseBookingData.booking_time.split('T')[1].substring(0, 5); // Extract HH:MM
         const dateTime = `${dateOnly}T${timeOnly}:00`;
 
-        // Generate unique booking_id for this repeat
-        const repeatBookingId = `${requestId.substring(0, 9)}${String(i + 1).padStart(3, '0')}`; // e.g., RB2511001 -> RB2511002
+        // Get next sequential booking_id (e.g., RB2511002, RB2511003, etc.)
+        const repeatBookingId = await getNextBookingId();
 
         const repeatBooking = {
           ...baseBookingData,
-          booking_id: repeatBookingId,
-          request_id: requestId,
+          booking_id: repeatBookingId, // Sequential: RB2511002, RB2511003, etc.
+          request_id: requestId, // Same for all: REQ2511001
           occurrence_number: i + 1,
           booking_time: dateTime,
           status: 'requested', // Repeats start as requested (therapist already accepted series via initial)
@@ -129,8 +166,8 @@ exports.handler = async (event, context) => {
       delete cleanBookingData.recurring_frequency;
       delete cleanBookingData.recurring_count;
 
-      // Add request_id (same as booking_id for non-recurring)
-      cleanBookingData.request_id = bookingData.booking_id;
+      // Add request_id with REQ prefix (convert RB2511001 -> REQ2511001)
+      cleanBookingData.request_id = bookingData.booking_id.replace('RB', 'REQ');
       cleanBookingData.occurrence_number = null; // NULL for non-recurring bookings
 
       // Insert booking into database (service role bypasses RLS)
