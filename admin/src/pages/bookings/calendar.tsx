@@ -156,18 +156,18 @@ export const CalendarBookingManagement: React.FC = () => {
       let startDate, endDate;
 
       if (calendarView === 'week') {
-        startDate = currentDate.clone().startOf('week');
-        endDate = currentDate.clone().endOf('week');
+        startDate = dayjs(currentDate).startOf('week');
+        endDate = dayjs(currentDate).endOf('week');
       } else if (calendarView === 'month') {
         // For month view, use PADDED grid range (first Sunday to last Saturday)
-        const monthStart = currentDate.clone().startOf('month');
-        const monthEnd = currentDate.clone().endOf('month');
-        startDate = monthStart.clone().startOf('week');
-        endDate = monthEnd.clone().endOf('week');
+        const monthStart = dayjs(currentDate).startOf('month');
+        const monthEnd = dayjs(currentDate).endOf('month');
+        startDate = dayjs(monthStart).startOf('week');
+        endDate = dayjs(monthEnd).endOf('week');
       } else {
         // For schedule and day views, fetch current day and surrounding days for context
-        startDate = currentDate.clone().subtract(1, 'day').startOf('day');
-        endDate = currentDate.clone().add(1, 'day').endOf('day');
+        startDate = dayjs(currentDate).subtract(1, 'day').startOf('day');
+        endDate = dayjs(currentDate).add(1, 'day').endOf('day');
       }
 
       // Fetch bookings where EITHER the parent booking OR any occurrence falls in date range
@@ -183,8 +183,8 @@ export const CalendarBookingManagement: React.FC = () => {
           booking_occurrences(*)
         `)
         // Fetch all bookings - we'll filter by occurrence dates client-side
-        .gte('booking_time', startDate.clone().subtract(6, 'month').toISOString()) // Fetch wider range
-        .lte('booking_time', endDate.clone().add(6, 'month').toISOString());
+        .gte('booking_time', dayjs(startDate).subtract(6, 'month').toISOString()) // Fetch wider range
+        .lte('booking_time', dayjs(endDate).add(6, 'month').toISOString());
 
       // Role-based filtering
       if (isTherapist(userRole) && identity?.id) {
@@ -378,12 +378,12 @@ export const CalendarBookingManagement: React.FC = () => {
 
     if (calendarView === 'month') {
       // Generate full month grid (including padding days from prev/next month)
-      const startOfMonth = currentDate.clone().startOf('month');
-      const endOfMonth = currentDate.clone().endOf('month');
-      const startDate = startOfMonth.clone().startOf('week'); // Start from Sunday of first week
-      const endDate = endOfMonth.clone().endOf('week'); // End on Saturday of last week
+      const startOfMonth = dayjs(currentDate).startOf('month');
+      const endOfMonth = dayjs(currentDate).endOf('month');
+      const startDate = dayjs(startOfMonth).startOf('week'); // Start from Sunday of first week
+      const endDate = dayjs(endOfMonth).endOf('week'); // End on Saturday of last week
 
-      let currentDay = startDate.clone();
+      let currentDay = dayjs(startDate);
       while (currentDay.isSameOrBefore(endDate)) {
         const dayBookings = bookings.filter(booking =>
           dayjs(booking.start).isSame(currentDay, 'day')
@@ -400,10 +400,10 @@ export const CalendarBookingManagement: React.FC = () => {
       }
     } else {
       // Week view - generate 7 days
-      const startOfWeek = currentDate.clone().startOf('week');
+      const startOfWeek = dayjs(currentDate).startOf('week');
 
       for (let i = 0; i < 7; i++) {
-        const date = startOfWeek.clone().add(i, 'day');
+        const date = dayjs(startOfWeek).add(i, 'day');
         const dayBookings = bookings.filter(booking =>
           dayjs(booking.start).isSame(date, 'day')
         );
@@ -427,23 +427,23 @@ export const CalendarBookingManagement: React.FC = () => {
 
   const handlePrev = () => {
     if (calendarView === 'week') {
-      setCurrentDate(currentDate.clone().subtract(1, 'week'));
+      setCurrentDate(dayjs(currentDate).subtract(1, 'week'));
     } else if (calendarView === 'month') {
-      setCurrentDate(currentDate.clone().subtract(1, 'month'));
+      setCurrentDate(dayjs(currentDate).subtract(1, 'month'));
     } else {
       // For schedule and day views, move by day
-      setCurrentDate(currentDate.clone().subtract(1, 'day'));
+      setCurrentDate(dayjs(currentDate).subtract(1, 'day'));
     }
   };
 
   const handleNext = () => {
     if (calendarView === 'week') {
-      setCurrentDate(currentDate.clone().add(1, 'week'));
+      setCurrentDate(dayjs(currentDate).add(1, 'week'));
     } else if (calendarView === 'month') {
-      setCurrentDate(currentDate.clone().add(1, 'month'));
+      setCurrentDate(dayjs(currentDate).add(1, 'month'));
     } else {
       // For schedule and day views, move by day
-      setCurrentDate(currentDate.clone().add(1, 'day'));
+      setCurrentDate(dayjs(currentDate).add(1, 'day'));
     }
   };
 
