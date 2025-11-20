@@ -159,8 +159,11 @@ export const CalendarBookingManagement: React.FC = () => {
         startDate = currentDate.clone().startOf('week');
         endDate = currentDate.clone().endOf('week');
       } else if (calendarView === 'month') {
-        startDate = currentDate.clone().startOf('month');
-        endDate = currentDate.clone().endOf('month');
+        // For month view, use PADDED grid range (first Sunday to last Saturday)
+        const monthStart = currentDate.clone().startOf('month');
+        const monthEnd = currentDate.clone().endOf('month');
+        startDate = monthStart.clone().startOf('week');
+        endDate = monthEnd.clone().endOf('week');
       } else {
         // For schedule and day views, fetch current day and surrounding days for context
         startDate = currentDate.clone().subtract(1, 'day').startOf('day');
@@ -375,12 +378,12 @@ export const CalendarBookingManagement: React.FC = () => {
 
     if (calendarView === 'month') {
       // Generate full month grid (including padding days from prev/next month)
-      const startOfMonth = currentDate.startOf('month');
-      const endOfMonth = currentDate.endOf('month');
-      const startDate = startOfMonth.startOf('week'); // Start from Sunday of first week
-      const endDate = endOfMonth.endOf('week'); // End on Saturday of last week
+      const startOfMonth = currentDate.clone().startOf('month');
+      const endOfMonth = currentDate.clone().endOf('month');
+      const startDate = startOfMonth.clone().startOf('week'); // Start from Sunday of first week
+      const endDate = endOfMonth.clone().endOf('week'); // End on Saturday of last week
 
-      let currentDay = startDate;
+      let currentDay = startDate.clone();
       while (currentDay.isSameOrBefore(endDate)) {
         const dayBookings = bookings.filter(booking =>
           dayjs(booking.start).isSame(currentDay, 'day')
@@ -397,10 +400,10 @@ export const CalendarBookingManagement: React.FC = () => {
       }
     } else {
       // Week view - generate 7 days
-      const startOfWeek = currentDate.startOf('week');
+      const startOfWeek = currentDate.clone().startOf('week');
 
       for (let i = 0; i < 7; i++) {
-        const date = startOfWeek.add(i, 'day');
+        const date = startOfWeek.clone().add(i, 'day');
         const dayBookings = bookings.filter(booking =>
           dayjs(booking.start).isSame(date, 'day')
         );
@@ -424,23 +427,23 @@ export const CalendarBookingManagement: React.FC = () => {
 
   const handlePrev = () => {
     if (calendarView === 'week') {
-      setCurrentDate(currentDate.subtract(1, 'week'));
+      setCurrentDate(currentDate.clone().subtract(1, 'week'));
     } else if (calendarView === 'month') {
-      setCurrentDate(currentDate.subtract(1, 'month'));
+      setCurrentDate(currentDate.clone().subtract(1, 'month'));
     } else {
       // For schedule and day views, move by day
-      setCurrentDate(currentDate.subtract(1, 'day'));
+      setCurrentDate(currentDate.clone().subtract(1, 'day'));
     }
   };
 
   const handleNext = () => {
     if (calendarView === 'week') {
-      setCurrentDate(currentDate.add(1, 'week'));
+      setCurrentDate(currentDate.clone().add(1, 'week'));
     } else if (calendarView === 'month') {
-      setCurrentDate(currentDate.add(1, 'month'));
+      setCurrentDate(currentDate.clone().add(1, 'month'));
     } else {
       // For schedule and day views, move by day
-      setCurrentDate(currentDate.add(1, 'day'));
+      setCurrentDate(currentDate.clone().add(1, 'day'));
     }
   };
 
@@ -681,6 +684,98 @@ export const CalendarBookingManagement: React.FC = () => {
     );
   };
 
+  const renderMonthView = () => {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, backgroundColor: '#f0f0f0' }}>
+        {/* Day Headers */}
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+          <div
+            key={day}
+            style={{
+              padding: '8px',
+              backgroundColor: '#fafafa',
+              textAlign: 'center',
+              fontWeight: 'bold',
+              borderBottom: '2px solid #e8e8e8',
+              fontSize: '12px'
+            }}
+          >
+            {day}
+          </div>
+        ))}
+
+        {/* Calendar Days */}
+        {weekDays.map(day => {
+          const isCurrentMonth = day.date.month() === currentDate.month();
+
+          return (
+            <div
+              key={day.date.format('YYYY-MM-DD')}
+              style={{
+                minHeight: 120,
+                backgroundColor: day.isToday ? '#e6f7ff' : (isCurrentMonth ? '#fff' : '#fafafa'),
+                border: day.isSelected ? '2px solid #1890ff' : '1px solid #e8e8e8',
+                padding: 6,
+                position: 'relative',
+                opacity: isCurrentMonth ? 1 : 0.6,
+              }}
+            >
+              {/* Date Header */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: 4,
+                paddingBottom: 2,
+                borderBottom: '1px solid #f0f0f0'
+              }}>
+                <Text strong={day.isToday} style={{ fontSize: '13px' }}>
+                  {day.date.format('D')}
+                </Text>
+                {day.bookings.length > 0 && (
+                  <Badge count={day.bookings.length} size="small" />
+                )}
+              </div>
+
+              {/* Bookings */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {day.bookings.slice(0, 3).map(booking => (
+                  <Tooltip
+                    key={booking.id}
+                    title={`${booking.therapist_name} - ${booking.service_name} at ${dayjs(booking.start).format('h:mm A')}`}
+                  >
+                    <div
+                      onClick={() => handleBookingClick(booking)}
+                      style={{
+                        backgroundColor: booking.backgroundColor,
+                        color: 'white',
+                        padding: '2px 4px',
+                        borderRadius: 3,
+                        fontSize: '10px',
+                        cursor: 'pointer',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        opacity: booking.status === 'cancelled' ? 0.6 : 1,
+                      }}
+                    >
+                      {dayjs(booking.start).format('h:mm A')} {booking.customer_name.split(' ')[0]}
+                    </div>
+                  </Tooltip>
+                ))}
+                {day.bookings.length > 3 && (
+                  <div style={{ fontSize: '9px', color: '#999', textAlign: 'center' }}>
+                    +{day.bookings.length - 3} more
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <RoleGuard requiredPermission="canViewBookingCalendar">
       <div style={{ padding: 24 }}>
@@ -770,7 +865,7 @@ export const CalendarBookingManagement: React.FC = () => {
           {calendarView === 'schedule' && renderScheduleView()}
           {calendarView === 'day' && renderScheduleView()}
           {calendarView === 'week' && renderWeekView()}
-          {calendarView === 'month' && renderWeekView()}
+          {calendarView === 'month' && renderMonthView()}
         </Card>
 
         {/* Booking Details Drawer */}
