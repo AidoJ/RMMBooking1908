@@ -92,12 +92,13 @@ async function findBookingsNeedingTimeout(timeoutMinutes) {
     const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
     const { data: firstTimeoutBookings, error: error1 } = await supabase
       .from('bookings')
-      .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email), booking_occurrences(*)')
+      .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
       .eq('status', 'requested')
       .is('therapist_response_time', null) // IMPORTANT: Only if therapist hasn't responded yet
       .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
       .lt('created_at', firstTimeoutCutoff.toISOString())
-      .or('updated_at.is.null,updated_at.lt.' + twoMinutesAgo.toISOString()); // Exclude recently updated bookings
+      .or('updated_at.is.null,updated_at.lt.' + twoMinutesAgo.toISOString()) // Exclude recently updated bookings
+      .is('occurrence_number', 0); // NEW: Only check timeout on initial booking (occurrence_number = 0), not repeats
 
     if (error1) {
       console.error('❌ Error fetching first timeout bookings:', error1);
@@ -109,10 +110,11 @@ async function findBookingsNeedingTimeout(timeoutMinutes) {
     // EXCLUDE quote-based bookings (BK-Q pattern) as they follow quote workflow
     const { data: secondTimeoutBookings, error: error2 } = await supabase
       .from('bookings')
-      .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email), booking_occurrences(*)')
+      .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
       .in('status', ['timeout_reassigned', 'seeking_alternate'])
       .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
-      .lt('created_at', secondTimeoutCutoff.toISOString());
+      .lt('created_at', secondTimeoutCutoff.toISOString())
+      .is('occurrence_number', 0); // NEW: Only check timeout on initial booking, not repeats
 
     if (error2) {
       console.error('❌ Error fetching second timeout bookings:', error2);
@@ -506,8 +508,8 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
   try {
     // Generate Accept/Decline URLs
     const baseUrl = process.env.URL || 'https://your-site.netlify.app';
-    const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
-    const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
+    const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking=' + booking.booking_id + '&therapist=' + therapist.id;
+    const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking=' + booking.booking_id + '&therapist=' + therapist.id;
 
     // Check if recurring - use booking_occurrences from joined query
     const occurrences = booking.booking_occurrences || [];
@@ -573,13 +575,29 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
 // Utility functions
 async function updateBookingStatus(bookingId, status) {
   try {
+    // First, get the request_id for this booking (to handle series)
+    const { data: bookingData, error: fetchError } = await supabase
+      .from('bookings')
+      .select('request_id')
+      .eq('booking_id', bookingId)
+      .single();
+
+    if (fetchError || !bookingData) {
+      console.error('❌ Error fetching booking for status update:', fetchError);
+      throw fetchError || new Error('Booking not found');
+    }
+
+    const requestId = bookingData.request_id;
+
+    // Update ALL bookings in the series using request_id
+    // This ensures if booking times out, entire recurring series is cancelled
     const { error } = await supabase
       .from('bookings')
-      .update({ 
+      .update({
         status: status,
         updated_at: new Date().toISOString()
       })
-      .eq('booking_id', bookingId);
+      .eq('request_id', requestId);
 
     if (error) {
       console.error('❌ Error updating booking', bookingId, 'status:', error);
