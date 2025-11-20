@@ -175,21 +175,17 @@ export const CalendarBookingManagement: React.FC = () => {
         endDate = dayjs(currentDate).add(1, 'day').endOf('day');
       }
 
-      // Fetch bookings where EITHER the parent booking OR any occurrence falls in date range
-      // We need to fetch a wider range and filter client-side because Supabase doesn't support
-      // OR conditions across parent and child tables easily
+      // Fetch bookings for the date range
       let query = supabaseClient
         .from('bookings')
         .select(`
           *,
           therapist_profiles!bookings_therapist_id_fkey(first_name, last_name),
           customers(first_name, last_name, phone),
-          services(name),
-          booking_occurrences(*)
+          services(name)
         `)
-        // Fetch all bookings - we'll filter by occurrence dates client-side
-        .gte('booking_time', dayjs(startDate).subtract(6, 'month').toISOString()) // Fetch wider range
-        .lte('booking_time', dayjs(endDate).add(6, 'month').toISOString());
+        .gte('booking_time', startDate.toISOString())
+        .lte('booking_time', endDate.toISOString());
 
       // Role-based filtering
       if (isTherapist(userRole) && identity?.id) {
@@ -217,105 +213,45 @@ export const CalendarBookingManagement: React.FC = () => {
           : 'Unassigned';
 
         const duration = booking.duration_minutes || 60;
-        const isRecurring = booking.booking_occurrences && booking.booking_occurrences.length > 0;
+        const startTime = dayjs(booking.booking_time);
+        const endTime = startTime.add(duration, 'minute');
 
-        // For recurring bookings, ONLY show occurrences (not parent booking)
-        if (isRecurring) {
-          // Add "Initial booking" event from parent booking date
-          const initialStartTime = dayjs(booking.booking_time);
-          const initialEndTime = initialStartTime.add(duration, 'minute');
-
-          events.push({
-            id: booking.id, // Use parent ID so clicking works
-            title: `${customerName} - ${booking.services?.name || 'Service'} (Initial)`,
-            start: initialStartTime.toISOString(),
-            end: initialEndTime.toISOString(),
-            status: booking.status,
-            therapist_id: booking.therapist_id,
-            therapist_name: therapistName,
-            customer_name: customerName,
-            service_name: booking.services?.name || 'Unknown Service',
-            price: parseFloat(booking.price) || 0,
-            therapist_fee: parseFloat(booking.therapist_fee) || 0,
-            address: booking.address || '',
-            business_name: booking.business_name || '',
-            room_number: booking.room_number || '',
-            phone: booking.customers?.phone || booking.customer_phone || '',
-            notes: booking.notes || '',
-            backgroundColor: getTherapistColor(booking.therapist_id),
-            borderColor: getTherapistColor(booking.therapist_id),
-            duration_minutes: duration,
-            startTime: initialStartTime,
-            endTime: initialEndTime,
-          });
-
-          // Add repeat events from occurrences
-          booking.booking_occurrences.forEach((occurrence: any) => {
-            const occStartTime = dayjs(`${occurrence.occurrence_date}T${occurrence.occurrence_time}`);
-            const occEndTime = occStartTime.add(duration, 'minute');
-
-            events.push({
-              id: booking.id, // Use parent ID so clicking navigates to booking details
-              title: `${customerName} - ${booking.services?.name || 'Service'} (Repeat ${occurrence.occurrence_number})`,
-              start: occStartTime.toISOString(),
-              end: occEndTime.toISOString(),
-              status: booking.status,
-              therapist_id: booking.therapist_id,
-              therapist_name: therapistName,
-              customer_name: customerName,
-              service_name: booking.services?.name || 'Unknown Service',
-              price: parseFloat(booking.price) || 0,
-              therapist_fee: parseFloat(booking.therapist_fee) || 0,
-              address: booking.address || '',
-              business_name: booking.business_name || '',
-              room_number: booking.room_number || '',
-              phone: booking.customers?.phone || booking.customer_phone || '',
-              notes: booking.notes || '',
-              backgroundColor: getTherapistColor(booking.therapist_id),
-              borderColor: getTherapistColor(booking.therapist_id),
-              duration_minutes: duration,
-              startTime: occStartTime,
-              endTime: occEndTime,
-            });
-          });
-        } else {
-          // Non-recurring booking - show normally
-          const startTime = dayjs(booking.booking_time);
-          const endTime = startTime.add(duration, 'minute');
-
-          events.push({
-            id: booking.id,
-            title: `${customerName} - ${booking.services?.name || 'Service'}`,
-            start: startTime.toISOString(),
-            end: endTime.toISOString(),
-            status: booking.status,
-            therapist_id: booking.therapist_id,
-            therapist_name: therapistName,
-            customer_name: customerName,
-            service_name: booking.services?.name || 'Unknown Service',
-            price: parseFloat(booking.price) || 0,
-            therapist_fee: parseFloat(booking.therapist_fee) || 0,
-            address: booking.address || '',
-            business_name: booking.business_name || '',
-            room_number: booking.room_number || '',
-            phone: booking.customers?.phone || booking.customer_phone || '',
-            notes: booking.notes || '',
-            backgroundColor: getTherapistColor(booking.therapist_id),
-            borderColor: getTherapistColor(booking.therapist_id),
-            duration_minutes: duration,
-            startTime: startTime,
-            endTime: endTime,
-          });
+        // Display label with occurrence suffix if part of recurring series
+        let displayLabel = `${customerName} - ${booking.services?.name || 'Service'}`;
+        if (booking.occurrence_number !== null && booking.occurrence_number !== undefined) {
+          if (booking.occurrence_number === 0) {
+            displayLabel += ' (Initial)';
+          } else {
+            displayLabel += ` (Repeat ${booking.occurrence_number})`;
+          }
         }
+
+        events.push({
+          id: booking.id,
+          title: displayLabel,
+          start: startTime.toISOString(),
+          end: endTime.toISOString(),
+          status: booking.status,
+          therapist_id: booking.therapist_id,
+          therapist_name: therapistName,
+          customer_name: customerName,
+          service_name: booking.services?.name || 'Unknown Service',
+          price: parseFloat(booking.price) || 0,
+          therapist_fee: parseFloat(booking.therapist_fee) || 0,
+          address: booking.address || '',
+          business_name: booking.business_name || '',
+          room_number: booking.room_number || '',
+          phone: booking.customers?.phone || booking.customer_phone || '',
+          notes: booking.notes || '',
+          backgroundColor: getTherapistColor(booking.therapist_id),
+          borderColor: getTherapistColor(booking.therapist_id),
+          duration_minutes: duration,
+          startTime: startTime,
+          endTime: endTime,
+        });
       });
 
-      // Filter events to only those within the current view's date range
-      const filteredEvents = events.filter(event => {
-        const eventDate = dayjs(event.start);
-        return eventDate.isSameOrAfter(startDate, 'day') && eventDate.isSameOrBefore(endDate, 'day');
-      });
-
-      setBookings(filteredEvents);
+      setBookings(events);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       message.error('Failed to load bookings');
