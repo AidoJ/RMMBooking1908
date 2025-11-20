@@ -36,95 +36,86 @@ exports.handler = async (event, context) => {
     const isRecurring = bookingData.is_recurring === true;
 
     if (isRecurring) {
-      console.log('🔄 Recurring booking detected - creating parent + child occurrences');
+      console.log('🔄 Recurring booking detected - creating individual records for series');
 
       // Extract recurring-specific data
       const recurringDates = bookingData.recurring_dates || [];
-      const totalOccurrences = bookingData.total_occurrences || 1;
+      const requestId = bookingData.booking_id; // Use initial booking_id as request_id for entire series
 
-      // Prepare parent booking data (remove recurring_dates as it's not a DB column)
-      const parentBookingData = { ...bookingData };
-      delete parentBookingData.recurring_dates;
+      // Prepare base booking data (remove recurring-specific fields)
+      const baseBookingData = { ...bookingData };
+      delete baseBookingData.recurring_dates;
+      delete baseBookingData.recurring_frequency;
+      delete baseBookingData.recurring_count;
 
-      // Insert parent booking into database
-      const { data: parentData, error: parentError } = await supabase
-        .from('bookings')
-        .insert([parentBookingData])
-        .select();
+      // Array to hold all booking records to insert
+      const bookingsToInsert = [];
 
-      if (parentError) {
-        console.error('❌ Error creating parent booking:', parentError);
-        return {
-          statusCode: 500,
-          headers,
-          body: JSON.stringify({
-            success: false,
-            error: 'Error creating parent booking',
-            details: parentError.message
-          })
-        };
-      }
+      // 1. Create initial booking (occurrence_number = 0)
+      const initialBooking = {
+        ...baseBookingData,
+        request_id: requestId,
+        occurrence_number: 0,
+        // Initial booking keeps payment_status from payment (authorized/paid)
+      };
+      bookingsToInsert.push(initialBooking);
 
-      const parentBooking = parentData[0];
-      console.log('✅ Parent booking created:', parentBooking.booking_id);
-
-      // Create child occurrences in booking_occurrences table
-      const occurrences = [];
-      for (let i = 0; i < recurringDates.length && i < totalOccurrences; i++) {
+      // 2. Create repeat bookings (occurrence_number = 1, 2, 3...)
+      for (let i = 0; i < recurringDates.length; i++) {
         const occurrenceDate = new Date(recurringDates[i]);
         const dateOnly = occurrenceDate.toISOString().split('T')[0];
-        const timeOnly = bookingData.booking_time.split('T')[1].substring(0, 5); // Extract HH:MM
+        const timeOnly = baseBookingData.booking_time.split('T')[1].substring(0, 5); // Extract HH:MM
         const dateTime = `${dateOnly}T${timeOnly}:00`;
 
-        const occurrence = {
-          booking_id: bookingData.booking_id,
+        // Generate unique booking_id for this repeat
+        const repeatBookingId = `${requestId.substring(0, 9)}${String(i + 1).padStart(3, '0')}`; // e.g., RB2511001 -> RB2511002
+
+        const repeatBooking = {
+          ...baseBookingData,
+          booking_id: repeatBookingId,
+          request_id: requestId,
           occurrence_number: i + 1,
-          occurrence_date: dateOnly,
-          occurrence_time: timeOnly,
-          occurrence_datetime: dateTime,
-          status: 'pending',
-          payment_status: 'pending',
-          amount: bookingData.price,
-          // Apply discount and gift card only to first occurrence
-          discount_applied: i === 0 && bookingData.discount_amount > 0,
-          discount_amount: i === 0 ? (bookingData.discount_amount || 0) : 0,
-          gift_card_applied: i === 0 && bookingData.gift_card_amount > 0,
-          gift_card_amount: i === 0 ? (bookingData.gift_card_amount || 0) : 0
+          booking_time: dateTime,
+          status: 'requested', // Repeats start as requested (therapist already accepted series via initial)
+          payment_status: 'pending', // Repeats are not yet paid
+          // Don't apply discount/gift card to repeats
+          discount_amount: 0,
+          gift_card_amount: 0,
+          discount_code: null,
+          gift_card_code: null
         };
 
-        occurrences.push(occurrence);
+        bookingsToInsert.push(repeatBooking);
       }
 
-      // Insert all occurrences
-      const { data: occurrencesData, error: occurrencesError } = await supabase
-        .from('booking_occurrences')
-        .insert(occurrences)
+      // Insert all bookings in one transaction
+      const { data: allBookings, error: insertError } = await supabase
+        .from('bookings')
+        .insert(bookingsToInsert)
         .select();
 
-      if (occurrencesError) {
-        console.error('❌ Error creating booking occurrences:', occurrencesError);
-        // Try to rollback parent booking
-        await supabase.from('bookings').delete().eq('booking_id', bookingData.booking_id);
+      if (insertError) {
+        console.error('❌ Error creating recurring bookings:', insertError);
         return {
           statusCode: 500,
           headers,
           body: JSON.stringify({
             success: false,
-            error: 'Error creating booking occurrences',
-            details: occurrencesError.message
+            error: 'Error creating recurring bookings',
+            details: insertError.message
           })
         };
       }
 
-      console.log(`✅ Created ${occurrencesData.length} booking occurrences`);
+      console.log(`✅ Created ${allBookings.length} bookings in series (1 initial + ${recurringDates.length} repeats)`);
 
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          booking: parentBooking,
-          occurrences: occurrencesData
+          booking: allBookings[0], // Return initial booking as primary
+          series: allBookings // Return all bookings in series
         })
       };
 
@@ -137,6 +128,10 @@ exports.handler = async (event, context) => {
       delete cleanBookingData.recurring_dates;
       delete cleanBookingData.recurring_frequency;
       delete cleanBookingData.recurring_count;
+
+      // Add request_id (same as booking_id for non-recurring)
+      cleanBookingData.request_id = bookingData.booking_id;
+      cleanBookingData.occurrence_number = null; // NULL for non-recurring bookings
 
       // Insert booking into database (service role bypasses RLS)
       const { data, error } = await supabase
