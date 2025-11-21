@@ -259,18 +259,32 @@ async function handleBookingAccept(booking, therapist, headers) {
 
     console.log('📝 Updating booking with data:', JSON.stringify(acceptUpdateData, null, 2));
 
-    // Update ALL bookings in the series using request_id
+    // First, get the request_id from this booking
+    const { data: bookingForRequestId, error: requestIdError } = await supabase
+      .from('bookings')
+      .select('request_id')
+      .eq('booking_id', booking.booking_id)
+      .single();
+
+    if (requestIdError || !bookingForRequestId || !bookingForRequestId.request_id) {
+      console.error('❌ Error fetching request_id:', requestIdError);
+      throw new Error('Failed to get request_id for booking');
+    }
+
+    console.log('📍 Found request_id:', bookingForRequestId.request_id);
+
+    // Update ALL bookings in the series with this request_id
     const { error: updateError } = await supabase
       .from('bookings')
       .update(acceptUpdateData)
-      .eq('request_id', booking.request_id);
+      .eq('request_id', bookingForRequestId.request_id);
 
     if (updateError) {
       console.error('❌ Error updating booking status:', updateError);
       throw new Error('Failed to confirm booking');
     }
 
-    console.log('✅ All bookings in series updated to confirmed status');
+    console.log('✅ All bookings with request_id', bookingForRequestId.request_id, 'updated to confirmed');
 
     // Add status history
     try {
@@ -283,20 +297,22 @@ async function handleBookingAccept(booking, therapist, headers) {
       console.error('❌ Error adding status history:', historyError);
     }
 
-    // Query series bookings for email (if recurring)
+    // Query series bookings for email
     let seriesBookings = [];
-    if (booking.request_id) {
-      console.log('🔍 Querying series bookings for emails...');
-      const { data: allBookings, error: seriesError } = await supabase
-        .from('bookings')
-        .select('booking_id, booking_time, occurrence_number, therapist_fee')
-        .eq('request_id', booking.request_id)
-        .order('occurrence_number', { ascending: true, nullsFirst: false });
+    console.log('🔍 Querying series bookings for emails using request_id:', bookingForRequestId.request_id);
+    const { data: allBookings, error: seriesError } = await supabase
+      .from('bookings')
+      .select('booking_id, booking_time, occurrence_number, therapist_fee')
+      .eq('request_id', bookingForRequestId.request_id)
+      .order('occurrence_number', { ascending: true, nullsFirst: false });
 
-      if (!seriesError && allBookings && allBookings.length > 1) {
-        seriesBookings = allBookings;
-        console.log(`✅ Found ${seriesBookings.length} bookings in series`);
-      }
+    if (!seriesError && allBookings && allBookings.length > 1) {
+      seriesBookings = allBookings;
+      console.log(`✅ Found ${seriesBookings.length} bookings in series`);
+    } else if (seriesError) {
+      console.error('❌ Error querying series bookings:', seriesError);
+    } else {
+      console.log('ℹ️ Single booking (not a series)');
     }
 
     // Send confirmation emails
