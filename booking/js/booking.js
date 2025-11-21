@@ -3572,10 +3572,17 @@ async function generateSequentialBookingId() {
     let nextNumber = 1;
     
     if (lastBooking && lastBooking.booking_id) {
-      // Extract the number from the last booking ID
-      const match = lastBooking.booking_id.match(/RB\d{4}(\d{3})$/);
-      if (match) {
-        nextNumber = parseInt(match[1], 10) + 1;
+      // Extract the base number from the last booking ID
+      // Handle formats: RB2511001, RB2511001002, RB2511001-1
+      const bookingId = lastBooking.booking_id;
+
+      // Remove prefix RB and year/month to get the base number part
+      const withoutPrefix = bookingId.substring(6); // Remove "RB2511"
+
+      // Extract just the base number (before any hyphen or additional digits)
+      const baseMatch = withoutPrefix.match(/^(\d{3})/);
+      if (baseMatch) {
+        nextNumber = parseInt(baseMatch[1], 10) + 1;
       }
     }
     
