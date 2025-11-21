@@ -391,22 +391,43 @@ Check your email for full details!
       'Thank you ' + therapist.first_name + '! You have successfully accepted this alternate booking ' + booking.booking_id + '.' :
       'Thank you ' + therapist.first_name + '! You have successfully accepted booking ' + booking.booking_id + '.';
 
+    // Build details array
+    const details = [
+      'Client: ' + booking.first_name + ' ' + booking.last_name,
+      'Service: ' + serviceName,
+      'Date: ' + new Date(booking.booking_time).toLocaleString(),
+      'Location: ' + booking.address,
+      'Room: ' + (booking.room_number || 'N/A'),
+      'Your Fee: $' + (booking.therapist_fee || 'TBD')
+    ];
+
+    // Add series information if recurring booking
+    if (seriesBookings.length > 1) {
+      const totalEarnings = (parseFloat(booking.therapist_fee || 0) * seriesBookings.length).toFixed(2);
+      details.push('');
+      details.push('🔄 RECURRING BOOKING SERIES:');
+      details.push('Total Sessions: ' + seriesBookings.length);
+      details.push('Total Series Earnings: $' + totalEarnings);
+      details.push('');
+      details.push('All Session Dates:');
+      seriesBookings.forEach(b => {
+        const occNum = b.occurrence_number;
+        const label = occNum === 0 ? 'Initial' : 'Repeat ' + occNum;
+        const dateTime = new Date(b.booking_time);
+        details.push('  • ' + label + ': ' + dateTime.toLocaleDateString() + ' at ' + dateTime.toLocaleTimeString());
+      });
+    }
+
+    details.push('');
+    details.push('✅ SMS and email confirmations sent to both you and the client');
+
     return {
       statusCode: 200,
       headers,
       body: generateSuccessPage(
         'Booking Accepted Successfully!',
         successMessage,
-        [
-          'Client: ' + booking.first_name + ' ' + booking.last_name,
-          'Service: ' + serviceName,
-          'Date: ' + new Date(booking.booking_time).toLocaleString(),
-          'Location: ' + booking.address,
-          'Room: ' + (booking.room_number || 'N/A'),
-          'Your Fee: $' + (booking.therapist_fee || 'TBD'),
-          '',
-          '✅ SMS and email confirmations sent to both you and the client'
-        ]
+        details
       )
     };
 
@@ -425,6 +446,22 @@ async function handleBookingDecline(booking, therapist, headers) {
   try {
     console.log('❌ Processing booking decline:', booking.booking_id, 'by', therapist.first_name, therapist.last_name);
 
+    // Query series bookings for display on decline page
+    let seriesBookings = [];
+    if (booking.request_id) {
+      console.log('🔍 Querying series bookings for decline page using request_id:', booking.request_id);
+      const { data: allBookings, error: seriesError } = await supabase
+        .from('bookings')
+        .select('booking_id, booking_time, occurrence_number')
+        .eq('request_id', booking.request_id)
+        .order('occurrence_number', { ascending: true, nullsFirst: false });
+
+      if (!seriesError && allBookings && allBookings.length > 1) {
+        seriesBookings = allBookings;
+        console.log(`✅ Found ${seriesBookings.length} bookings in series for decline`);
+      }
+    }
+
     // If this is a timeout_reassigned or seeking_alternate booking, just record the decline
     if (booking.status === 'timeout_reassigned' || booking.status === 'seeking_alternate') {
       console.log('📝 Recording decline for alternate booking - other therapists can still respond');
@@ -432,16 +469,34 @@ async function handleBookingDecline(booking, therapist, headers) {
       await addStatusHistory(booking.id, 'therapist_declined', therapist.id, 
         therapist.first_name + ' ' + therapist.last_name + ' declined alternate booking');
 
+      // Build details array
+      const details = [
+        'Booking: ' + booking.booking_id,
+        'Client: ' + booking.first_name + ' ' + booking.last_name
+      ];
+
+      // Add series information if recurring booking
+      if (seriesBookings.length > 1) {
+        details.push('');
+        details.push('🔄 RECURRING BOOKING SERIES:');
+        details.push('Total Sessions: ' + seriesBookings.length);
+        details.push('');
+        details.push('All Session Dates:');
+        seriesBookings.forEach(b => {
+          const occNum = b.occurrence_number;
+          const label = occNum === 0 ? 'Initial' : 'Repeat ' + occNum;
+          const dateTime = new Date(b.booking_time);
+          details.push('  • ' + label + ': ' + dateTime.toLocaleDateString() + ' at ' + dateTime.toLocaleTimeString());
+        });
+      }
+
       return {
         statusCode: 200,
         headers,
         body: generateSuccessPage(
           'Response Recorded',
           'Thank you for your response, ' + therapist.first_name + '. Your decline has been recorded. Other therapists may still accept this booking.',
-          [
-            'Booking: ' + booking.booking_id,
-            'Client: ' + booking.first_name + ' ' + booking.last_name
-          ]
+          details
         )
       };
     }
@@ -492,19 +547,37 @@ You'll be notified once someone accepts!
         const emailResults = await sendBookingRequestsToMultipleTherapists(booking, availableTherapists, timeoutMinutes);
         console.log('📧 Sent requests to', availableTherapists.length, 'therapists');
         
+        // Build details array
+        const details = [
+          'Booking: ' + booking.booking_id,
+          'Client: ' + booking.first_name + ' ' + booking.last_name,
+          availableTherapists.length + ' alternative therapists contacted',
+          'Customer has been notified we are looking for alternatives',
+          '📱 SMS and email notifications sent to customer'
+        ];
+
+        // Add series information if recurring booking
+        if (seriesBookings.length > 1) {
+          details.push('');
+          details.push('🔄 RECURRING BOOKING SERIES:');
+          details.push('Total Sessions: ' + seriesBookings.length);
+          details.push('');
+          details.push('All Session Dates:');
+          seriesBookings.forEach(b => {
+            const occNum = b.occurrence_number;
+            const label = occNum === 0 ? 'Initial' : 'Repeat ' + occNum;
+            const dateTime = new Date(b.booking_time);
+            details.push('  • ' + label + ': ' + dateTime.toLocaleDateString() + ' at ' + dateTime.toLocaleTimeString());
+          });
+        }
+
         return {
           statusCode: 200,
           headers,
           body: generateSuccessPage(
             'Booking Declined - Alternatives Found',
             'Thank you for your response, ' + therapist.first_name + '. We found ' + availableTherapists.length + ' alternative therapists and are contacting them now.',
-            [
-              'Booking: ' + booking.booking_id,
-              'Client: ' + booking.first_name + ' ' + booking.last_name,
-              availableTherapists.length + ' alternative therapists contacted',
-              'Customer has been notified we are looking for alternatives',
-              '📱 SMS and email notifications sent to customer'
-            ]
+            details
           )
         };
       } else {
@@ -568,17 +641,35 @@ Please contact us at 1300 302542 to reschedule.
       }
     }
 
+    // Build details array
+    const details = [
+      'Booking: ' + booking.booking_id,
+      'Client: ' + booking.first_name + ' ' + booking.last_name,
+      'Client has been notified of the decline via email and SMS.'
+    ];
+
+    // Add series information if recurring booking
+    if (seriesBookings.length > 1) {
+      details.push('');
+      details.push('🔄 RECURRING BOOKING SERIES:');
+      details.push('Total Sessions: ' + seriesBookings.length);
+      details.push('');
+      details.push('All Session Dates:');
+      seriesBookings.forEach(b => {
+        const occNum = b.occurrence_number;
+        const label = occNum === 0 ? 'Initial' : 'Repeat ' + occNum;
+        const dateTime = new Date(b.booking_time);
+        details.push('  • ' + label + ': ' + dateTime.toLocaleDateString() + ' at ' + dateTime.toLocaleTimeString());
+      });
+    }
+
     return {
       statusCode: 200,
       headers,
       body: generateSuccessPage(
         'Booking Declined',
         'Thank you for your response, ' + therapist.first_name + '. The booking has been declined and the client has been notified.',
-        [
-          'Booking: ' + booking.booking_id,
-          'Client: ' + booking.first_name + ' ' + booking.last_name,
-          'Client has been notified of the decline via email and SMS.'
-        ]
+        details
       )
     };
 
