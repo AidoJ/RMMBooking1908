@@ -72,10 +72,10 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Get booking details (including recurring occurrences)
+    // Get booking details (including request_id for series updates)
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('*, services(*), customers(*), booking_occurrences(*)')
+      .select('*, request_id, occurrence_number, services(*), customers(*), booking_occurrences(*)')
       .eq('booking_id', bookingId)
       .single();
 
