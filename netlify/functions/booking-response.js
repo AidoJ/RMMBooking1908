@@ -14,17 +14,12 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Twilio configuration
-const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-const TWILIO_PHONE_NUMBER = process.env.TWILIO_PHONE_NUMBER;
-
 // EmailJS configuration
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_puww2kb';
 const EMAILJS_TEMPLATE_ID = process.env.EMAILJS_TEMPLATE_ID || 'template_ai9rrg6';
 const EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID = process.env.EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID || 'template_51wt6of';
 const EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID = process.env.EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID || 'template_confirmed';
-const EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID = process.env.EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID || 'therapist-confirmation';
+const EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID = process.env.EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID || 'template_therapist_ok';
 const EMAILJS_BOOKING_DECLINED_TEMPLATE_ID = process.env.EMAILJS_BOOKING_DECLINED_TEMPLATE_ID || 'template_declined';
 const EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID = process.env.EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID || 'template_alternate';
 const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || 'qfM_qA664E4JddSMN';
@@ -49,9 +44,15 @@ exports.handler = async (event, context) => {
 
   try {
     const params = new URLSearchParams(event.rawQuery || '');
-    const action = params.get('action');
-    const bookingId = params.get('booking');
-    const therapistId = params.get('therapist');
+    
+    // Handle both full and shortened parameters for SMS optimization
+    let action = params.get('action') || params.get('a');
+    let bookingId = params.get('booking') || params.get('b');
+    let therapistId = params.get('therapist') || params.get('t');
+    
+    // Convert shortened action codes to full action names
+    if (action === '1') action = 'accept';
+    if (action === '0') action = 'decline';
 
     console.log('📞 Booking response received:', { action, bookingId, therapistId });
 
@@ -71,10 +72,10 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Get booking details (including recurring occurrences)
+    // Get booking details (including request_id for series updates)
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('*, services(*), customers(*), booking_occurrences(*)')
+      .select('*, request_id, occurrence_number, services(*), customers(*), booking_occurrences(*)')
       .eq('booking_id', bookingId)
       .single();
 
@@ -86,6 +87,15 @@ exports.handler = async (event, context) => {
         body: generateErrorPage('Booking not found.')
       };
     }
+
+    // DEBUG: Check if recurring fields are present
+    console.log('🔍 BOOKING OBJECT DEBUG:', {
+      booking_id: booking.booking_id,
+      is_recurring: booking.is_recurring,
+      total_occurrences: booking.total_occurrences,
+      has_is_recurring_field: 'is_recurring' in booking,
+      typeof_is_recurring: typeof booking.is_recurring
+    });
 
     console.log('📋 Booking status:', booking.status, 'Original therapist:', booking.therapist_id, 'Responding therapist:', therapistId);
 
@@ -238,28 +248,6 @@ async function handleBookingAccept(booking, therapist, headers) {
   try {
     console.log('✅ Processing booking acceptance:', booking.booking_id, 'by', therapist.first_name, therapist.last_name);
 
-    // CRITICAL: Double-check booking status before updating to prevent race conditions
-    const { data: currentBooking, error: checkError } = await supabase
-      .from('bookings')
-      .select('status, therapist_response_time')
-      .eq('booking_id', booking.booking_id)
-      .single();
-
-    if (checkError) {
-      console.error('❌ Error checking current booking status:', checkError);
-      throw new Error('Failed to verify booking status');
-    }
-
-    if (currentBooking.status === 'confirmed') {
-      console.log('⚠️ Booking already confirmed, skipping update');
-      return await generateSuccessPage(booking, therapist, 'accept');
-    }
-
-    if (currentBooking.status !== 'requested' && currentBooking.status !== 'timeout_reassigned' && currentBooking.status !== 'seeking_alternate') {
-      console.error('❌ Invalid booking status for acceptance:', currentBooking.status);
-      throw new Error('Booking cannot be accepted in current status: ' + currentBooking.status);
-    }
-
     // Update both therapist_id and responding_therapist_id
     const acceptUpdateData = {
       status: 'confirmed',
@@ -271,18 +259,32 @@ async function handleBookingAccept(booking, therapist, headers) {
 
     console.log('📝 Updating booking with data:', JSON.stringify(acceptUpdateData, null, 2));
 
+    // First, get the request_id from this booking
+    const { data: bookingForRequestId, error: requestIdError } = await supabase
+      .from('bookings')
+      .select('request_id')
+      .eq('booking_id', booking.booking_id)
+      .single();
+
+    if (requestIdError || !bookingForRequestId || !bookingForRequestId.request_id) {
+      console.error('❌ Error fetching request_id:', requestIdError);
+      throw new Error('Failed to get request_id for booking');
+    }
+
+    console.log('📍 Found request_id:', bookingForRequestId.request_id);
+
+    // Update ALL bookings in the series with this request_id
     const { error: updateError } = await supabase
       .from('bookings')
       .update(acceptUpdateData)
-      .eq('booking_id', booking.booking_id)
-      .eq('status', currentBooking.status); // Additional safety check
+      .eq('request_id', bookingForRequestId.request_id);
 
     if (updateError) {
       console.error('❌ Error updating booking status:', updateError);
       throw new Error('Failed to confirm booking');
     }
 
-    console.log('✅ Booking status updated successfully');
+    console.log('✅ All bookings with request_id', bookingForRequestId.request_id, 'updated to confirmed');
 
     // Add status history
     try {
@@ -295,25 +297,39 @@ async function handleBookingAccept(booking, therapist, headers) {
       console.error('❌ Error adding status history:', historyError);
     }
 
+    // Query series bookings for email
+    let seriesBookings = [];
+    console.log('🔍 Querying series bookings for emails using request_id:', bookingForRequestId.request_id);
+    const { data: allBookings, error: seriesError } = await supabase
+      .from('bookings')
+      .select('booking_id, booking_time, occurrence_number, therapist_fee')
+      .eq('request_id', bookingForRequestId.request_id)
+      .order('occurrence_number', { ascending: true, nullsFirst: false });
+
+    if (!seriesError && allBookings && allBookings.length > 1) {
+      seriesBookings = allBookings;
+      console.log(`✅ Found ${seriesBookings.length} bookings in series`);
+    } else if (seriesError) {
+      console.error('❌ Error querying series bookings:', seriesError);
+    } else {
+      console.log('ℹ️ Single booking (not a series)');
+    }
+
     // Send confirmation emails
     console.log('📧 Starting to send confirmation emails...');
-    
+
     try {
-      await sendClientConfirmationEmail(booking, therapist);
+      await sendClientConfirmationEmail(booking, therapist, seriesBookings);
       console.log('✅ Client confirmation email sent successfully');
     } catch (emailError) {
       console.error('❌ Error sending client confirmation email:', emailError);
     }
 
     try {
-      console.log('📧 Attempting to send therapist confirmation email to:', therapist.email);
-      const therapistEmailResult = await sendTherapistConfirmationEmail(booking, therapist);
+      await sendTherapistConfirmationEmail(booking, therapist, seriesBookings);
       console.log('✅ Therapist confirmation email sent successfully');
-      console.log('📧 Email result:', JSON.stringify(therapistEmailResult, null, 2));
     } catch (emailError) {
       console.error('❌ Error sending therapist confirmation email:', emailError);
-      console.error('❌ Error details:', emailError.message);
-      console.error('❌ Error stack:', emailError.stack);
     }
 
     // *** NEW: Send SMS confirmations ***
@@ -347,14 +363,13 @@ Client will be notified. Check email for full details.
     if (booking.customer_phone) {
       try {
         console.log('📱 Sending SMS confirmation to customer:', booking.customer_phone);
+        
+        const customerSMSMessage = `🎉 BOOKING CONFIRMED!
 
-        // Get customer first name from either customers table or booking fields
-        const customerFirstName = booking.customers?.first_name ||
-                                  booking.first_name ||
-                                  booking.booker_name?.split(' ')[0] ||
-                                  'Valued Customer';
+${therapist.first_name} ${therapist.last_name} has accepted your massage booking for ${new Date(booking.booking_time).toLocaleDateString()} at ${new Date(booking.booking_time).toLocaleTimeString()}.
 
-        const customerSMSMessage = `Hi ${customerFirstName}, Great news your booking request ${booking.booking_id} has been confirmed. Check your email for more details.`;
+Check your email for full details!
+- Rejuvenators`;
 
         await sendSMSNotification(booking.customer_phone, customerSMSMessage);
         console.log('✅ Customer SMS confirmation sent');
@@ -515,6 +530,22 @@ You'll be notified once someone accepts!
     if (updateError) {
       console.error('❌ Error updating booking status to declined:', updateError);
       throw new Error('Failed to decline booking');
+    }
+
+    // Update all booking occurrences to match parent status (if any exist)
+    console.log('🔄 Updating any child occurrences to declined status');
+    const { error: occurrencesUpdateError } = await supabase
+      .from('booking_occurrences')
+      .update({
+        status: 'declined',
+        updated_at: new Date().toISOString()
+      })
+      .eq('booking_id', booking.booking_id);
+
+    if (occurrencesUpdateError) {
+      console.error('❌ Error updating occurrences to declined:', occurrencesUpdateError);
+    } else {
+      console.log('✅ All occurrences updated to declined');
     }
 
     await addStatusHistory(booking.id, 'declined', therapist.id, 'No alternatives available or customer declined fallback');
@@ -752,7 +783,7 @@ async function updateBookingStatus(bookingId, status) {
 }
 
 // Email functions
-async function sendClientConfirmationEmail(booking, therapist) {
+async function sendClientConfirmationEmail(booking, therapist, seriesBookings = []) {
   try {
     console.log('📧 Preparing client confirmation email...');
 
@@ -761,8 +792,12 @@ async function sendClientConfirmationEmail(booking, therapist) {
       serviceName = booking.services.name;
     }
 
-    // Generate intake form URL with booking UUID
-    const intakeFormUrl = `https://rmmbook.netlify.app/therapist/clientintake?booking=${booking.id}`;
+    // Generate cancel URL
+    const baseUrl = process.env.URL || 'https://rmmbook.netlify.app';
+    const cancelUrl = `${baseUrl}/.netlify/functions/cancel-booking?booking_id=${booking.booking_id}`;
+
+    // Generate intake form URL
+    const intakeFormUrl = `${baseUrl}/therapist/clientintake?booking=${booking.id || booking.booking_id}`;
 
     const templateParams = {
       to_email: booking.customer_email,
@@ -776,21 +811,31 @@ async function sendClientConfirmationEmail(booking, therapist) {
       room_number: booking.room_number || 'N/A',
       therapist: therapist.first_name + ' ' + therapist.last_name,
       estimated_price: booking.price ? '$' + booking.price.toFixed(2) : 'N/A',
+      cancel_url: cancelUrl,
       intake_form_url: intakeFormUrl
     };
 
     // Add recurring booking information if applicable
-    const occurrences = booking.booking_occurrences || [];
-    const isRecurring = occurrences.length > 0;
+    const isRecurring = seriesBookings.length > 1;
 
     if (isRecurring) {
       templateParams.is_recurring = true;
-      templateParams.total_occurrences = occurrences.length;
+      templateParams.total_occurrences = seriesBookings.length;
 
-      // Generate sessions list
-      templateParams.sessions_list = occurrences.map(occ =>
-        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
-      ).join('\n');
+      // Generate sessions list with Initial/Repeat labels
+      templateParams.sessions_list = seriesBookings.map(b => {
+        const occNum = b.occurrence_number;
+        const label = occNum === 0 ? 'Initial booking' : `Repeat ${occNum}`;
+        const dateTime = new Date(b.booking_time);
+        return `${label}: ${dateTime.toLocaleString('en-AU', {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        })}`;
+      }).join('\n');
     }
 
     const result = await sendEmail(EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID, templateParams);
@@ -802,11 +847,9 @@ async function sendClientConfirmationEmail(booking, therapist) {
   }
 }
 
-async function sendTherapistConfirmationEmail(booking, therapist) {
+async function sendTherapistConfirmationEmail(booking, therapist, seriesBookings = []) {
   try {
     console.log('📧 Preparing therapist confirmation email...');
-    console.log('📧 Template ID:', EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID);
-    console.log('📧 Therapist email:', therapist.email);
 
     let serviceName = 'Massage Service';
     if (booking.services && booking.services.name) {
@@ -831,34 +874,38 @@ async function sendTherapistConfirmationEmail(booking, therapist) {
     };
 
     // Add recurring booking information if applicable
-    const occurrences = booking.booking_occurrences || [];
-    const isRecurring = occurrences.length > 0;
+    const isRecurring = seriesBookings.length > 1;
 
     if (isRecurring) {
       templateParams.is_recurring = true;
-      templateParams.total_occurrences = occurrences.length;
+      templateParams.total_occurrences = seriesBookings.length;
 
-      // Generate sessions list
-      templateParams.sessions_list = occurrences.map(occ =>
-        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
-      ).join('\n');
+      // Generate sessions list with Initial/Repeat labels
+      templateParams.sessions_list = seriesBookings.map(b => {
+        const occNum = b.occurrence_number;
+        const label = occNum === 0 ? 'Initial booking' : `Repeat ${occNum}`;
+        const dateTime = new Date(b.booking_time);
+        return `${label}: ${dateTime.toLocaleString('en-AU', {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        })}`;
+      }).join('\n');
 
       // Calculate total series earnings
       const feePerSession = booking.therapist_fee || 0;
-      const totalEarnings = (feePerSession * templateParams.total_occurrences).toFixed(2);
+      const totalEarnings = (feePerSession * seriesBookings.length).toFixed(2);
       templateParams.total_series_earnings = totalEarnings;
     }
 
-    console.log('📧 Template params:', JSON.stringify(templateParams, null, 2));
-
     const result = await sendEmail(EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID, templateParams);
-    console.log('📧 sendEmail result:', JSON.stringify(result, null, 2));
     return result;
 
   } catch (error) {
     console.error('❌ Error in sendTherapistConfirmationEmail:', error);
-    console.error('❌ Error message:', error.message);
-    console.error('❌ Error stack:', error.stack);
     throw error;
   }
 }
@@ -881,6 +928,26 @@ async function sendClientDeclineEmail(booking) {
       address: booking.address
     };
 
+    // Add recurring booking information if applicable
+    if (booking.is_recurring === true || booking.is_recurring === 'true') {
+      // Fetch all occurrences for this booking
+      const { data: occurrences } = await supabase
+        .from('booking_occurrences')
+        .select('occurrence_number, occurrence_date, occurrence_time')
+        .eq('booking_id', booking.booking_id)
+        .order('occurrence_number');
+
+      templateParams.is_recurring = true;
+      templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
+
+      // Generate sessions list
+      if (occurrences && occurrences.length > 0) {
+        templateParams.sessions_list = occurrences.map(occ =>
+          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+        ).join('\n');
+      }
+    }
+
     await sendEmail(EMAILJS_BOOKING_DECLINED_TEMPLATE_ID, templateParams);
     console.log('📧 Decline email sent to client:', booking.customer_email);
 
@@ -896,6 +963,12 @@ async function sendClientLookingForAlternateEmail(booking) {
       serviceName = booking.services.name;
     }
 
+    console.log('🔍 [sendClientLookingForAlternateEmail] Checking recurring status:', {
+      is_recurring: booking.is_recurring,
+      total_occurrences: booking.total_occurrences,
+      typeof_is_recurring: typeof booking.is_recurring
+    });
+
     const templateParams = {
       to_email: booking.customer_email,
       to_name: booking.first_name + ' ' + booking.last_name,
@@ -907,6 +980,36 @@ async function sendClientLookingForAlternateEmail(booking) {
       address: booking.address
     };
 
+    // Add recurring booking information if applicable
+    const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
+    console.log('🔄 [sendClientLookingForAlternateEmail] isRecurring evaluated to:', isRecurring);
+
+    if (isRecurring) {
+      console.log('📧 Fetching occurrences for booking:', booking.booking_id);
+      // Fetch all occurrences for this booking
+      const { data: occurrences, error: occError } = await supabase
+        .from('booking_occurrences')
+        .select('occurrence_number, occurrence_date, occurrence_time')
+        .eq('booking_id', booking.booking_id)
+        .order('occurrence_number');
+
+      if (occError) {
+        console.error('❌ Error fetching occurrences:', occError);
+      } else {
+        console.log(`✅ Found ${occurrences ? occurrences.length : 0} occurrences`);
+      }
+
+      templateParams.is_recurring = true;
+      templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
+
+      // Generate sessions list
+      if (occurrences && occurrences.length > 0) {
+        templateParams.sessions_list = occurrences.map(occ =>
+          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+        ).join('\n');
+      }
+    }
+
     await sendEmail(EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID, templateParams);
     console.log('📧 "Looking for alternate" email sent to client:', booking.customer_email);
 
@@ -917,9 +1020,15 @@ async function sendClientLookingForAlternateEmail(booking) {
 
 async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
   try {
+    console.log('🔍 [sendTherapistBookingRequest] Checking recurring status:', {
+      is_recurring: booking.is_recurring,
+      total_occurrences: booking.total_occurrences,
+      typeof_is_recurring: typeof booking.is_recurring
+    });
+
     const baseUrl = process.env.URL || 'https://your-site.netlify.app';
-    const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
-    const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking_id=' + booking.booking_id + '&therapist_id=' + therapist.id;
+    const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking=' + booking.booking_id + '&therapist=' + therapist.id;
+    const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking=' + booking.booking_id + '&therapist=' + therapist.id;
 
     const templateParams = {
       to_email: therapist.email,
@@ -945,42 +1054,43 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
       decline_url: declineUrl
     };
 
+    // Add recurring booking information if applicable
+    const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
+    console.log('🔄 [sendTherapistBookingRequest] isRecurring evaluated to:', isRecurring);
+
+    if (isRecurring) {
+      console.log('📧 Fetching occurrences for booking:', booking.booking_id);
+      // Fetch all occurrences for this booking
+      const { data: occurrences, error: occError } = await supabase
+        .from('booking_occurrences')
+        .select('occurrence_number, occurrence_date, occurrence_time')
+        .eq('booking_id', booking.booking_id)
+        .order('occurrence_number');
+
+      if (occError) {
+        console.error('❌ Error fetching occurrences:', occError);
+      } else {
+        console.log(`✅ Found ${occurrences ? occurrences.length : 0} occurrences`);
+      }
+
+      templateParams.is_recurring = true;
+      templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
+
+      // Generate sessions list
+      if (occurrences && occurrences.length > 0) {
+        templateParams.sessions_list = occurrences.map(occ =>
+          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+        ).join('\n');
+      }
+
+      // Calculate total series earnings
+      const feePerSession = booking.therapist_fee || 0;
+      const totalEarnings = (feePerSession * templateParams.total_occurrences).toFixed(2);
+      templateParams.total_series_earnings = totalEarnings;
+    }
+
     const result = await sendEmail(EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID, templateParams);
     console.log('📧 Booking request sent to therapist:', therapist.email);
-    
-    // *** NEW: Also send SMS with Accept/Decline links ***
-    if (therapist.phone) {
-      try {
-        console.log('📱 Sending booking request SMS to therapist:', therapist.phone);
-        
-        // Use therapist-response endpoint for SMS links
-        const therapistResponseBase = 'https://rmmbookingplatform.netlify.app/.netlify/functions/therapist-response';
-        const smsAcceptLink = `${therapistResponseBase}?booking_id=${booking.booking_id}&action=accept&therapist_id=${therapist.id}`;
-        const smsDeclineLink = `${therapistResponseBase}?booking_id=${booking.booking_id}&action=decline&therapist_id=${therapist.id}`;
-        
-        const smsMessage = `📱 NEW BOOKING REQUEST
-
-Booking ID: ${booking.booking_id}
-Client: ${booking.first_name} ${booking.last_name}
-Date: ${new Date(booking.booking_time).toLocaleDateString()}
-Time: ${new Date(booking.booking_time).toLocaleTimeString()}
-Duration: ${booking.duration_minutes} minutes
-Fee: $${booking.therapist_fee || 'TBD'}
-
-Quick Response:
-✅ Accept: ${smsAcceptLink}
-❌ Decline: ${smsDeclineLink}
-
-- Rejuvenators`;
-
-        await sendSMSNotification(therapist.phone, smsMessage);
-        console.log('✅ Booking request SMS sent to therapist');
-      } catch (smsError) {
-        console.error('❌ Error sending booking request SMS:', smsError);
-        // Don't fail the entire request if SMS fails
-      }
-    }
-    
     return result;
 
   } catch (error) {
@@ -989,43 +1099,21 @@ Quick Response:
   }
 }
 
-// *** SMS notification function using direct Twilio API (same as therapist-status-update.js) ***
+// *** NEW: SMS notification function ***
 async function sendSMSNotification(phoneNumber, message) {
   try {
-    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
-      console.error('❌ Twilio credentials not configured');
-      return { success: false, error: 'Twilio not configured' };
-    }
-
     console.log(`📱 Sending SMS notification to ${phoneNumber}`);
-    console.log(`📄 Message: ${message}`);
-
-    // Send SMS via Twilio API directly
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
-    const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
-
-    const response = await fetch(twilioUrl, {
+    console.log(`📄 Message preview: ${message.substring(0, 100)}...`);
+    
+    const response = await fetch('https://rmmbookingplatform.netlify.app/.netlify/functions/send-sms', {
       method: 'POST',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: new URLSearchParams({
-        To: phoneNumber,
-        From: TWILIO_PHONE_NUMBER,
-        Body: message
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: phoneNumber, message: message })
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Twilio error: ${response.status} - ${errorText}`);
-    }
-
+    
     const result = await response.json();
-    console.log('✅ SMS sent successfully. SID:', result.sid);
-    return { success: true, sid: result.sid };
-
+    console.log('📱 SMS API response:', result);
+    return result;
   } catch (error) {
     console.error('❌ Error sending SMS notification:', error);
     return { success: false, error: error.message };
