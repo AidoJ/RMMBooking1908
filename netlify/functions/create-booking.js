@@ -40,9 +40,9 @@ exports.handler = async (event, context) => {
 
       // Extract recurring-specific data
       const recurringDates = bookingData.recurring_dates || [];
-
-      // Generate request_id with REQ prefix (not RB) to avoid confusion with booking_id
       const initialBookingId = bookingData.booking_id; // e.g., RB2511001
+
+      // Generate request_id with REQ prefix to distinguish from booking_id
       const requestId = initialBookingId.replace('RB', 'REQ'); // e.g., REQ2511001
 
       // Prepare base booking data (remove recurring-specific fields)
@@ -64,23 +64,18 @@ exports.handler = async (event, context) => {
       bookingsToInsert.push(initialBooking);
 
       // 2. Create repeat bookings (occurrence_number = 1, 2, 3...)
-      // Extract base number from initial booking_id and increment for each repeat
-      const baseNumber = parseInt(initialBookingId.substring(6, 9), 10); // Extract "001" from "RB2511001"
-      const yearMonth = initialBookingId.substring(2, 6); // Extract "2511" from "RB2511001"
-
       for (let i = 0; i < recurringDates.length; i++) {
         const occurrenceDate = new Date(recurringDates[i]);
         const dateOnly = occurrenceDate.toISOString().split('T')[0];
         const timeOnly = baseBookingData.booking_time.split('T')[1].substring(0, 5); // Extract HH:MM
         const dateTime = `${dateOnly}T${timeOnly}:00`;
 
-        // Generate sequential booking_id: RB2511001 -> RB2511002, RB2511003, etc.
-        const repeatNumber = baseNumber + i + 1;
-        const repeatBookingId = `RB${yearMonth}${String(repeatNumber).padStart(3, '0')}`;
+        // Generate booking_id with hyphen suffix: RB2511001-1, RB2511001-2, etc.
+        const repeatBookingId = `${initialBookingId}-${i + 1}`;
 
         const repeatBooking = {
           ...baseBookingData,
-          booking_id: repeatBookingId, // Sequential: RB2511002, RB2511003, etc.
+          booking_id: repeatBookingId, // RB2511001-1, RB2511001-2, etc.
           request_id: requestId, // Same for all: REQ2511001
           occurrence_number: i + 1,
           booking_time: dateTime,
