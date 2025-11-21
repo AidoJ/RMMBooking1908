@@ -259,33 +259,18 @@ async function handleBookingAccept(booking, therapist, headers) {
 
     console.log('📝 Updating booking with data:', JSON.stringify(acceptUpdateData, null, 2));
 
+    // Update ALL bookings in the series using request_id
     const { error: updateError } = await supabase
       .from('bookings')
       .update(acceptUpdateData)
-      .eq('booking_id', booking.booking_id);
+      .eq('request_id', booking.request_id);
 
     if (updateError) {
       console.error('❌ Error updating booking status:', updateError);
       throw new Error('Failed to confirm booking');
     }
 
-    console.log('✅ Booking status updated successfully');
-
-    // Update all booking occurrences to match parent status (if any exist)
-    console.log('🔄 Updating any child occurrences to confirmed status');
-    const { error: occurrencesUpdateError } = await supabase
-      .from('booking_occurrences')
-      .update({
-        status: 'confirmed',
-        updated_at: new Date().toISOString()
-      })
-      .eq('booking_id', booking.booking_id);
-
-    if (occurrencesUpdateError) {
-      console.error('❌ Error updating occurrences:', occurrencesUpdateError);
-    } else {
-      console.log('✅ All occurrences updated to confirmed');
-    }
+    console.log('✅ All bookings in series updated to confirmed status');
 
     // Add status history
     try {
@@ -298,18 +283,34 @@ async function handleBookingAccept(booking, therapist, headers) {
       console.error('❌ Error adding status history:', historyError);
     }
 
+    // Query series bookings for email (if recurring)
+    let seriesBookings = [];
+    if (booking.request_id) {
+      console.log('🔍 Querying series bookings for emails...');
+      const { data: allBookings, error: seriesError } = await supabase
+        .from('bookings')
+        .select('booking_id, booking_time, occurrence_number, therapist_fee')
+        .eq('request_id', booking.request_id)
+        .order('occurrence_number', { ascending: true, nullsFirst: false });
+
+      if (!seriesError && allBookings && allBookings.length > 1) {
+        seriesBookings = allBookings;
+        console.log(`✅ Found ${seriesBookings.length} bookings in series`);
+      }
+    }
+
     // Send confirmation emails
     console.log('📧 Starting to send confirmation emails...');
-    
+
     try {
-      await sendClientConfirmationEmail(booking, therapist);
+      await sendClientConfirmationEmail(booking, therapist, seriesBookings);
       console.log('✅ Client confirmation email sent successfully');
     } catch (emailError) {
       console.error('❌ Error sending client confirmation email:', emailError);
     }
 
     try {
-      await sendTherapistConfirmationEmail(booking, therapist);
+      await sendTherapistConfirmationEmail(booking, therapist, seriesBookings);
       console.log('✅ Therapist confirmation email sent successfully');
     } catch (emailError) {
       console.error('❌ Error sending therapist confirmation email:', emailError);
@@ -766,7 +767,7 @@ async function updateBookingStatus(bookingId, status) {
 }
 
 // Email functions
-async function sendClientConfirmationEmail(booking, therapist) {
+async function sendClientConfirmationEmail(booking, therapist, seriesBookings = []) {
   try {
     console.log('📧 Preparing client confirmation email...');
 
@@ -799,17 +800,26 @@ async function sendClientConfirmationEmail(booking, therapist) {
     };
 
     // Add recurring booking information if applicable
-    const occurrences = booking.booking_occurrences || [];
-    const isRecurring = occurrences.length > 0;
+    const isRecurring = seriesBookings.length > 1;
 
     if (isRecurring) {
       templateParams.is_recurring = true;
-      templateParams.total_occurrences = occurrences.length;
+      templateParams.total_occurrences = seriesBookings.length;
 
-      // Generate sessions list
-      templateParams.sessions_list = occurrences.map(occ =>
-        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
-      ).join('\n');
+      // Generate sessions list with Initial/Repeat labels
+      templateParams.sessions_list = seriesBookings.map(b => {
+        const occNum = b.occurrence_number;
+        const label = occNum === 0 ? 'Initial booking' : `Repeat ${occNum}`;
+        const dateTime = new Date(b.booking_time);
+        return `${label}: ${dateTime.toLocaleString('en-AU', {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        })}`;
+      }).join('\n');
     }
 
     const result = await sendEmail(EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID, templateParams);
@@ -821,7 +831,7 @@ async function sendClientConfirmationEmail(booking, therapist) {
   }
 }
 
-async function sendTherapistConfirmationEmail(booking, therapist) {
+async function sendTherapistConfirmationEmail(booking, therapist, seriesBookings = []) {
   try {
     console.log('📧 Preparing therapist confirmation email...');
 
@@ -848,21 +858,30 @@ async function sendTherapistConfirmationEmail(booking, therapist) {
     };
 
     // Add recurring booking information if applicable
-    const occurrences = booking.booking_occurrences || [];
-    const isRecurring = occurrences.length > 0;
+    const isRecurring = seriesBookings.length > 1;
 
     if (isRecurring) {
       templateParams.is_recurring = true;
-      templateParams.total_occurrences = occurrences.length;
+      templateParams.total_occurrences = seriesBookings.length;
 
-      // Generate sessions list
-      templateParams.sessions_list = occurrences.map(occ =>
-        `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
-      ).join('\n');
+      // Generate sessions list with Initial/Repeat labels
+      templateParams.sessions_list = seriesBookings.map(b => {
+        const occNum = b.occurrence_number;
+        const label = occNum === 0 ? 'Initial booking' : `Repeat ${occNum}`;
+        const dateTime = new Date(b.booking_time);
+        return `${label}: ${dateTime.toLocaleString('en-AU', {
+          weekday: 'short',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit'
+        })}`;
+      }).join('\n');
 
       // Calculate total series earnings
       const feePerSession = booking.therapist_fee || 0;
-      const totalEarnings = (feePerSession * templateParams.total_occurrences).toFixed(2);
+      const totalEarnings = (feePerSession * seriesBookings.length).toFixed(2);
       templateParams.total_series_earnings = totalEarnings;
     }
 
