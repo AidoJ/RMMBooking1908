@@ -14,7 +14,7 @@ Automated booking reminder system that sends email and SMS notifications to both
 Created in EmailJS with the following template IDs:
 
 #### Client Reminder Template
-- **Template ID:** `template_bookingreminderclient`
+- **Template ID:** `template_remindclient`
 - **HTML File:** `EmailTemplatebookingreminderclient.html`
 - **Variables:**
   - `customer_name` - Client's first name
@@ -27,7 +27,7 @@ Created in EmailJS with the following template IDs:
   - `therapist_name` - Assigned therapist's first name
 
 #### Therapist Reminder Template
-- **Template ID:** `template_bookingremindertherapist`
+- **Template ID:** `template_remindtherapist`
 - **HTML File:** `EmailTemplatebookingremindertherapist.html`
 - **Variables:**
   - `therapist_name` - Therapist's first name
@@ -75,8 +75,8 @@ This field tracks when a reminder was sent to prevent duplicate reminders.
 1. Log in to EmailJS dashboard
 2. Create two new templates using the HTML files provided
 3. Set the template IDs as specified above:
-   - `template_bookingreminderclient`
-   - `template_bookingremindertherapist`
+   - `template_remindclient`
+   - `template_remindtherapist`
 4. Map the template variables to the parameters sent by the function
 
 ### Netlify Deployment

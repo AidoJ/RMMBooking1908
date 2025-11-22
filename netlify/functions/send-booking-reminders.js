@@ -17,8 +17,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_puww2kb';
 const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || 'qfM_qA664E4JddSMN';
 const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
-const EMAILJS_CLIENT_REMINDER_TEMPLATE = 'template_bookingreminderclient';
-const EMAILJS_THERAPIST_REMINDER_TEMPLATE = 'template_bookingremindertherapist';
+const EMAILJS_CLIENT_REMINDER_TEMPLATE = 'template_remindclient';
+const EMAILJS_THERAPIST_REMINDER_TEMPLATE = 'template_remindtherapist';
 
 // Twilio configuration
 const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
