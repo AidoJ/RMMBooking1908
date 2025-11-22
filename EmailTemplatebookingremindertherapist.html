@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Reminder - Therapist</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; }
+        .header { background-color: #1a94a9; color: white; padding: 30px 20px; text-align: center; }
+        .content { padding: 30px 20px; }
+        .booking-details { background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1a94a9; }
+        .client-info { background-color: #e8f4f5; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #007e8c; }
+        .reminder-box { background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107; text-align: center; }
+        .earnings-box { background-color: #d1fae5; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #10b981; text-align: center; }
+        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
+        .highlight { color: #1a94a9; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⏰ Booking Reminder</h1>
+            <p>You have an upcoming appointment!</p>
+        </div>
+
+        <div class="content">
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                Hi <span class="highlight">{{therapist_name}}</span>,
+            </p>
+
+            <div class="reminder-box">
+                <h2 style="color: #856404; margin-top: 0;">📅 Upcoming Booking Reminder</h2>
+                <p style="font-size: 18px; margin: 10px 0; color: #856404;">
+                    This is a reminder about your scheduled massage appointment.
+                </p>
+            </div>
+
+            <div class="client-info">
+                <h3 style="color: #007e8c; margin-top: 0;">👤 Client Information</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 8px 0;"><strong>Client Name:</strong></td><td style="padding: 8px 0;">{{client_name}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Booking ID:</strong></td><td style="padding: 8px 0;">{{booking_id}}</td></tr>
+                </table>
+            </div>
+
+            <div class="booking-details">
+                <h3 style="color: #1a94a9; margin-top: 0;">📋 Appointment Details</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 8px 0;"><strong>Service:</strong></td><td style="padding: 8px 0;">{{service_name}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Duration:</strong></td><td style="padding: 8px 0;">{{duration}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Date:</strong></td><td style="padding: 8px 0;">{{booking_date}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Time:</strong></td><td style="padding: 8px 0;">{{booking_time}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Address:</strong></td><td style="padding: 8px 0;">{{address}}</td></tr>
+                    <tr><td style="padding: 8px 0;"><strong>Room Number:</strong></td><td style="padding: 8px 0;">{{room_number}}</td></tr>
+                </table>
+            </div>
+
+            <div class="earnings-box">
+                <h3 style="color: #065f46; margin-top: 0;">💰 Your Fee</h3>
+                <p style="font-size: 24px; font-weight: bold; color: #10b981; margin: 10px 0;">
+                    {{therapist_fee}}
+                </p>
+            </div>
+
+            <div style="background-color: #e0e7ff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #6366f1;">
+                <h3 style="color: #4338ca; margin-top: 0;">📝 Reminder Checklist</h3>
+                <ul style="color: #4338ca; margin: 10px 0; padding-left: 20px;">
+                    <li>Arrive 10-15 minutes before the scheduled appointment time</li>
+                    <li>Ensure you have all necessary equipment and supplies</li>
+                    <li>Review client's health intake form if available</li>
+                    <li>Bring your payment terminal if needed</li>
+                    <li>Check the address and room number before departing</li>
+                </ul>
+            </div>
+
+            <div style="background-color: #fee2e2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ef4444; text-align: center;">
+                <h3 style="color: #991b1b; margin-top: 0;">⚠️ Can't Make It?</h3>
+                <p style="color: #991b1b; margin: 10px 0; line-height: 1.6;">
+                    If you're unable to attend this appointment, please contact the office immediately:
+                </p>
+                <p style="color: #991b1b; font-size: 18px; font-weight: bold; margin: 10px 0;">
+                    📞 1300 302542
+                </p>
+            </div>
+
+            <p style="font-size: 16px; line-height: 1.6; margin-top: 30px;">
+                Thank you for being part of the Rejuvenators team!
+            </p>
+
+            <p style="font-size: 16px; line-height: 1.6;">
+                Best regards,<br>
+                <strong>Rejuvenators Administration</strong>
+            </p>
+        </div>
+
+        <div class="footer">
+            <p style="margin: 5px 0;">
+                <strong>Rejuvenators Mobile Massage</strong>
+            </p>
+            <p style="margin: 5px 0;">
+                📞 1300 302542
+            </p>
+            <p style="margin: 5px 0;">
+                This is an automated reminder. Please do not reply to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

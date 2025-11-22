@@ -22,6 +22,10 @@
 [functions."send-scheduled-notifications"]
   schedule = "*/10 * * * *"  # Run every 10 minutes
 
+# Scheduled function for sending booking reminders
+[functions."send-booking-reminders"]
+  schedule = "*/10 * * * *"  # Run every 10 minutes
+
 # Headers for security and performance
 [[headers]]
   for = "/*"
