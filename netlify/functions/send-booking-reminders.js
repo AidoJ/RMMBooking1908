@@ -62,7 +62,7 @@ exports.handler = async (event, context) => {
       .from('bookings')
       .select(`
         *,
-        services(name, duration_minutes),
+        services(name),
         therapist_profiles!therapist_id(first_name, last_name, email, phone)
       `)
       .eq('status', 'confirmed')
@@ -182,7 +182,7 @@ async function sendClientReminder(booking) {
 
     const bookingDate = new Date(booking.booking_time);
     const serviceName = booking.services?.name || 'Massage';
-    const duration = booking.services?.duration_minutes || booking.duration_minutes || 60;
+    const duration = booking.duration_minutes || 60;
 
     const templateParams = {
       to_email: booking.email,
@@ -240,7 +240,7 @@ async function sendTherapistReminder(booking) {
 
     const bookingDate = new Date(booking.booking_time);
     const serviceName = booking.services?.name || 'Massage';
-    const duration = booking.services?.duration_minutes || booking.duration_minutes || 60;
+    const duration = booking.duration_minutes || 60;
     const clientName = `${booking.first_name} ${booking.last_name}`;
 
     const templateParams = {
