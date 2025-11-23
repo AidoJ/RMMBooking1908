@@ -182,7 +182,7 @@ async function sendClientReminder(booking) {
 
     const bookingDate = new Date(booking.booking_time);
     const serviceName = booking.services?.name || 'Massage';
-    const duration = booking.duration_minutes || 60;
+    const duration = booking.duration_minutes;
 
     const templateParams = {
       to_email: booking.email,
@@ -240,7 +240,7 @@ async function sendTherapistReminder(booking) {
 
     const bookingDate = new Date(booking.booking_time);
     const serviceName = booking.services?.name || 'Massage';
-    const duration = booking.duration_minutes || 60;
+    const duration = booking.duration_minutes;
     const clientName = `${booking.first_name} ${booking.last_name}`;
 
     const templateParams = {
