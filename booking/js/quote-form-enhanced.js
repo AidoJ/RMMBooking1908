@@ -6,8 +6,104 @@ class QuoteFormManager {
     this.eventStructure = 'multi_day'; // Always use unified multi-day structure
     this.multiDayDates = [];
     this.selectedService = null;
+    this.detectedTimezone = null; // Store detected timezone
     this.setupEventListeners();
     this.initializeUnifiedForm();
+  }
+
+  // Detect Australian timezone from coordinates
+  detectTimezoneFromCoords(lat, lng) {
+    if (!lat || !lng) {
+      console.warn('⚠️ No coordinates provided for timezone detection');
+      return 'Australia/Sydney';
+    }
+
+    // Western Australia (Perth - no DST)
+    if (lng >= 112.5 && lng < 129) return 'Australia/Perth';
+
+    // Northern Territory (Darwin - no DST)
+    if (lat > -26 && lng >= 129 && lng < 138) return 'Australia/Darwin';
+
+    // South Australia (Adelaide - has DST)
+    if (lat <= -26 && lng >= 129 && lng < 141) return 'Australia/Adelaide';
+
+    // Queensland (Brisbane - no DST)
+    if (lat > -29 && lng >= 138 && lng < 154) return 'Australia/Brisbane';
+
+    // Victoria (Melbourne - has DST)
+    if (lat <= -34 && lng >= 141 && lng < 150) return 'Australia/Melbourne';
+
+    // Tasmania (Hobart - has DST)
+    if (lat <= -40) return 'Australia/Hobart';
+
+    // NSW/ACT (Sydney - has DST) - default for eastern Australia
+    if (lng >= 141) return 'Australia/Sydney';
+
+    console.warn('⚠️ Could not determine timezone, defaulting to Sydney');
+    return 'Australia/Sydney';
+  }
+
+  // Get timezone display name
+  getTimezoneDisplayName(timezone) {
+    const timezoneNames = {
+      'Australia/Perth': 'Perth (AWST, UTC+8, no DST)',
+      'Australia/Adelaide': 'Adelaide (ACST/ACDT, UTC+9:30/+10:30)',
+      'Australia/Darwin': 'Darwin (ACST, UTC+9:30, no DST)',
+      'Australia/Brisbane': 'Brisbane (AEST, UTC+10, no DST)',
+      'Australia/Sydney': 'Sydney (AEST/AEDT, UTC+10/+11)',
+      'Australia/Melbourne': 'Melbourne (AEST/AEDT, UTC+10/+11)',
+      'Australia/Hobart': 'Hobart (AEST/AEDT, UTC+10/+11)'
+    };
+    return timezoneNames[timezone] || timezone;
+  }
+
+  // Get timezone abbreviation (considers current date for DST)
+  getTimezoneAbbreviation(timezone, date = new Date()) {
+    const month = date.getMonth(); // 0-11
+    // October (9) to March (2) is summer in Australia (DST period)
+    const isDST = month >= 9 || month <= 2;
+
+    const abbreviations = {
+      'Australia/Perth': 'AWST', // No DST
+      'Australia/Darwin': 'ACST', // No DST
+      'Australia/Brisbane': 'AEST', // No DST
+      'Australia/Adelaide': isDST ? 'ACDT' : 'ACST',
+      'Australia/Sydney': isDST ? 'AEDT' : 'AEST',
+      'Australia/Melbourne': isDST ? 'AEDT' : 'AEST',
+      'Australia/Hobart': isDST ? 'AEDT' : 'AEST'
+    };
+
+    return abbreviations[timezone] || '';
+  }
+
+  // Show timezone notification
+  showTimezoneNotification(timezone) {
+    const container = document.getElementById('quoteTimezoneNotification');
+    if (!container) return;
+
+    const displayName = this.getTimezoneDisplayName(timezone);
+    const abbreviation = this.getTimezoneAbbreviation(timezone);
+
+    container.innerHTML = `
+      <div style="
+        background-color: #e6f7ff;
+        border: 1px solid #91d5ff;
+        border-radius: 4px;
+        padding: 12px 16px;
+        margin: 12px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      ">
+        <span style="font-size: 18px;">🕐</span>
+        <div>
+          <strong>Timezone Detected:</strong> ${displayName}
+          <br>
+          <small style="color: #666;">All event times will be interpreted as ${abbreviation}</small>
+        </div>
+      </div>
+    `;
+    container.style.display = 'block';
   }
 
   setupEventListeners() {
@@ -690,13 +786,21 @@ class QuoteFormManager {
     autocomplete.addListener('place_changed', () => {
       const place = autocomplete.getPlace();
       if (place.geometry) {
-        addressInput.dataset.lat = place.geometry.location.lat();
-        addressInput.dataset.lng = place.geometry.location.lng();
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+
+        addressInput.dataset.lat = lat;
+        addressInput.dataset.lng = lng;
 
         const statusDiv = document.getElementById('event-address-status');
         statusDiv.className = 'address-status success';
         statusDiv.textContent = '✓ Address verified';
         statusDiv.style.display = 'block';
+
+        // Detect and display timezone
+        this.detectedTimezone = this.detectTimezoneFromCoords(lat, lng);
+        console.log(`🕐 Detected timezone: ${this.detectedTimezone} for quote event at (${lat}, ${lng})`);
+        this.showTimezoneNotification(this.detectedTimezone);
       }
     });
   }
@@ -828,9 +932,10 @@ class QuoteFormManager {
       event_type: document.getElementById('eventType').value || null,
       company_name: document.getElementById('companyName').value.trim() || null,
 
-      // Location coordinates
+      // Location coordinates and timezone
       latitude: parseFloat(locationInput.dataset.lat) || null,
       longitude: parseFloat(locationInput.dataset.lng) || null,
+      event_timezone: this.detectedTimezone || 'Australia/Sydney', // Store detected timezone
 
       // Service specifications (aligned with database schema)
       total_sessions: parseInt(document.getElementById('numberOfServices').value) || 0,

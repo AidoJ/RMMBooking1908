@@ -10,6 +10,103 @@ console.log('🔐 Admin mode:', isAdminMode);
 // Store admin mode globally
 window.isAdminMode = isAdminMode;
 
+// ===== TIMEZONE HELPER FUNCTIONS =====
+// Detect Australian timezone from coordinates
+function detectTimezoneFromCoords(lat, lng) {
+  if (!lat || !lng) {
+    console.warn('⚠️ No coordinates provided for timezone detection');
+    return 'Australia/Sydney';
+  }
+
+  // Western Australia (Perth - no DST)
+  if (lng >= 112.5 && lng < 129) return 'Australia/Perth';
+
+  // Northern Territory (Darwin - no DST)
+  if (lat > -26 && lng >= 129 && lng < 138) return 'Australia/Darwin';
+
+  // South Australia (Adelaide - has DST)
+  if (lat <= -26 && lng >= 129 && lng < 141) return 'Australia/Adelaide';
+
+  // Queensland (Brisbane - no DST)
+  if (lat > -29 && lng >= 138 && lng < 154) return 'Australia/Brisbane';
+
+  // Victoria (Melbourne - has DST)
+  if (lat <= -34 && lng >= 141 && lng < 150) return 'Australia/Melbourne';
+
+  // Tasmania (Hobart - has DST)
+  if (lat <= -40) return 'Australia/Hobart';
+
+  // NSW/ACT (Sydney - has DST) - default for eastern Australia
+  if (lng >= 141) return 'Australia/Sydney';
+
+  console.warn('⚠️ Could not determine timezone, defaulting to Sydney');
+  return 'Australia/Sydney';
+}
+
+// Get timezone display name
+function getTimezoneDisplayName(timezone) {
+  const timezoneNames = {
+    'Australia/Perth': 'Perth (AWST, UTC+8, no DST)',
+    'Australia/Adelaide': 'Adelaide (ACST/ACDT, UTC+9:30/+10:30)',
+    'Australia/Darwin': 'Darwin (ACST, UTC+9:30, no DST)',
+    'Australia/Brisbane': 'Brisbane (AEST, UTC+10, no DST)',
+    'Australia/Sydney': 'Sydney (AEST/AEDT, UTC+10/+11)',
+    'Australia/Melbourne': 'Melbourne (AEST/AEDT, UTC+10/+11)',
+    'Australia/Hobart': 'Hobart (AEST/AEDT, UTC+10/+11)'
+  };
+  return timezoneNames[timezone] || timezone;
+}
+
+// Get timezone abbreviation (considers current date for DST)
+function getTimezoneAbbreviation(timezone, date = new Date()) {
+  const month = date.getMonth(); // 0-11
+  // October (9) to March (2) is summer in Australia (DST period)
+  const isDST = month >= 9 || month <= 2;
+
+  const abbreviations = {
+    'Australia/Perth': 'AWST', // No DST
+    'Australia/Darwin': 'ACST', // No DST
+    'Australia/Brisbane': 'AEST', // No DST
+    'Australia/Adelaide': isDST ? 'ACDT' : 'ACST',
+    'Australia/Sydney': isDST ? 'AEDT' : 'AEST',
+    'Australia/Melbourne': isDST ? 'AEDT' : 'AEST',
+    'Australia/Hobart': isDST ? 'AEDT' : 'AEST'
+  };
+
+  return abbreviations[timezone] || '';
+}
+
+// Show timezone notification
+function showBookingTimezoneNotification(timezone) {
+  const container = document.getElementById('bookingTimezoneNotification');
+  if (!container) return;
+
+  const displayName = getTimezoneDisplayName(timezone);
+  const abbreviation = getTimezoneAbbreviation(timezone);
+
+  container.innerHTML = `
+    <div style="
+      background-color: #e6f7ff;
+      border: 1px solid #91d5ff;
+      border-radius: 4px;
+      padding: 12px 16px;
+      margin: 12px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    ">
+      <span style="font-size: 18px;">🕐</span>
+      <div>
+        <strong>Timezone Detected:</strong> ${displayName}
+        <br>
+        <small style="color: #666;">Booking times will be interpreted as ${abbreviation}</small>
+      </div>
+    </div>
+  `;
+  container.style.display = 'block';
+}
+// ===== END TIMEZONE HELPER FUNCTIONS =====
+
 // Add this function at the very top-level scope so it is accessible everywhere
 async function calculateTherapistFee(dateVal, timeVal, durationVal, therapistId) {
   if (!dateVal || !timeVal || !durationVal || !therapistId) {
@@ -2243,6 +2340,11 @@ function initAutocomplete() {
 
         console.log('✅ Address selected:', selected);
 
+        // Detect and display timezone
+        const detectedTimezone = detectTimezoneFromCoords(selected.lat, selected.lng);
+        console.log(`🕐 Detected timezone: ${detectedTimezone} for booking at (${selected.lat}, ${selected.lng})`);
+        showBookingTimezoneNotification(detectedTimezone);
+
         // Show debug message on page
         if (statusDiv) {
           statusDiv.innerHTML = `<small style="color: #666;">🔍 DEBUG: Selected "${selected.name}" at (${selected.lat.toFixed(4)}, ${selected.lng.toFixed(4)}). Checking coverage in 500ms...</small>`;
@@ -3391,10 +3493,10 @@ function generateRecurringSessionsHTML() {
   const time = document.getElementById('time').value;
 
   let html = '<div style="background-color: #e3f2fd; padding: 15px; margin: 15px 0; border-radius: 8px; border-left: 4px solid #2196F3;">';
-  html += '<h4 style="color: #1976D2; margin-top: 0; margin-bottom: 10px; font-size: 16px;">🔄 Recurring Booking Series</h4>';
+  html += '<h4 style="color: #1976D2; margin-top: 0; margin-bottom: 10px; font-size: 16px;">🔄 Repeat Booking Series</h4>';
   html += `<p style="margin: 5px 0; color: #1565C0; font-weight: 600;">Total Sessions: ${count}</p>`;
   html += '<div style="background-color: #ffffff; padding: 12px; margin-top: 12px; border-radius: 6px;">';
-  html += '<h5 style="color: #1976D2; margin-top: 0; margin-bottom: 8px; font-size: 14px;">📅 All Scheduled Sessions:</h5>';
+  html += '<h5 style="color: #1976D2; margin-top: 0; margin-bottom: 8px; font-size: 14px;">📅 All Repeat Sessions:</h5>';
   html += '<ul style="margin: 0; padding-left: 20px; color: #1565C0; font-size: 13px; line-height: 1.8;">';
 
   dates.forEach((date, index) => {

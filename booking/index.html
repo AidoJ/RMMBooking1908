@@ -83,6 +83,8 @@
         </div>
         <input id="address" autocomplete="off" placeholder="Start typing your address..." />
         <div id="address-autocomplete-status" class="status-message"></div>
+        <!-- Timezone notification container -->
+        <div id="bookingTimezoneNotification" style="display: none;"></div>
         <!-- Step 1 Navigation Buttons -->
         <div class="button-group">
           <button class="btn btn-back" onclick="showStep('step0')">Back</button>
@@ -600,9 +602,38 @@
     <div class="form-section event-structure-section">
       <h3>Event Details</h3>
 
+      <!-- EVENT LOCATION FIRST - Critical for timezone detection -->
+      <div class="form-group">
+        <label for="eventLocation">Event Location *</label>
+        <input type="text" id="eventLocation" class="form-control" placeholder="Start typing your address..." required>
+        <div id="event-address-status" class="address-status"></div>
+      </div>
+
+      <!-- Timezone notification container -->
+      <div id="quoteTimezoneNotification" style="display: none;"></div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="eventType">Event Type</label>
+          <select id="eventType" class="form-control">
+            <option value="">Select event type...</option>
+            <option value="corporate_wellness">Corporate Wellness</option>
+            <option value="team_building">Team Building</option>
+            <option value="conference">Conference</option>
+            <option value="retreat">Retreat</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="expectedAttendees">Expected Attendees</label>
+          <input type="number" id="expectedAttendees" class="form-control" min="1" placeholder="Number of people">
+        </div>
+      </div>
+    </div>
 
     <!-- Unified Event Date/Time Fields -->
     <div id="multiDayFields" class="form-section multi-day-container active">
+      <h3>Event Schedule</h3>
       <div class="form-group">
         <label for="numberOfDays">Number of Event Days</label>
         <select id="numberOfDays" class="form-control">
@@ -639,33 +670,6 @@
         <div class="form-group">
           <label for="contactPhone">Phone Number *</label>
           <input type="tel" id="contactPhone" class="form-control" placeholder="+61 XXX XXX XXX" required>
-        </div>
-      </div>
-    </div>
-
-    <!-- Event Details -->
-    <div class="form-section">
-      <h3>Event Details</h3>
-      <div class="form-group">
-        <label for="eventLocation">Event Location *</label>
-        <input type="text" id="eventLocation" class="form-control" placeholder="Start typing your address..." required>
-        <div id="event-address-status" class="address-status"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label for="eventType">Event Type</label>
-          <select id="eventType" class="form-control">
-            <option value="">Select event type...</option>
-            <option value="corporate_wellness">Corporate Wellness</option>
-            <option value="team_building">Team Building</option>
-            <option value="conference">Conference</option>
-            <option value="retreat">Retreat</option>
-            <option value="other">Other</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="expectedAttendees">Expected Attendees</label>
-          <input type="number" id="expectedAttendees" class="form-control" min="1" placeholder="Number of people">
         </div>
       </div>
     </div>
