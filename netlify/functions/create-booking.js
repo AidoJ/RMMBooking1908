@@ -4,6 +4,38 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Service role bypasses RLS
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Detect Australian timezone from coordinates
+function detectTimezoneFromCoords(lat, lng) {
+  if (!lat || !lng) {
+    console.warn('⚠️ No coordinates provided for timezone detection, using Sydney');
+    return 'Australia/Sydney';
+  }
+
+  // Western Australia (Perth - no DST)
+  if (lng >= 112.5 && lng < 129) return 'Australia/Perth';
+
+  // Northern Territory (Darwin - no DST)
+  if (lat > -26 && lng >= 129 && lng < 138) return 'Australia/Darwin';
+
+  // South Australia (Adelaide - has DST)
+  if (lat <= -26 && lng >= 129 && lng < 141) return 'Australia/Adelaide';
+
+  // Queensland (Brisbane - no DST)
+  if (lat > -29 && lng >= 138 && lng < 154) return 'Australia/Brisbane';
+
+  // Victoria (Melbourne - has DST)
+  if (lat <= -34 && lng >= 141 && lng < 150) return 'Australia/Melbourne';
+
+  // Tasmania (Hobart - has DST)
+  if (lat <= -40) return 'Australia/Hobart';
+
+  // NSW/ACT (Sydney - has DST) - default for eastern Australia
+  if (lng >= 141) return 'Australia/Sydney';
+
+  console.warn('⚠️ Could not determine timezone, defaulting to Sydney');
+  return 'Australia/Sydney';
+}
+
 exports.handler = async (event, context) => {
   // Enable CORS
   const headers = {
@@ -31,6 +63,18 @@ exports.handler = async (event, context) => {
     const bookingData = JSON.parse(event.body);
 
     console.log('📝 Creating booking:', bookingData.booking_id);
+
+    // Detect and set booking timezone from coordinates
+    if (bookingData.latitude && bookingData.longitude) {
+      bookingData.booking_timezone = detectTimezoneFromCoords(
+        parseFloat(bookingData.latitude),
+        parseFloat(bookingData.longitude)
+      );
+      console.log(`🕐 Detected timezone: ${bookingData.booking_timezone} for coords (${bookingData.latitude}, ${bookingData.longitude})`);
+    } else {
+      bookingData.booking_timezone = 'Australia/Sydney';
+      console.warn('⚠️ No coordinates in booking data, using default timezone: Australia/Sydney');
+    }
 
     // Check if this is a recurring booking
     const isRecurring = bookingData.is_recurring === true;
