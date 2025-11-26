@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cancel Booking - Rejuvenators</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #dc2626;
+    }
+
+    .header h1 {
+      color: #dc2626;
+      margin-bottom: 10px;
+    }
+
+    .booking-info {
+      background-color: #f9f9f9;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 25px;
+      border-left: 4px solid #007e8c;
+    }
+
+    .booking-info h3 {
+      color: #007e8c;
+      margin-bottom: 15px;
+    }
+
+    .info-row {
+      display: flex;
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      font-weight: bold;
+      width: 140px;
+      color: #333;
+    }
+
+    .info-value {
+      color: #666;
+      flex: 1;
+    }
+
+    .series-badge {
+      display: inline-block;
+      background-color: #fef3c7;
+      color: #92400e;
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+
+    .cancel-options {
+      background-color: #fff3cd;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 25px;
+      border-left: 4px solid #ffc107;
+    }
+
+    .cancel-options h3 {
+      color: #856404;
+      margin-bottom: 15px;
+    }
+
+    .option {
+      background-color: white;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      border: 2px solid #e0e0e0;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .option:hover {
+      border-color: #007e8c;
+      box-shadow: 0 2px 8px rgba(0,126,140,0.2);
+    }
+
+    .option.selected {
+      border-color: #007e8c;
+      background-color: #e8f4f5;
+    }
+
+    .option input[type="radio"] {
+      margin-right: 10px;
+    }
+
+    .option label {
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+    }
+
+    .option-content {
+      flex: 1;
+    }
+
+    .option-title {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 5px;
+    }
+
+    .option-description {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .warning-box {
+      background-color: #fee2e2;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 25px;
+      border-left: 4px solid #dc2626;
+    }
+
+    .warning-box h4 {
+      color: #991b1b;
+      margin-bottom: 10px;
+    }
+
+    .warning-box p {
+      color: #991b1b;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .reason-section {
+      margin-bottom: 25px;
+    }
+
+    .reason-section label {
+      display: block;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .reason-section textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 15px;
+      margin-top: 25px;
+    }
+
+    .cancel-btn {
+      background-color: #dc2626;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      flex: 1;
+      transition: background-color 0.3s;
+    }
+
+    .cancel-btn:hover:not(:disabled) {
+      background-color: #b91c1c;
+    }
+
+    .cancel-btn:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .back-btn {
+      background-color: #6b7280;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      flex: 1;
+      transition: background-color 0.3s;
+    }
+
+    .back-btn:hover {
+      background-color: #4b5563;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .loading.active {
+      display: block;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #dc2626;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .success-message {
+      display: none;
+      background-color: #d1fae5;
+      color: #065f46;
+      padding: 20px;
+      border-radius: 6px;
+      text-align: center;
+      border-left: 4px solid #10b981;
+    }
+
+    .success-message.active {
+      display: block;
+    }
+
+    .error-alert {
+      display: none;
+      background-color: #fee2e2;
+      color: #991b1b;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      border-left: 4px solid #dc2626;
+    }
+
+    .error-alert.active {
+      display: block;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Cancel Booking</h1>
+      <p>We're sorry to see you go</p>
+    </div>
+
+    <div id="loading-booking" class="loading active">
+      <div class="spinner"></div>
+      <p style="margin-top: 15px;">Loading booking details...</p>
+    </div>
+
+    <div id="error-alert" class="error-alert"></div>
+
+    <div id="cancel-form" style="display: none;">
+      <div class="booking-info" id="booking-details">
+        <h3>Booking Details</h3>
+        <!-- Details will be populated here -->
+      </div>
+
+      <div id="series-options-section" class="cancel-options hidden">
+        <h3>Cancellation Options</h3>
+        <p style="color: #856404; margin-bottom: 15px;">
+          This booking is part of a recurring series. Please select which bookings you'd like to cancel:
+        </p>
+
+        <div class="option" onclick="selectOption('single')">
+          <label>
+            <input type="radio" name="cancel-option" value="single" id="option-single">
+            <div class="option-content">
+              <div class="option-title">Cancel This Booking Only</div>
+              <div class="option-description">Cancel only this specific appointment. Future bookings in the series will remain scheduled.</div>
+            </div>
+          </label>
+        </div>
+
+        <div class="option" onclick="selectOption('remaining')">
+          <label>
+            <input type="radio" name="cancel-option" value="remaining" id="option-remaining">
+            <div class="option-content">
+              <div class="option-title">Cancel This & All Future Bookings</div>
+              <div class="option-description">Cancel this appointment and all remaining bookings in the series.</div>
+            </div>
+          </label>
+        </div>
+
+        <div class="option" onclick="selectOption('all')">
+          <label>
+            <input type="radio" name="cancel-option" value="all" id="option-all">
+            <div class="option-content">
+              <div class="option-title">Cancel Entire Series</div>
+              <div class="option-description">Cancel all bookings in this series, including past bookings if applicable.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div class="warning-box">
+        <h4>⚠️ Cancellation Policy</h4>
+        <p>
+          Cancellations made less than 24 hours before your appointment may incur a cancellation fee.
+          If you have any questions, please contact us at <strong>1300 302542</strong>.
+        </p>
+      </div>
+
+      <div class="reason-section">
+        <label for="cancel-reason">Reason for Cancellation (Optional)</label>
+        <textarea id="cancel-reason" placeholder="Help us improve by letting us know why you're cancelling..."></textarea>
+      </div>
+
+      <div class="button-group">
+        <button class="back-btn" onclick="goBack()">Go Back</button>
+        <button id="confirm-cancel-btn" class="cancel-btn">Confirm Cancellation</button>
+      </div>
+    </div>
+
+    <div id="processing-cancel" class="loading">
+      <div class="spinner"></div>
+      <p style="margin-top: 15px;">Processing cancellation...</p>
+    </div>
+
+    <div id="success-message" class="success-message">
+      <h2>✅ Booking Cancelled Successfully</h2>
+      <p style="margin-top: 15px;" id="success-details">Your booking has been cancelled.</p>
+      <p style="margin-top: 10px; font-size: 14px;">You will receive a confirmation email shortly.</p>
+    </div>
+  </div>
+
+  <script>
+    // Get booking ID from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingId = urlParams.get('b');
+
+    if (!bookingId) {
+      showError('Invalid cancellation link. Missing booking ID.');
+    } else {
+      loadBookingDetails();
+    }
+
+    let bookingData = null;
+
+    async function loadBookingDetails() {
+      try {
+        const response = await fetch(`/.netlify/functions/get-booking-details?booking_id=${bookingId}&skip_payment_validation=true`);
+
+        if (!response.ok) {
+          throw new Error('Booking not found');
+        }
+
+        bookingData = await response.json();
+
+        displayBookingDetails(bookingData);
+
+        document.getElementById('loading-booking').classList.remove('active');
+        document.getElementById('cancel-form').style.display = 'block';
+
+      } catch (error) {
+        console.error('Error loading booking:', error);
+        showError('Unable to load booking details. Please contact us at 1300 302542.');
+      }
+    }
+
+    function displayBookingDetails(booking) {
+      const detailsDiv = document.getElementById('booking-details');
+      const bookingTime = new Date(booking.booking_time);
+      const isSeries = booking.request_id && booking.occurrence_number !== null;
+
+      let seriesBadge = '';
+      if (isSeries) {
+        seriesBadge = `<span class="series-badge">SERIES BOOKING</span>`;
+        document.getElementById('series-options-section').classList.remove('hidden');
+        // Pre-select "single" option
+        document.getElementById('option-single').checked = true;
+      }
+
+      detailsDiv.innerHTML = `
+        <h3>Booking Details ${seriesBadge}</h3>
+        <div class="info-row">
+          <div class="info-label">Booking ID:</div>
+          <div class="info-value">${booking.booking_id}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Service:</div>
+          <div class="info-value">${booking.service_name || 'Massage Service'}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Date:</div>
+          <div class="info-value">${bookingTime.toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Time:</div>
+          <div class="info-value">${bookingTime.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Location:</div>
+          <div class="info-value">${booking.address || 'N/A'}</div>
+        </div>
+      `;
+    }
+
+    function selectOption(option) {
+      document.querySelectorAll('.option').forEach(el => el.classList.remove('selected'));
+      const selectedOption = document.querySelector(`#option-${option}`);
+      selectedOption.checked = true;
+      selectedOption.closest('.option').classList.add('selected');
+    }
+
+    document.getElementById('confirm-cancel-btn').addEventListener('click', handleCancellation);
+
+    async function handleCancellation() {
+      const cancelBtn = document.getElementById('confirm-cancel-btn');
+      cancelBtn.disabled = true;
+
+      try {
+        // Get selected cancel option (for series bookings)
+        let cancelOption = 'single';
+        const selectedRadio = document.querySelector('input[name="cancel-option"]:checked');
+        if (selectedRadio) {
+          cancelOption = selectedRadio.value;
+        }
+
+        const reason = document.getElementById('cancel-reason').value.trim();
+
+        // Show processing
+        document.getElementById('cancel-form').style.display = 'none';
+        document.getElementById('processing-cancel').classList.add('active');
+
+        // Call cancel booking function
+        const response = await fetch('/.netlify/functions/cancel-booking', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            booking_id: bookingData.booking_id,
+            cancel_option: cancelOption,
+            reason: reason,
+            cancelled_by: 'customer'
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to cancel booking');
+        }
+
+        const result = await response.json();
+
+        // Success!
+        document.getElementById('processing-cancel').classList.remove('active');
+        document.getElementById('success-message').classList.add('active');
+
+        // Update success message based on cancel option
+        let successDetails = '';
+        if (cancelOption === 'single') {
+          successDetails = 'Your booking has been cancelled.';
+        } else if (cancelOption === 'remaining') {
+          successDetails = `This booking and ${result.cancelled_count - 1} future booking(s) have been cancelled.`;
+        } else if (cancelOption === 'all') {
+          successDetails = `All ${result.cancelled_count} booking(s) in the series have been cancelled.`;
+        }
+
+        document.getElementById('success-details').textContent = successDetails;
+
+      } catch (error) {
+        console.error('Cancellation error:', error);
+        document.getElementById('processing-cancel').classList.remove('active');
+        document.getElementById('cancel-form').style.display = 'block';
+        showError('Cancellation failed: ' + error.message);
+        cancelBtn.disabled = false;
+      }
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById('error-alert');
+      errorDiv.textContent = message;
+      errorDiv.classList.add('active');
+      document.getElementById('loading-booking').classList.remove('active');
+    }
+
+    function goBack() {
+      window.history.back();
+    }
+  </script>
+</body>
+</html>

@@ -87,6 +87,7 @@ interface TherapistFormData {
   years_experience?: number;
   business_abn: string;
   address_verified: boolean;
+  timezone?: string;
   insurance_expiry_date?: string;
   insurance_certificate_url?: string;
   first_aid_expiry_date?: string;
@@ -878,6 +879,23 @@ const TherapistEdit: React.FC = () => {
                           {isGeocoding ? 'Verifying...' : 'Verify Address'}
                         </Button>
                       </div>
+
+                      <Form.Item
+                        name="timezone"
+                        label="Timezone"
+                        rules={[{ required: true, message: 'Please select a timezone' }]}
+                        help="Select the timezone for this therapist's service area (where they deliver services)"
+                      >
+                        <Select placeholder="Select timezone">
+                          <Option value="Australia/Perth">Australia/Perth (AWST, UTC+8, no DST)</Option>
+                          <Option value="Australia/Adelaide">Australia/Adelaide (ACST/ACDT, UTC+9:30/+10:30)</Option>
+                          <Option value="Australia/Darwin">Australia/Darwin (ACST, UTC+9:30, no DST)</Option>
+                          <Option value="Australia/Brisbane">Australia/Brisbane (AEST, UTC+10, no DST)</Option>
+                          <Option value="Australia/Sydney">Australia/Sydney (AEST/AEDT, UTC+10/+11)</Option>
+                          <Option value="Australia/Melbourne">Australia/Melbourne (AEST/AEDT, UTC+10/+11)</Option>
+                          <Option value="Australia/Hobart">Australia/Hobart (AEST/AEDT, UTC+10/+11)</Option>
+                        </Select>
+                      </Form.Item>
 
                       <Row gutter={16}>
                         <Col span={12}>

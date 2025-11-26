@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authorize Payment - Rejuvenators</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f5f5f5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #007e8c;
+    }
+
+    .header h1 {
+      color: #007e8c;
+      margin-bottom: 10px;
+    }
+
+    .booking-info {
+      background-color: #f9f9f9;
+      padding: 20px;
+      border-radius: 6px;
+      margin-bottom: 25px;
+      border-left: 4px solid #007e8c;
+    }
+
+    .booking-info h3 {
+      color: #007e8c;
+      margin-bottom: 15px;
+    }
+
+    .info-row {
+      display: flex;
+      padding: 8px 0;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-label {
+      font-weight: bold;
+      width: 140px;
+      color: #333;
+    }
+
+    .info-value {
+      color: #666;
+      flex: 1;
+    }
+
+    .amount-box {
+      background-color: #e8f4f5;
+      padding: 20px;
+      border-radius: 6px;
+      text-align: center;
+      margin-bottom: 25px;
+      border-left: 4px solid #1a94a9;
+    }
+
+    .amount-box h3 {
+      color: #007e8c;
+      margin-bottom: 10px;
+    }
+
+    .amount {
+      font-size: 32px;
+      font-weight: bold;
+      color: #007e8c;
+    }
+
+    .notice {
+      background-color: #fff3cd;
+      color: #856404;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 25px;
+      border-left: 4px solid #ffc107;
+    }
+
+    .card-section h3 {
+      color: #333;
+      margin-bottom: 15px;
+    }
+
+    #card-element {
+      background-color: #f9f9f9;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+
+    #card-errors {
+      color: #dc2626;
+      margin-top: 10px;
+      min-height: 20px;
+    }
+
+    .authorize-btn {
+      background-color: #007e8c;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+      transition: background-color 0.3s;
+    }
+
+    .authorize-btn:hover:not(:disabled) {
+      background-color: #006070;
+    }
+
+    .authorize-btn:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .loading.active {
+      display: block;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #007e8c;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .success-message {
+      display: none;
+      background-color: #d1fae5;
+      color: #065f46;
+      padding: 20px;
+      border-radius: 6px;
+      text-align: center;
+      border-left: 4px solid #10b981;
+    }
+
+    .success-message.active {
+      display: block;
+    }
+
+    .error-alert {
+      display: none;
+      background-color: #fee2e2;
+      color: #991b1b;
+      padding: 15px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      border-left: 4px solid #dc2626;
+    }
+
+    .error-alert.active {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>💳 Authorize Payment</h1>
+      <p>Complete your booking authorization</p>
+    </div>
+
+    <div id="loading-booking" class="loading active">
+      <div class="spinner"></div>
+      <p style="margin-top: 15px;">Loading booking details...</p>
+    </div>
+
+    <div id="error-alert" class="error-alert"></div>
+
+    <div id="payment-form" style="display: none;">
+      <div class="booking-info" id="booking-details">
+        <h3>📋 Booking Details</h3>
+        <!-- Details will be populated here -->
+      </div>
+
+      <div class="amount-box">
+        <h3>Authorization Amount</h3>
+        <div class="amount" id="amount-display">$0.00</div>
+      </div>
+
+      <div class="notice">
+        <strong>⏳ Authorization Hold Only</strong><br>
+        Your card will be authorized but <strong>NOT charged</strong> until your therapist completes the service.
+      </div>
+
+      <div class="card-section">
+        <h3>💳 Payment Method</h3>
+        <div id="card-element"></div>
+        <div id="card-errors"></div>
+      </div>
+
+      <button id="authorize-btn" class="authorize-btn">
+        Authorize Payment
+      </button>
+    </div>
+
+    <div id="processing-payment" class="loading">
+      <div class="spinner"></div>
+      <p style="margin-top: 15px;">Processing authorization...</p>
+    </div>
+
+    <div id="success-message" class="success-message">
+      <h2>✅ Payment Authorized Successfully!</h2>
+      <p style="margin-top: 15px;">Your booking has been confirmed. You will receive a confirmation email shortly.</p>
+      <p style="margin-top: 10px; font-size: 14px;">Redirecting...</p>
+    </div>
+  </div>
+
+  <script>
+    // Get booking ID from URL parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const bookingId = urlParams.get('b');
+
+    if (!bookingId) {
+      showError('Invalid payment link. Missing booking ID.');
+    } else {
+      loadBookingDetails();
+    }
+
+    let stripe, elements, cardElement;
+    let bookingData = null;
+
+    async function loadBookingDetails() {
+      try {
+        // Fetch booking details from API
+        const response = await fetch(`/.netlify/functions/get-booking-details?booking_id=${bookingId}`);
+
+        if (!response.ok) {
+          throw new Error('Booking not found');
+        }
+
+        bookingData = await response.json();
+
+        // Display booking details
+        displayBookingDetails(bookingData);
+
+        // Initialize Stripe
+        await initializeStripe();
+
+        // Hide loading, show form
+        document.getElementById('loading-booking').classList.remove('active');
+        document.getElementById('payment-form').style.display = 'block';
+
+      } catch (error) {
+        console.error('Error loading booking:', error);
+        showError('Unable to load booking details. Please contact us at 1300 302542.');
+      }
+    }
+
+    function displayBookingDetails(booking) {
+      const detailsDiv = document.getElementById('booking-details');
+      const bookingTime = new Date(booking.booking_time);
+
+      detailsDiv.innerHTML = `
+        <h3>📋 Booking Details</h3>
+        <div class="info-row">
+          <div class="info-label">Booking ID:</div>
+          <div class="info-value">${booking.booking_id}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Service:</div>
+          <div class="info-value">${booking.service_name || 'Massage Service'}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Date:</div>
+          <div class="info-value">${bookingTime.toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Time:</div>
+          <div class="info-value">${bookingTime.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</div>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Location:</div>
+          <div class="info-value">${booking.address || 'N/A'}</div>
+        </div>
+      `;
+
+      document.getElementById('amount-display').textContent = '$' + parseFloat(booking.price || 0).toFixed(2);
+    }
+
+    async function initializeStripe() {
+      try {
+        // Get Stripe publishable key
+        const keyResponse = await fetch('/.netlify/functions/get-stripe-key');
+        const { publishableKey } = await keyResponse.json();
+
+        // Initialize Stripe
+        stripe = Stripe(publishableKey);
+        elements = stripe.elements();
+
+        // Create card element
+        cardElement = elements.create('card', {
+          style: {
+            base: {
+              fontSize: '16px',
+              color: '#32325d',
+              fontFamily: 'Arial, sans-serif',
+              '::placeholder': {
+                color: '#aab7c4'
+              }
+            },
+            invalid: {
+              color: '#dc2626'
+            }
+          }
+        });
+
+        cardElement.mount('#card-element');
+
+        // Handle card errors
+        cardElement.on('change', function(event) {
+          const displayError = document.getElementById('card-errors');
+          if (event.error) {
+            displayError.textContent = event.error.message;
+          } else {
+            displayError.textContent = '';
+          }
+        });
+
+        // Set up form submission
+        document.getElementById('authorize-btn').addEventListener('click', handleAuthorization);
+
+      } catch (error) {
+        console.error('Error initializing Stripe:', error);
+        showError('Unable to load payment form. Please try again or contact us at 1300 302542.');
+      }
+    }
+
+    async function handleAuthorization(e) {
+      e.preventDefault();
+
+      const authorizeBtn = document.getElementById('authorize-btn');
+      authorizeBtn.disabled = true;
+
+      try {
+        // Show processing
+        document.getElementById('payment-form').style.display = 'none';
+        document.getElementById('processing-payment').classList.add('active');
+
+        // Step 1: Create payment intent
+        const intentResponse = await fetch('/.netlify/functions/create-payment-intent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: bookingData.price,
+            currency: 'aud',
+            bookingData: {
+              booking_id: bookingData.booking_id,
+              customer_email: bookingData.email,
+              service_name: bookingData.service_name,
+              booking_time: bookingData.booking_time,
+              therapist_fee: bookingData.therapist_fee
+            }
+          })
+        });
+
+        if (!intentResponse.ok) {
+          throw new Error('Failed to create payment intent');
+        }
+
+        const { client_secret } = await intentResponse.json();
+
+        // Step 2: Confirm card payment
+        const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              name: `${bookingData.first_name} ${bookingData.last_name}`,
+              email: bookingData.email
+            }
+          }
+        });
+
+        if (stripeError) {
+          throw new Error(stripeError.message);
+        }
+
+        if (paymentIntent.status !== 'requires_capture') {
+          throw new Error('Payment authorization failed');
+        }
+
+        // Success!
+        document.getElementById('processing-payment').classList.remove('active');
+        document.getElementById('success-message').classList.add('active');
+
+        // Redirect after 3 seconds
+        setTimeout(() => {
+          window.location.href = '/payment-success.html?booking=' + bookingData.booking_id;
+        }, 3000);
+
+      } catch (error) {
+        console.error('Authorization error:', error);
+        document.getElementById('processing-payment').classList.remove('active');
+        document.getElementById('payment-form').style.display = 'block';
+        showError('Payment authorization failed: ' + error.message);
+        authorizeBtn.disabled = false;
+      }
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById('error-alert');
+      errorDiv.textContent = message;
+      errorDiv.classList.add('active');
+      document.getElementById('loading-booking').classList.remove('active');
+    }
+  </script>
+</body>
+</html>

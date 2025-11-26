@@ -45,6 +45,7 @@ interface TherapistProfile {
   gender?: string;
   years_experience?: number;
   business_abn: string;
+  timezone?: string;
   insurance_expiry_date?: string;
   insurance_certificate_url?: string;
   first_aid_expiry_date?: string;
@@ -437,6 +438,23 @@ export const Profile: React.FC = () => {
             help="Enter 11 digits only, no spaces or dashes"
           >
             <Input placeholder="12345678901" maxLength={11} />
+          </Form.Item>
+
+          <Form.Item
+            label="Timezone"
+            name="timezone"
+            rules={[{ required: true, message: 'Please select your service area timezone' }]}
+            help="Select the timezone where you provide services (this helps with accurate scheduling)"
+          >
+            <Select placeholder="Select your service area timezone">
+              <Option value="Australia/Perth">Australia/Perth (AWST, UTC+8, no DST)</Option>
+              <Option value="Australia/Adelaide">Australia/Adelaide (ACST/ACDT, UTC+9:30/+10:30)</Option>
+              <Option value="Australia/Darwin">Australia/Darwin (ACST, UTC+9:30, no DST)</Option>
+              <Option value="Australia/Brisbane">Australia/Brisbane (AEST, UTC+10, no DST)</Option>
+              <Option value="Australia/Sydney">Australia/Sydney (AEST/AEDT, UTC+10/+11)</Option>
+              <Option value="Australia/Melbourne">Australia/Melbourne (AEST/AEDT, UTC+10/+11)</Option>
+              <Option value="Australia/Hobart">Australia/Hobart (AEST/AEDT, UTC+10/+11)</Option>
+            </Select>
           </Form.Item>
 
           <Form.Item label="Bio" name="bio">

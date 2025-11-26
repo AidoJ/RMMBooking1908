@@ -1193,16 +1193,53 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
   }
 }
 
+// *** Helper: Normalize Australian phone numbers to international format ***
+function normalizeAustralianPhone(phone) {
+  if (!phone) return null;
+
+  // Remove all spaces, dashes, and parentheses
+  let cleaned = phone.replace(/[\s\-\(\)]/g, '');
+
+  // If already has +61, return as is
+  if (cleaned.startsWith('+61')) {
+    return cleaned;
+  }
+
+  // If starts with 61, add +
+  if (cleaned.startsWith('61')) {
+    return '+' + cleaned;
+  }
+
+  // If starts with 0, replace with +61
+  if (cleaned.startsWith('0')) {
+    return '+61' + cleaned.substring(1);
+  }
+
+  // If no prefix, assume Australian and add +61
+  return '+61' + cleaned;
+}
+
 // *** NEW: SMS notification function ***
 async function sendSMSNotification(phoneNumber, message) {
   try {
-    console.log(`📱 Sending SMS notification to ${phoneNumber}`);
+    // Normalize phone number to international format
+    const normalizedPhone = normalizeAustralianPhone(phoneNumber);
+
+    if (!normalizedPhone) {
+      console.error('❌ Invalid phone number provided');
+      return { success: false, error: 'Invalid phone number' };
+    }
+
+    console.log(`📱 Sending SMS notification to ${normalizedPhone} (original: ${phoneNumber})`);
     console.log(`📄 Message preview: ${message.substring(0, 100)}...`);
-    
-    const response = await fetch('https://rmmbookingplatform.netlify.app/.netlify/functions/send-sms', {
+
+    // Use relative path to work on any Netlify deployment
+    const smsUrl = process.env.URL ? `${process.env.URL}/.netlify/functions/send-sms` : 'https://rmmbook.netlify.app/.netlify/functions/send-sms';
+
+    const response = await fetch(smsUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone: phoneNumber, message: message })
+      body: JSON.stringify({ phone: normalizedPhone, message: message })
     });
 
     // Check if response is JSON before parsing
