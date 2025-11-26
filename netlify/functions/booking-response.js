@@ -75,7 +75,7 @@ exports.handler = async (event, context) => {
     // Get booking details (including request_id for series updates)
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .select('*, request_id, occurrence_number, services(*), customers(*), booking_occurrences(*)')
+      .select('*, request_id, occurrence_number, services(*), customers(*)')
       .eq('booking_id', bookingId)
       .single();
 
@@ -605,20 +605,23 @@ You'll be notified once someone accepts!
       throw new Error('Failed to decline booking');
     }
 
-    // Update all booking occurrences to match parent status (if any exist)
-    console.log('🔄 Updating any child occurrences to declined status');
-    const { error: occurrencesUpdateError } = await supabase
-      .from('booking_occurrences')
-      .update({
-        status: 'declined',
-        updated_at: new Date().toISOString()
-      })
-      .eq('booking_id', booking.booking_id);
+    // Update all bookings in the series to declined (if this is part of a recurring series)
+    if (booking.request_id) {
+      console.log('🔄 Updating all bookings in series to declined status');
+      const { error: seriesUpdateError } = await supabase
+        .from('bookings')
+        .update({
+          status: 'declined',
+          updated_at: new Date().toISOString()
+        })
+        .eq('request_id', booking.request_id)
+        .neq('booking_id', booking.booking_id); // Don't update the current booking again
 
-    if (occurrencesUpdateError) {
-      console.error('❌ Error updating occurrences to declined:', occurrencesUpdateError);
-    } else {
-      console.log('✅ All occurrences updated to declined');
+      if (seriesUpdateError) {
+        console.error('❌ Error updating series bookings to declined:', seriesUpdateError);
+      } else {
+        console.log('✅ All bookings in series updated to declined');
+      }
     }
 
     await addStatusHistory(booking.id, 'declined', therapist.id, 'No alternatives available or customer declined fallback');
@@ -1021,20 +1024,20 @@ async function sendClientDeclineEmail(booking) {
 
     // Add recurring booking information if applicable
     if (booking.is_recurring === true || booking.is_recurring === 'true') {
-      // Fetch all occurrences for this booking
-      const { data: occurrences } = await supabase
-        .from('booking_occurrences')
-        .select('occurrence_number, occurrence_date, occurrence_time')
-        .eq('booking_id', booking.booking_id)
+      // Fetch all bookings in this series (using request_id)
+      const { data: seriesBookings } = await supabase
+        .from('bookings')
+        .select('booking_id, occurrence_number, booking_time')
+        .eq('request_id', booking.request_id)
         .order('occurrence_number');
 
       templateParams.is_recurring = true;
-      templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
+      templateParams.total_occurrences = booking.total_occurrences || (seriesBookings ? seriesBookings.length : 1);
 
       // Generate sessions list
-      if (occurrences && occurrences.length > 0) {
-        templateParams.sessions_list = occurrences.map(occ =>
-          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+      if (seriesBookings && seriesBookings.length > 0) {
+        templateParams.sessions_list = seriesBookings.map(bkg =>
+          `Session ${bkg.occurrence_number}: ${new Date(bkg.booking_time).toLocaleString()}`
         ).join('\n');
       }
     }
@@ -1076,27 +1079,27 @@ async function sendClientLookingForAlternateEmail(booking) {
     console.log('🔄 [sendClientLookingForAlternateEmail] isRecurring evaluated to:', isRecurring);
 
     if (isRecurring) {
-      console.log('📧 Fetching occurrences for booking:', booking.booking_id);
-      // Fetch all occurrences for this booking
-      const { data: occurrences, error: occError } = await supabase
-        .from('booking_occurrences')
-        .select('occurrence_number, occurrence_date, occurrence_time')
-        .eq('booking_id', booking.booking_id)
+      console.log('📧 Fetching series bookings for request_id:', booking.request_id);
+      // Fetch all bookings in this series (using request_id)
+      const { data: seriesBookings, error: seriesError } = await supabase
+        .from('bookings')
+        .select('booking_id, occurrence_number, booking_time')
+        .eq('request_id', booking.request_id)
         .order('occurrence_number');
 
-      if (occError) {
-        console.error('❌ Error fetching occurrences:', occError);
+      if (seriesError) {
+        console.error('❌ Error fetching series bookings:', seriesError);
       } else {
-        console.log(`✅ Found ${occurrences ? occurrences.length : 0} occurrences`);
+        console.log(`✅ Found ${seriesBookings ? seriesBookings.length : 0} bookings in series`);
       }
 
       templateParams.is_recurring = true;
-      templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
+      templateParams.total_occurrences = booking.total_occurrences || (seriesBookings ? seriesBookings.length : 1);
 
       // Generate sessions list
-      if (occurrences && occurrences.length > 0) {
-        templateParams.sessions_list = occurrences.map(occ =>
-          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+      if (seriesBookings && seriesBookings.length > 0) {
+        templateParams.sessions_list = seriesBookings.map(bkg =>
+          `Session ${bkg.occurrence_number}: ${new Date(bkg.booking_time).toLocaleString()}`
         ).join('\n');
       }
     }
@@ -1150,27 +1153,27 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
     console.log('🔄 [sendTherapistBookingRequest] isRecurring evaluated to:', isRecurring);
 
     if (isRecurring) {
-      console.log('📧 Fetching occurrences for booking:', booking.booking_id);
-      // Fetch all occurrences for this booking
-      const { data: occurrences, error: occError } = await supabase
-        .from('booking_occurrences')
-        .select('occurrence_number, occurrence_date, occurrence_time')
-        .eq('booking_id', booking.booking_id)
+      console.log('📧 Fetching series bookings for request_id:', booking.request_id);
+      // Fetch all bookings in this series (using request_id)
+      const { data: seriesBookings, error: seriesError } = await supabase
+        .from('bookings')
+        .select('booking_id, occurrence_number, booking_time')
+        .eq('request_id', booking.request_id)
         .order('occurrence_number');
 
-      if (occError) {
-        console.error('❌ Error fetching occurrences:', occError);
+      if (seriesError) {
+        console.error('❌ Error fetching series bookings:', seriesError);
       } else {
-        console.log(`✅ Found ${occurrences ? occurrences.length : 0} occurrences`);
+        console.log(`✅ Found ${seriesBookings ? seriesBookings.length : 0} bookings in series`);
       }
 
       templateParams.is_recurring = true;
-      templateParams.total_occurrences = booking.total_occurrences || (occurrences ? occurrences.length : 1);
+      templateParams.total_occurrences = booking.total_occurrences || (seriesBookings ? seriesBookings.length : 1);
 
       // Generate sessions list
-      if (occurrences && occurrences.length > 0) {
-        templateParams.sessions_list = occurrences.map(occ =>
-          `Session ${occ.occurrence_number}: ${new Date(occ.occurrence_date + 'T' + occ.occurrence_time).toLocaleString()}`
+      if (seriesBookings && seriesBookings.length > 0) {
+        templateParams.sessions_list = seriesBookings.map(bkg =>
+          `Session ${bkg.occurrence_number}: ${new Date(bkg.booking_time).toLocaleString()}`
         ).join('\n');
       }
 
