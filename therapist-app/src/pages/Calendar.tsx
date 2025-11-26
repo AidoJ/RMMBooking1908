@@ -75,8 +75,8 @@ export const Calendar: React.FC = () => {
           booker_name,
           first_name,
           last_name,
-          services(name),
-          booking_occurrences(*)
+          occurrence_number,
+          services(name)
         `)
         .eq('therapist_id', profile.id)
         .gte('booking_time', rangeStart)
@@ -94,50 +94,27 @@ export const Calendar: React.FC = () => {
 
       (data || []).forEach((b: any) => {
         const customerName = b.booker_name || `${b.first_name || ''} ${b.last_name || ''}`.trim() || 'Guest';
-        const serviceName = b.services?.name || 'Unknown Service';
-        const isRecurring = b.booking_occurrences && b.booking_occurrences.length > 0;
+        let serviceName = b.services?.name || 'Unknown Service';
 
-        if (isRecurring) {
-          // For recurring bookings, show initial booking + repeats
-          // Add initial booking
-          bookingsData.push({
-            id: b.id, // Use parent ID for navigation
-            booking_time: b.booking_time,
-            status: b.status,
-            customer_name: customerName,
-            service_name: `${serviceName} (Initial)`,
-            address: b.address,
-            therapist_fee: b.therapist_fee || 0,
-            duration_minutes: b.duration_minutes || 60
-          });
-
-          // Add repeat events from occurrences
-          b.booking_occurrences.forEach((occ: any) => {
-            const occTime = dayjs(`${occ.occurrence_date}T${occ.occurrence_time}`).toISOString();
-            bookingsData.push({
-              id: b.id, // Use parent ID so clicking works
-              booking_time: occTime,
-              status: b.status,
-              customer_name: customerName,
-              service_name: `${serviceName} (Repeat ${occ.occurrence_number})`,
-              address: b.address,
-              therapist_fee: b.therapist_fee || 0,
-              duration_minutes: b.duration_minutes || 60
-            });
-          });
-        } else {
-          // Non-recurring booking - show normally
-          bookingsData.push({
-            id: b.id,
-            booking_time: b.booking_time,
-            status: b.status,
-            customer_name: customerName,
-            service_name: serviceName,
-            address: b.address,
-            therapist_fee: b.therapist_fee || 0,
-            duration_minutes: b.duration_minutes || 60
-          });
+        // If this is a recurring booking (has occurrence_number), add session label
+        if (b.occurrence_number !== null && b.occurrence_number !== undefined) {
+          if (b.occurrence_number === 0) {
+            serviceName = `${serviceName} (Session 1)`;
+          } else {
+            serviceName = `${serviceName} (Session ${b.occurrence_number + 1})`;
+          }
         }
+
+        bookingsData.push({
+          id: b.id,
+          booking_time: b.booking_time,
+          status: b.status,
+          customer_name: customerName,
+          service_name: serviceName,
+          address: b.address,
+          therapist_fee: b.therapist_fee || 0,
+          duration_minutes: b.duration_minutes || 60
+        });
       });
 
       setBookings(bookingsData);
