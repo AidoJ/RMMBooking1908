@@ -1204,8 +1204,18 @@ async function sendSMSNotification(phoneNumber, message) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: phoneNumber, message: message })
     });
-    
-    const result = await response.json();
+
+    // Check if response is JSON before parsing
+    const contentType = response.headers.get('content-type');
+    let result;
+    if (contentType && contentType.includes('application/json')) {
+      result = await response.json();
+    } else {
+      const text = await response.text();
+      console.log('📱 SMS API returned non-JSON response:', text);
+      result = { success: response.ok, message: text };
+    }
+
     console.log('📱 SMS API response:', result);
     return result;
   } catch (error) {
