@@ -594,8 +594,46 @@ class QuoteFormManager {
     return true;
   }
 
+  detectTimezoneFromCoords(lat, lng) {
+    if (!lat || !lng) {
+      console.warn('⚠️ No coordinates provided for timezone detection, using Brisbane');
+      return 'Australia/Brisbane';
+    }
+
+    // Western Australia (Perth - no DST)
+    if (lng >= 112.5 && lng < 129) return 'Australia/Perth';
+
+    // Northern Territory (Darwin - no DST)
+    if (lat > -26 && lng >= 129 && lng < 138) return 'Australia/Darwin';
+
+    // South Australia (Adelaide - has DST)
+    if (lat <= -26 && lng >= 129 && lng < 141) return 'Australia/Adelaide';
+
+    // Queensland (Brisbane - no DST)
+    if (lat > -29 && lng >= 138 && lng < 154) return 'Australia/Brisbane';
+
+    // Victoria (Melbourne - has DST)
+    if (lat <= -34 && lng >= 141 && lng < 150) return 'Australia/Melbourne';
+
+    // Tasmania (Hobart - has DST)
+    if (lat <= -40) return 'Australia/Hobart';
+
+    // NSW/ACT (Sydney - has DST) - default for eastern Australia
+    if (lng >= 141) return 'Australia/Sydney';
+
+    console.warn('⚠️ Could not determine timezone, defaulting to Brisbane');
+    return 'Australia/Brisbane';
+  }
+
   collectQuoteData(quoteId) {
     const locationInput = document.getElementById('eventLocation');
+    const latitude = parseFloat(locationInput.dataset.lat) || null;
+    const longitude = parseFloat(locationInput.dataset.lng) || null;
+
+    // Detect timezone from coordinates
+    const quote_timezone = this.detectTimezoneFromCoords(latitude, longitude);
+    console.log(`🕐 Detected timezone: ${quote_timezone} for coords (${latitude}, ${longitude})`);
+
     const data = {
       id: quoteId,
       event_structure: this.eventStructure,
@@ -611,9 +649,10 @@ class QuoteFormManager {
       event_type: document.getElementById('eventType').value || null,
       company_name: document.getElementById('companyName').value.trim() || null,
 
-      // Location coordinates
-      latitude: parseFloat(locationInput.dataset.lat) || null,
-      longitude: parseFloat(locationInput.dataset.lng) || null,
+      // Location coordinates and timezone
+      latitude: latitude,
+      longitude: longitude,
+      quote_timezone: quote_timezone,
 
       // Service specifications (aligned with database schema)
       total_sessions: parseInt(document.getElementById('numberOfServices').value) || 0,
