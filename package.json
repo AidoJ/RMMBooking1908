@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@ant-design/icons": "^5.5.1",
+    "@emailjs/nodejs": "^4.0.3",
     "@refinedev/antd": "^5.44.0",
     "@refinedev/cli": "^2.16.21",
     "@refinedev/core": "^4.47.1",
