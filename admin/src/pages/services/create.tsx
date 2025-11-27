@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Form,
@@ -8,6 +8,7 @@ import {
   Row,
   Col,
   Switch,
+  Select,
   message,
   Typography,
   Space,
@@ -39,14 +40,40 @@ interface ServiceFormData {
   service_base_price: number;
   minimum_duration: number;
   quote_only: boolean;
+  category: string;
 }
 
 const ServiceCreate: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [fileList, setFileList] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const { data: identity } = useGetIdentity<any>();
   const { list } = useNavigation();
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await adminDataService
+        .from('services')
+        .select('category')
+        .not('category', 'is', null);
+
+      if (error) throw error;
+
+      // Get unique categories
+      const uniqueCategories = [...new Set(data.map(s => s.category))].filter(Boolean) as string[];
+      setCategories(uniqueCategories.sort());
+
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      // Fallback to default categories
+      setCategories(['Massage', 'Alternative Therapies', 'Group Events', 'Corporate Events']);
+    }
+  };
 
   const handleImageUpload = async (file: any) => {
     try {
@@ -297,6 +324,23 @@ const ServiceCreate: React.FC = () => {
                       <Switch
                         checkedChildren="Quote Only"
                         unCheckedChildren="Regular Booking"
+                      />
+                    </Form.Item>
+
+                    <Divider />
+
+                    <Form.Item
+                      label="Service Category"
+                      name="category"
+                      rules={[{ required: true, message: 'Please select or enter a category' }]}
+                      tooltip="Select existing category or type a new one"
+                    >
+                      <Select
+                        placeholder="Select or type category"
+                        size="large"
+                        showSearch
+                        allowClear
+                        options={categories.map(cat => ({ value: cat, label: cat }))}
                       />
                     </Form.Item>
                   </Card>

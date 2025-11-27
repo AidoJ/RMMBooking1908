@@ -8,6 +8,7 @@ import {
   Row,
   Col,
   Switch,
+  Select,
   message,
   Typography,
   Space,
@@ -50,6 +51,7 @@ interface Service {
   total_bookings: number;
   average_rating: number;
   quote_only?: boolean;
+  category?: string;
 }
 
 interface ServiceFormData {
@@ -63,6 +65,7 @@ interface ServiceFormData {
   service_base_price: number;
   minimum_duration: number;
   quote_only: boolean;
+  category: string;
 }
 
 const ServiceEdit: React.FC = () => {
@@ -71,15 +74,37 @@ const ServiceEdit: React.FC = () => {
   const [initialLoading, setInitialLoading] = useState(true);
   const [service, setService] = useState<Service | null>(null);
   const [fileList, setFileList] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const { id } = useParams<{ id: string }>();
   const { data: identity } = useGetIdentity<any>();
   const { list } = useNavigation();
 
   useEffect(() => {
+    loadCategories();
     if (id) {
       loadService(id);
     }
   }, [id]);
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await adminDataService
+        .from('services')
+        .select('category')
+        .not('category', 'is', null);
+
+      if (error) throw error;
+
+      // Get unique categories
+      const uniqueCategories = [...new Set(data.map(s => s.category))].filter(Boolean) as string[];
+      setCategories(uniqueCategories.sort());
+
+    } catch (error) {
+      console.error('Error loading categories:', error);
+      // Fallback to default categories
+      setCategories(['Massage', 'Alternative Therapies', 'Group Events', 'Corporate Events']);
+    }
+  };
 
   const loadService = async (serviceId: string) => {
     try {
@@ -152,6 +177,7 @@ const ServiceEdit: React.FC = () => {
         service_base_price: values.service_base_price,
         minimum_duration: values.minimum_duration,
         quote_only: values.quote_only,
+        category: values.category,
         updated_at: new Date().toISOString()
       };
 
@@ -426,6 +452,23 @@ const ServiceEdit: React.FC = () => {
                       <Switch
                         checkedChildren="Quote Only"
                         unCheckedChildren="Regular Booking"
+                      />
+                    </Form.Item>
+
+                    <Divider />
+
+                    <Form.Item
+                      label="Service Category"
+                      name="category"
+                      rules={[{ required: true, message: 'Please select or enter a category' }]}
+                      tooltip="Select existing category or type a new one"
+                    >
+                      <Select
+                        placeholder="Select or type category"
+                        size="large"
+                        showSearch
+                        allowClear
+                        options={categories.map(cat => ({ value: cat, label: cat }))}
                       />
                     </Form.Item>
                   </Card>
