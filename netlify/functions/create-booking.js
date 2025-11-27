@@ -84,25 +84,6 @@ function getTimezoneOffset(timezone, dateString) {
   return isDST ? info.summerOffset : info.winterOffset;
 }
 
-// Add timezone offset to booking time
-function addTimezoneToBookingTime(dateTimeString, timezone) {
-  // dateTimeString: "2025-11-27T13:30:00" or "2025-11-27 13:30:00"
-
-  // If already has timezone offset, return as-is
-  if (dateTimeString.includes('+') || dateTimeString.includes('Z')) {
-    return dateTimeString;
-  }
-
-  // Normalize to ISO format with T separator
-  const normalizedDateTime = dateTimeString.replace(' ', 'T');
-
-  // Get appropriate offset for this timezone and date
-  const offset = getTimezoneOffset(timezone, normalizedDateTime);
-
-  // Append offset to create timezone-aware timestamp
-  return `${normalizedDateTime}${offset}`;
-}
-
 exports.handler = async (event, context) => {
   // Enable CORS
   const headers = {
@@ -143,11 +124,25 @@ exports.handler = async (event, context) => {
       console.warn('⚠️ No coordinates in booking data, using default timezone: Australia/Sydney');
     }
 
-    // Add timezone offset to booking_time to store local time with timezone
+    // Convert local booking time to UTC for storage
+    // Form sends local time (e.g., "2025-12-29T10:00:00" in Brisbane)
+    // We need to convert to UTC before storing in timestamptz column
     if (bookingData.booking_time) {
       const originalTime = bookingData.booking_time;
-      bookingData.booking_time = addTimezoneToBookingTime(bookingData.booking_time, bookingData.booking_timezone);
-      console.log(`🕐 Updated booking_time: ${originalTime} → ${bookingData.booking_time}`);
+
+      // Parse as local time in the detected timezone and convert to UTC
+      // Example: "2025-12-29T10:00:00" in Brisbane (UTC+10) → "2025-12-29T00:00:00Z" (UTC)
+      const offset = getTimezoneOffset(bookingData.booking_timezone, originalTime);
+      const offsetHours = parseInt(offset.split(':')[0]); // e.g., "+10:00" → 10
+
+      // Parse the datetime
+      const localDateTime = new Date(originalTime);
+
+      // Subtract the offset to get UTC (Brisbane UTC+10 → subtract 10 hours)
+      const utcDateTime = new Date(localDateTime.getTime() - (offsetHours * 60 * 60 * 1000));
+
+      bookingData.booking_time = utcDateTime.toISOString();
+      console.log(`🕐 Converted booking_time: ${originalTime} (${bookingData.booking_timezone}) → ${bookingData.booking_time} (UTC)`);
     }
 
     // Check if this is a recurring booking
@@ -186,13 +181,17 @@ exports.handler = async (event, context) => {
         const occurrenceDate = new Date(recurringDates[i]);
         const dateOnly = occurrenceDate.toISOString().split('T')[0];
 
-        // Extract time from initial booking (already has timezone offset)
+        // Extract time from initial booking (which is now in UTC)
         const timeMatch = baseBookingData.booking_time.match(/T(\d{2}:\d{2}:\d{2})/);
         const timeOnly = timeMatch ? timeMatch[1].substring(0, 5) : '00:00'; // Extract HH:MM
 
-        // Create datetime and add timezone offset
-        const dateTime = `${dateOnly}T${timeOnly}:00`;
-        const dateTimeWithTZ = addTimezoneToBookingTime(dateTime, baseBookingData.booking_timezone);
+        // Create datetime in local timezone, then convert to UTC
+        const localDateTime = `${dateOnly}T${timeOnly}:00`;
+        const offset = getTimezoneOffset(baseBookingData.booking_timezone, localDateTime);
+        const offsetHours = parseInt(offset.split(':')[0]);
+        const dateTimeObj = new Date(localDateTime);
+        const utcDateTimeObj = new Date(dateTimeObj.getTime() - (offsetHours * 60 * 60 * 1000));
+        const dateTimeWithTZ = utcDateTimeObj.toISOString();
 
         // Generate booking_id with hyphen suffix: RB2511001-1, RB2511001-2, etc.
         const repeatBookingId = `${initialBookingId}-${i + 1}`;

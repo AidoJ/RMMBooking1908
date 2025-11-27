@@ -2904,7 +2904,7 @@ export const BookingEditPlatform: React.FC = () => {
                   <div style={{ marginBottom: '20px' }}>
                     <Text strong style={{ color: '#374151', marginBottom: '16px', display: 'block' }}>Duration</Text>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '12px', margin: '16px 0' }}>
-                      {[60, 90, 120].map((duration) => (
+                      {durationsCache.map((d) => d.duration_minutes).map((duration) => (
                         <div 
                           key={duration}
                           style={{
