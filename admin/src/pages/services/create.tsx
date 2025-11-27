@@ -9,6 +9,7 @@ import {
   Col,
   Switch,
   Select,
+  AutoComplete,
   message,
   Typography,
   Space,
@@ -333,14 +334,15 @@ const ServiceCreate: React.FC = () => {
                       label="Service Category"
                       name="category"
                       rules={[{ required: true, message: 'Please select or enter a category' }]}
-                      tooltip="Select existing category or type a new one"
+                      tooltip="Type to create new or select existing category"
                     >
-                      <Select
-                        placeholder="Select or type category"
+                      <AutoComplete
+                        placeholder="Type category name..."
                         size="large"
-                        showSearch
-                        allowClear
-                        options={categories.map(cat => ({ value: cat, label: cat }))}
+                        options={categories.map(cat => ({ value: cat }))}
+                        filterOption={(inputValue, option) =>
+                          option!.value.toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
+                        }
                       />
                     </Form.Item>
                   </Card>
