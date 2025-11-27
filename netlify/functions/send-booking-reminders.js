@@ -49,14 +49,14 @@ exports.handler = async (event, context) => {
     console.log(`📋 Reminder hours setting: ${reminderHours}`);
 
     // Calculate the time window for reminders
-    // We want bookings that are approximately reminderHours away
-    // Use a 10-minute window since this function runs every 10 minutes
+    // Function runs every 10 minutes, so check bookings in the NEXT 10-minute window
+    // that are reminderHours away. This ensures we sweep through all bookings sequentially.
     const now = new Date();
-    const targetTime = new Date(now.getTime() + (reminderHours * 60 * 60 * 1000));
-    const windowStart = new Date(targetTime.getTime() - (5 * 60 * 1000)); // 5 min before
-    const windowEnd = new Date(targetTime.getTime() + (5 * 60 * 1000)); // 5 min after
+    const windowStart = new Date(now.getTime() + (reminderHours * 60 * 60 * 1000));
+    const windowEnd = new Date(windowStart.getTime() + (10 * 60 * 1000)); // Next 10 minutes
 
-    console.log(`🔍 Looking for bookings between ${windowStart.toISOString()} and ${windowEnd.toISOString()}`);
+    console.log(`🔍 Current time: ${now.toISOString()} (UTC)`);
+    console.log(`🔍 Checking bookings ${reminderHours}hr ahead: ${windowStart.toISOString()} to ${windowEnd.toISOString()}`);
 
     // Find confirmed bookings in the reminder window that haven't been sent a reminder
     const { data: bookings, error: bookingsError } = await supabase
