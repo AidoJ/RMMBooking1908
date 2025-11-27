@@ -773,10 +773,7 @@ document.addEventListener('DOMContentLoaded', function () {
       60: '60 min — Essential',
       75: '75 min — Signature (most popular)',
       90: '90 min — Bliss',
-      120: '120 min — Ultimate',
-      180: '180 (group events only)',
-      240: '240 (group events only)',
-      300: '300 (group events only)'
+      120: '120 min — Ultimate'
     };
     return labels[minutes] || `${minutes} minutes`;
   };
