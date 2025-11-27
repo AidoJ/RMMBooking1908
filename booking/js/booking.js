@@ -785,9 +785,9 @@ document.addEventListener('DOMContentLoaded', function () {
   window.populateTherapyOptions = async function populateTherapyOptions() {
     try {
     // Fetch services
-    const { data: services, error: serviceError } = await window.supabase
+    const { data: services, error: serviceError} = await window.supabase
       .from('services')
-      .select('id, name, service_base_price, minimum_duration, is_active, quote_only, image_url, image_alt, short_description')
+      .select('id, name, service_base_price, minimum_duration, is_active, quote_only, image_url, image_alt, short_description, category')
       .eq('is_active', true)
       .order('sort_order');
     console.log('Supabase services:', services, 'Error:', serviceError);
@@ -811,7 +811,57 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
           console.log('📋 No booking mode set, showing all services');
         }
-        
+
+        // Build category tabs for instant booking mode ONLY
+        const categoryTabsContainer = document.getElementById('categoryTabs');
+        if (window.bookingMode === 'instant' && categoryTabsContainer) {
+          // Get unique categories from filtered services
+          const categories = [...new Set(filteredServices.map(s => s.category).filter(Boolean))].sort();
+
+          if (categories.length > 1) {
+            categoryTabsContainer.style.display = 'flex';
+            categoryTabsContainer.innerHTML = '';
+
+            // Add "All" tab
+            const allTab = document.createElement('div');
+            allTab.className = 'category-tab active';
+            allTab.textContent = 'All Services';
+            allTab.dataset.category = 'all';
+            allTab.addEventListener('click', function() {
+              document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+              this.classList.add('active');
+              document.querySelectorAll('.service-card').forEach(card => card.style.display = 'flex');
+            });
+            categoryTabsContainer.appendChild(allTab);
+
+            // Add category tabs
+            categories.forEach(category => {
+              const tab = document.createElement('div');
+              tab.className = 'category-tab';
+              tab.textContent = category;
+              tab.dataset.category = category;
+              tab.addEventListener('click', function() {
+                document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                document.querySelectorAll('.service-card').forEach(card => {
+                  if (card.dataset.category === category) {
+                    card.style.display = 'flex';
+                  } else {
+                    card.style.display = 'none';
+                  }
+                });
+              });
+              categoryTabsContainer.appendChild(tab);
+            });
+
+            console.log('📁 Created', categories.length, 'category tabs');
+          } else {
+            categoryTabsContainer.style.display = 'none';
+          }
+        } else if (categoryTabsContainer) {
+          categoryTabsContainer.style.display = 'none';
+        }
+
         filteredServices.forEach((service, index) => {
           console.log('📋 Loading service:', service.name, 'ID:', service.id, 'minimum_duration:', service.minimum_duration);
           
@@ -820,6 +870,7 @@ document.addEventListener('DOMContentLoaded', function () {
           serviceCard.dataset.serviceId = service.id;
           serviceCard.dataset.minimumDuration = service.minimum_duration || 60;
           serviceCard.dataset.quoteOnly = service.quote_only || false;
+          serviceCard.dataset.category = service.category || 'Uncategorized';
           
           // Hide services beyond the first 4 initially
           if (index >= 4) {
