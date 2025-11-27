@@ -124,9 +124,33 @@ exports.handler = async (event, context) => {
       console.warn('⚠️ No coordinates in booking data, using default timezone: Australia/Sydney');
     }
 
-    // Keep booking_time as-is - form sends local time (e.g., "2025-12-29T10:00:00")
-    // PostgreSQL will store it as timestamptz and we use booking_timezone field for reference
-    console.log(`🕐 Storing booking_time: ${bookingData.booking_time} in timezone: ${bookingData.booking_timezone}`);
+    // Convert local booking time to UTC for proper storage
+    // Form sends local time (e.g., "2025-12-29T10:00:00" in Brisbane)
+    // We convert to UTC and store with timezone reference
+    let originalLocalTime = null;
+    if (bookingData.booking_time) {
+      originalLocalTime = bookingData.booking_time; // Save for recurring bookings
+      const timezone = bookingData.booking_timezone;
+
+      // Get the timezone offset for this specific date/time
+      const offset = getTimezoneOffset(timezone, originalLocalTime);
+      const offsetMatch = offset.match(/([+-])(\d{2}):(\d{2})/);
+
+      if (offsetMatch) {
+        const sign = offsetMatch[1] === '+' ? 1 : -1;
+        const offsetHours = parseInt(offsetMatch[2]);
+        const offsetMinutes = parseInt(offsetMatch[3]);
+        const totalOffsetMs = sign * (offsetHours * 60 + offsetMinutes) * 60 * 1000;
+
+        // Parse local time and convert to UTC
+        // Local time is treated as if it's in UTC, then we subtract the offset
+        const localAsUTC = new Date(originalLocalTime + 'Z'); // Parse as UTC
+        const utcTime = new Date(localAsUTC.getTime() - totalOffsetMs);
+
+        bookingData.booking_time = utcTime.toISOString();
+        console.log(`🕐 Converted: ${originalLocalTime} (${timezone} ${offset}) → ${bookingData.booking_time} (UTC)`);
+      }
+    }
 
     // Check if this is a recurring booking
     const isRecurring = bookingData.is_recurring === true;
@@ -164,12 +188,29 @@ exports.handler = async (event, context) => {
         const occurrenceDate = new Date(recurringDates[i]);
         const dateOnly = occurrenceDate.toISOString().split('T')[0];
 
-        // Extract time from initial booking
-        const timeMatch = baseBookingData.booking_time.match(/T(\d{2}:\d{2}:\d{2})/);
+        // Extract time from original local time (before UTC conversion)
+        // We need to use the same local time for all occurrences
+        const timeMatch = originalLocalTime.match(/T(\d{2}:\d{2}:\d{2})/);
         const timeOnly = timeMatch ? timeMatch[1] : '00:00:00';
 
-        // Create datetime - keep as local time
-        const dateTime = `${dateOnly}T${timeOnly}`;
+        // Create local datetime for this occurrence
+        const localDateTime = `${dateOnly}T${timeOnly}`;
+
+        // Convert to UTC using same logic as initial booking
+        const offset = getTimezoneOffset(baseBookingData.booking_timezone, localDateTime);
+        const offsetMatch = offset.match(/([+-])(\d{2}):(\d{2})/);
+
+        let dateTime = localDateTime;
+        if (offsetMatch) {
+          const sign = offsetMatch[1] === '+' ? 1 : -1;
+          const offsetHours = parseInt(offsetMatch[2]);
+          const offsetMinutes = parseInt(offsetMatch[3]);
+          const totalOffsetMs = sign * (offsetHours * 60 + offsetMinutes) * 60 * 1000;
+
+          const localAsUTC = new Date(localDateTime + 'Z');
+          const utcTime = new Date(localAsUTC.getTime() - totalOffsetMs);
+          dateTime = utcTime.toISOString();
+        }
 
         // Generate booking_id with hyphen suffix: RB2511001-1, RB2511001-2, etc.
         const repeatBookingId = `${initialBookingId}-${i + 1}`;
