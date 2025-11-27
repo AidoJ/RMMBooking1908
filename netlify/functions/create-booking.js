@@ -36,6 +36,73 @@ function detectTimezoneFromCoords(lat, lng) {
   return 'Australia/Sydney';
 }
 
+// Check if date falls within Australian DST period
+function isAustralianDST(date) {
+  const year = date.getFullYear();
+
+  // DST starts: First Sunday in October at 2:00 AM
+  const octFirst = new Date(year, 9, 1); // October = month 9
+  const octFirstDay = octFirst.getDay();
+  const dstStart = new Date(year, 9, 1 + (octFirstDay === 0 ? 0 : 7 - octFirstDay), 2, 0, 0);
+
+  // DST ends: First Sunday in April at 3:00 AM
+  const aprFirst = new Date(year, 3, 1); // April = month 3
+  const aprFirstDay = aprFirst.getDay();
+  const dstEnd = new Date(year, 3, 1 + (aprFirstDay === 0 ? 0 : 7 - aprFirstDay), 3, 0, 0);
+
+  // DST runs from October to April (crosses year boundary)
+  return date >= dstStart || date < dstEnd;
+}
+
+// Get timezone offset string for Australian timezone on specific date
+function getTimezoneOffset(timezone, dateString) {
+  // dateString: "2025-11-27T13:30:00"
+  const date = new Date(dateString);
+
+  const timezoneInfo = {
+    'Australia/Brisbane': { offset: '+10:00', hasDST: false },
+    'Australia/Sydney': { winterOffset: '+10:00', summerOffset: '+11:00', hasDST: true },
+    'Australia/Melbourne': { winterOffset: '+10:00', summerOffset: '+11:00', hasDST: true },
+    'Australia/Adelaide': { winterOffset: '+09:30', summerOffset: '+10:30', hasDST: true },
+    'Australia/Perth': { offset: '+08:00', hasDST: false },
+    'Australia/Darwin': { offset: '+09:30', hasDST: false },
+    'Australia/Hobart': { winterOffset: '+10:00', summerOffset: '+11:00', hasDST: true }
+  };
+
+  const info = timezoneInfo[timezone];
+  if (!info) {
+    console.warn(`⚠️ Unknown timezone ${timezone}, defaulting to +10:00`);
+    return '+10:00';
+  }
+
+  if (!info.hasDST) {
+    return info.offset;
+  }
+
+  // Check if date is in DST period for zones that observe it
+  const isDST = isAustralianDST(date);
+  return isDST ? info.summerOffset : info.winterOffset;
+}
+
+// Add timezone offset to booking time
+function addTimezoneToBookingTime(dateTimeString, timezone) {
+  // dateTimeString: "2025-11-27T13:30:00" or "2025-11-27 13:30:00"
+
+  // If already has timezone offset, return as-is
+  if (dateTimeString.includes('+') || dateTimeString.includes('Z')) {
+    return dateTimeString;
+  }
+
+  // Normalize to ISO format with T separator
+  const normalizedDateTime = dateTimeString.replace(' ', 'T');
+
+  // Get appropriate offset for this timezone and date
+  const offset = getTimezoneOffset(timezone, normalizedDateTime);
+
+  // Append offset to create timezone-aware timestamp
+  return `${normalizedDateTime}${offset}`;
+}
+
 exports.handler = async (event, context) => {
   // Enable CORS
   const headers = {
@@ -76,6 +143,13 @@ exports.handler = async (event, context) => {
       console.warn('⚠️ No coordinates in booking data, using default timezone: Australia/Sydney');
     }
 
+    // Add timezone offset to booking_time to store local time with timezone
+    if (bookingData.booking_time) {
+      const originalTime = bookingData.booking_time;
+      bookingData.booking_time = addTimezoneToBookingTime(bookingData.booking_time, bookingData.booking_timezone);
+      console.log(`🕐 Updated booking_time: ${originalTime} → ${bookingData.booking_time}`);
+    }
+
     // Check if this is a recurring booking
     const isRecurring = bookingData.is_recurring === true;
 
@@ -111,8 +185,14 @@ exports.handler = async (event, context) => {
       for (let i = 0; i < recurringDates.length; i++) {
         const occurrenceDate = new Date(recurringDates[i]);
         const dateOnly = occurrenceDate.toISOString().split('T')[0];
-        const timeOnly = baseBookingData.booking_time.split('T')[1].substring(0, 5); // Extract HH:MM
+
+        // Extract time from initial booking (already has timezone offset)
+        const timeMatch = baseBookingData.booking_time.match(/T(\d{2}:\d{2}:\d{2})/);
+        const timeOnly = timeMatch ? timeMatch[1].substring(0, 5) : '00:00'; // Extract HH:MM
+
+        // Create datetime and add timezone offset
         const dateTime = `${dateOnly}T${timeOnly}:00`;
+        const dateTimeWithTZ = addTimezoneToBookingTime(dateTime, baseBookingData.booking_timezone);
 
         // Generate booking_id with hyphen suffix: RB2511001-1, RB2511001-2, etc.
         const repeatBookingId = `${initialBookingId}-${i + 1}`;
@@ -122,7 +202,7 @@ exports.handler = async (event, context) => {
           booking_id: repeatBookingId, // RB2511001-1, RB2511001-2, etc.
           request_id: requestId, // Same for all: REQ2511001
           occurrence_number: i + 1,
-          booking_time: dateTime,
+          booking_time: dateTimeWithTZ, // Use timezone-aware timestamp
           status: 'requested', // Repeats start as requested (therapist already accepted series via initial)
           payment_status: 'pending', // Repeats are not yet paid
           // Don't apply discount/gift card to repeats

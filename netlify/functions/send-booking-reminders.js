@@ -55,10 +55,13 @@ exports.handler = async (event, context) => {
     const windowStart = new Date(now.getTime() + (reminderHours * 60 * 60 * 1000));
     const windowEnd = new Date(windowStart.getTime() + (10 * 60 * 1000)); // Next 10 minutes
 
-    console.log(`🔍 Current time: ${now.toISOString()} (UTC)`);
-    console.log(`🔍 Checking bookings ${reminderHours}hr ahead: ${windowStart.toISOString()} to ${windowEnd.toISOString()}`);
+    console.log(`🔍 Current time (UTC): ${now.toISOString()}`);
+    console.log(`🔍 Current time (Brisbane): ${now.toLocaleString('en-AU', { timeZone: 'Australia/Brisbane' })}`);
+    console.log(`🔍 Checking bookings ${reminderHours}hr ahead (UTC): ${windowStart.toISOString()} to ${windowEnd.toISOString()}`);
+    console.log(`🔍 Window in Brisbane time: ${windowStart.toLocaleString('en-AU', { timeZone: 'Australia/Brisbane' })} to ${windowEnd.toLocaleString('en-AU', { timeZone: 'Australia/Brisbane' })}`);
 
     // Find confirmed bookings in the reminder window that haven't been sent a reminder
+    // Note: PostgreSQL timestamptz comparisons work in UTC, so timezone-aware timestamps are automatically converted
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
       .select(`
@@ -88,6 +91,13 @@ exports.handler = async (event, context) => {
     }
 
     console.log(`📬 Found ${bookings.length} bookings that need reminders`);
+
+    // Log found bookings with their times
+    bookings.forEach(b => {
+      const bookingTime = new Date(b.booking_time);
+      const localTime = bookingTime.toLocaleString('en-AU', { timeZone: b.booking_timezone || 'Australia/Brisbane' });
+      console.log(`  - ${b.booking_id}: ${b.booking_time} (${localTime} in ${b.booking_timezone || 'unknown TZ'})`);
+    });
 
     let successCount = 0;
     let failCount = 0;
