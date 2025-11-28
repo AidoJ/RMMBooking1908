@@ -56,9 +56,7 @@ exports.handler = async (event, context) => {
     const windowEnd = new Date(windowStart.getTime() + (10 * 60 * 1000)); // Next 10 minutes
 
     console.log(`🔍 Current time (UTC): ${now.toISOString()}`);
-    console.log(`🔍 Current time (Brisbane): ${now.toLocaleString('en-AU', { timeZone: 'Australia/Brisbane' })}`);
     console.log(`🔍 Checking bookings ${reminderHours}hr ahead (UTC): ${windowStart.toISOString()} to ${windowEnd.toISOString()}`);
-    console.log(`🔍 Window in Brisbane time: ${windowStart.toLocaleString('en-AU', { timeZone: 'Australia/Brisbane' })} to ${windowEnd.toLocaleString('en-AU', { timeZone: 'Australia/Brisbane' })}`);
 
     // Find confirmed bookings in the reminder window that haven't been sent a reminder
     // Note: PostgreSQL timestamptz comparisons work in UTC, so timezone-aware timestamps are automatically converted
@@ -92,11 +90,9 @@ exports.handler = async (event, context) => {
 
     console.log(`📬 Found ${bookings.length} bookings that need reminders`);
 
-    // Log found bookings with their times
+    // Log found bookings with their times (database returns timestamptz which includes offset)
     bookings.forEach(b => {
-      const bookingTime = new Date(b.booking_time);
-      const localTime = bookingTime.toLocaleString('en-AU', { timeZone: b.booking_timezone || 'Australia/Brisbane' });
-      console.log(`  - ${b.booking_id}: ${b.booking_time} (${localTime} in ${b.booking_timezone || 'unknown TZ'})`);
+      console.log(`  - ${b.booking_id}: ${b.booking_time} (stored as timestamptz in ${b.booking_timezone || 'unknown TZ'})`);
     });
 
     let successCount = 0;
@@ -153,7 +149,7 @@ exports.handler = async (event, context) => {
         // SEND APPROPRIATE EMAIL BASED ON PAYMENT STATUS
         if (paymentAuthorized) {
           // Payment is authorized → Send APPOINTMENT REMINDER
-          if (booking.email) {
+          if (booking.customer_email) {
             try {
               await sendAppointmentReminder(booking, cancelLink);
               console.log(`✅ Appointment reminder sent to client for ${booking.booking_id}`);
@@ -201,7 +197,7 @@ exports.handler = async (event, context) => {
 
         } else {
           // Payment NOT authorized → Send PAYMENT REMINDER
-          if (booking.email) {
+          if (booking.customer_email) {
             try {
               await sendPaymentReminder(booking, paymentLink, cancelLink);
               console.log(`✅ Payment reminder sent to client for ${booking.booking_id}`);
@@ -266,21 +262,35 @@ async function sendAppointmentReminder(booking, cancelLink) {
     const serviceName = booking.services?.name || 'Massage';
     const duration = booking.duration_minutes;
 
+    // Convert UTC time to local timezone for display
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const localTime = new Date(booking.booking_time).toLocaleString('en-AU', {
+      timeZone: timezone,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const [dateStr, timeStr] = localTime.split(', ').slice(0, 2).join(', ').split(' at ');
+    const bookingDateLocal = localTime.split(' at ')[0];
+    const bookingTimeLocal = localTime.split(' at ')[1] || new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
     const templateParams = {
-      to_email: booking.email,
+      to_email: booking.customer_email,
       customer_name: booking.first_name,
       booking_id: booking.booking_id,
       service_name: serviceName,
-      booking_date: bookingDate.toLocaleDateString('en-AU', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-      booking_time: bookingDate.toLocaleTimeString('en-AU', {
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
+      booking_date: bookingDateLocal,
+      booking_time: bookingTimeLocal,
       duration: duration + ' minutes',
       address: booking.address,
       therapist_name: booking.therapist_profiles?.first_name || 'Your therapist',
@@ -321,25 +331,37 @@ async function sendPaymentReminder(booking, paymentLink, cancelLink) {
       return { success: false, error: 'Private key required' };
     }
 
-    const bookingDate = new Date(booking.booking_time);
     const serviceName = booking.services?.name || 'Massage';
     const duration = booking.duration_minutes;
 
+    // Convert UTC time to local timezone for display
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const localTime = new Date(booking.booking_time).toLocaleString('en-AU', {
+      timeZone: timezone,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const bookingDateLocal = localTime.split(' at ')[0];
+    const bookingTimeLocal = localTime.split(' at ')[1] || new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
     const templateParams = {
-      to_email: booking.email,
+      to_email: booking.customer_email,
       customer_name: booking.first_name,
       booking_id: booking.booking_id,
       service_name: serviceName,
-      booking_date: bookingDate.toLocaleDateString('en-AU', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-      booking_time: bookingDate.toLocaleTimeString('en-AU', {
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
+      booking_date: bookingDateLocal,
+      booking_time: bookingTimeLocal,
       duration: duration + ' minutes',
       address: booking.address,
       therapist_name: booking.therapist_profiles?.first_name || 'Your therapist',
@@ -382,10 +404,30 @@ async function sendTherapistReminder(booking) {
       return { success: false, error: 'Private key required' };
     }
 
-    const bookingDate = new Date(booking.booking_time);
     const serviceName = booking.services?.name || 'Massage';
     const duration = booking.duration_minutes;
     const clientName = `${booking.first_name} ${booking.last_name}`;
+
+    // Convert UTC time to local timezone for display
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const localTime = new Date(booking.booking_time).toLocaleString('en-AU', {
+      timeZone: timezone,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const bookingDateLocal = localTime.split(' at ')[0];
+    const bookingTimeLocal = localTime.split(' at ')[1] || new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
 
     const templateParams = {
       to_email: booking.therapist_profiles.email,
@@ -393,16 +435,8 @@ async function sendTherapistReminder(booking) {
       booking_id: booking.booking_id,
       client_name: clientName,
       service_name: serviceName,
-      booking_date: bookingDate.toLocaleDateString('en-AU', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-      booking_time: bookingDate.toLocaleTimeString('en-AU', {
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
+      booking_date: bookingDateLocal,
+      booking_time: bookingTimeLocal,
       duration: duration + ' minutes',
       address: booking.address,
       room_number: booking.room_number || 'N/A',
@@ -443,15 +477,18 @@ async function sendClientReminderSMS(booking, paymentRequired = false, paymentLi
       return { success: false, error: 'Twilio not configured' };
     }
 
-    const bookingDate = new Date(booking.booking_time);
     const serviceName = booking.services?.name || 'massage';
     const therapistName = booking.therapist_profiles?.first_name || 'your therapist';
 
-    const dateStr = bookingDate.toLocaleDateString('en-AU', {
+    // Convert UTC time to local timezone for display
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const dateStr = new Date(booking.booking_time).toLocaleDateString('en-AU', {
+      timeZone: timezone,
       month: 'short',
       day: 'numeric'
     });
-    const timeStr = bookingDate.toLocaleTimeString('en-AU', {
+    const timeStr = new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+      timeZone: timezone,
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
@@ -526,15 +563,18 @@ async function sendTherapistReminderSMS(booking) {
       return { success: false, error: 'Twilio not configured' };
     }
 
-    const bookingDate = new Date(booking.booking_time);
     const serviceName = booking.services?.name || 'massage';
     const clientName = `${booking.first_name} ${booking.last_name}`;
 
-    const dateStr = bookingDate.toLocaleDateString('en-AU', {
+    // Convert UTC time to local timezone for display
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const dateStr = new Date(booking.booking_time).toLocaleDateString('en-AU', {
+      timeZone: timezone,
       month: 'short',
       day: 'numeric'
     });
-    const timeStr = bookingDate.toLocaleTimeString('en-AU', {
+    const timeStr = new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+      timeZone: timezone,
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
@@ -877,7 +917,7 @@ async function autoCancelBooking(booking, reason) {
       });
 
     // Send cancellation notification to client
-    if (booking.email) {
+    if (booking.customer_email) {
       await sendCancellationNotification(booking, reason);
     }
 
@@ -903,15 +943,35 @@ async function autoCancelBooking(booking, reason) {
 async function sendCancellationNotification(booking, reason) {
   try {
     const emailjs = require('@emailjs/nodejs');
-    const bookingTime = new Date(booking.booking_time);
+
+    // Convert UTC time to local timezone for display
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const localTime = new Date(booking.booking_time).toLocaleString('en-AU', {
+      timeZone: timezone,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const bookingDateLocal = localTime.split(' at ')[0];
+    const bookingTimeLocal = localTime.split(' at ')[1] || new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
 
     const templateParams = {
-      to_email: booking.email,
+      to_email: booking.customer_email,
       customer_name: booking.first_name,
       booking_id: booking.booking_id,
       service_name: booking.services?.name || 'Massage Service',
-      booking_date: bookingTime.toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-      booking_time: bookingTime.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }),
+      booking_date: bookingDateLocal,
+      booking_time: bookingTimeLocal,
       reason: reason,
       contact_phone: '1300 302542'
     };
@@ -943,9 +1003,19 @@ async function sendCancellationSMS(booking, reason) {
     const twilio = require('twilio');
     const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 
-    const bookingTime = new Date(booking.booking_time);
-    const dateStr = bookingTime.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
-    const timeStr = bookingTime.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
+    // Convert UTC time to local timezone for display
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const dateStr = new Date(booking.booking_time).toLocaleDateString('en-AU', {
+      timeZone: timezone,
+      month: 'short',
+      day: 'numeric'
+    });
+    const timeStr = new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
 
     const message = `❌ BOOKING CANCELLED
 
@@ -971,7 +1041,27 @@ If this is an error, please call us immediately at 1300 302542 to reschedule.
 async function sendTherapistCancellationNotification(booking, reason) {
   try {
     const emailjs = require('@emailjs/nodejs');
-    const bookingTime = new Date(booking.booking_time);
+
+    // Convert UTC time to local timezone for display
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const localTime = new Date(booking.booking_time).toLocaleString('en-AU', {
+      timeZone: timezone,
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+
+    const bookingDateLocal = localTime.split(' at ')[0];
+    const bookingTimeLocal = localTime.split(' at ')[1] || new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
 
     const templateParams = {
       to_email: booking.therapist_profiles.email,
@@ -979,8 +1069,8 @@ async function sendTherapistCancellationNotification(booking, reason) {
       client_name: `${booking.first_name} ${booking.last_name}`,
       booking_id: booking.booking_id,
       service_name: booking.services?.name || 'Massage Service',
-      booking_date: bookingTime.toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-      booking_time: bookingTime.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }),
+      booking_date: bookingDateLocal,
+      booking_time: bookingTimeLocal,
       address: booking.address,
       reason: 'Payment authorization failed - auto-cancelled by system'
     };
