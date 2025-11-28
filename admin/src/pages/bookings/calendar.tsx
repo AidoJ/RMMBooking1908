@@ -39,6 +39,7 @@ import { RoleGuard } from '../../components/RoleGuard';
 import dayjs, { Dayjs } from 'dayjs';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import { getLocalBookingTime, formatBookingTime } from '../../utils/timezoneHelpers';
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -213,7 +214,9 @@ export const CalendarBookingManagement: React.FC = () => {
           : 'Unassigned';
 
         const duration = booking.duration_minutes || 60;
-        const startTime = dayjs(booking.booking_time);
+        // Convert UTC time to local timezone for display
+        const bookingTimezone = booking.booking_timezone || 'Australia/Brisbane';
+        const startTime = getLocalBookingTime(booking.booking_time, bookingTimezone);
         const endTime = startTime.add(duration, 'minute');
 
         // Display label with occurrence suffix if part of recurring series

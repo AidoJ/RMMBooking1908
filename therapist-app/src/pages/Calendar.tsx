@@ -3,6 +3,7 @@ import { Card, Typography, message, Spin, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { supabaseClient } from '../utility/supabaseClient';
 import dayjs from 'dayjs';
+import { getLocalBookingTime } from '../utils/timezoneHelpers';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -14,6 +15,7 @@ const { Title } = Typography;
 interface Booking {
   id: string;
   booking_time: string;
+  booking_timezone?: string;
   status: string;
   customer_name: string;
   service_name: string;
@@ -68,6 +70,7 @@ export const Calendar: React.FC = () => {
         .select(`
           id,
           booking_time,
+          booking_timezone,
           status,
           address,
           therapist_fee,
@@ -127,22 +130,29 @@ export const Calendar: React.FC = () => {
   };
 
   // Convert bookings to FullCalendar events
-  const events = bookings.map(booking => ({
-    id: booking.id,
-    title: `${booking.customer_name} - ${booking.service_name}`,
-    start: booking.booking_time,
-    end: dayjs(booking.booking_time).add(booking.duration_minutes || 60, 'minutes').toISOString(),
-    backgroundColor: 'transparent',
-    borderColor: '#d9d9d9',
-    classNames: ['calendar-event-text-only'],
-    extendedProps: {
-      status: booking.status,
-      customer_name: booking.customer_name,
-      service_name: booking.service_name,
-      address: booking.address,
-      therapist_fee: booking.therapist_fee
-    }
-  }));
+  const events = bookings.map(booking => {
+    // Convert UTC time to local timezone
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const localStart = getLocalBookingTime(booking.booking_time, timezone);
+    const localEnd = localStart.add(booking.duration_minutes || 60, 'minutes');
+
+    return {
+      id: booking.id,
+      title: `${booking.customer_name} - ${booking.service_name}`,
+      start: localStart.toISOString(),
+      end: localEnd.toISOString(),
+      backgroundColor: 'transparent',
+      borderColor: '#d9d9d9',
+      classNames: ['calendar-event-text-only'],
+      extendedProps: {
+        status: booking.status,
+        customer_name: booking.customer_name,
+        service_name: booking.service_name,
+        address: booking.address,
+        therapist_fee: booking.therapist_fee
+      }
+    };
+  });
 
   const handleEventClick = (info: any) => {
     navigate(`/booking/${info.event.id}`);

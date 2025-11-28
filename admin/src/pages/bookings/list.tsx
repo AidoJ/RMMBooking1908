@@ -42,6 +42,7 @@ import { useGetIdentity, useNavigation } from '@refinedev/core';
 import { useNavigate } from 'react-router';
 import { supabaseClient } from '../../utility';
 import dayjs, { Dayjs } from 'dayjs';
+import { formatBookingDateTime } from '../../utils/timezoneHelpers';
 
 // Import role utilities and components
 import { UserIdentity, canAccess, isTherapist, isAdmin } from '../../utils/roleUtils';
@@ -703,12 +704,16 @@ export const EnhancedBookingList = () => {
       sorter: (a: BookingRecord, b: BookingRecord) => {
         return dayjs(a.booking_time).unix() - dayjs(b.booking_time).unix();
       },
-      render: (time: string) => (
-        <Space direction="vertical" size="small">
-          <Text>{dayjs(time).format('MMM DD, YYYY')}</Text>
-          <Text type="secondary">{dayjs(time).format('HH:mm')}</Text>
-        </Space>
-      ),
+      render: (time: string, record: BookingRecord) => {
+        const timezone = record.booking_timezone || 'Australia/Brisbane';
+        const formatted = formatBookingDateTime(time, timezone);
+        return (
+          <Space direction="vertical" size="small">
+            <Text>{formatted.date}</Text>
+            <Text type="secondary">{formatted.time}</Text>
+          </Space>
+        );
+      },
     },
     {
       title: 'Status',
