@@ -2,6 +2,7 @@
 // Sends email and SMS notifications to customers
 
 const { createClient } = require('@supabase/supabase-js');
+const { getLocalDate, getLocalTime } = require('./utils/timezoneHelpers');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -180,18 +181,10 @@ async function sendCustomerStatusEmail(booking, therapistName, customerName, ser
       return { success: false, error: 'Private key required' };
     }
 
-    const bookingTime = new Date(booking.booking_time);
-    const dateFormatted = bookingTime.toLocaleDateString('en-AU', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    const timeFormatted = bookingTime.toLocaleTimeString('en-AU', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
-    });
+    // Convert UTC time to local timezone for display
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const dateFormatted = getLocalDate(booking.booking_time, timezone);
+    const timeFormatted = getLocalTime(booking.booking_time, timezone);
 
     const templateId = status === 'on_my_way' ? EMAILJS_ON_MY_WAY_TEMPLATE : EMAILJS_ARRIVED_TEMPLATE;
 

@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { getLocalDate } = require('./utils/timezoneHelpers');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -120,13 +121,10 @@ function generateQuoteHTML(booking) {
   const quoteRef = booking.booking_id || booking.id;
   const quoteDate = new Date(booking.created_at).toLocaleDateString('en-AU');
   const validUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-AU');
-  
-  const eventDate = new Date(booking.booking_time).toLocaleDateString('en-AU', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+
+  // Convert UTC to local timezone
+  const timezone = booking.booking_timezone || 'Australia/Brisbane';
+  const eventDate = getLocalDate(booking.booking_time, timezone);
 
   const totalMinutes = booking.number_of_massages * booking.duration_per_massage;
   const totalDuration = `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m`;

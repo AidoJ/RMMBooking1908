@@ -2,6 +2,7 @@
 // Replace your entire netlify/functions/booking-response.js with this code
 
 const { createClient } = require('@supabase/supabase-js');
+const { getLocalDate, getLocalTime, getShortDate, getLocalDateTime, getDateAndTime } = require('./utils/timezoneHelpers');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Service role bypasses RLS
@@ -344,7 +345,7 @@ async function handleBookingAccept(booking, therapist, headers) {
 
 You've accepted booking ${booking.booking_id}
 Client: ${booking.first_name} ${booking.last_name}
-Date: ${new Date(booking.booking_time).toLocaleDateString()} at ${new Date(booking.booking_time).toLocaleTimeString()}
+Date: ${getShortDate(booking.booking_time, booking.booking_timezone)} at ${getLocalTime(booking.booking_time, booking.booking_timezone)}
 Fee: $${booking.therapist_fee || 'TBD'}
 
 Client will be notified. Check email for full details.
@@ -366,7 +367,7 @@ Client will be notified. Check email for full details.
         
         const customerSMSMessage = `🎉 BOOKING CONFIRMED!
 
-${therapist.first_name} ${therapist.last_name} has accepted your massage booking for ${new Date(booking.booking_time).toLocaleDateString()} at ${new Date(booking.booking_time).toLocaleTimeString()}.
+${therapist.first_name} ${therapist.last_name} has accepted your massage booking for ${getShortDate(booking.booking_time, booking.booking_timezone)} at ${getLocalTime(booking.booking_time, booking.booking_timezone)}.
 
 Check your email for full details!
 - Rejuvenators`;
@@ -392,10 +393,11 @@ Check your email for full details!
       'Thank you ' + therapist.first_name + '! You have successfully accepted booking ' + booking.booking_id + '.';
 
     // Build details array
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
     const details = [
       'Client: ' + booking.first_name + ' ' + booking.last_name,
       'Service: ' + serviceName,
-      'Date: ' + new Date(booking.booking_time).toLocaleString(),
+      'Date: ' + getLocalDateTime(booking.booking_time, timezone),
       'Location: ' + booking.address,
       'Room: ' + (booking.room_number || 'N/A'),
       'Your Fee: $' + (booking.therapist_fee || 'TBD')
@@ -413,8 +415,7 @@ Check your email for full details!
       seriesBookings.forEach(b => {
         const occNum = b.occurrence_number;
         const label = occNum === 0 ? 'Initial' : 'Repeat ' + occNum;
-        const dateTime = new Date(b.booking_time);
-        details.push('  • ' + label + ': ' + dateTime.toLocaleDateString() + ' at ' + dateTime.toLocaleTimeString());
+        details.push('  • ' + label + ': ' + getShortDate(b.booking_time, timezone) + ' at ' + getLocalTime(b.booking_time, timezone));
       });
     }
 
@@ -661,8 +662,7 @@ Please contact us at 1300 302542 to reschedule.
       seriesBookings.forEach(b => {
         const occNum = b.occurrence_number;
         const label = occNum === 0 ? 'Initial' : 'Repeat ' + occNum;
-        const dateTime = new Date(b.booking_time);
-        details.push('  • ' + label + ': ' + dateTime.toLocaleDateString() + ' at ' + dateTime.toLocaleTimeString());
+        details.push('  • ' + label + ': ' + getShortDate(b.booking_time, timezone) + ' at ' + getLocalTime(b.booking_time, timezone));
       });
     }
 
@@ -893,6 +893,7 @@ async function sendClientConfirmationEmail(booking, therapist, seriesBookings = 
     // Generate intake form URL
     const intakeFormUrl = `${baseUrl}/therapist/clientintake?booking=${booking.id || booking.booking_id}`;
 
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
     const templateParams = {
       to_email: booking.customer_email,
       to_name: booking.first_name + ' ' + booking.last_name,
@@ -900,7 +901,7 @@ async function sendClientConfirmationEmail(booking, therapist, seriesBookings = 
       booking_id: booking.booking_id,
       service: serviceName,
       duration: booking.duration_minutes + ' minutes',
-      date_time: new Date(booking.booking_time).toLocaleString(),
+      date_time: getLocalDateTime(booking.booking_time, timezone),
       address: booking.address,
       room_number: booking.room_number || 'N/A',
       therapist: therapist.first_name + ' ' + therapist.last_name,
@@ -920,15 +921,7 @@ async function sendClientConfirmationEmail(booking, therapist, seriesBookings = 
       templateParams.sessions_list = seriesBookings.map(b => {
         const occNum = b.occurrence_number;
         const label = occNum === 0 ? 'Initial booking' : `Repeat ${occNum}`;
-        const dateTime = new Date(b.booking_time);
-        return `${label}: ${dateTime.toLocaleString('en-AU', {
-          weekday: 'short',
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit'
-        })}`;
+        return `${label}: ${getLocalDateTime(b.booking_time, timezone)}`;
       }).join('\n');
     }
 
@@ -960,8 +953,8 @@ async function sendTherapistConfirmationEmail(booking, therapist, seriesBookings
       client_email: booking.customer_email,
       service_name: serviceName,
       duration: booking.duration_minutes + ' minutes',
-      booking_date: new Date(booking.booking_time).toLocaleDateString(),
-      booking_time: new Date(booking.booking_time).toLocaleTimeString(),
+      booking_date: getLocalDate(booking.booking_time, timezone),
+      booking_time: getLocalTime(booking.booking_time, timezone),
       address: booking.address,
       room_number: booking.room_number || 'N/A',
       therapist_fee: booking.therapist_fee ? '$' + booking.therapist_fee.toFixed(2) : 'TBD'
@@ -978,15 +971,7 @@ async function sendTherapistConfirmationEmail(booking, therapist, seriesBookings
       templateParams.sessions_list = seriesBookings.map(b => {
         const occNum = b.occurrence_number;
         const label = occNum === 0 ? 'Initial booking' : `Repeat ${occNum}`;
-        const dateTime = new Date(b.booking_time);
-        return `${label}: ${dateTime.toLocaleString('en-AU', {
-          weekday: 'short',
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: 'numeric',
-          minute: '2-digit'
-        })}`;
+        return `${label}: ${getLocalDateTime(b.booking_time, timezone)}`;
       }).join('\n');
 
       // Calculate total series earnings
@@ -1018,7 +1003,7 @@ async function sendClientDeclineEmail(booking) {
       booking_id: booking.booking_id,
       service: serviceName,
       duration: booking.duration_minutes + ' minutes',
-      date_time: new Date(booking.booking_time).toLocaleString(),
+      date_time: getLocalDateTime(booking.booking_time, booking.booking_timezone || 'Australia/Brisbane'),
       address: booking.address
     };
 
@@ -1037,7 +1022,7 @@ async function sendClientDeclineEmail(booking) {
       // Generate sessions list
       if (seriesBookings && seriesBookings.length > 0) {
         templateParams.sessions_list = seriesBookings.map(bkg =>
-          `Session ${bkg.occurrence_number}: ${new Date(bkg.booking_time).toLocaleString()}`
+          `Session ${bkg.occurrence_number}: ${getLocalDateTime(bkg.booking_time, booking.booking_timezone || 'Australia/Brisbane')}`
         ).join('\n');
       }
     }
@@ -1070,7 +1055,7 @@ async function sendClientLookingForAlternateEmail(booking) {
       booking_id: booking.booking_id,
       service: serviceName,
       duration: booking.duration_minutes + ' minutes',
-      date_time: new Date(booking.booking_time).toLocaleString(),
+      date_time: getLocalDateTime(booking.booking_time, booking.booking_timezone || 'Australia/Brisbane'),
       address: booking.address
     };
 
@@ -1099,7 +1084,7 @@ async function sendClientLookingForAlternateEmail(booking) {
       // Generate sessions list
       if (seriesBookings && seriesBookings.length > 0) {
         templateParams.sessions_list = seriesBookings.map(bkg =>
-          `Session ${bkg.occurrence_number}: ${new Date(bkg.booking_time).toLocaleString()}`
+          `Session ${bkg.occurrence_number}: ${getLocalDateTime(bkg.booking_time, booking.booking_timezone || 'Australia/Brisbane')}`
         ).join('\n');
       }
     }
@@ -1133,8 +1118,8 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
       client_phone: booking.customer_phone || 'Not provided',
       service_name: (booking.services && booking.services.name) ? booking.services.name : 'Massage Service',
       duration: booking.duration_minutes + ' minutes',
-      booking_date: new Date(booking.booking_time).toLocaleDateString(),
-      booking_time: new Date(booking.booking_time).toLocaleTimeString(),
+      booking_date: getLocalDate(booking.booking_time, booking.booking_timezone || 'Australia/Brisbane'),
+      booking_time: getLocalTime(booking.booking_time, booking.booking_timezone || 'Australia/Brisbane'),
       address: booking.address,
       business_name: booking.business_name || 'Private Residence',
       booking_type: booking.booking_type || 'Standard Booking',
@@ -1173,7 +1158,7 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
       // Generate sessions list
       if (seriesBookings && seriesBookings.length > 0) {
         templateParams.sessions_list = seriesBookings.map(bkg =>
-          `Session ${bkg.occurrence_number}: ${new Date(bkg.booking_time).toLocaleString()}`
+          `Session ${bkg.occurrence_number}: ${getLocalDateTime(bkg.booking_time, booking.booking_timezone || 'Australia/Brisbane')}`
         ).join('\n');
       }
 

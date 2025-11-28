@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { getLocalDate, getLocalTime, getShortDate } = require('./utils/timezoneHelpers');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -230,12 +231,16 @@ async function handleDecline(booking, therapist) {
 
 async function sendConfirmationSMS(therapistPhone, booking, therapist, action) {
   const isAccept = action === 'accept';
-  const message = isAccept ? 
+
+  // Convert UTC time to local timezone for display
+  const timezone = booking.booking_timezone || 'Australia/Brisbane';
+
+  const message = isAccept ?
     `✅ BOOKING CONFIRMED!
 
 You've accepted booking ${booking.booking_id}
 Client: ${booking.first_name} ${booking.last_name}
-Date: ${new Date(booking.booking_time).toLocaleDateString()} at ${new Date(booking.booking_time).toLocaleTimeString()}
+Date: ${getShortDate(booking.booking_time, timezone)} at ${getLocalTime(booking.booking_time, timezone)}
 Fee: $${booking.therapist_fee || 'TBD'}
 
 Client will be notified. Check email for full details.
@@ -250,10 +255,14 @@ You've declined booking ${booking.booking_id}. The client has been notified.
 
 async function sendCustomerNotification(customerPhone, booking, therapist, action) {
   const isAccept = action === 'accept';
+
+  // Convert UTC time to local timezone for display
+  const timezone = booking.booking_timezone || 'Australia/Brisbane';
+
   const message = isAccept ?
     `🎉 BOOKING CONFIRMED!
 
-${therapist.first_name} ${therapist.last_name} has accepted your massage booking for ${new Date(booking.booking_time).toLocaleDateString()} at ${new Date(booking.booking_time).toLocaleTimeString()}.
+${therapist.first_name} ${therapist.last_name} has accepted your massage booking for ${getShortDate(booking.booking_time, timezone)} at ${getLocalTime(booking.booking_time, timezone)}.
 
 Check your email for full details!
 - Rejuvenators` :
@@ -418,10 +427,10 @@ function generateSuccessPage(booking, therapist, action) {
               <strong>Client:</strong> ${booking.first_name} ${booking.last_name}
             </div>
             <div class="detail-row">
-              <strong>Date:</strong> ${new Date(booking.booking_time).toLocaleDateString()}
+              <strong>Date:</strong> ${getLocalDate(booking.booking_time, booking.booking_timezone || 'Australia/Brisbane')}
             </div>
             <div class="detail-row">
-              <strong>Time:</strong> ${new Date(booking.booking_time).toLocaleTimeString()}
+              <strong>Time:</strong> ${getLocalTime(booking.booking_time, booking.booking_timezone || 'Australia/Brisbane')}
             </div>
             <div class="detail-row">
               <strong>Duration:</strong> ${booking.duration_minutes} minutes

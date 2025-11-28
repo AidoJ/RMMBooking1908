@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { getLocalDate } = require('./utils/timezoneHelpers');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -306,20 +307,16 @@ async function sendAdminNotification(booking, response, customerMessage) {
     // Format timestamp
     const responseTimestamp = new Date().toLocaleDateString('en-AU', {
       day: 'numeric',
-      month: 'numeric', 
+      month: 'numeric',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
     });
 
-    // Format event date
-    const eventDate = new Date(booking.booking_time).toLocaleDateString('en-AU', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric'
-    });
+    // Format event date - Convert UTC to local timezone
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const eventDate = getLocalDate(booking.booking_time, timezone);
 
     // Prepare EmailJS template parameters
     const templateParams = {
@@ -540,7 +537,7 @@ function generateResponsePage(booking, response, shouldSendAdminEmail = false, b
               <strong>Total Amount:</strong> $${displayAmount.toFixed(2)}
             </div>
             <div class="detail-row">
-              <strong>Event Date:</strong> ${new Date(booking.booking_time).toLocaleDateString('en-AU')}
+              <strong>Event Date:</strong> ${getLocalDate(booking.booking_time, booking.booking_timezone || 'Australia/Brisbane')}
             </div>
             ${bookingCount > 1 ? `
             <div class="detail-row">
@@ -612,18 +609,16 @@ function generateResponsePage(booking, response, shouldSendAdminEmail = false, b
           const quoteReference = actualQuoteId;
           const responseTimestamp = new Date().toLocaleDateString('en-AU', {
             day: 'numeric',
-            month: 'numeric', 
+            month: 'numeric',
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
             hour12: true
           });
-          const eventDate = new Date(bookingData.booking_time).toLocaleDateString('en-AU', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric'
-          });
+
+          // Convert UTC to local timezone
+          const timezone = bookingData.booking_timezone || 'Australia/Brisbane';
+          const eventDate = getLocalDate(bookingData.booking_time, timezone);
           
           // Prepare EmailJS template parameters
           const templateParams = {

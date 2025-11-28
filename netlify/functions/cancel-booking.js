@@ -1,4 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
+const { getLocalDate, getLocalTime, getShortDate } = require('./utils/timezoneHelpers');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -206,23 +207,17 @@ exports.handler = async (event, context) => {
 async function sendCancellationEmail(booking, reason) {
   try {
     const emailjs = require('@emailjs/nodejs');
-    const bookingTime = new Date(booking.booking_time);
+
+    // Convert UTC time to local timezone for display
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
 
     const templateParams = {
       to_email: booking.email,
       customer_name: booking.first_name,
       booking_id: booking.booking_id,
       service_name: booking.services?.name || 'Massage Service',
-      booking_date: bookingTime.toLocaleDateString('en-AU', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-      booking_time: bookingTime.toLocaleTimeString('en-AU', {
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
+      booking_date: getLocalDate(booking.booking_time, timezone),
+      booking_time: getLocalTime(booking.booking_time, timezone),
       address: booking.address || 'N/A',
       reason: reason,
       contact_phone: '1300 302542'
@@ -255,15 +250,10 @@ async function sendCancellationSMS(booking) {
     const twilio = require('twilio');
     const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
 
-    const bookingTime = new Date(booking.booking_time);
-    const dateStr = bookingTime.toLocaleDateString('en-AU', {
-      month: 'short',
-      day: 'numeric'
-    });
-    const timeStr = bookingTime.toLocaleTimeString('en-AU', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    // Convert UTC time to local timezone for display
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const dateStr = getShortDate(booking.booking_time, timezone);
+    const timeStr = getLocalTime(booking.booking_time, timezone);
 
     const message = `BOOKING CANCELLED
 
@@ -289,7 +279,9 @@ If you'd like to rebook, please call 1300 302542.
 async function sendTherapistCancellationEmail(booking, reason) {
   try {
     const emailjs = require('@emailjs/nodejs');
-    const bookingTime = new Date(booking.booking_time);
+
+    // Convert UTC time to local timezone for display
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
 
     const templateParams = {
       to_email: booking.therapist_profiles.email,
@@ -297,16 +289,8 @@ async function sendTherapistCancellationEmail(booking, reason) {
       client_name: `${booking.first_name} ${booking.last_name}`,
       booking_id: booking.booking_id,
       service_name: booking.services?.name || 'Massage Service',
-      booking_date: bookingTime.toLocaleDateString('en-AU', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-      booking_time: bookingTime.toLocaleTimeString('en-AU', {
-        hour: '2-digit',
-        minute: '2-digit'
-      }),
+      booking_date: getLocalDate(booking.booking_time, timezone),
+      booking_time: getLocalTime(booking.booking_time, timezone),
       address: booking.address || 'N/A',
       reason: reason
     };
