@@ -2708,18 +2708,6 @@ export const EnhancedQuoteEdit: React.FC = () => {
         <Col span={6}>
           {/* Sidebar */}
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            {/* Quick Actions */}
-            <Card title="⚡ Quick Actions" size="small">
-              <Space direction="vertical" style={{ width: '100%' }}>
-                <Button block icon={<MailOutlined />}>📧 Email Customer</Button>
-                <Button block>📱 SMS Customer</Button>
-                <Button block>📄 Generate PDF</Button>
-                <Button block>📅 View Calendar</Button>
-                <Button block>📊 View Analytics</Button>
-                <Button block onClick={() => navigate('/quotes')}>🔙 Back to List</Button>
-              </Space>
-            </Card>
-
             {/* Quote Summary */}
             <Card title="📋 Quote Summary" size="small">
               <div className="summary-items">

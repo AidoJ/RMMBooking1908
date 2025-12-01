@@ -538,17 +538,83 @@ export const BookingEdit: React.FC = () => {
 
   const fetchTherapists = async () => {
     try {
+      // Fetch therapists with location data for filtering
       const { data, error } = await supabaseClient
         .from('therapist_profiles')
-        .select('id, first_name, last_name, email, phone, is_active')
+        .select('id, first_name, last_name, email, phone, is_active, latitude, longitude, service_radius_km, service_area_polygon')
         .eq('is_active', true)
         .order('first_name');
 
       if (error) throw error;
-      setTherapists(data || []);
+
+      // Filter therapists based on booking location if available
+      let filteredTherapists = data || [];
+
+      if (booking?.latitude && booking?.longitude) {
+        const bookingLat = booking.latitude;
+        const bookingLng = booking.longitude;
+
+        filteredTherapists = (data || []).filter(therapist => {
+          // Skip therapists without location data
+          if (!therapist.latitude || !therapist.longitude) return false;
+
+          // Check polygon first (priority)
+          if (therapist.service_area_polygon && Array.isArray(therapist.service_area_polygon) && therapist.service_area_polygon.length >= 3) {
+            const inPolygon = isPointInPolygon(
+              { lat: bookingLat, lng: bookingLng },
+              therapist.service_area_polygon
+            );
+            if (inPolygon) return true;
+          }
+
+          // Fallback to radius check
+          if (therapist.service_radius_km != null) {
+            const distance = getDistanceKm(
+              bookingLat,
+              bookingLng,
+              therapist.latitude,
+              therapist.longitude
+            );
+            return distance <= therapist.service_radius_km;
+          }
+
+          return false;
+        });
+
+        console.log(`📍 Filtered ${filteredTherapists.length} therapists out of ${data?.length || 0} based on booking location`);
+      }
+
+      setTherapists(filteredTherapists);
     } catch (error) {
       console.error('Error fetching therapists:', error);
     }
+  };
+
+  // Helper function: Check if a point is inside a polygon
+  const isPointInPolygon = (point: { lat: number; lng: number }, polygon: Array<{ lat: number; lng: number }>) => {
+    if (!polygon || polygon.length < 3) return false;
+
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lng, yi = polygon[i].lat;
+      const xj = polygon[j].lng, yj = polygon[j].lat;
+      const intersect = ((yi > point.lat) !== (yj > point.lat))
+        && (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  };
+
+  // Helper function: Calculate distance between two points in km
+  const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   };
 
   const fetchServices = async () => {

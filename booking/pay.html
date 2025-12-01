@@ -113,6 +113,51 @@
       border: 1px solid #ccc;
       border-radius: 4px;
       margin-bottom: 20px;
+      min-height: 44px;
+    }
+
+    /* Fix Stripe card element mobile formatting */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .container {
+        padding: 15px;
+      }
+
+      .header h1 {
+        font-size: 20px;
+      }
+
+      #card-element {
+        padding: 12px;
+        min-height: 50px;
+      }
+
+      .info-row {
+        flex-direction: column;
+        padding: 10px 0;
+      }
+
+      .info-label {
+        width: 100%;
+        margin-bottom: 5px;
+        font-size: 14px;
+      }
+
+      .info-value {
+        font-size: 14px;
+      }
+
+      .amount {
+        font-size: 24px;
+      }
+
+      .authorize-btn {
+        padding: 12px 20px;
+        font-size: 15px;
+      }
     }
 
     #card-errors {
@@ -334,13 +379,19 @@
 
         // Create card element
         cardElement = elements.create('card', {
+          hidePostalCode: true,
           style: {
             base: {
               fontSize: '16px',
               color: '#32325d',
               fontFamily: 'Arial, sans-serif',
+              lineHeight: '24px',
               '::placeholder': {
                 color: '#aab7c4'
+              },
+              '@media (max-width: 768px)': {
+                fontSize: '16px',
+                lineHeight: '22px'
               }
             },
             invalid: {

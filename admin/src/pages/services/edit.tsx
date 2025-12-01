@@ -462,16 +462,25 @@ const ServiceEdit: React.FC = () => {
                       label="Service Category"
                       name="category"
                       rules={[{ required: true, message: 'Please select or enter a category' }]}
-                      tooltip="Type to create new or select existing category"
+                      tooltip="Select existing category or type to create a new one"
                     >
-                      <AutoComplete
-                        placeholder="Type category name..."
+                      <Select
+                        showSearch
+                        placeholder="Select or type category name..."
                         size="large"
-                        options={categories.map(cat => ({ value: cat }))}
+                        allowClear
+                        mode="tags"
+                        maxTagCount={1}
                         filterOption={(inputValue, option) =>
-                          option!.value.toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
+                          (option?.children as string)?.toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
                         }
-                      />
+                      >
+                        {categories.map(cat => (
+                          <Select.Option key={cat} value={cat}>
+                            {cat}
+                          </Select.Option>
+                        ))}
+                      </Select>
                     </Form.Item>
                   </Card>
                 </Col>
