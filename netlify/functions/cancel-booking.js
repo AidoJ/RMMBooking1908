@@ -180,7 +180,7 @@ exports.handler = async (event, context) => {
       try {
         // Update booking status
         const nowISO = new Date().toISOString();
-        await supabase
+        const { data: updateData, error: updateError } = await supabase
           .from('bookings')
           .update({
             status: 'cancelled',
@@ -189,7 +189,15 @@ exports.handler = async (event, context) => {
             cancelled_by: cancelled_by || 'customer',
             updated_at: nowISO
           })
-          .eq('id', bookingToCancel.id);
+          .eq('id', bookingToCancel.id)
+          .select();
+
+        if (updateError) {
+          console.error(`❌ Error updating booking ${bookingToCancel.id}:`, updateError);
+          throw updateError;
+        }
+
+        console.log(`✅ Updated booking ${bookingToCancel.id} to cancelled status`);
 
         // Add to status history
         await supabase

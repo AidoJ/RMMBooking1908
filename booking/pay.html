@@ -423,6 +423,22 @@
           throw new Error('Payment authorization failed');
         }
 
+        // Update booking status in database
+        const updateResponse = await fetch('/.netlify/functions/update-payment-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            booking_id: bookingData.booking_id,
+            payment_intent_id: paymentIntent.id,
+            payment_status: 'authorized'
+          })
+        });
+
+        if (!updateResponse.ok) {
+          console.error('Failed to update booking status, but payment was authorized');
+          // Still show success since payment was authorized
+        }
+
         // Success!
         document.getElementById('processing-payment').classList.remove('active');
         document.getElementById('success-message').classList.add('active');
