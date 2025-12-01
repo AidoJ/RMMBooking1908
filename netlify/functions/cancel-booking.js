@@ -1,5 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-const { getLocalDate, getLocalTime, getShortDate } = require('./utils/timezoneHelpers');
+const { getLocalDate, getLocalTime, getShortDate, getLocalDateTime } = require('./utils/timezoneHelpers');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -83,7 +83,51 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const now = new Date().toISOString();
+    // Get cancellation policy from system settings
+    const { data: cancellationSetting } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'booking_cancellation_hours')
+      .single();
+
+    const cancellationHours = cancellationSetting && cancellationSetting.value
+      ? parseInt(cancellationSetting.value)
+      : 24; // Default to 24 hours if not set
+
+    console.log(`📋 Cancellation policy: ${cancellationHours} hours before booking`);
+
+    // Check if cancellation is within restricted window
+    const now = new Date();
+    const bookingTime = new Date(booking.booking_time);
+    const hoursUntilBooking = (bookingTime - now) / (1000 * 60 * 60);
+
+    console.log(`⏰ Hours until booking: ${hoursUntilBooking.toFixed(2)}`);
+
+    // Only enforce policy if cancelled_by is 'customer' (not admin/system)
+    if (cancelled_by === 'customer' && hoursUntilBooking < cancellationHours) {
+      const timezone = booking.booking_timezone || 'Australia/Brisbane';
+      const localBookingTime = getLocalDateTime(booking.booking_time, timezone);
+
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({
+          error: 'Cancellation window closed',
+          message: `Cancellations must be made at least ${cancellationHours} hours before your appointment. Your booking is scheduled for ${localBookingTime}. Please contact us at 1300 302542 to discuss cancellation options.`,
+          cancellation_hours: cancellationHours,
+          hours_remaining: hoursUntilBooking.toFixed(2)
+        })
+      };
+    }
+
+    // Determine refund eligibility
+    const isFullRefundEligible = hoursUntilBooking >= cancellationHours;
+    const refundMessage = isFullRefundEligible
+      ? 'Your cancellation qualifies for a full refund according to our cancellation policy.'
+      : 'As this cancellation is within our cancellation window, refund terms will be reviewed. Our team will contact you regarding refund options.';
+
+    console.log(`💰 Refund eligible: ${isFullRefundEligible}`);
+
     const cancelReason = reason || 'Customer requested cancellation';
     let bookingsToCancel = [booking];
     let cancelledCount = 0;
@@ -135,14 +179,15 @@ exports.handler = async (event, context) => {
     for (const bookingToCancel of bookingsToCancel) {
       try {
         // Update booking status
+        const nowISO = new Date().toISOString();
         await supabase
           .from('bookings')
           .update({
             status: 'cancelled',
             cancellation_reason: cancelReason,
-            cancelled_at: now,
+            cancelled_at: nowISO,
             cancelled_by: cancelled_by || 'customer',
-            updated_at: now
+            updated_at: nowISO
           })
           .eq('id', bookingToCancel.id);
 
@@ -153,7 +198,7 @@ exports.handler = async (event, context) => {
             booking_id: bookingToCancel.id,
             status: 'cancelled',
             notes: `Cancelled by ${cancelled_by || 'customer'}: ${cancelReason}`,
-            changed_at: now
+            changed_at: nowISO
           });
 
         // Send notifications for each cancelled booking
@@ -186,7 +231,9 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         success: true,
         cancelled_count: cancelledCount,
-        message: `Successfully cancelled ${cancelledCount} booking(s)`
+        message: `Successfully cancelled ${cancelledCount} booking(s)`,
+        refund_message: refundMessage,
+        full_refund_eligible: isFullRefundEligible
       })
     };
 

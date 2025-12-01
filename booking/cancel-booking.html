@@ -342,11 +342,10 @@
         </div>
       </div>
 
-      <div class="warning-box">
+      <div class="warning-box" id="policy-warning">
         <h4>⚠️ Cancellation Policy</h4>
-        <p>
-          Cancellations made less than 24 hours before your appointment may incur a cancellation fee.
-          If you have any questions, please contact us at <strong>1300 302542</strong>.
+        <p id="policy-text">
+          Loading cancellation policy...
         </p>
       </div>
 
@@ -385,6 +384,7 @@
     }
 
     let bookingData = null;
+    let cancellationHours = 24; // Fallback only
 
     async function loadBookingDetails() {
       try {
@@ -396,6 +396,9 @@
 
         bookingData = await response.json();
 
+        // Load cancellation policy from database
+        await loadCancellationPolicy();
+
         displayBookingDetails(bookingData);
 
         document.getElementById('loading-booking').classList.remove('active');
@@ -404,6 +407,38 @@
       } catch (error) {
         console.error('Error loading booking:', error);
         showError('Unable to load booking details. Please contact us at 1300 302542.');
+      }
+    }
+
+    async function loadCancellationPolicy() {
+      try {
+        // Fetch cancellation hours from system settings
+        const settingResponse = await fetch('/.netlify/functions/get-system-settings?key=booking_cancellation_hours');
+
+        if (settingResponse.ok) {
+          const setting = await settingResponse.json();
+          cancellationHours = parseInt(setting.value) || 24;
+        } else {
+          console.warn('Failed to load cancellation hours, using default:', cancellationHours);
+        }
+
+        const bookingTime = new Date(bookingData.booking_time);
+        const now = new Date();
+        const hoursUntilBooking = (bookingTime - now) / (1000 * 60 * 60);
+
+        const policyText = document.getElementById('policy-text');
+        policyText.innerHTML = `
+          Cancellations must be made at least <strong>${cancellationHours} hours</strong> before your appointment for a full refund.<br>
+          ${hoursUntilBooking >= cancellationHours
+            ? '<span style="color: #52c41a;">✓ You are eligible for a full refund if you cancel now.</span>'
+            : '<span style="color: #d4380d;">⚠ Cancellation may incur fees. Please contact us at <strong>1300 302542</strong>.</span>'}
+        `;
+      } catch (error) {
+        console.error('Error loading policy:', error);
+        // Display default policy on error
+        document.getElementById('policy-text').innerHTML = `
+          Please contact us at <strong>1300 302542</strong> to discuss cancellation.
+        `;
       }
     }
 
@@ -484,18 +519,25 @@
           })
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to cancel booking');
-        }
-
         const result = await response.json();
+
+        if (!response.ok) {
+          // Check if it's a policy violation (403)
+          if (response.status === 403) {
+            document.getElementById('processing-cancel').classList.remove('active');
+            document.getElementById('cancel-form').style.display = 'block';
+            showError(result.message || 'Cancellation not permitted within the cancellation window. Please contact us at 1300 302542.');
+            cancelBtn.disabled = false;
+            return;
+          }
+          throw new Error(result.error || 'Failed to cancel booking');
+        }
 
         // Success!
         document.getElementById('processing-cancel').classList.remove('active');
         document.getElementById('success-message').classList.add('active');
 
-        // Update success message based on cancel option
+        // Update success message based on cancel option and refund policy
         let successDetails = '';
         if (cancelOption === 'single') {
           successDetails = 'Your booking has been cancelled.';
@@ -503,6 +545,11 @@
           successDetails = `This booking and ${result.cancelled_count - 1} future booking(s) have been cancelled.`;
         } else if (cancelOption === 'all') {
           successDetails = `All ${result.cancelled_count} booking(s) in the series have been cancelled.`;
+        }
+
+        // Add refund information
+        if (result.refund_message) {
+          successDetails += '\n\n' + result.refund_message;
         }
 
         document.getElementById('success-details').textContent = successDetails;
