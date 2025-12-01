@@ -390,7 +390,7 @@
             currency: 'aud',
             bookingData: {
               booking_id: bookingData.booking_id,
-              customer_email: bookingData.email,
+              customer_email: bookingData.customer_email,
               service_name: bookingData.service_name,
               booking_time: bookingData.booking_time,
               therapist_fee: bookingData.therapist_fee
@@ -410,7 +410,7 @@
             card: cardElement,
             billing_details: {
               name: `${bookingData.first_name} ${bookingData.last_name}`,
-              email: bookingData.email
+              email: bookingData.customer_email
             }
           }
         });
