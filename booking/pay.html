@@ -246,7 +246,7 @@
     <div id="success-message" class="success-message">
       <h2>✅ Payment Authorized Successfully!</h2>
       <p style="margin-top: 15px;">Your booking has been confirmed. You will receive a confirmation email shortly.</p>
-      <p style="margin-top: 10px; font-size: 14px;">Redirecting...</p>
+      <p style="margin-top: 10px; font-size: 14px;">You can safely close this window.</p>
     </div>
   </div>
 
@@ -443,10 +443,8 @@
         document.getElementById('processing-payment').classList.remove('active');
         document.getElementById('success-message').classList.add('active');
 
-        // Redirect after 3 seconds
-        setTimeout(() => {
-          window.location.href = '/payment-success.html?booking=' + bookingData.booking_id;
-        }, 3000);
+        // No redirect - keep user on success page
+        // They can close the window when ready
 
       } catch (error) {
         console.error('Authorization error:', error);
