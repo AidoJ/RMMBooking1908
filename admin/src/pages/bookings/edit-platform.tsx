@@ -1036,6 +1036,46 @@ export const BookingEditPlatform: React.FC = () => {
       } else {
         setAddressStatus('Great News we have therapists available in your area');
         setAddressVerified(true);
+
+        // Filter therapists based on location - only show those who can service this address
+        const filteredTherapists = data.filter(t => {
+          if (t.latitude == null || t.longitude == null || t.service_radius_km == null) {
+            return false;
+          }
+          const dist = getDistanceKm(coordinates.lat, coordinates.lng, t.latitude, t.longitude);
+          const canService = dist <= t.service_radius_km;
+          console.log(`🔍 Therapist ${t.id}: distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km - ${canService ? 'INCLUDED' : 'FILTERED OUT'}`);
+          return canService;
+        });
+
+        console.log(`📍 Filtered ${filteredTherapists.length} therapists out of ${data.length} based on address location`);
+
+        // Update therapists list with filtered results
+        setTherapists(filteredTherapists.map(t => ({
+          id: t.id,
+          first_name: '',
+          last_name: '',
+          email: '',
+          phone: '',
+          is_active: true,
+          hourly_rate: 0,
+          afterhours_rate: 0
+        })));
+
+        // Fetch full therapist details for the filtered list
+        if (filteredTherapists.length > 0) {
+          const { data: fullTherapistData } = await supabaseClient
+            .from('therapist_profiles')
+            .select('id, first_name, last_name, email, phone, is_active, hourly_rate, afterhours_rate')
+            .in('id', filteredTherapists.map(t => t.id))
+            .eq('is_active', true)
+            .order('first_name');
+
+          if (fullTherapistData) {
+            setTherapists(fullTherapistData);
+            console.log(`✅ Loaded ${fullTherapistData.length} therapist details for filtered list`);
+          }
+        }
       }
     } catch (error) {
       console.error('Address verification error:', error);
