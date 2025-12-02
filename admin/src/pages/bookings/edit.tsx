@@ -234,9 +234,12 @@ export const BookingEdit: React.FC = () => {
 
   const initializeData = async () => {
     try {
+      // Fetch booking details first
+      const bookingData = await fetchBookingDetails();
+
+      // Then fetch other data, passing booking to fetchTherapists for filtering
       await Promise.all([
-        fetchBookingDetails(),
-        fetchTherapists(),
+        fetchTherapists(bookingData),
         fetchServices(),
         fetchTherapistAssignments(),
         fetchTaxRate(),
@@ -527,16 +530,20 @@ export const BookingEdit: React.FC = () => {
 
       // Initialize pricing calculations
       initializePricing(bookingData);
+
+      // Return the transformed booking for use in other functions
+      return transformedBooking;
     } catch (error) {
       console.error('Error fetching booking details:', error);
       message.error('Failed to load booking details');
+      return null;
     } finally {
       setLoading(false);
     }
   };
 
 
-  const fetchTherapists = async () => {
+  const fetchTherapists = async (bookingData: Booking | null = null) => {
     try {
       // Fetch therapists with location data for filtering
       const { data, error } = await supabaseClient
@@ -550,13 +557,18 @@ export const BookingEdit: React.FC = () => {
       // Filter therapists based on booking location if available
       let filteredTherapists = data || [];
 
-      if (booking?.latitude && booking?.longitude) {
-        const bookingLat = booking.latitude;
-        const bookingLng = booking.longitude;
+      if (bookingData?.latitude && bookingData?.longitude) {
+        const bookingLat = bookingData.latitude;
+        const bookingLng = bookingData.longitude;
+
+        console.log(`📍 Filtering therapists for booking location: ${bookingLat}, ${bookingLng}`);
 
         filteredTherapists = (data || []).filter(therapist => {
           // Skip therapists without location data
-          if (!therapist.latitude || !therapist.longitude) return false;
+          if (!therapist.latitude || !therapist.longitude) {
+            console.log(`⏭️ Skipping therapist ${therapist.first_name} ${therapist.last_name} - no location data`);
+            return false;
+          }
 
           // Check polygon first (priority)
           if (therapist.service_area_polygon && Array.isArray(therapist.service_area_polygon) && therapist.service_area_polygon.length >= 3) {
@@ -564,6 +576,7 @@ export const BookingEdit: React.FC = () => {
               { lat: bookingLat, lng: bookingLng },
               therapist.service_area_polygon
             );
+            console.log(`🔍 Therapist ${therapist.first_name} ${therapist.last_name} - polygon check: ${inPolygon}`);
             if (inPolygon) return true;
           }
 
@@ -575,13 +588,17 @@ export const BookingEdit: React.FC = () => {
               therapist.latitude,
               therapist.longitude
             );
+            console.log(`📏 Therapist ${therapist.first_name} ${therapist.last_name} - distance: ${distance.toFixed(2)}km, radius: ${therapist.service_radius_km}km`);
             return distance <= therapist.service_radius_km;
           }
 
+          console.log(`❌ Therapist ${therapist.first_name} ${therapist.last_name} - no service area defined`);
           return false;
         });
 
         console.log(`📍 Filtered ${filteredTherapists.length} therapists out of ${data?.length || 0} based on booking location`);
+      } else {
+        console.log(`⚠️ No booking location data available - showing all therapists`);
       }
 
       setTherapists(filteredTherapists);
