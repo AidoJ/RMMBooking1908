@@ -985,7 +985,7 @@ export const BookingEditPlatform: React.FC = () => {
       
       const { data, error } = await supabaseClient
         .from('therapist_profiles')
-        .select('id, latitude, longitude, service_radius_km, is_active')
+        .select('id, latitude, longitude, service_radius_km, service_area_polygon, is_active')
         .eq('is_active', true);
 
       if (error) {
@@ -1004,6 +1004,20 @@ export const BookingEditPlatform: React.FC = () => {
         return;
       }
 
+      // Point-in-polygon check - EXACTLY like frontend
+      function isPointInPolygon(point: {lat: number, lng: number}, polygon: Array<{lat: number, lng: number}>): boolean {
+        if (!polygon || polygon.length < 3) return false;
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+          const xi = polygon[i].lng, yi = polygon[i].lat;
+          const xj = polygon[j].lng, yj = polygon[j].lat;
+          const intersect = ((yi > point.lat) !== (yj > point.lat))
+            && (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+          if (intersect) inside = !inside;
+        }
+        return inside;
+      }
+
       // Haversine formula for distance calculation - EXACTLY like frontend
       function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
         const R = 6371; // Earth's radius in kilometers
@@ -1019,13 +1033,26 @@ export const BookingEditPlatform: React.FC = () => {
 
       // Check if any therapist covers this location - EXACTLY like frontend
       const covered = data.some(t => {
-        if (t.latitude == null || t.longitude == null || t.service_radius_km == null) {
+        if (t.latitude == null || t.longitude == null) {
           console.log('⚠️ Therapist missing location data:', t.id);
           return false;
         }
-        const dist = getDistanceKm(coordinates.lat, coordinates.lng, t.latitude, t.longitude);
-        console.log(`📍 Therapist ${t.id}: distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km`);
-        return dist <= t.service_radius_km;
+
+        // Check polygon first
+        if (t.service_area_polygon && Array.isArray(t.service_area_polygon) && t.service_area_polygon.length >= 3) {
+          const inPolygon = isPointInPolygon({ lat: coordinates.lat, lng: coordinates.lng }, t.service_area_polygon);
+          console.log(`📍 Therapist ${t.id}: polygon check = ${inPolygon}`);
+          if (inPolygon) return true;
+        }
+
+        // Fallback to radius
+        if (t.service_radius_km != null) {
+          const dist = getDistanceKm(coordinates.lat, coordinates.lng, t.latitude, t.longitude);
+          console.log(`📍 Therapist ${t.id}: distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km`);
+          return dist <= t.service_radius_km;
+        }
+
+        return false;
       });
 
       console.log('✅ Coverage check result:', covered);
@@ -1037,15 +1064,27 @@ export const BookingEditPlatform: React.FC = () => {
         setAddressStatus('Great News we have therapists available in your area');
         setAddressVerified(true);
 
-        // Filter therapists based on location - only show those who can service this address
+        // Filter therapists based on location - EXACTLY like frontend
         const filteredTherapists = data.filter(t => {
-          if (t.latitude == null || t.longitude == null || t.service_radius_km == null) {
+          if (t.latitude == null || t.longitude == null) {
             return false;
           }
-          const dist = getDistanceKm(coordinates.lat, coordinates.lng, t.latitude, t.longitude);
-          const canService = dist <= t.service_radius_km;
-          console.log(`🔍 Therapist ${t.id}: distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km - ${canService ? 'INCLUDED' : 'FILTERED OUT'}`);
-          return canService;
+
+          // Check polygon first
+          if (t.service_area_polygon && Array.isArray(t.service_area_polygon) && t.service_area_polygon.length >= 3) {
+            const inPolygon = isPointInPolygon({ lat: coordinates.lat, lng: coordinates.lng }, t.service_area_polygon);
+            console.log(`📍 Filter - Therapist ${t.id}: polygon check = ${inPolygon}`);
+            if (inPolygon) return true;
+          }
+
+          // Fallback to radius
+          if (t.service_radius_km != null) {
+            const dist = getDistanceKm(coordinates.lat, coordinates.lng, t.latitude, t.longitude);
+            console.log(`📍 Filter - Therapist ${t.id}: distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km`);
+            return dist <= t.service_radius_km;
+          }
+
+          return false;
         });
 
         console.log(`📍 Filtered ${filteredTherapists.length} therapists out of ${data.length} based on address location`);
