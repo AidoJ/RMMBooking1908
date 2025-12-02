@@ -779,38 +779,33 @@ export const BookingEditPlatform: React.FC = () => {
       const durationVal = booking.duration_minutes;
 
       console.log('📅 Filtering therapists for:', { dateVal, timeVal, serviceId, genderVal, durationVal });
+      console.log('🔍 Starting with filtered therapists (from service area check):', therapists.length);
 
-      // Get therapists who provide this service
+      // Start with already-filtered therapists (by service area from verify address)
+      // Then filter by service and gender
+
+      // Get therapists who provide this service from the filtered list
       const { data: therapistLinks } = await supabaseClient
         .from('therapist_services')
-        .select(`
-          therapist_id,
-          therapist_profiles!therapist_id (id, first_name, last_name, gender, is_active, profile_pic)
-        `)
+        .select('therapist_id')
         .eq('service_id', serviceId);
 
-      let candidateTherapists = (therapistLinks || [])
-        .map(row => ({
-          ...row.therapist_profiles
-        }))
-        .filter((t: any) => t && t.is_active);
+      const therapistsWithService = new Set((therapistLinks || []).map(link => link.therapist_id));
+
+      let candidateTherapists = therapists.filter((t: any) =>
+        t && t.is_active && therapistsWithService.has(t.id)
+      );
 
       // Filter by gender preference
       if (genderVal !== 'any') {
         candidateTherapists = candidateTherapists.filter((t: any) => t.gender === genderVal);
       }
 
-      // Deduplicate therapists
-      const uniqueTherapists = Object.values(candidateTherapists.reduce((acc: any, t: any) => {
-        if (t && t.id) acc[t.id] = t;
-        return acc;
-      }, {}));
-
-      console.log('📊 Found', uniqueTherapists.length, 'therapists matching service and gender');
+      console.log('📊 Found', candidateTherapists.length, 'therapists matching service area + service + gender');
 
       // For each therapist, check if they are available for the selected slot
       const availableTherapists = [];
-      for (const therapist of uniqueTherapists) {
+      for (const therapist of candidateTherapists) {
         const slots = await getAvailableSlotsForTherapist(therapist, dateVal, durationVal, booking?.id);
         if (slots.includes(timeVal)) {
           availableTherapists.push(therapist);
@@ -819,7 +814,6 @@ export const BookingEditPlatform: React.FC = () => {
 
       console.log('✅ Found', availableTherapists.length, 'therapists available for selected time slot');
       console.log('🔍 Available therapists:', availableTherapists);
-      console.log('🔍 All therapists fallback:', therapists.length);
       setAvailableTherapists(availableTherapists as Therapist[]);
 
     } catch (error) {
@@ -868,23 +862,30 @@ export const BookingEditPlatform: React.FC = () => {
     // 1. Get buffer_time for selected service (not used here, but could be for after buffer)
     const durationMinutes = Number(durationVal);
 
-    // 2. Get all therapists who match service and gender
+    // 2. Start with already-filtered therapists (by service area from verify address)
+    // Then filter by service and gender
+    console.log('🔍 Starting time slots calculation with filtered therapists (from service area check):', therapists.length);
+
     const { data: therapistLinks } = await supabaseClient
       .from('therapist_services')
-      .select('therapist_id, therapist:therapist_id (id, gender, is_active)')
+      .select('therapist_id')
       .eq('service_id', serviceId);
 
-    console.log('Raw therapistLinks from Supabase:', therapistLinks);
-    let therapists = (therapistLinks || []).map((row: any) => row.therapist).filter((t: any) => t && t.is_active);
-    if (genderVal !== 'any') therapists = therapists.filter((t: any) => t.gender === genderVal);
+    const therapistsWithService = new Set((therapistLinks || []).map(link => link.therapist_id));
 
-    // Deduplicate therapists to avoid redundant checks
-    const uniqueTherapists = [...new Map(therapists.map((t: any) => [t.id, t])).values()];
-    console.log('Therapists after filtering & deduplication:', uniqueTherapists);
+    let candidateTherapists = therapists.filter((t: any) =>
+      t && t.is_active && therapistsWithService.has(t.id)
+    );
+
+    if (genderVal !== 'any') {
+      candidateTherapists = candidateTherapists.filter((t: any) => t.gender === genderVal);
+    }
+
+    console.log('📊 Therapists matching service area + service + gender:', candidateTherapists.length);
 
     // 3. For each therapist, get available slots
     let allSlots: string[] = [];
-    for (const therapist of uniqueTherapists) {
+    for (const therapist of candidateTherapists) {
       const slots = await getAvailableSlotsForTherapist(therapist, dateVal, durationMinutes, booking?.id);
       allSlots = allSlots.concat(slots);
     }
