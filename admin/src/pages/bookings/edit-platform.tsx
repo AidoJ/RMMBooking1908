@@ -337,7 +337,7 @@ export const BookingEditPlatform: React.FC = () => {
   useEffect(() => {
     if (id) {
       fetchBookingDetails();
-      fetchTherapists();
+      // DON'T fetch therapists on page load - only when address is verified
       fetchServices();
       fetchTherapistAssignments();
       fetchBusinessSettings(); // Load business settings
@@ -2876,18 +2876,31 @@ export const BookingEditPlatform: React.FC = () => {
                     >
                       ← Back
                     </Button>
-                    <Button 
+                    <Button
                       type="primary"
-                      style={{ 
-                        background: '#007e8c', 
-                        borderColor: '#007e8c', 
-                        borderRadius: '8px', 
-                        fontWeight: 600, 
-                        fontSize: '16px' 
+                      style={{
+                        background: '#007e8c',
+                        borderColor: '#007e8c',
+                        borderRadius: '8px',
+                        fontWeight: 600,
+                        fontSize: '16px'
                       }}
-                      onClick={() => {
-                        markStepCompleted('address');
-                        handleStepChange('service');
+                      onClick={async () => {
+                        if (!addressVerified && booking.address?.trim()) {
+                          // Address needs verification - verify it first
+                          await checkTherapistCoverageForAddress(
+                            booking.address,
+                            booking.latitude,
+                            booking.longitude
+                          );
+                        } else if (addressVerified) {
+                          // Address already verified - proceed to next step
+                          markStepCompleted('address');
+                          handleStepChange('service');
+                        } else {
+                          // No address entered
+                          message.warning('Please enter an address first');
+                        }
                       }}
                     >
                       {!addressVerified && booking.address?.trim() ? 'Verify Address First' : 'Continue →'}
