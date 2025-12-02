@@ -22,6 +22,7 @@ import {
   Tabs,
   Table,
   Tag,
+  Modal,
 } from 'antd';
 import {
   SaveOutlined,
@@ -33,6 +34,7 @@ import {
   EnvironmentOutlined,
   BankOutlined,
   DollarOutlined,
+  KeyOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router';
 import { useGetIdentity } from '@refinedev/core';
@@ -117,6 +119,9 @@ const TherapistEdit: React.FC = () => {
   const [insuranceCertFile, setInsuranceCertFile] = useState<any[]>([]);
   const [firstAidCertFile, setFirstAidCertFile] = useState<any[]>([]);
   const [qualificationCertFile, setQualificationCertFile] = useState<any[]>([]);
+  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
+  const [passwordForm] = Form.useForm();
+  const [userId, setUserId] = useState<string | null>(null);
 
   const canEditTherapists = identity?.role === 'admin' || identity?.role === 'super_admin';
   const isSuperAdmin = identity?.role === 'super_admin';
@@ -182,6 +187,7 @@ const TherapistEdit: React.FC = () => {
 
       setTherapist(therapistData);
       setProfileImage(therapistData.profile_pic || '');
+      setUserId(therapistData.user_id || null);
 
       // Load polygon data if available
       if (therapistData.service_area_polygon) {
@@ -299,6 +305,42 @@ const TherapistEdit: React.FC = () => {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  };
+
+  const handleResetPassword = async (values: any) => {
+    try {
+      if (!userId) {
+        message.error('No user account linked to this therapist');
+        return;
+      }
+
+      const token = localStorage.getItem('adminToken');
+
+      const response = await fetch('/.netlify/functions/user-management', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          action: 'reset-password',
+          data: {
+            id: userId,
+            newPassword: values.newPassword
+          }
+        })
+      });
+
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error);
+
+      setIsPasswordModalVisible(false);
+      passwordForm.resetFields();
+      message.success('Password reset successfully');
+    } catch (error: any) {
+      console.error('Error resetting password:', error);
+      message.error(error.message || 'Failed to reset password');
+    }
   };
 
   const addAvailabilitySlot = () => {
@@ -518,8 +560,8 @@ const TherapistEdit: React.FC = () => {
         <Card style={{ marginBottom: '24px' }}>
           <Row gutter={24} align="middle">
             <Col>
-              <Button 
-                icon={<ArrowLeftOutlined />} 
+              <Button
+                icon={<ArrowLeftOutlined />}
                 onClick={() => navigate('/therapists')}
               >
                 Back to Therapists
@@ -530,6 +572,17 @@ const TherapistEdit: React.FC = () => {
                 Edit Therapist Profile
               </Title>
             </Col>
+            {userId && (
+              <Col>
+                <Button
+                  type="primary"
+                  icon={<KeyOutlined />}
+                  onClick={() => setIsPasswordModalVisible(true)}
+                >
+                  Reset Password
+                </Button>
+              </Col>
+            )}
           </Row>
         </Card>
 
@@ -643,9 +696,9 @@ const TherapistEdit: React.FC = () => {
 
                       <Form.Item name="bio" label="Biography">
                         <TextArea
-                          rows={4}
+                          rows={6}
                           placeholder="Enter therapist biography..."
-                          maxLength={500}
+                          maxLength={2000}
                           showCount
                         />
                       </Form.Item>
@@ -1103,6 +1156,72 @@ const TherapistEdit: React.FC = () => {
             </div>
           </Card>
         </Form>
+
+        {/* Password Reset Modal */}
+        <Modal
+          title={`Reset Password for ${therapist?.first_name} ${therapist?.last_name}`}
+          open={isPasswordModalVisible}
+          onCancel={() => {
+            setIsPasswordModalVisible(false);
+            passwordForm.resetFields();
+          }}
+          footer={null}
+          width={500}
+        >
+          <Form
+            form={passwordForm}
+            layout="vertical"
+            onFinish={handleResetPassword}
+          >
+            <Form.Item
+              name="newPassword"
+              label="New Password"
+              rules={[
+                { required: true, message: 'Please enter new password' },
+                { min: 8, message: 'Password must be at least 8 characters' },
+                {
+                  pattern: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+                  message: 'Password must contain uppercase, lowercase, and numbers'
+                }
+              ]}
+            >
+              <Input.Password size="large" placeholder="Enter new password" />
+            </Form.Item>
+
+            <Form.Item
+              name="confirmPassword"
+              label="Confirm Password"
+              dependencies={['newPassword']}
+              rules={[
+                { required: true, message: 'Please confirm password' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('newPassword') === value) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(new Error('Passwords do not match'));
+                  },
+                }),
+              ]}
+            >
+              <Input.Password size="large" placeholder="Confirm new password" />
+            </Form.Item>
+
+            <Form.Item>
+              <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+                <Button onClick={() => {
+                  setIsPasswordModalVisible(false);
+                  passwordForm.resetFields();
+                }}>
+                  Cancel
+                </Button>
+                <Button type="primary" htmlType="submit">
+                  Reset Password
+                </Button>
+              </Space>
+            </Form.Item>
+          </Form>
+        </Modal>
       </div>
     </RoleGuard>
   );
