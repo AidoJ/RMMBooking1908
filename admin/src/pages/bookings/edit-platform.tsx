@@ -3283,11 +3283,6 @@ export const BookingEditPlatform: React.FC = () => {
                           const isSelected = booking.therapist_id === therapist.id;
                           const hourlyRate = therapist.hourly_rate;
 
-                          // Validate therapist has rates set
-                          if (!hourlyRate || hourlyRate <= 0) {
-                            console.warn(`Therapist ${therapist.first_name} ${therapist.last_name} has no hourly rate set`);
-                          }
-
                         return (
                           <div 
                             key={therapist.id}

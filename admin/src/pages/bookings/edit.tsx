@@ -49,6 +49,7 @@ import dayjs, { Dayjs } from 'dayjs';
 import { EmailService, BookingData, TherapistData } from '../../utils/emailService';
 import { SMSService } from '../../utils/smsService';
 import { generateQuotePDF } from '../../utils/pdfGenerator';
+import GooglePlacesAutocomplete from '../../components/GooglePlacesAutocomplete';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -218,6 +219,7 @@ export const BookingEdit: React.FC = () => {
   const [customDuration, setCustomDuration] = useState(false);
   const [showSendEmailModal, setShowSendEmailModal] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [bookingLocation, setBookingLocation] = useState<{lat: number; lng: number} | null>(null);
 
   const userRole = identity?.role;
 
@@ -234,12 +236,17 @@ export const BookingEdit: React.FC = () => {
 
   const initializeData = async () => {
     try {
-      // Fetch booking details first
+      // Fetch booking details first (this sets bookingLocation state)
       const bookingData = await fetchBookingDetails();
 
-      // Then fetch other data, passing booking to fetchTherapists for filtering
+      // Extract location from booking for initial filtering
+      const location = bookingData?.latitude && bookingData?.longitude
+        ? { lat: bookingData.latitude, lng: bookingData.longitude }
+        : null;
+
+      // Then fetch other data, passing location to fetchTherapists for filtering
       await Promise.all([
-        fetchTherapists(bookingData),
+        fetchTherapists(location),
         fetchServices(),
         fetchTherapistAssignments(),
         fetchTaxRate(),
@@ -247,6 +254,33 @@ export const BookingEdit: React.FC = () => {
     } catch (error) {
       console.error('Error initializing data:', error);
       message.error('Failed to load booking data');
+    }
+  };
+
+  // Handler for when address changes - updates location and re-filters therapists
+  const handleAddressChange = async (address: string, placeDetails: any) => {
+    if (placeDetails?.geometry?.location) {
+      const newLocation = {
+        lat: placeDetails.geometry.location.lat(),
+        lng: placeDetails.geometry.location.lng()
+      };
+
+      console.log(`📍 Address changed, new location: ${newLocation.lat}, ${newLocation.lng}`);
+
+      // Update location state
+      setBookingLocation(newLocation);
+
+      // Update form fields
+      form.setFieldsValue({
+        address: address,
+        latitude: newLocation.lat,
+        longitude: newLocation.lng
+      });
+
+      // Re-filter therapists for new location
+      await fetchTherapists(newLocation);
+
+      message.success('Address verified and therapists updated for this location');
     }
   };
 
@@ -455,7 +489,15 @@ export const BookingEdit: React.FC = () => {
 
       setBooking(transformedBooking);
       setSelectedService(bookingData.services);
-      
+
+      // Set booking location if available
+      if (bookingData.latitude && bookingData.longitude) {
+        setBookingLocation({
+          lat: bookingData.latitude,
+          lng: bookingData.longitude
+        });
+      }
+
       // Store original data for change detection
       setOriginalBookingData({
         customer_first_name: bookingData.customers?.first_name || '',
@@ -543,10 +585,13 @@ export const BookingEdit: React.FC = () => {
   };
 
 
-  const fetchTherapists = async (bookingData: Booking | null = null) => {
+  const fetchTherapists = async (location?: {lat: number; lng: number} | null) => {
     try {
+      // Use provided location or current bookingLocation state
+      const filterLocation = location || bookingLocation;
+
       // Fetch therapists with location data for filtering
-      const { data, error } = await supabaseClient
+      const { data, error} = await supabaseClient
         .from('therapist_profiles')
         .select('id, first_name, last_name, email, phone, is_active, latitude, longitude, service_radius_km, service_area_polygon')
         .eq('is_active', true)
@@ -557,9 +602,9 @@ export const BookingEdit: React.FC = () => {
       // Filter therapists based on booking location if available
       let filteredTherapists = data || [];
 
-      if (bookingData?.latitude && bookingData?.longitude) {
-        const bookingLat = bookingData.latitude;
-        const bookingLng = bookingData.longitude;
+      if (filterLocation?.lat && filterLocation?.lng) {
+        const bookingLat = filterLocation.lat;
+        const bookingLng = filterLocation.lng;
 
         console.log(`📍 Filtering therapists for booking location: ${bookingLat}, ${bookingLng}`);
 
@@ -1564,7 +1609,11 @@ export const BookingEdit: React.FC = () => {
                     <>
                       <Col span={12}>
                         <Form.Item name="address" label="Address" rules={[{ required: true }]}>
-                          <Input placeholder="Delivery address" />
+                          <GooglePlacesAutocomplete
+                            value={form.getFieldValue('address')}
+                            onChange={handleAddressChange}
+                            placeholder="Start typing address..."
+                          />
                         </Form.Item>
                       </Col>
                       <Col span={12}>
@@ -1618,7 +1667,11 @@ export const BookingEdit: React.FC = () => {
                           <Row gutter={[16, 8]}>
                             <Col span={24}>
                               <Form.Item name="address" label="Event Address" rules={[{ required: true }]}>
-                                <Input placeholder="Start typing the event address..." />
+                                <GooglePlacesAutocomplete
+                                  value={form.getFieldValue('address')}
+                                  onChange={handleAddressChange}
+                                  placeholder="Start typing the event address..."
+                                />
                               </Form.Item>
                             </Col>
                             <Col span={12}>
