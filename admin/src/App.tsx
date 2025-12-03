@@ -31,8 +31,6 @@ import { realSupabaseClient } from "./utility/supabaseClient";
 import { EnhancedBookingList } from "./pages/bookings/list";
 import { CalendarBookingManagement } from "./pages/bookings/calendar";
 import { BookingShow } from "./pages/bookings/show";
-import { BookingEdit } from "./pages/bookings/edit";
-import { BookingEditNew } from "./pages/bookings/edit-new";
 import { BookingEditPlatform } from "./pages/bookings/edit-platform";
 
 // Import the service management components
@@ -60,7 +58,7 @@ import SystemSettings from "./pages/system-settings";
 import ServicesUpliftRates from "./pages/services-uplift-rates";
 
 // Import the quotes management components
-import { QuotesList, QuoteShow, QuoteEdit, EnhancedQuoteEdit } from "./pages/quotes";
+import { QuotesList, QuoteShow, EnhancedQuoteEdit } from "./pages/quotes";
 
 // Import the discount codes management components
 import { DiscountCodesList, DiscountCodesCreate, DiscountCodesEdit, DiscountCodesShow } from "./pages/discount-codes";
@@ -279,8 +277,6 @@ function App() {
                     <Route path="/bookings">
                       <Route index element={<EnhancedBookingList />} />
                       <Route path="calendar" element={<CalendarBookingManagement />} />
-                      <Route path="edit/:id" element={<BookingEdit />} />
-                      <Route path="edit-new/:id" element={<BookingEditNew />} />
                       <Route path="edit-platform/:id" element={<BookingEditPlatform />} />
                       <Route path="show/:id" element={<BookingShowWrapper />} />
                     </Route>
