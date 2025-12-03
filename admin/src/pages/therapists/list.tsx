@@ -15,7 +15,8 @@ import {
   Typography,
   Statistic,
   Rate,
-  Popconfirm
+  Popconfirm,
+  Modal
 } from 'antd';
 import {
   PlusOutlined,
@@ -47,6 +48,7 @@ interface Service {
 
 interface TherapistProfile {
   id: string;
+  user_id?: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -144,18 +146,103 @@ const TherapistList: React.FC = () => {
 
   const handleDeleteTherapist = async (id: string) => {
     try {
+      // Find the therapist to check if they have a linked user account
+      const therapist = therapists.find(t => t.id === id);
+      if (!therapist) {
+        message.error('Therapist not found');
+        return;
+      }
+
+      // If therapist has a linked user account, show modal to ask about deleting it
+      if (therapist.user_id) {
+        Modal.confirm({
+          title: 'Delete Therapist and User Account?',
+          content: (
+            <div>
+              <p>This therapist has a linked user account.</p>
+              <p><strong>Do you want to delete both the therapist profile AND the user account?</strong></p>
+              <ul style={{ marginTop: 12 }}>
+                <li><strong>Delete Both:</strong> Removes therapist profile and user login access</li>
+                <li><strong>Delete Therapist Only:</strong> Removes therapist profile but keeps user account (they can still login but won't have therapist access)</li>
+              </ul>
+            </div>
+          ),
+          okText: 'Delete Both',
+          cancelText: 'Delete Therapist Only',
+          okButtonProps: { danger: true },
+          cancelButtonProps: { danger: true },
+          onOk: async () => {
+            // Delete both therapist profile AND user account
+            await deleteTherapistAndUser(id, therapist.user_id);
+          },
+          onCancel: async () => {
+            // Delete only therapist profile
+            await deleteTherapistOnly(id);
+          }
+        });
+      } else {
+        // No user account linked, just delete therapist
+        Modal.confirm({
+          title: 'Delete Therapist?',
+          content: `Are you sure you want to delete ${therapist.first_name} ${therapist.last_name}? This therapist has no linked user account.`,
+          okText: 'Yes, Delete',
+          cancelText: 'Cancel',
+          okButtonProps: { danger: true },
+          onOk: async () => {
+            await deleteTherapistOnly(id);
+          }
+        });
+      }
+    } catch (error: any) {
+      console.error('Error in handleDeleteTherapist:', error);
+      message.error('Failed to process deletion');
+    }
+  };
+
+  const deleteTherapistOnly = async (therapistId: string) => {
+    try {
       const { error } = await supabaseClient
         .from('therapist_profiles')
         .delete()
-        .eq('id', id);
+        .eq('id', therapistId);
 
       if (error) throw error;
 
-      setTherapists(therapists.filter(therapist => therapist.id !== id));
-      message.success('Therapist deleted successfully');
+      setTherapists(therapists.filter(t => t.id !== therapistId));
+      message.success('Therapist profile deleted successfully');
     } catch (error: any) {
       console.error('Error deleting therapist:', error);
-      message.error('Failed to delete therapist');
+      message.error('Failed to delete therapist profile');
+    }
+  };
+
+  const deleteTherapistAndUser = async (therapistId: string, userId: string) => {
+    try {
+      // Delete therapist profile first
+      const { error: therapistError } = await supabaseClient
+        .from('therapist_profiles')
+        .delete()
+        .eq('id', therapistId);
+
+      if (therapistError) throw therapistError;
+
+      // Then delete user account
+      const { error: userError } = await supabaseClient
+        .from('admin_users')
+        .delete()
+        .eq('id', userId);
+
+      if (userError) {
+        console.error('Error deleting user account:', userError);
+        message.warning('Therapist profile deleted, but failed to delete user account');
+      } else {
+        message.success('Therapist profile and user account deleted successfully');
+      }
+
+      setTherapists(therapists.filter(t => t.id !== therapistId));
+    } catch (error: any) {
+      console.error('Error deleting therapist and user:', error);
+      message.error('Failed to delete therapist and user');
     }
   };
 
