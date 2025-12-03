@@ -16,6 +16,7 @@ import {
   AuditOutlined,
   ScheduleOutlined,
   MoneyCollectOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router';
 import { useLogout, useGetIdentity } from '@refinedev/core';
@@ -114,6 +115,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       key: '/activity-logs',
       icon: <AuditOutlined />,
       label: 'Activity Logs',
+    },
+    {
+      key: '/system-tools',
+      icon: <ToolOutlined />,
+      label: 'System Tools',
     },
   ];
 

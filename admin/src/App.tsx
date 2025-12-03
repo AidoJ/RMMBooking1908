@@ -77,6 +77,9 @@ import { UserManagementList } from "./pages/user-management";
 // Import the reports component
 import { Reports } from "./pages/reports";
 
+// Import the system tools component
+import SystemTools from "./pages/system-tools";
+
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
   const { id } = useParams();
@@ -350,7 +353,10 @@ function App() {
                     
                     {/* Activity Logs (Super Admin Only) */}
                     <Route path="/activity-logs" element={<ActivityLogs />} />
-                    
+
+                    {/* System Tools (Super Admin Only) */}
+                    <Route path="/system-tools" element={<SystemTools />} />
+
                     <Route path="*" element={<ErrorComponent />} />
                   </Route>
                   
