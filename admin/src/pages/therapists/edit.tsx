@@ -23,6 +23,7 @@ import {
   Table,
   Tag,
   Modal,
+  Alert,
 } from 'antd';
 import {
   SaveOutlined,
@@ -35,6 +36,8 @@ import {
   BankOutlined,
   DollarOutlined,
   KeyOutlined,
+  WarningOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router';
 import { useGetIdentity } from '@refinedev/core';
@@ -122,6 +125,8 @@ const TherapistEdit: React.FC = () => {
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
   const [passwordForm] = Form.useForm();
   const [userId, setUserId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [syncWarnings, setSyncWarnings] = useState<{type: string; message: string; severity: 'error' | 'warning'}[]>([]);
 
   const canEditTherapists = identity?.role === 'admin' || identity?.role === 'super_admin';
   const isSuperAdmin = identity?.role === 'super_admin';
@@ -188,6 +193,43 @@ const TherapistEdit: React.FC = () => {
       setTherapist(therapistData);
       setProfileImage(therapistData.profile_pic || '');
       setUserId(therapistData.user_id || null);
+
+      // Check for user sync issues
+      const warnings: {type: string; message: string; severity: 'error' | 'warning'}[] = [];
+
+      if (!therapistData.user_id) {
+        warnings.push({
+          type: 'missing_user',
+          message: 'This therapist has no linked user account. They will not be able to login to the therapist app.',
+          severity: 'error'
+        });
+      } else {
+        // Check if user exists and has correct role
+        const { data: userData, error: userError } = await supabaseClient
+          .from('admin_users')
+          .select('id, email, role')
+          .eq('id', therapistData.user_id)
+          .single();
+
+        if (userError || !userData) {
+          warnings.push({
+            type: 'orphaned_user_id',
+            message: `This therapist has user_id="${therapistData.user_id}" but this user account doesn't exist in the system.`,
+            severity: 'error'
+          });
+        } else {
+          setUserRole(userData.role);
+          if (userData.role !== 'therapist') {
+            warnings.push({
+              type: 'role_mismatch',
+              message: `Linked user account has role="${userData.role}" but should have role="therapist". Go to System Tools to fix this.`,
+              severity: 'warning'
+            });
+          }
+        }
+      }
+
+      setSyncWarnings(warnings);
 
       // Load polygon data if available
       if (therapistData.service_area_polygon) {
@@ -585,6 +627,33 @@ const TherapistEdit: React.FC = () => {
             )}
           </Row>
         </Card>
+
+        {/* User Sync Warnings */}
+        {syncWarnings.length > 0 && (
+          <div style={{ marginBottom: '24px' }}>
+            {syncWarnings.map((warning, index) => (
+              <Alert
+                key={index}
+                message={warning.severity === 'error' ? 'User Sync Error' : 'User Sync Warning'}
+                description={warning.message}
+                type={warning.severity === 'error' ? 'error' : 'warning'}
+                showIcon
+                icon={warning.severity === 'error' ? <ExclamationCircleOutlined /> : <WarningOutlined />}
+                style={{ marginBottom: index < syncWarnings.length - 1 ? '12px' : 0 }}
+                action={
+                  <Space direction="vertical">
+                    <Button
+                      size="small"
+                      onClick={() => navigate('/system-tools')}
+                    >
+                      Go to System Tools
+                    </Button>
+                  </Space>
+                }
+              />
+            ))}
+          </div>
+        )}
 
         <Form
           form={form}
