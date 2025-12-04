@@ -20,7 +20,24 @@ ALTER TABLE therapist_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE therapist_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 
--- Step 3: Create RLS policies for therapist_payments
+-- Step 3: Drop existing policies if they exist (to avoid conflicts)
+DROP POLICY IF EXISTS "Therapists can insert their own payment records" ON therapist_payments;
+DROP POLICY IF EXISTS "Therapists can update their own payment records" ON therapist_payments;
+DROP POLICY IF EXISTS "Therapists can view their own payment records" ON therapist_payments;
+DROP POLICY IF EXISTS "Admins can view all payment records" ON therapist_payments;
+DROP POLICY IF EXISTS "Admins can update all payment records" ON therapist_payments;
+
+DROP POLICY IF EXISTS "Therapists can view their own profile" ON therapist_profiles;
+DROP POLICY IF EXISTS "Therapists can update their own profile" ON therapist_profiles;
+DROP POLICY IF EXISTS "Admins can view all therapist profiles" ON therapist_profiles;
+DROP POLICY IF EXISTS "Admins can update all therapist profiles" ON therapist_profiles;
+
+DROP POLICY IF EXISTS "Therapists can view their assigned bookings" ON bookings;
+DROP POLICY IF EXISTS "Therapists can update their assigned bookings" ON bookings;
+DROP POLICY IF EXISTS "Admins can view all bookings" ON bookings;
+DROP POLICY IF EXISTS "Admins can update all bookings" ON bookings;
+
+-- Step 4: Create RLS policies for therapist_payments
 
 -- Allow therapists to INSERT their own payment records
 CREATE POLICY "Therapists can insert their own payment records"
@@ -101,7 +118,7 @@ WITH CHECK (
   )
 );
 
--- Step 4: Create RLS policies for therapist_profiles
+-- Step 5: Create RLS policies for therapist_profiles
 
 -- Allow therapists to VIEW their own profile
 CREATE POLICY "Therapists can view their own profile"
@@ -151,7 +168,7 @@ WITH CHECK (
   )
 );
 
--- Step 5: Create RLS policies for bookings
+-- Step 6: Create RLS policies for bookings
 
 -- Allow therapists to VIEW their assigned bookings
 CREATE POLICY "Therapists can view their assigned bookings"
