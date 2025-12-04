@@ -16,37 +16,62 @@ import { Invoices } from './pages/Invoices';
 import { MyEarnings } from './pages/MyEarnings';
 import { ClientIntakeForm } from './pages/ClientIntakeForm';
 import type { UserIdentity } from './types';
+import { supabaseClient } from './utility/supabaseClient';
 
 function App() {
   const [user, setUser] = useState<UserIdentity | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored therapist session (using localStorage like admin panel)
-    const checkAuth = () => {
-      const token = localStorage.getItem('therapistToken');
-      const userStr = localStorage.getItem('therapistUser');
+    // Check Supabase Auth session
+    const checkAuth = async () => {
+      const { data: { session } } = await supabaseClient.auth.getSession();
 
-      if (token && userStr) {
-        try {
-          const therapistData = JSON.parse(userStr);
+      if (session?.user) {
+        // Get therapist profile
+        const { data: therapistProfile } = await supabaseClient
+          .from('therapist_profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (therapistProfile) {
           setUser({
-            id: therapistData.user_id || therapistData.id,
-            email: therapistData.email,
+            id: session.user.id,
+            email: session.user.email || '',
             role: 'therapist',
-            therapist_profile: therapistData,
+            therapist_profile: therapistProfile,
           });
-        } catch (error) {
-          console.error('Error parsing user data:', error);
-          // Clear invalid data
-          localStorage.removeItem('therapistToken');
-          localStorage.removeItem('therapistUser');
         }
       }
       setLoading(false);
     };
 
     checkAuth();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        const { data: therapistProfile } = await supabaseClient
+          .from('therapist_profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (therapistProfile) {
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            role: 'therapist',
+            therapist_profile: therapistProfile,
+          });
+        }
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   if (loading) {

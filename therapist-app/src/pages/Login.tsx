@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Card, Form, Input, Button, message, Typography } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { supabaseClient } from '../utility/supabaseClient';
 
 const { Title, Text } = Typography;
 
@@ -11,27 +12,29 @@ export const Login: React.FC = () => {
     try {
       setLoading(true);
 
-      // Call therapist-auth Netlify function (same pattern as admin panel)
-      const response = await fetch('/.netlify/functions/therapist-auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: values.email,
-          password: values.password
-        })
+      // Use Supabase Auth
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
       });
 
-      const result = await response.json();
+      if (error) throw error;
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Authentication failed');
+      if (!data.user) {
+        throw new Error('No user data returned');
       }
 
-      // Store token and user info in localStorage
-      localStorage.setItem('therapistToken', result.token);
-      localStorage.setItem('therapistUser', JSON.stringify(result.user));
+      // Verify user is a therapist by checking therapist_profiles
+      const { data: therapistProfile, error: profileError } = await supabaseClient
+        .from('therapist_profiles')
+        .select('*')
+        .eq('user_id', data.user.id)
+        .single();
+
+      if (profileError || !therapistProfile) {
+        await supabaseClient.auth.signOut();
+        throw new Error('This account is not registered as a therapist');
+      }
 
       message.success('Welcome back!');
       // Force page reload to trigger auth check in App.tsx
