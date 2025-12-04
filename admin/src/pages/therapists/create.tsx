@@ -117,28 +117,33 @@ const TherapistCreate: React.FC = () => {
     try {
       setSaving(true);
 
-      // First create the admin user account
-      const { data: userData, error: userError } = await supabaseClient
-        .from('admin_users')
-        .insert({
+      // First create Supabase Auth user via server-side function
+      const authResponse = await fetch('/.netlify/functions/create-therapist-auth-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           email: values.email,
           password: values.password,
           first_name: values.first_name,
           last_name: values.last_name,
-          role: 'therapist',
-          is_active: true,
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+        }),
+      });
 
-      if (userError) throw userError;
+      const authResult = await authResponse.json();
+
+      if (!authResponse.ok || !authResult.success) {
+        throw new Error(authResult.error || 'Failed to create auth user');
+      }
+
+      const authUserId = authResult.user.id;
 
       // Then create the therapist profile with coordinates
       const { error: therapistError } = await supabaseClient
         .from('therapist_profiles')
         .insert({
-          user_id: userData.id,
+          user_id: authUserId, // Link to Supabase auth user
           first_name: values.first_name,
           last_name: values.last_name,
           email: values.email,
@@ -160,7 +165,11 @@ const TherapistCreate: React.FC = () => {
           updated_at: new Date().toISOString()
         });
 
-      if (therapistError) throw therapistError;
+      if (therapistError) {
+        // Note: If this fails, the auth user will exist without a therapist profile
+        // Admin can manually delete the orphaned user from Supabase Dashboard
+        throw therapistError;
+      }
 
       message.success('Therapist account created successfully');
       navigate('/therapists');
