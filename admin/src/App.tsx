@@ -115,7 +115,7 @@ function App() {
                     name: "bookings",
                     list: "/bookings",
                     show: "/bookings/show/:id",
-                    edit: "/bookings/edit/:id",
+                    edit: "/bookings/edit-platform/:id",
                     meta: {
                       canDelete: true,
                       label: "Bookings",

@@ -1568,9 +1568,9 @@ export const BookingEditPlatform: React.FC = () => {
   };
 
   // Therapist fee calculation functions
-  const calculateTherapistFees = () => {
+  const calculateTherapistFees = async () => {
     // Mirror FE: only compute when we have service, duration, date/time
-    if (!booking || !booking.booking_time || !booking.duration_minutes) {
+    if (!booking || !booking.booking_time || !booking.duration_minutes || !booking.service_id) {
       setTherapistFeeBreakdown({
         baseRate: 0,
         afterHoursUplift: 0,
@@ -1581,7 +1581,7 @@ export const BookingEditPlatform: React.FC = () => {
       return;
     }
 
-    // Get therapist profile rates
+    // Get therapist profile rates (fallback)
     const assignedTherapist = therapists.find(t => t.id === booking.therapist_id);
     if (!assignedTherapist || !assignedTherapist.hourly_rate || !assignedTherapist.afterhours_rate) {
       console.warn('Therapist rates not found, using fallback', {
@@ -1608,9 +1608,32 @@ export const BookingEditPlatform: React.FC = () => {
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isAfterHours = isWeekend || hour < opening || hour >= closing;
 
-    // Choose hourly rate based on after-hours (from therapist profile)
-    const daytimeRate = assignedTherapist.hourly_rate;
-    const afterhoursRate = assignedTherapist.afterhours_rate;
+    // STEP 1: Try to fetch service-specific rate first
+    let daytimeRate = assignedTherapist.hourly_rate;
+    let afterhoursRate = assignedTherapist.afterhours_rate;
+
+    try {
+      const { data: serviceRate } = await supabaseClient
+        .from('therapist_service_rates')
+        .select('normal_rate, afterhours_rate')
+        .eq('therapist_id', booking.therapist_id)
+        .eq('service_id', booking.service_id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (serviceRate) {
+        daytimeRate = serviceRate.normal_rate;
+        afterhoursRate = serviceRate.afterhours_rate;
+        console.log('✅ Using service-specific rate:', { daytimeRate, afterhoursRate, service_id: booking.service_id });
+      } else {
+        console.log('⚠️ No service-specific rate found, using profile defaults:', { daytimeRate, afterhoursRate });
+      }
+    } catch (error) {
+      console.error('Error fetching service-specific rate:', error);
+      // Continue with profile defaults
+    }
+
+    // Choose hourly rate based on after-hours
     const hourlyRate = isAfterHours ? afterhoursRate : daytimeRate;
 
     // Duration uplift from duration_pricing (percentage applied to hourly rate)
