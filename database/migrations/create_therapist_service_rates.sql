@@ -81,11 +81,11 @@ DROP POLICY IF EXISTS "therapist_service_rates_insert_admin" ON public.therapist
 DROP POLICY IF EXISTS "therapist_service_rates_update_admin" ON public.therapist_service_rates;
 DROP POLICY IF EXISTS "therapist_service_rates_delete_admin" ON public.therapist_service_rates;
 
--- Allow all authenticated users to SELECT (needed for fee calculation)
+-- Allow all authenticated users AND anonymous customers to SELECT (needed for fee calculation in booking portal)
 CREATE POLICY "therapist_service_rates_select_all"
   ON public.therapist_service_rates
   FOR SELECT
-  TO authenticated
+  TO authenticated, anon
   USING (true);
 
 -- Only admins can INSERT
