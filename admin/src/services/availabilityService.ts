@@ -212,7 +212,8 @@ export async function getAvailableTherapists(
   durationMinutes: number,
   requiredCount: number = 1,
   latitude?: number | null,
-  longitude?: number | null
+  longitude?: number | null,
+  serviceId?: string | null
 ): Promise<TherapistAvailability[]> {
   try {
     // Get all active therapists with their hourly rates and location data
@@ -228,6 +229,26 @@ export async function getAvailableTherapists(
 
     if (!therapists) {
       return [];
+    }
+
+    // If service_id is provided, fetch service-specific rates for all therapists
+    let serviceRatesMap: Map<string, { normal_rate: number; afterhours_rate: number }> = new Map();
+    if (serviceId) {
+      const { data: serviceRates, error: ratesError } = await supabaseClient
+        .from('therapist_service_rates')
+        .select('therapist_id, normal_rate, afterhours_rate')
+        .eq('service_id', serviceId)
+        .eq('is_active', true);
+
+      if (!ratesError && serviceRates) {
+        serviceRates.forEach(rate => {
+          serviceRatesMap.set(rate.therapist_id, {
+            normal_rate: rate.normal_rate,
+            afterhours_rate: rate.afterhours_rate
+          });
+        });
+        console.log(`📊 Fetched service-specific rates for ${serviceRates.length} therapists (service: ${serviceId})`);
+      }
     }
 
     // Filter by geolocation if coordinates are provided
@@ -305,7 +326,16 @@ export async function getAvailableTherapists(
 
       const isAfterHours = !isBusinessHours(date, startTime);
 
-      // Include both rates from therapist profile
+      // Use service-specific rates if available, otherwise fallback to profile rates
+      const serviceRate = serviceRatesMap.get(therapist.id);
+      const normalRate = serviceRate?.normal_rate ?? therapist.hourly_rate ?? 0;
+      const afterhoursRate = serviceRate?.afterhours_rate ?? therapist.afterhours_rate ?? 0;
+
+      if (serviceRate) {
+        console.log(`✅ Using service-specific rate for ${therapist.first_name} ${therapist.last_name}: $${normalRate}/$${afterhoursRate}`);
+      }
+
+      // Include both rates (service-specific or profile fallback)
       availabilityResults.push({
         therapist_id: therapist.id,
         therapist_name: `${therapist.first_name} ${therapist.last_name}`,
@@ -314,8 +344,8 @@ export async function getAvailableTherapists(
         rating: therapist.rating || 0,
         is_available: isAvailable,
         conflict_reason: conflictReason,
-        hourly_rate: therapist.hourly_rate || 0,
-        afterhours_rate: therapist.afterhours_rate || 0,
+        hourly_rate: normalRate,
+        afterhours_rate: afterhoursRate,
         is_afterhours: isAfterHours
       });
     }
@@ -410,7 +440,8 @@ export async function checkQuoteAvailability(quoteId: string, latitude?: number 
         quote.session_duration_minutes,
         therapistsRequired,
         latitude,
-        longitude
+        longitude,
+        quote.service_id
       );
 
       const availableCount = availableTherapists.filter(t => t.is_available).length;

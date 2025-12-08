@@ -108,28 +108,55 @@ function showBookingTimezoneNotification(timezone) {
 // ===== END TIMEZONE HELPER FUNCTIONS =====
 
 // Add this function at the very top-level scope so it is accessible everywhere
-async function calculateTherapistFee(dateVal, timeVal, durationVal, therapistId) {
+async function calculateTherapistFee(dateVal, timeVal, durationVal, therapistId, serviceId) {
   if (!dateVal || !timeVal || !durationVal || !therapistId) {
     console.warn('calculateTherapistFee: Missing required parameters');
     return null;
   }
 
   try {
-    // Fetch therapist-specific rates from database
-    const { data: therapist, error } = await window.supabase
-      .from('therapist_profiles')
-      .select('hourly_rate, afterhours_rate, first_name, last_name')
-      .eq('id', therapistId)
-      .single();
+    let normalRate, afterhoursRate, therapistName = '';
 
-    if (error || !therapist) {
-      console.error('Failed to fetch therapist rates:', error);
-      return null;
+    // Step 1: Try to fetch service-specific rate first (if serviceId provided)
+    if (serviceId) {
+      const { data: serviceRate, error: serviceRateError } = await window.supabase
+        .from('therapist_service_rates')
+        .select('normal_rate, afterhours_rate')
+        .eq('therapist_id', therapistId)
+        .eq('service_id', serviceId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (serviceRate) {
+        // Service-specific rate found - use it
+        normalRate = serviceRate.normal_rate;
+        afterhoursRate = serviceRate.afterhours_rate;
+        console.log(`✅ Using service-specific rate for therapist ${therapistId}, service ${serviceId}: normal=$${normalRate}, afterhours=$${afterhoursRate}`);
+      }
     }
 
-    if (!therapist.hourly_rate || therapist.hourly_rate <= 0 || !therapist.afterhours_rate || therapist.afterhours_rate <= 0) {
-      console.error(`Invalid rates for therapist ${therapist.first_name} ${therapist.last_name}`);
-      return null;
+    // Step 2: Fallback to therapist profile default rates if no service-specific rate
+    if (!normalRate || !afterhoursRate) {
+      const { data: therapist, error: therapistError } = await window.supabase
+        .from('therapist_profiles')
+        .select('hourly_rate, afterhours_rate, first_name, last_name')
+        .eq('id', therapistId)
+        .single();
+
+      if (therapistError || !therapist) {
+        console.error('Failed to fetch therapist rates:', therapistError);
+        return null;
+      }
+
+      if (!therapist.hourly_rate || therapist.hourly_rate <= 0 || !therapist.afterhours_rate || therapist.afterhours_rate <= 0) {
+        console.error(`Invalid rates for therapist ${therapist.first_name} ${therapist.last_name}`);
+        return null;
+      }
+
+      normalRate = therapist.hourly_rate;
+      afterhoursRate = therapist.afterhours_rate;
+      therapistName = `${therapist.first_name} ${therapist.last_name}`;
+      console.log(`⚠️ No service-specific rate found. Using profile default rates for ${therapistName}: normal=$${normalRate}, afterhours=$${afterhoursRate}`);
     }
 
     const dayOfWeek = new Date(dateVal).getDay();
@@ -147,8 +174,8 @@ async function calculateTherapistFee(dateVal, timeVal, durationVal, therapistId)
       }
     }
 
-    // Get appropriate hourly rate from THERAPIST PROFILE
-    const hourlyRate = isAfterhours ? therapist.afterhours_rate : therapist.hourly_rate;
+    // Get appropriate hourly rate (service-specific or profile default)
+    const hourlyRate = isAfterhours ? afterhoursRate : normalRate;
     if (!hourlyRate) return null;
 
     // Calculate base fee: hourly rate (this is the base fee, not multiplied by duration)
@@ -781,12 +808,59 @@ document.addEventListener('DOMContentLoaded', function () {
   // Fetch and populate services and durations from Supabase
   window.populateTherapyOptions = async function populateTherapyOptions() {
     try {
-    // Fetch services
-    const { data: services, error: serviceError} = await window.supabase
-      .from('services')
-      .select('id, name, service_base_price, minimum_duration, is_active, quote_only, image_url, image_alt, short_description, category')
-      .eq('is_active', true)
-      .order('sort_order');
+    let services, serviceError;
+
+    // If we have filtered therapist IDs from location check, only show their services
+    if (window.availableTherapistIds && window.availableTherapistIds.length > 0) {
+      console.log(`📍 Filtering services by ${window.availableTherapistIds.length} available therapists`);
+
+      // Get services offered by available therapists
+      const { data: therapistServices, error: tsError } = await window.supabase
+        .from('therapist_services')
+        .select('service_id, services(*)')
+        .in('therapist_id', window.availableTherapistIds);
+
+      if (tsError) {
+        console.error('Error fetching therapist services:', tsError);
+        services = [];
+        serviceError = tsError;
+      } else {
+        // Extract unique services and add required fields
+        const uniqueServicesMap = new Map();
+        therapistServices.forEach(ts => {
+          if (ts.services && ts.services.is_active) {
+            uniqueServicesMap.set(ts.services.id, {
+              id: ts.services.id,
+              name: ts.services.name,
+              service_base_price: ts.services.service_base_price,
+              minimum_duration: ts.services.minimum_duration,
+              is_active: ts.services.is_active,
+              quote_only: ts.services.quote_only,
+              image_url: ts.services.image_url,
+              image_alt: ts.services.image_alt,
+              short_description: ts.services.short_description,
+              category: ts.services.category,
+              sort_order: ts.services.sort_order || 0
+            });
+          }
+        });
+
+        services = Array.from(uniqueServicesMap.values()).sort((a, b) => a.sort_order - b.sort_order);
+        serviceError = null;
+        console.log(`✅ Found ${services.length} services available in this area`);
+      }
+    } else {
+      // Fallback: show all services if no location filtering
+      const { data, error } = await window.supabase
+        .from('services')
+        .select('id, name, service_base_price, minimum_duration, is_active, quote_only, image_url, image_alt, short_description, category')
+        .eq('is_active', true)
+        .order('sort_order');
+      services = data;
+      serviceError = error;
+      console.log('📋 No location filtering - showing all services');
+    }
+
     console.log('Supabase services:', services, 'Error:', serviceError);
       
     const servicesGrid = document.getElementById('servicesGrid');
@@ -2529,7 +2603,8 @@ async function checkTherapistCoverageForAddress() {
     return R * c;
   }
 
-  const covered = data.some(t => {
+  // Filter therapists by location and STORE the available ones
+  const availableTherapists = data.filter(t => {
     if (t.latitude == null || t.longitude == null) {
       console.log('⚠️ Therapist missing location data:', t.id);
       return false;
@@ -2551,8 +2626,12 @@ async function checkTherapistCoverageForAddress() {
 
     return false;
   });
-  
-  console.log('✅ Coverage check result:', covered);
+
+  // Store available therapist IDs globally for service filtering
+  window.availableTherapistIds = availableTherapists.map(t => t.id);
+  const covered = availableTherapists.length > 0;
+
+  console.log('✅ Coverage check result:', covered, `(${availableTherapists.length} therapists available)`);
 
   if (!covered) {
     const statusDiv = document.getElementById('address-autocomplete-status');
@@ -3494,7 +3573,7 @@ async function populateBookingSummary() {
   });
 
   // Calculate therapist fee (async call with therapist-specific rates)
-  const therapist_fee = await calculateTherapistFee(date, time, duration, therapistId);
+  const therapist_fee = await calculateTherapistFee(date, time, duration, therapistId, window.selectedServiceId);
   const therapist_fee_display = therapist_fee ? `$${therapist_fee.toFixed(2)}` : 'N/A';
   // Get customer_id and booking_id if available
   const customer_id = window.lastBookingCustomerId || '';
@@ -4172,7 +4251,7 @@ if (confirmBtn) {
     const price = document.getElementById('priceAmount').textContent ? parseFloat(document.getElementById('priceAmount').textContent) : null;
 
     // Calculate therapist fee (async call with therapist-specific rates)
-        const therapist_fee = (await calculateTherapistFee(date, time, duration, therapistId)) || 0;
+        const therapist_fee = (await calculateTherapistFee(date, time, duration, therapistId, window.selectedServiceId)) || 0;
         
     // Compose booking_time as ISO string
     const booking_time = date && time ? `${date}T${time}:00` : null;

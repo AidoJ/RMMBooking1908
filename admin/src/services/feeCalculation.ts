@@ -147,21 +147,47 @@ export async function calculateTherapistFee(
   totalDurationMinutes: number,
   therapistCount: number,
   therapistId: string,
+  serviceId: string,
   serviceArrangement?: 'split' | 'multiply'
 ): Promise<FeeCalculationResult> {
-  // Fetch therapist profile rates
-  const { data: therapist, error } = await supabaseClient
-    .from('therapist_profiles')
-    .select('hourly_rate, afterhours_rate, first_name, last_name')
-    .eq('id', therapistId)
-    .single();
+  let normalRate: number;
+  let afterHoursRate: number;
+  let therapistName = '';
 
-  if (error || !therapist) {
-    throw new Error(`Cannot find therapist rates for ID: ${therapistId}. Error: ${error?.message || 'Therapist not found'}`);
-  }
+  // Step 1: Try to fetch service-specific rate first
+  const { data: serviceRate, error: serviceRateError } = await supabaseClient
+    .from('therapist_service_rates')
+    .select('normal_rate, afterhours_rate')
+    .eq('therapist_id', therapistId)
+    .eq('service_id', serviceId)
+    .eq('is_active', true)
+    .maybeSingle();
 
-  if (!therapist.hourly_rate || therapist.hourly_rate <= 0 || !therapist.afterhours_rate || therapist.afterhours_rate <= 0) {
-    throw new Error(`Invalid rates for therapist ${therapist.first_name} ${therapist.last_name}. Please ensure both hourly_rate and afterhours_rate are set.`);
+  if (serviceRate) {
+    // Service-specific rate found - use it
+    normalRate = serviceRate.normal_rate;
+    afterHoursRate = serviceRate.afterhours_rate;
+    console.log(`✅ Using service-specific rate for therapist ${therapistId}, service ${serviceId}: normal=$${normalRate}, afterhours=$${afterHoursRate}`);
+  } else {
+    // Step 2: Fallback to therapist profile default rates
+    const { data: therapist, error: therapistError } = await supabaseClient
+      .from('therapist_profiles')
+      .select('hourly_rate, afterhours_rate, first_name, last_name')
+      .eq('id', therapistId)
+      .single();
+
+    if (therapistError || !therapist) {
+      throw new Error(`Cannot find therapist rates for ID: ${therapistId}. Error: ${therapistError?.message || 'Therapist not found'}`);
+    }
+
+    if (!therapist.hourly_rate || therapist.hourly_rate <= 0 || !therapist.afterhours_rate || therapist.afterhours_rate <= 0) {
+      throw new Error(`Invalid rates for therapist ${therapist.first_name} ${therapist.last_name}. Please ensure both hourly_rate and afterhours_rate are set in the profile.`);
+    }
+
+    normalRate = therapist.hourly_rate;
+    afterHoursRate = therapist.afterhours_rate;
+    therapistName = `${therapist.first_name} ${therapist.last_name}`;
+    console.log(`⚠️ No service-specific rate found. Using profile default rates for ${therapistName}: normal=$${normalRate}, afterhours=$${afterHoursRate}`);
   }
 
   const settings = await getSystemSettings(); // Still need for business hours determination
@@ -176,8 +202,8 @@ export async function calculateTherapistFee(
   // Determine rate type based on booking time
   const rateType = determineRateType(bookingDate, bookingTime, settings);
 
-  // Use therapist-specific rates
-  const hourlyRate = getTherapistHourlyRate(rateType, therapist.hourly_rate, therapist.afterhours_rate);
+  // Use the fetched rates (either service-specific or profile default)
+  const hourlyRate = getTherapistHourlyRate(rateType, normalRate, afterHoursRate);
 
   // Calculate fee
   const therapistFee = parseFloat((hoursWorked * hourlyRate).toFixed(2));
