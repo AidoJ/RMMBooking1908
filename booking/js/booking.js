@@ -114,11 +114,14 @@ async function calculateTherapistFee(dateVal, timeVal, durationVal, therapistId,
     return null;
   }
 
+  console.log('🔍 calculateTherapistFee called with serviceId:', serviceId, 'therapistId:', therapistId);
+
   try {
     let normalRate, afterhoursRate, therapistName = '';
 
     // Step 1: Try to fetch service-specific rate first (if serviceId provided)
     if (serviceId) {
+      console.log('🔍 Attempting to fetch service-specific rate for therapist:', therapistId, 'service:', serviceId);
       const { data: serviceRate, error: serviceRateError } = await window.supabase
         .from('therapist_service_rates')
         .select('normal_rate, afterhours_rate')
@@ -3547,6 +3550,7 @@ async function populateBookingSummary() {
 
   console.log('📍 DEBUG: Business name:', businessName, '| Booking type:', bookingType);
   const address = addressInput.value;
+  const serviceId = window.selectedServiceId || document.getElementById('service')?.value;
   const service = window.selectedService?.name || 'Selected Service';
   const duration = document.getElementById('duration').value;
   const gender = document.querySelector('input[name="genderPref"]:checked')?.value || '';
@@ -3573,7 +3577,15 @@ async function populateBookingSummary() {
   });
 
   // Calculate therapist fee (async call with therapist-specific rates)
-  const therapist_fee = await calculateTherapistFee(date, time, duration, therapistId, window.selectedServiceId);
+  console.log('🔍 DEBUG: About to call calculateTherapistFee with:', {
+    date,
+    time,
+    duration,
+    therapistId,
+    serviceId: serviceId,
+    selectedService: window.selectedService
+  });
+  const therapist_fee = await calculateTherapistFee(date, time, duration, therapistId, serviceId);
   const therapist_fee_display = therapist_fee ? `$${therapist_fee.toFixed(2)}` : 'N/A';
   // Get customer_id and booking_id if available
   const customer_id = window.lastBookingCustomerId || '';
@@ -4251,7 +4263,15 @@ if (confirmBtn) {
     const price = document.getElementById('priceAmount').textContent ? parseFloat(document.getElementById('priceAmount').textContent) : null;
 
     // Calculate therapist fee (async call with therapist-specific rates)
-        const therapist_fee = (await calculateTherapistFee(date, time, duration, therapistId, window.selectedServiceId)) || 0;
+    console.log('🔍 DEBUG (submit): About to call calculateTherapistFee with:', {
+      date,
+      time,
+      duration,
+      therapistId,
+      serviceId: serviceId,
+      selectedService: window.selectedService
+    });
+        const therapist_fee = (await calculateTherapistFee(date, time, duration, therapistId, serviceId)) || 0;
         
     // Compose booking_time as ISO string
     const booking_time = date && time ? `${date}T${time}:00` : null;
