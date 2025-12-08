@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS public.therapist_service_rates (
   -- Audit fields
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_by uuid REFERENCES auth.users(id),
-  updated_by uuid REFERENCES auth.users(id),
+  created_by uuid,
+  updated_by uuid,
 
   -- Ensure one rate record per therapist-service combination
   CONSTRAINT unique_therapist_service UNIQUE(therapist_id, service_id)

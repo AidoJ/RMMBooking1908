@@ -430,8 +430,7 @@ const TherapistEdit: React.FC = () => {
           .update({
             normal_rate: values.normal_rate,
             afterhours_rate: values.afterhours_rate,
-            notes: values.notes,
-            updated_by: identity?.id
+            notes: values.notes
           })
           .eq('id', editingRate.id);
 
@@ -450,8 +449,7 @@ const TherapistEdit: React.FC = () => {
             normal_rate: values.normal_rate,
             afterhours_rate: values.afterhours_rate,
             notes: values.notes,
-            is_active: true,
-            created_by: identity?.id
+            is_active: true
           });
 
         if (error) {
