@@ -435,11 +435,14 @@ const TherapistEdit: React.FC = () => {
           })
           .eq('id', editingRate.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Update error details:', error);
+          throw error;
+        }
         message.success('Service rate updated successfully');
       } else {
         // Insert new rate
-        const { error } = await supabaseClient
+        const { data, error } = await supabaseClient
           .from('therapist_service_rates')
           .insert({
             therapist_id: id,
@@ -451,7 +454,13 @@ const TherapistEdit: React.FC = () => {
             created_by: identity?.id
           });
 
-        if (error) throw error;
+        if (error) {
+          console.error('Insert error details:', error);
+          console.error('Error message:', error.message);
+          console.error('Error code:', error.code);
+          console.error('Error details:', error.details);
+          throw error;
+        }
         message.success('Service rate added successfully');
       }
 
@@ -460,7 +469,10 @@ const TherapistEdit: React.FC = () => {
       loadServiceRates();
     } catch (error: any) {
       console.error('Error saving service rate:', error);
-      message.error('Failed to save service rate');
+
+      // Show detailed error message
+      const errorMessage = error?.message || error?.details || 'Failed to save service rate';
+      message.error(`Failed to save: ${errorMessage}`);
     }
   };
 
