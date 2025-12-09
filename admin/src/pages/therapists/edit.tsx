@@ -75,6 +75,7 @@ interface ServiceRate {
 interface ServiceWithRate {
   service_id: string;
   service_name: string;
+  service_description?: string;
   has_custom_rate: boolean;
   rate_id?: string;
   normal_rate: number;
@@ -419,7 +420,7 @@ const TherapistEdit: React.FC = () => {
       // Load therapist services
       const { data: therapistServices, error: servicesError } = await supabaseClient
         .from('therapist_services')
-        .select('service_id, services(name)')
+        .select('service_id, services(name, description)')
         .eq('therapist_id', id);
 
       if (servicesError) throw servicesError;
@@ -440,6 +441,7 @@ const TherapistEdit: React.FC = () => {
         return {
           service_id: ts.service_id,
           service_name: ts.services?.name || 'Unknown Service',
+          service_description: ts.services?.description || '',
           has_custom_rate: !!existingRate,
           rate_id: existingRate?.id,
           normal_rate: existingRate?.normal_rate || defaultNormalRate,
@@ -1256,36 +1258,6 @@ const TherapistEdit: React.FC = () => {
                   label: 'Services & Rates',
                   children: (
                     <div>
-                      <Alert
-                        message="Service Selection"
-                        description="Select which services this therapist offers, then set custom rates for each service below."
-                        type="info"
-                        showIcon
-                        style={{ marginBottom: 16 }}
-                      />
-
-                      <Checkbox.Group
-                        value={selectedServices}
-                        onChange={setSelectedServices}
-                        style={{ width: '100%', marginBottom: 24 }}
-                      >
-                        <Row gutter={[16, 8]}>
-                          {allServices.map(service => (
-                            <Col span={24} key={service.id}>
-                              <Checkbox value={service.id}>
-                                <strong>{service.name}</strong>
-                                {service.description && (
-                                  <div style={{ fontSize: '12px', color: '#666' }}>
-                                    {service.description}
-                                  </div>
-                                )}
-                              </Checkbox>
-                            </Col>
-                          ))}
-                        </Row>
-                      </Checkbox.Group>
-
-                      <Divider orientation="left">Service-Specific Rates</Divider>
 
                       <Alert
                         message="Manage Service Rates"
@@ -1310,13 +1282,13 @@ const TherapistEdit: React.FC = () => {
                         rowKey="service_id"
                         pagination={false}
                         size="small"
-                        locale={{ emptyText: 'Select services above first, then save the form. Service rates will appear here.' }}
+                        locale={{ emptyText: 'No services assigned to this therapist yet. Add services to manage their rates.' }}
                         columns={[
                           {
                             title: 'Active',
                             dataIndex: 'has_custom_rate',
                             key: 'active',
-                            width: 80,
+                            width: 70,
                             align: 'center',
                             render: (hasCustom: boolean, record: ServiceWithRate) => (
                               <Switch
@@ -1332,13 +1304,22 @@ const TherapistEdit: React.FC = () => {
                             title: 'Service',
                             dataIndex: 'service_name',
                             key: 'service_name',
-                            width: '20%',
+                            render: (_: any, record: ServiceWithRate) => (
+                              <div>
+                                <div style={{ fontWeight: 500 }}>{record.service_name}</div>
+                                {record.service_description && (
+                                  <div style={{ fontSize: '12px', color: '#666', marginTop: 2 }}>
+                                    {record.service_description}
+                                  </div>
+                                )}
+                              </div>
+                            ),
                           },
                           {
                             title: 'Normal Rate',
                             dataIndex: 'normal_rate',
                             key: 'normal_rate',
-                            width: '20%',
+                            width: 130,
                             render: (rate: number, record: ServiceWithRate) => (
                               <InputNumber
                                 value={rate}
@@ -1359,7 +1340,7 @@ const TherapistEdit: React.FC = () => {
                             title: 'After Hours Rate',
                             dataIndex: 'afterhours_rate',
                             key: 'afterhours_rate',
-                            width: '20%',
+                            width: 150,
                             render: (rate: number, record: ServiceWithRate) => (
                               <InputNumber
                                 value={rate}
@@ -1380,7 +1361,6 @@ const TherapistEdit: React.FC = () => {
                             title: 'Notes',
                             dataIndex: 'notes',
                             key: 'notes',
-                            width: '25%',
                             render: (notes: string, record: ServiceWithRate) => (
                               <Input
                                 value={notes}
