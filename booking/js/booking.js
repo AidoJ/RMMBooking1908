@@ -2655,6 +2655,10 @@ async function checkTherapistCoverageForAddress() {
     }
     updateAddressStatus('Great news, we have therapists available in your area. Choose your service next.', 'verified');
     enableContinueFromAddress();
+
+    // Refresh services to show only those offered by available therapists
+    console.log('🔄 Refreshing service list based on available therapists');
+    populateTherapyOptions();
   }
 }
 
