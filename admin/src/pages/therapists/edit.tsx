@@ -76,6 +76,7 @@ interface ServiceWithRate {
   service_id: string;
   service_name: string;
   service_description?: string;
+  is_offered: boolean;
   has_custom_rate: boolean;
   rate_id?: string;
   normal_rate: number;
@@ -408,7 +409,7 @@ const TherapistEdit: React.FC = () => {
     }
   };
 
-  // Load all therapist services and merge with their rates
+  // Load ALL services and show which ones therapist offers with their rates
   const loadServicesWithRates = async () => {
     if (!id) return;
 
@@ -417,13 +418,24 @@ const TherapistEdit: React.FC = () => {
       const defaultNormalRate = form.getFieldValue('hourly_rate') || 0;
       const defaultAfterhoursRate = form.getFieldValue('afterhours_rate') || 0;
 
-      // Load therapist services
+      // Load ALL services
+      const { data: allServicesData, error: allServicesError } = await supabaseClient
+        .from('services')
+        .select('id, name, description')
+        .eq('is_active', true)
+        .order('name');
+
+      if (allServicesError) throw allServicesError;
+
+      // Load therapist's assigned services
       const { data: therapistServices, error: servicesError } = await supabaseClient
         .from('therapist_services')
-        .select('service_id, services(name, description)')
+        .select('service_id')
         .eq('therapist_id', id);
 
       if (servicesError) throw servicesError;
+
+      const therapistServiceIds = new Set((therapistServices || []).map((ts: any) => ts.service_id));
 
       // Load existing service rates
       const { data: existingRates, error: ratesError } = await supabaseClient
@@ -434,14 +446,16 @@ const TherapistEdit: React.FC = () => {
 
       if (ratesError) throw ratesError;
 
-      // Merge services with their rates
-      const merged: ServiceWithRate[] = (therapistServices || []).map((ts: any) => {
-        const existingRate = existingRates?.find(r => r.service_id === ts.service_id);
+      // Merge ALL services with their assignment status and rates
+      const merged: ServiceWithRate[] = (allServicesData || []).map((service: any) => {
+        const isOffered = therapistServiceIds.has(service.id);
+        const existingRate = existingRates?.find(r => r.service_id === service.id);
 
         return {
-          service_id: ts.service_id,
-          service_name: ts.services?.name || 'Unknown Service',
-          service_description: ts.services?.description || '',
+          service_id: service.id,
+          service_name: service.name || 'Unknown Service',
+          service_description: service.description || '',
+          is_offered: isOffered,
           has_custom_rate: !!existingRate,
           rate_id: existingRate?.id,
           normal_rate: existingRate?.normal_rate || defaultNormalRate,
@@ -565,26 +579,84 @@ const TherapistEdit: React.FC = () => {
         if (error) throw error;
         message.success('Custom rate removed');
       } else {
-        // Create new custom rate with current default values
-        const { error } = await supabaseClient
+        // Check if an inactive record already exists
+        const { data: existingRate } = await supabaseClient
           .from('therapist_service_rates')
-          .insert({
-            therapist_id: id,
-            service_id: service.service_id,
-            normal_rate: service.normal_rate,
-            afterhours_rate: service.afterhours_rate,
-            is_active: true,
-            notes: service.notes || null
-          });
+          .select('id')
+          .eq('therapist_id', id)
+          .eq('service_id', service.service_id)
+          .maybeSingle();
 
-        if (error) throw error;
-        message.success('Custom rate activated');
+        if (existingRate) {
+          // Reactivate existing rate
+          const { error } = await supabaseClient
+            .from('therapist_service_rates')
+            .update({
+              is_active: true,
+              normal_rate: service.normal_rate,
+              afterhours_rate: service.afterhours_rate,
+              notes: service.notes || null
+            })
+            .eq('id', existingRate.id);
+
+          if (error) throw error;
+          message.success('Custom rate activated');
+        } else {
+          // Create new custom rate with current default values
+          const { error } = await supabaseClient
+            .from('therapist_service_rates')
+            .insert({
+              therapist_id: id,
+              service_id: service.service_id,
+              normal_rate: service.normal_rate,
+              afterhours_rate: service.afterhours_rate,
+              is_active: true,
+              notes: service.notes || null
+            });
+
+          if (error) throw error;
+          message.success('Custom rate activated');
+        }
       }
 
       loadServiceRates();
     } catch (error: any) {
       console.error('Error toggling custom rate:', error);
       message.error('Failed to update custom rate');
+    }
+  };
+
+  const handleToggleServiceOffered = async (service: ServiceWithRate) => {
+    if (!id) return;
+
+    try {
+      if (service.is_offered) {
+        // Remove service from therapist_services
+        const { error } = await supabaseClient
+          .from('therapist_services')
+          .delete()
+          .eq('therapist_id', id)
+          .eq('service_id', service.service_id);
+
+        if (error) throw error;
+        message.success(`${service.service_name} removed from therapist services`);
+      } else {
+        // Add service to therapist_services
+        const { error } = await supabaseClient
+          .from('therapist_services')
+          .insert({
+            therapist_id: id,
+            service_id: service.service_id
+          });
+
+        if (error) throw error;
+        message.success(`${service.service_name} added to therapist services`);
+      }
+
+      loadServicesWithRates();
+    } catch (error: any) {
+      console.error('Error toggling service offered:', error);
+      message.error('Failed to update service');
     }
   };
 
@@ -1260,8 +1332,8 @@ const TherapistEdit: React.FC = () => {
                     <div>
 
                       <Alert
-                        message="Manage Service Rates"
-                        description="Edit rates for each service offered by this therapist. Values in gray are default rates from the profile. Toggle 'Active' and edit any rate to create a custom service-specific rate."
+                        message="Manage Services & Rates"
+                        description="Check 'Offered' to enable a service for this therapist. Toggle 'Custom Rate' to override default rates for specific services. Unchecked services use profile default rates."
                         type="info"
                         showIcon
                         style={{ marginBottom: 16 }}
@@ -1270,7 +1342,7 @@ const TherapistEdit: React.FC = () => {
                       {!isSuperAdmin && (
                         <Alert
                           message="Restricted Access"
-                          description="Only superadmin users can modify service rates"
+                          description="Only superadmin users can modify services and rates"
                           type="warning"
                           showIcon
                           style={{ marginBottom: 16 }}
@@ -1282,19 +1354,33 @@ const TherapistEdit: React.FC = () => {
                         rowKey="service_id"
                         pagination={false}
                         size="small"
-                        locale={{ emptyText: 'No services assigned to this therapist yet. Add services to manage their rates.' }}
+                        locale={{ emptyText: 'No services available in the system.' }}
                         columns={[
                           {
-                            title: 'Active',
+                            title: 'Offered',
+                            dataIndex: 'is_offered',
+                            key: 'offered',
+                            width: 80,
+                            align: 'center',
+                            render: (isOffered: boolean, record: ServiceWithRate) => (
+                              <Checkbox
+                                checked={isOffered}
+                                onChange={() => handleToggleServiceOffered(record)}
+                                disabled={!canEditTherapists}
+                              />
+                            ),
+                          },
+                          {
+                            title: 'Custom Rate',
                             dataIndex: 'has_custom_rate',
-                            key: 'active',
-                            width: 70,
+                            key: 'custom_rate',
+                            width: 100,
                             align: 'center',
                             render: (hasCustom: boolean, record: ServiceWithRate) => (
                               <Switch
                                 checked={hasCustom}
                                 onChange={() => handleToggleCustomRate(record)}
-                                disabled={!isSuperAdmin}
+                                disabled={!isSuperAdmin || !record.is_offered}
                                 checkedChildren={<CheckOutlined />}
                                 unCheckedChildren={<CloseOutlined />}
                               />
@@ -1304,15 +1390,8 @@ const TherapistEdit: React.FC = () => {
                             title: 'Service',
                             dataIndex: 'service_name',
                             key: 'service_name',
-                            render: (_: any, record: ServiceWithRate) => (
-                              <div>
-                                <div style={{ fontWeight: 500 }}>{record.service_name}</div>
-                                {record.service_description && (
-                                  <div style={{ fontSize: '12px', color: '#666', marginTop: 2 }}>
-                                    {record.service_description}
-                                  </div>
-                                )}
-                              </div>
+                            render: (name: string) => (
+                              <div style={{ fontWeight: 500 }}>{name}</div>
                             ),
                           },
                           {
@@ -1328,7 +1407,7 @@ const TherapistEdit: React.FC = () => {
                                 suffix="/hr"
                                 min={0}
                                 step={1}
-                                disabled={!isSuperAdmin}
+                                disabled={!isSuperAdmin || !record.is_offered}
                                 style={{
                                   width: '100%',
                                   color: record.has_custom_rate ? '#000' : '#999'
@@ -1349,7 +1428,7 @@ const TherapistEdit: React.FC = () => {
                                 suffix="/hr"
                                 min={0}
                                 step={1}
-                                disabled={!isSuperAdmin}
+                                disabled={!isSuperAdmin || !record.is_offered}
                                 style={{
                                   width: '100%',
                                   color: record.has_custom_rate ? '#000' : '#999'
@@ -1366,7 +1445,7 @@ const TherapistEdit: React.FC = () => {
                                 value={notes}
                                 onChange={(e) => handleUpdateServiceRate(record.service_id, 'notes', e.target.value)}
                                 placeholder="e.g. Higher rate for specialized certification"
-                                disabled={!isSuperAdmin}
+                                disabled={!isSuperAdmin || !record.is_offered}
                               />
                             ),
                           },
@@ -1377,7 +1456,7 @@ const TherapistEdit: React.FC = () => {
                             align: 'center',
                             render: (_: any, record: ServiceWithRate) => (
                               <Space>
-                                {isSuperAdmin && (
+                                {isSuperAdmin && record.is_offered && (
                                   <Button
                                     type="primary"
                                     size="small"
