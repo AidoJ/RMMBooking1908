@@ -1212,11 +1212,84 @@ const TherapistEdit: React.FC = () => {
                         </div>
                       )}
 
+                      <Alert
+                        message="Service-Specific Rates"
+                        description="Service-specific rates can now be managed in the 'Services & Rates' tab above."
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                      />
+
+                      <Divider orientation="left">Status & Verification</Divider>
+
+                      <Row gutter={16}>
+                        <Col span={12}>
+                          <Form.Item
+                            name="is_active"
+                            label="Active Status"
+                            valuePropName="checked"
+                          >
+                            <Switch
+                              checkedChildren="Active"
+                              unCheckedChildren="Inactive"
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            name="address_verified"
+                            label="Address Verified"
+                            valuePropName="checked"
+                          >
+                            <Switch
+                              checkedChildren="Verified"
+                              unCheckedChildren="Unverified"
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
+                    </div>
+                  ),
+                },
+                {
+                  key: 'services',
+                  label: 'Services & Rates',
+                  children: (
+                    <div>
+                      <Alert
+                        message="Service Selection"
+                        description="Select which services this therapist offers, then set custom rates for each service below."
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                      />
+
+                      <Checkbox.Group
+                        value={selectedServices}
+                        onChange={setSelectedServices}
+                        style={{ width: '100%', marginBottom: 24 }}
+                      >
+                        <Row gutter={[16, 8]}>
+                          {allServices.map(service => (
+                            <Col span={24} key={service.id}>
+                              <Checkbox value={service.id}>
+                                <strong>{service.name}</strong>
+                                {service.description && (
+                                  <div style={{ fontSize: '12px', color: '#666' }}>
+                                    {service.description}
+                                  </div>
+                                )}
+                              </Checkbox>
+                            </Col>
+                          ))}
+                        </Row>
+                      </Checkbox.Group>
+
                       <Divider orientation="left">Service-Specific Rates</Divider>
 
                       <Alert
                         message="Manage Service Rates"
-                        description="Edit rates for each service offered by this therapist. Values in gray are default rates from the profile above. Edit any rate to create a custom service-specific rate."
+                        description="Edit rates for each service offered by this therapist. Values in gray are default rates from the profile. Toggle 'Active' and edit any rate to create a custom service-specific rate."
                         type="info"
                         showIcon
                         style={{ marginBottom: 16 }}
@@ -1237,7 +1310,7 @@ const TherapistEdit: React.FC = () => {
                         rowKey="service_id"
                         pagination={false}
                         size="small"
-                        locale={{ emptyText: 'No services assigned to this therapist. Go to the Services tab to assign services first.' }}
+                        locale={{ emptyText: 'Select services above first, then save the form. Service rates will appear here.' }}
                         columns={[
                           {
                             title: 'Active',
@@ -1342,63 +1415,6 @@ const TherapistEdit: React.FC = () => {
                           },
                         ]}
                       />
-
-                      <Divider orientation="left">Status & Verification</Divider>
-
-                      <Row gutter={16}>
-                        <Col span={12}>
-                          <Form.Item
-                            name="is_active"
-                            label="Active Status"
-                            valuePropName="checked"
-                          >
-                            <Switch
-                              checkedChildren="Active"
-                              unCheckedChildren="Inactive"
-                            />
-                          </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                          <Form.Item
-                            name="address_verified"
-                            label="Address Verified"
-                            valuePropName="checked"
-                          >
-                            <Switch
-                              checkedChildren="Verified"
-                              unCheckedChildren="Unverified"
-                            />
-                          </Form.Item>
-                        </Col>
-                      </Row>
-                    </div>
-                  ),
-                },
-                {
-                  key: 'services',
-                  label: 'Services',
-                  children: (
-                    <div>
-                      <Checkbox.Group
-                        value={selectedServices}
-                        onChange={setSelectedServices}
-                        style={{ width: '100%' }}
-                      >
-                        <Row gutter={[16, 8]}>
-                          {allServices.map(service => (
-                            <Col span={24} key={service.id}>
-                              <Checkbox value={service.id}>
-                                <strong>{service.name}</strong>
-                                {service.description && (
-                                  <div style={{ fontSize: '12px', color: '#666' }}>
-                                    {service.description}
-                                  </div>
-                                )}
-                              </Checkbox>
-                            </Col>
-                          ))}
-                        </Row>
-                      </Checkbox.Group>
                     </div>
                   ),
                 },
