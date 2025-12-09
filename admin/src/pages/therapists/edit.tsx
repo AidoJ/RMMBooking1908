@@ -649,11 +649,20 @@ const TherapistEdit: React.FC = () => {
             service_id: service.service_id
           });
 
-        if (error) throw error;
-        message.success(`${service.service_name} added to therapist services`);
+        if (error) {
+          // Check if it's a duplicate error (service already exists)
+          if (error.message.includes('duplicate')) {
+            message.info(`${service.service_name} is already assigned`);
+          } else {
+            throw error;
+          }
+        } else {
+          message.success(`${service.service_name} added to therapist services`);
+        }
       }
 
-      loadServicesWithRates();
+      // Wait for DB operation to complete before reloading
+      await loadServicesWithRates();
     } catch (error: any) {
       console.error('Error toggling service offered:', error);
       message.error('Failed to update service');
@@ -670,6 +679,24 @@ const TherapistEdit: React.FC = () => {
     if (!id) return;
 
     try {
+      // STEP 1: Ensure service is in therapist_services table first
+      if (!service.is_offered) {
+        const { error: serviceError } = await supabaseClient
+          .from('therapist_services')
+          .insert({
+            therapist_id: id,
+            service_id: service.service_id
+          });
+
+        if (serviceError) {
+          // Check if it's a duplicate error (service already exists)
+          if (!serviceError.message.includes('duplicate')) {
+            throw serviceError;
+          }
+        }
+      }
+
+      // STEP 2: Save the rate
       if (service.rate_id) {
         // Update existing rate
         const { error } = await supabaseClient
@@ -677,30 +704,55 @@ const TherapistEdit: React.FC = () => {
           .update({
             normal_rate: service.normal_rate,
             afterhours_rate: service.afterhours_rate,
-            notes: service.notes || null
+            notes: service.notes || null,
+            is_active: true
           })
           .eq('id', service.rate_id);
 
         if (error) throw error;
         message.success('Rate updated successfully');
       } else {
-        // Create new rate
-        const { error } = await supabaseClient
+        // Check if an inactive rate already exists for this service
+        const { data: existingRate } = await supabaseClient
           .from('therapist_service_rates')
-          .insert({
-            therapist_id: id,
-            service_id: service.service_id,
-            normal_rate: service.normal_rate,
-            afterhours_rate: service.afterhours_rate,
-            notes: service.notes || null,
-            is_active: true
-          });
+          .select('id')
+          .eq('therapist_id', id)
+          .eq('service_id', service.service_id)
+          .maybeSingle();
 
-        if (error) throw error;
-        message.success('Custom rate created successfully');
+        if (existingRate) {
+          // Update existing rate
+          const { error } = await supabaseClient
+            .from('therapist_service_rates')
+            .update({
+              normal_rate: service.normal_rate,
+              afterhours_rate: service.afterhours_rate,
+              notes: service.notes || null,
+              is_active: true
+            })
+            .eq('id', existingRate.id);
+
+          if (error) throw error;
+          message.success('Rate updated successfully');
+        } else {
+          // Create new rate
+          const { error } = await supabaseClient
+            .from('therapist_service_rates')
+            .insert({
+              therapist_id: id,
+              service_id: service.service_id,
+              normal_rate: service.normal_rate,
+              afterhours_rate: service.afterhours_rate,
+              notes: service.notes || null,
+              is_active: true
+            });
+
+          if (error) throw error;
+          message.success('Custom rate created successfully');
+        }
       }
 
-      loadServiceRates();
+      loadServicesWithRates();
     } catch (error: any) {
       console.error('Error saving service rate:', error);
       message.error('Failed to save rate');
