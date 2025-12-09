@@ -480,7 +480,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
             therapist_id,
             therapist_fee,
             duration_minutes,
-            therapist_profiles!bookings_therapist_id_fkey(first_name, last_name)
+            therapist_profiles!bookings_therapist_id_fkey(first_name, last_name, hourly_rate, afterhours_rate)
           `)
           .eq('parent_quote_id', id)
           .order('booking_time');
@@ -499,16 +499,17 @@ export const EnhancedQuoteEdit: React.FC = () => {
             const bookingDateTime = new Date(booking.booking_time);
             const time = bookingDateTime.toTimeString().split(' ')[0]; // HH:MM:SS
 
-            // Calculate actual hourly rate from total fee and duration
-            const durationHours = booking.duration_minutes / 60;
-            const actualHourlyRate = booking.therapist_fee / durationHours;
+            // Use the therapist's rates from their profile
+            const hourlyRate = booking.therapist_profiles.hourly_rate || 0;
+            const afterhoursRate = booking.therapist_profiles.afterhours_rate || 0;
 
             return {
               date,
               start_time: time,
               therapist_id: booking.therapist_id,
               therapist_name: `${booking.therapist_profiles.first_name} ${booking.therapist_profiles.last_name}`,
-              hourly_rate: actualHourlyRate,
+              hourly_rate: hourlyRate,
+              afterhours_rate: afterhoursRate,
               is_override: false
             };
           });
