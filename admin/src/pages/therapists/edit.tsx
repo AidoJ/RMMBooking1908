@@ -38,6 +38,9 @@ import {
   KeyOutlined,
   WarningOutlined,
   ExclamationCircleOutlined,
+  CheckOutlined,
+  EditOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router';
 import { useGetIdentity } from '@refinedev/core';
@@ -66,6 +69,21 @@ interface ServiceRate {
   afterhours_rate: number;
   is_active: boolean;
   notes?: string;
+}
+
+// Combined interface for service with rate info
+interface ServiceWithRate {
+  service_id: string;
+  service_name: string;
+  has_custom_rate: boolean;
+  rate_id?: string;
+  normal_rate: number;
+  afterhours_rate: number;
+  default_normal_rate: number;
+  default_afterhours_rate: number;
+  is_active: boolean;
+  notes?: string;
+  is_editing?: boolean;
 }
 
 interface Availability {
@@ -141,6 +159,7 @@ const TherapistEdit: React.FC = () => {
 
   // Service-specific rates state
   const [serviceRates, setServiceRates] = useState<ServiceRate[]>([]);
+  const [servicesWithRates, setServicesWithRates] = useState<ServiceWithRate[]>([]);
   const [isRateModalVisible, setIsRateModalVisible] = useState(false);
   const [editingRate, setEditingRate] = useState<ServiceRate | null>(null);
   const [rateForm] = Form.useForm();
@@ -379,9 +398,64 @@ const TherapistEdit: React.FC = () => {
       }));
 
       setServiceRates(ratesWithNames);
+
+      // Also load the combined services with rates view
+      loadServicesWithRates();
     } catch (error: any) {
       console.error('Error loading service rates:', error);
       message.error('Failed to load service rates');
+    }
+  };
+
+  // Load all therapist services and merge with their rates
+  const loadServicesWithRates = async () => {
+    if (!id) return;
+
+    try {
+      // Get default rates from therapist profile
+      const defaultNormalRate = form.getFieldValue('hourly_rate') || 0;
+      const defaultAfterhoursRate = form.getFieldValue('afterhours_rate') || 0;
+
+      // Load therapist services
+      const { data: therapistServices, error: servicesError } = await supabaseClient
+        .from('therapist_services')
+        .select('service_id, services(name)')
+        .eq('therapist_id', id);
+
+      if (servicesError) throw servicesError;
+
+      // Load existing service rates
+      const { data: existingRates, error: ratesError } = await supabaseClient
+        .from('therapist_service_rates')
+        .select('*')
+        .eq('therapist_id', id)
+        .eq('is_active', true);
+
+      if (ratesError) throw ratesError;
+
+      // Merge services with their rates
+      const merged: ServiceWithRate[] = (therapistServices || []).map((ts: any) => {
+        const existingRate = existingRates?.find(r => r.service_id === ts.service_id);
+
+        return {
+          service_id: ts.service_id,
+          service_name: ts.services?.name || 'Unknown Service',
+          has_custom_rate: !!existingRate,
+          rate_id: existingRate?.id,
+          normal_rate: existingRate?.normal_rate || defaultNormalRate,
+          afterhours_rate: existingRate?.afterhours_rate || defaultAfterhoursRate,
+          default_normal_rate: defaultNormalRate,
+          default_afterhours_rate: defaultAfterhoursRate,
+          is_active: existingRate?.is_active || false,
+          notes: existingRate?.notes || '',
+          is_editing: false
+        };
+      });
+
+      setServicesWithRates(merged);
+    } catch (error: any) {
+      console.error('Error loading services with rates:', error);
+      message.error('Failed to load services with rates');
     }
   };
 
@@ -471,6 +545,91 @@ const TherapistEdit: React.FC = () => {
       // Show detailed error message
       const errorMessage = error?.message || error?.details || 'Failed to save service rate';
       message.error(`Failed to save: ${errorMessage}`);
+    }
+  };
+
+  // New inline editing handlers for services with rates
+  const handleToggleCustomRate = async (service: ServiceWithRate) => {
+    if (!id) return;
+
+    try {
+      if (service.has_custom_rate && service.rate_id) {
+        // Deactivate custom rate
+        const { error } = await supabaseClient
+          .from('therapist_service_rates')
+          .update({ is_active: false })
+          .eq('id', service.rate_id);
+
+        if (error) throw error;
+        message.success('Custom rate removed');
+      } else {
+        // Create new custom rate with current default values
+        const { error } = await supabaseClient
+          .from('therapist_service_rates')
+          .insert({
+            therapist_id: id,
+            service_id: service.service_id,
+            normal_rate: service.normal_rate,
+            afterhours_rate: service.afterhours_rate,
+            is_active: true,
+            notes: service.notes || null
+          });
+
+        if (error) throw error;
+        message.success('Custom rate activated');
+      }
+
+      loadServiceRates();
+    } catch (error: any) {
+      console.error('Error toggling custom rate:', error);
+      message.error('Failed to update custom rate');
+    }
+  };
+
+  const handleUpdateServiceRate = (serviceId: string, field: string, value: any) => {
+    setServicesWithRates(prev => prev.map(s =>
+      s.service_id === serviceId ? { ...s, [field]: value } : s
+    ));
+  };
+
+  const handleSaveServiceWithRate = async (service: ServiceWithRate) => {
+    if (!id) return;
+
+    try {
+      if (service.rate_id) {
+        // Update existing rate
+        const { error } = await supabaseClient
+          .from('therapist_service_rates')
+          .update({
+            normal_rate: service.normal_rate,
+            afterhours_rate: service.afterhours_rate,
+            notes: service.notes || null
+          })
+          .eq('id', service.rate_id);
+
+        if (error) throw error;
+        message.success('Rate updated successfully');
+      } else {
+        // Create new rate
+        const { error } = await supabaseClient
+          .from('therapist_service_rates')
+          .insert({
+            therapist_id: id,
+            service_id: service.service_id,
+            normal_rate: service.normal_rate,
+            afterhours_rate: service.afterhours_rate,
+            notes: service.notes || null,
+            is_active: true
+          });
+
+        if (error) throw error;
+        message.success('Custom rate created successfully');
+      }
+
+      loadServiceRates();
+    } catch (error: any) {
+      console.error('Error saving service rate:', error);
+      message.error('Failed to save rate');
     }
   };
 
@@ -1056,83 +1215,127 @@ const TherapistEdit: React.FC = () => {
                       <Divider orientation="left">Service-Specific Rates</Divider>
 
                       <Alert
-                        message="Service-Specific Rates"
-                        description="Set custom rates for specific services. If no service-specific rate is set, the default hourly rates above will be used."
+                        message="Manage Service Rates"
+                        description="Edit rates for each service offered by this therapist. Values in gray are default rates from the profile above. Edit any rate to create a custom service-specific rate."
                         type="info"
                         showIcon
                         style={{ marginBottom: 16 }}
                       />
 
-                      {isSuperAdmin && (
-                        <Button
-                          type="primary"
-                          icon={<PlusOutlined />}
-                          onClick={handleAddServiceRate}
+                      {!isSuperAdmin && (
+                        <Alert
+                          message="Restricted Access"
+                          description="Only superadmin users can modify service rates"
+                          type="warning"
+                          showIcon
                           style={{ marginBottom: 16 }}
-                        >
-                          Add Service Rate
-                        </Button>
+                        />
                       )}
 
                       <Table
-                        dataSource={serviceRates}
-                        rowKey="id"
+                        dataSource={servicesWithRates}
+                        rowKey="service_id"
                         pagination={false}
                         size="small"
-                        locale={{ emptyText: 'No service-specific rates set. Using default rates for all services.' }}
+                        locale={{ emptyText: 'No services assigned to this therapist. Go to the Services tab to assign services first.' }}
                         columns={[
+                          {
+                            title: 'Active',
+                            dataIndex: 'has_custom_rate',
+                            key: 'active',
+                            width: 80,
+                            align: 'center',
+                            render: (hasCustom: boolean, record: ServiceWithRate) => (
+                              <Switch
+                                checked={hasCustom}
+                                onChange={() => handleToggleCustomRate(record)}
+                                disabled={!isSuperAdmin}
+                                checkedChildren={<CheckOutlined />}
+                                unCheckedChildren={<CloseOutlined />}
+                              />
+                            ),
+                          },
                           {
                             title: 'Service',
                             dataIndex: 'service_name',
                             key: 'service_name',
+                            width: '20%',
                           },
                           {
                             title: 'Normal Rate',
                             dataIndex: 'normal_rate',
                             key: 'normal_rate',
-                            render: (rate: number) => `$${rate.toFixed(2)}/hr`,
+                            width: '20%',
+                            render: (rate: number, record: ServiceWithRate) => (
+                              <InputNumber
+                                value={rate}
+                                onChange={(value) => handleUpdateServiceRate(record.service_id, 'normal_rate', value || 0)}
+                                prefix="$"
+                                suffix="/hr"
+                                min={0}
+                                step={1}
+                                disabled={!isSuperAdmin}
+                                style={{
+                                  width: '100%',
+                                  color: record.has_custom_rate ? '#000' : '#999'
+                                }}
+                              />
+                            ),
                           },
                           {
                             title: 'After Hours Rate',
                             dataIndex: 'afterhours_rate',
                             key: 'afterhours_rate',
-                            render: (rate: number) => `$${rate.toFixed(2)}/hr`,
+                            width: '20%',
+                            render: (rate: number, record: ServiceWithRate) => (
+                              <InputNumber
+                                value={rate}
+                                onChange={(value) => handleUpdateServiceRate(record.service_id, 'afterhours_rate', value || 0)}
+                                prefix="$"
+                                suffix="/hr"
+                                min={0}
+                                step={1}
+                                disabled={!isSuperAdmin}
+                                style={{
+                                  width: '100%',
+                                  color: record.has_custom_rate ? '#000' : '#999'
+                                }}
+                              />
+                            ),
                           },
                           {
                             title: 'Notes',
                             dataIndex: 'notes',
                             key: 'notes',
-                            ellipsis: true,
+                            width: '25%',
+                            render: (notes: string, record: ServiceWithRate) => (
+                              <Input
+                                value={notes}
+                                onChange={(e) => handleUpdateServiceRate(record.service_id, 'notes', e.target.value)}
+                                placeholder="e.g. Higher rate for specialized certification"
+                                disabled={!isSuperAdmin}
+                              />
+                            ),
                           },
                           {
                             title: 'Actions',
                             key: 'actions',
-                            render: (_: any, record: ServiceRate) => (
+                            width: 100,
+                            align: 'center',
+                            render: (_: any, record: ServiceWithRate) => (
                               <Space>
                                 {isSuperAdmin && (
-                                  <>
-                                    <Button
-                                      type="link"
-                                      size="small"
-                                      onClick={() => handleEditServiceRate(record)}
-                                    >
-                                      Edit
-                                    </Button>
-                                    <Button
-                                      type="link"
-                                      danger
-                                      size="small"
-                                      onClick={() => {
-                                        Modal.confirm({
-                                          title: 'Remove Service Rate',
-                                          content: `Are you sure you want to remove the custom rate for ${record.service_name}? The therapist will use their default rates for this service.`,
-                                          onOk: () => handleDeleteServiceRate(record.id!),
-                                        });
-                                      }}
-                                    >
-                                      Remove
-                                    </Button>
-                                  </>
+                                  <Button
+                                    type="primary"
+                                    size="small"
+                                    icon={<SaveOutlined />}
+                                    onClick={() => handleSaveServiceWithRate(record)}
+                                    disabled={!record.has_custom_rate &&
+                                      record.normal_rate === record.default_normal_rate &&
+                                      record.afterhours_rate === record.default_afterhours_rate}
+                                  >
+                                    Save
+                                  </Button>
                                 )}
                               </Space>
                             ),
