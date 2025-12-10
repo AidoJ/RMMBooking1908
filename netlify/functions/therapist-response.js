@@ -276,7 +276,7 @@ Unfortunately, your therapist declined booking ${booking.booking_id}. We're look
 
 async function sendSMS(phoneNumber, message) {
   try {
-    const response = await fetch('https://rmmbookingplatform.netlify.app/.netlify/functions/send-sms', {
+    const response = await fetch('https://booking.rejuvenators.com/.netlify/functions/send-sms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: phoneNumber, message: message })

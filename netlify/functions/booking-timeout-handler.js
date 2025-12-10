@@ -544,7 +544,7 @@ async function sendClientDeclineEmail(booking) {
 async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
   try {
     // Generate Accept/Decline URLs
-    const baseUrl = process.env.URL || 'https://your-site.netlify.app';
+    const baseUrl = process.env.URL || 'https://booking.rejuvenators.com';
     const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking=' + booking.booking_id + '&therapist=' + therapist.id;
     const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking=' + booking.booking_id + '&therapist=' + therapist.id;
 

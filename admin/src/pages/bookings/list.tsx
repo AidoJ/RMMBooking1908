@@ -945,7 +945,7 @@ export const EnhancedBookingList = () => {
                       // Open booking platform with admin mode parameter
                       // Use production URL in production, local for development
                       const bookingUrl = process.env.NODE_ENV === 'production'
-                        ? 'https://rmmbook.netlify.app?admin=true'
+                        ? 'https://booking.rejuvenators.com?admin=true'
                         : 'http://localhost:8080?admin=true';
                       window.open(bookingUrl, '_blank');
                     }}

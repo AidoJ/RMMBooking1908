@@ -189,7 +189,7 @@ async function sendCustomerStatusEmail(booking, therapistName, customerName, ser
     const templateId = status === 'on_my_way' ? EMAILJS_ON_MY_WAY_TEMPLATE : EMAILJS_ARRIVED_TEMPLATE;
 
     // Generate intake form URL (matching format used in booking-response.js)
-    const intakeFormUrl = `https://rmmbook.netlify.app/therapist/clientintake?booking=${booking.id}`;
+    const intakeFormUrl = `https://booking.rejuvenators.com/therapist/clientintake?booking=${booking.id}`;
 
     const templateParams = {
       to_email: booking.customer_email,

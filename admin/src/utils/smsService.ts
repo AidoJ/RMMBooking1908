@@ -13,7 +13,7 @@ export class SMSService {
       }
 
       // Generate full URLs for accept/decline
-      const baseUrl = 'https://rmmbook.netlify.app/.netlify/functions/therapist-response';
+      const baseUrl = 'https://booking.rejuvenators.com/.netlify/functions/therapist-response';
       const acceptUrl = `${baseUrl}?booking_id=${booking.booking_id}&action=accept&therapist_id=${therapist.id}`;
       const declineUrl = `${baseUrl}?booking_id=${booking.booking_id}&action=decline&therapist_id=${therapist.id}`;
 
@@ -148,8 +148,8 @@ You've declined booking ${booking.booking_id}. The client has been notified.
     try {
       console.log(`📱 Sending SMS to ${phoneNumber}`);
       console.log(`📄 Message preview: ${message.substring(0, 100)}...`);
-      
-      const response = await fetch('https://rmmbook.netlify.app/.netlify/functions/send-sms', {
+
+      const response = await fetch('https://booking.rejuvenators.com/.netlify/functions/send-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: phoneNumber, message: message })
@@ -265,7 +265,7 @@ Check your email for full details.
    */
   private static async createShortLink(url: string, metadata: any = {}): Promise<{ success: boolean; shortUrl?: string; error?: string }> {
     try {
-      const response = await fetch('https://rmmbook.netlify.app/.netlify/functions/create-short-link', {
+      const response = await fetch('https://booking.rejuvenators.com/.netlify/functions/create-short-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

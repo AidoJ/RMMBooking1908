@@ -887,7 +887,7 @@ async function sendClientConfirmationEmail(booking, therapist, seriesBookings = 
     }
 
     // Generate cancel URL
-    const baseUrl = process.env.URL || 'https://rmmbook.netlify.app';
+    const baseUrl = process.env.URL || 'https://booking.rejuvenators.com';
     const cancelUrl = `${baseUrl}/.netlify/functions/cancel-booking?booking_id=${booking.booking_id}`;
 
     // Generate intake form URL
@@ -1105,7 +1105,7 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
       typeof_is_recurring: typeof booking.is_recurring
     });
 
-    const baseUrl = process.env.URL || 'https://your-site.netlify.app';
+    const baseUrl = process.env.URL || 'https://booking.rejuvenators.com';
     const acceptUrl = baseUrl + '/.netlify/functions/booking-response?action=accept&booking=' + booking.booking_id + '&therapist=' + therapist.id;
     const declineUrl = baseUrl + '/.netlify/functions/booking-response?action=decline&booking=' + booking.booking_id + '&therapist=' + therapist.id;
 
@@ -1219,7 +1219,7 @@ async function sendSMSNotification(phoneNumber, message) {
     console.log(`📄 Message preview: ${message.substring(0, 100)}...`);
 
     // Use relative path to work on any Netlify deployment
-    const smsUrl = process.env.URL ? `${process.env.URL}/.netlify/functions/send-sms` : 'https://rmmbook.netlify.app/.netlify/functions/send-sms';
+    const smsUrl = process.env.URL ? `${process.env.URL}/.netlify/functions/send-sms` : 'https://booking.rejuvenators.com/.netlify/functions/send-sms';
 
     const response = await fetch(smsUrl, {
       method: 'POST',

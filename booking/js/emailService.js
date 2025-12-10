@@ -407,7 +407,7 @@ async createShortLink(url, metadata = {}) {
 
     try {
       // Generate intake form URL with booking ID
-      const intakeFormUrl = `https://rmmbook.netlify.app/therapist/clientintake?booking=${bookingData.id || bookingData.booking_id}`;
+      const intakeFormUrl = `https://booking.rejuvenators.com/therapist/clientintake?booking=${bookingData.id || bookingData.booking_id}`;
 
       const templateParams = {
         to_email: bookingData.customer_email,

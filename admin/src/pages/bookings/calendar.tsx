@@ -742,7 +742,7 @@ export const CalendarBookingManagement: React.FC = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => window.open('https://rmmbook.netlify.app/', '_blank')}
+                  onClick={() => window.open('https://booking.rejuvenators.com/', '_blank')}
                 >
                   New Booking
                 </Button>

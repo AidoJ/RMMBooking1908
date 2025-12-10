@@ -90,7 +90,7 @@ async function createShortLink(originalUrl, options = {}) {
     throw error;
   }
 
-  const baseUrl = 'https://rmmbook.netlify.app/s';
+  const baseUrl = 'https://booking.rejuvenators.com/s';
   const shortUrl = `${baseUrl}/${shortCode}`;
 
   console.log('✅ Created short link:', { shortCode, shortUrl, originalUrl });

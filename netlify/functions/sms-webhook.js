@@ -588,7 +588,7 @@ Need help? Call 1300 302542
 
 // NEW: Send SMS with Accept/Decline links
 async function sendBookingRequestSMS(therapistPhone, booking, therapist) {
-  const baseUrl = 'https://rmmbookingplatform.netlify.app/.netlify/functions/therapist-response';
+  const baseUrl = 'https://booking.rejuvenators.com/.netlify/functions/therapist-response';
   const acceptLink = `${baseUrl}?booking_id=${booking.booking_id}&action=accept&therapist_id=${therapist.id}`;
   const declineLink = `${baseUrl}?booking_id=${booking.booking_id}&action=decline&therapist_id=${therapist.id}`;
   
@@ -626,8 +626,8 @@ async function sendSMS(phoneNumber, message) {
   try {
     console.log(`📱 Sending SMS to ${phoneNumber}`);
     console.log(`📄 Message preview: ${message.substring(0, 100)}...`);
-    
-    const response = await fetch('https://rmmbookingplatform.netlify.app/.netlify/functions/send-sms', {
+
+    const response = await fetch('https://booking.rejuvenators.com/.netlify/functions/send-sms', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ phone: phoneNumber, message: message })
