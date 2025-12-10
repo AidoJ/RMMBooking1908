@@ -481,6 +481,15 @@ export const BookingDetail: React.FC = () => {
   const canUpdateStatus = ['confirmed'].includes(booking.status);
   const isRequested = booking.status === 'requested';
 
+  // Check if booking date/time allows status updates
+  const bookingDateTime = dayjs(booking.booking_time);
+  const now = dayjs();
+  const hoursUntilBooking = bookingDateTime.diff(now, 'hour', true);
+
+  // Allow status updates starting 2 hours before the booking time
+  const canUpdateBasedOnTime = hoursUntilBooking <= 2;
+  const isFutureBooking = hoursUntilBooking > 2;
+
   return (
     <div>
       <Button
@@ -525,19 +534,30 @@ export const BookingDetail: React.FC = () => {
 
       {/* Status Actions - Only for Confirmed Status */}
       {canUpdateStatus && (
-        <Card style={{ marginBottom: 24, background: '#f0f9ff' }}>
-          <Text strong style={{ display: 'block', marginBottom: 16 }}>
+        <Card style={{ marginBottom: 24, background: isFutureBooking ? '#fff7e6' : '#f0f9ff', borderColor: isFutureBooking ? '#faad14' : undefined }}>
+          <Text strong style={{ display: 'block', marginBottom: 8 }}>
             Update Booking Status:
           </Text>
+          {isFutureBooking && (
+            <Text type="warning" style={{ display: 'block', marginBottom: 16, fontSize: '13px' }}>
+              ⏰ Status updates will be available 2 hours before the booking time ({bookingDateTime.format('MMM DD, YYYY [at] h:mm A')})
+            </Text>
+          )}
+          {!isFutureBooking && canUpdateBasedOnTime && (
+            <Text type="success" style={{ display: 'block', marginBottom: 16, fontSize: '13px' }}>
+              ✓ You can now update the booking status
+            </Text>
+          )}
           <Space size="middle" wrap>
             <Button
               type="primary"
               icon={<CarOutlined />}
               onClick={handleOnMyWay}
               loading={updating}
-              disabled={booking.client_update_status === 'on_my_way' || booking.client_update_status === 'arrived'}
+              disabled={isFutureBooking || booking.client_update_status === 'on_my_way' || booking.client_update_status === 'arrived'}
               size="large"
               style={{ background: '#1890ff', borderColor: '#1890ff' }}
+              title={isFutureBooking ? 'Available 2 hours before booking time' : undefined}
             >
               {booking.client_update_status === 'on_my_way' || booking.client_update_status === 'arrived' ? '✓ On My Way Sent' : 'On My Way'}
             </Button>
@@ -546,9 +566,10 @@ export const BookingDetail: React.FC = () => {
               icon={<EnvironmentOutlined />}
               onClick={handleArrived}
               loading={updating}
-              disabled={booking.client_update_status === 'arrived'}
+              disabled={isFutureBooking || booking.client_update_status === 'arrived'}
               size="large"
               style={{ background: '#faad14', borderColor: '#faad14' }}
+              title={isFutureBooking ? 'Available 2 hours before booking time' : undefined}
             >
               {booking.client_update_status === 'arrived' ? '✓ Arrived Sent' : 'I\'ve Arrived'}
             </Button>
@@ -557,8 +578,10 @@ export const BookingDetail: React.FC = () => {
               icon={<CheckCircleOutlined />}
               onClick={handleCompleteJob}
               loading={updating}
+              disabled={isFutureBooking}
               size="large"
               style={{ background: '#52c41a', borderColor: '#52c41a' }}
+              title={isFutureBooking ? 'Available 2 hours before booking time' : undefined}
             >
               Complete Job
             </Button>
