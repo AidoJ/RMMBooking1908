@@ -262,6 +262,27 @@ function showStep(stepId) {
     const progressIcon = document.getElementById('progressIcon');
     if (progressFill) progressFill.style.width = progressPercent + '%';
     if (progressIcon) progressIcon.style.left = progressPercent + '%';
+
+    // Track step views
+    if (window.analyticsTracker) {
+      const stepMapping = {
+        'step0': { num: 0, name: 'Booking Method Selection' },
+        'step1': { num: 1, name: 'Address Entry' },
+        'step2': { num: 2, name: 'Service Selection' },
+        'step3': { num: 3, name: 'Gender Preference' },
+        'step4': { num: 4, name: 'Date & Time' },
+        'step5': { num: 5, name: 'Therapist Selection' },
+        'step6': { num: 6, name: 'Customer Details' },
+        'step7': { num: 7, name: 'Additional Notes' },
+        'step8': { num: 8, name: 'Payment' },
+        'step9': { num: 9, name: 'Review & Confirm' },
+        'step10': { num: 10, name: 'Confirmation' }
+      };
+      const step = stepMapping[stepId];
+      if (step) {
+        window.analyticsTracker.trackBookingStep(step.num, step.name);
+      }
+    }
   }
 
 // Step 0: Booking Method Selection Functions
@@ -287,6 +308,11 @@ window.selectBookingMethod = function(method, element) {
   // Store booking method
   window.bookingMode = method;
   console.log('📋 Booking mode set to:', method);
+
+  // Track booking method selection
+  if (window.analyticsTracker) {
+    window.analyticsTracker.trackBookingTypeSelection(method);
+  }
 };
 
 window.proceedFromStep0 = function() {
@@ -420,18 +446,26 @@ window.validateAndContinueFromStep1 = function() {
 window.validateAndContinueFromStep2 = function() {
   const selectedService = document.querySelector('.service-card.selected');
   const selectedDuration = document.getElementById('duration').value;
-  
+
   if (!selectedService) {
     alert('Please select a service first.');
     return;
   }
-  
+
   // Only validate duration for instant booking mode
   if (window.bookingMode === 'instant' && !selectedDuration) {
     alert('Please select a duration.');
     return;
   }
-  
+
+  // Track service selection
+  if (window.analyticsTracker && selectedService) {
+    const serviceName = selectedService.querySelector('h3')?.textContent || 'Unknown Service';
+    const duration = selectedDuration ? parseInt(selectedDuration) : 0;
+    window.analyticsTracker.trackServiceSelection(serviceName, duration);
+    window.analyticsTracker.trackStepComplete(2, 'Service Selection', { service: serviceName, duration: duration });
+  }
+
   // Proceed to next step (Step 3: Gender)
   showStep('step3');
 };
@@ -1652,6 +1686,11 @@ console.log('Globals:', {
 
     console.log('📋 Service selected:', service.name, 'quote_only:', service.quote_only, 'parsed:', quoteOnly);
 
+    // Track service selection
+    if (window.analyticsTracker && service) {
+      window.analyticsTracker.trackServiceSelection(service.name, minimumDuration);
+    }
+
     if (quoteOnly) {
       // This is a quote-only service, show quote form
       console.log('📋 Showing quote form for quote-only service');
@@ -2636,6 +2675,11 @@ async function checkTherapistCoverageForAddress() {
 
   console.log('✅ Coverage check result:', covered, `(${availableTherapists.length} therapists available)`);
 
+  // Track address validation
+  if (window.analyticsTracker) {
+    window.analyticsTracker.trackAddressValidation(true, covered);
+  }
+
   if (!covered) {
     const statusDiv = document.getElementById('address-autocomplete-status');
     if (statusDiv) {
@@ -3190,16 +3234,21 @@ async function updateTherapistSelection() {
     // Add click handler for the entire card
     card.addEventListener('click', function(e) {
       if (e.target.classList.contains('read-more-btn')) return; // Don't trigger selection when clicking read more
-      
+
       // Remove selection from other cards
       document.querySelectorAll('.therapist-card').forEach(c => c.classList.remove('selected'));
-      
+
       // Select this card
       this.classList.add('selected');
-      
+
       // Check the radio button
       const radio = this.querySelector('input[type="radio"]');
       radio.checked = true;
+
+      // Track therapist selection
+      if (window.analyticsTracker) {
+        window.analyticsTracker.trackTherapistSelection(t.id, `${t.first_name} ${t.last_name}`);
+      }
     });
     
     therapistSelectionDiv.appendChild(card);
@@ -3388,6 +3437,11 @@ async function authorizeCard() {
 
     if (!customerEmail || !customerFirstName || !customerLastName || !price) {
       throw new Error('Missing customer information. Please go back and complete all fields.');
+    }
+
+    // Track payment initiation
+    if (window.analyticsTracker) {
+      window.analyticsTracker.trackPaymentInitiated(price);
     }
 
     // Step 1: Create payment intent (authorize card)
@@ -4460,6 +4514,18 @@ if (confirmBtn) {
 
         console.log('✅ Booking created with booking_id:', bookingIdFormatted, 'and customer_code:', window.lastCustomerCode);
 
+    // Track booking completion
+    if (window.analyticsTracker) {
+      window.analyticsTracker.trackBookingComplete(bookingIdFormatted, payload.total_amount, {
+        service: serviceName,
+        therapist: therapistName,
+        date: date,
+        time: time,
+        booking_type: payload.booking_type,
+        payment_method: payload.payment_method
+      });
+    }
+
    // Send enhanced email notifications (client + therapist)
     console.log('📧 Starting enhanced email notifications...');
     const emailData = {
@@ -4473,7 +4539,7 @@ if (confirmBtn) {
     };
     const emailResult = await sendBookingNotifications(emailData, bookingIdFormatted);
     console.log('📧 Enhanced email notification result:', emailResult);
-    
+
     // Store confirmation data for Step 10 display
     bookingConfirmationData = emailResult;
 
