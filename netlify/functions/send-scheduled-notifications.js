@@ -152,7 +152,8 @@ async function sendReviewRequest(notification) {
       await sendReviewSMS(
         customer_phone,
         customer_first_name,
-        therapist_first_name
+        therapist_first_name,
+        googleReviewUrl
       );
       console.log('✅ Review request SMS sent to:', customer_phone);
     } catch (smsError) {
@@ -207,7 +208,7 @@ async function sendReviewEmail(customerEmail, customerFirstName, therapistFirstN
 }
 
 // Send review request SMS using Twilio
-async function sendReviewSMS(customerPhone, customerFirstName, therapistFirstName) {
+async function sendReviewSMS(customerPhone, customerFirstName, therapistFirstName, googleReviewUrl) {
   try {
     if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_PHONE_NUMBER) {
       console.error('❌ Twilio credentials not configured');
@@ -215,7 +216,7 @@ async function sendReviewSMS(customerPhone, customerFirstName, therapistFirstNam
     }
 
     // SMS Message format as specified
-    const smsMessage = `Thank you ${customerFirstName}, We hope you loved your massage with ${therapistFirstName}. If you did we would love a 5star review and supportive comment for ${therapistFirstName}. If you were not happy for any reason please call us on 1300 302542.`;
+    const smsMessage = `Thank you ${customerFirstName}, We hope you loved your massage with ${therapistFirstName}. If you did we would love a 5star review and supportive comment for ${therapistFirstName}. If you were not happy for any reason please call us on 1300 302542. ${googleReviewUrl}`;
 
     // Send SMS via Twilio
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
