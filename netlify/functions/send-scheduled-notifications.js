@@ -216,7 +216,7 @@ async function sendReviewSMS(customerPhone, customerFirstName, therapistFirstNam
     }
 
     // SMS Message format as specified
-    const smsMessage = `Thank you ${customerFirstName}, We hope you loved your massage with ${therapistFirstName}. If you did we would love a 5star review and supportive comment for ${therapistFirstName}. If you were not happy for any reason please call us on 1300 302542. ${googleReviewUrl}`;
+    const smsMessage = `Thank you ${customerFirstName}, Loved your therapy session? If yes we would love a 5 star review and comment for ${therapistFirstName}. ${googleReviewUrl} If you were not happy for any reason please call us on 1300 302542.`;
 
     // Send SMS via Twilio
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
