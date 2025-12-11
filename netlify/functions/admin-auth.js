@@ -154,6 +154,20 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // CRITICAL: Verify user has admin or super_admin role
+    // Therapists should NOT be able to login to admin panel
+    if (user.role !== 'admin' && user.role !== 'super_admin') {
+      console.error('❌ Access denied - invalid role:', user.email, 'Role:', user.role);
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          error: 'Access denied. This account does not have admin privileges.'
+        })
+      };
+    }
+
     console.log('✅ Authentication successful:', user.email, 'Role:', user.role);
 
     // Update last_login timestamp and reset failed login attempts
