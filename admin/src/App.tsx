@@ -78,6 +78,9 @@ import { Reports } from "./pages/reports";
 // Import the system tools component
 import SystemTools from "./pages/system-tools";
 
+// Import the auth components
+import { ForgotPassword, ResetPassword, CustomLogin } from "./pages/auth";
+
 // Wrapper component to get the ID from route params
 const BookingShowWrapper = () => {
   const { id } = useParams();
@@ -368,19 +371,10 @@ function App() {
                   >
                     <Route
                       path="/login"
-                      element={
-                        <AuthPage
-                          type="login"
-                          title="Rejuvenators Admin Panel"
-                          formProps={{
-                            initialValues: {
-                              email: "admin@rejuvenators.com",
-                              password: "admin123",
-                            },
-                          }}
-                        />
-                      }
+                      element={<CustomLogin />}
                     />
+                    <Route path="/forgot-password" element={<ForgotPassword />} />
+                    <Route path="/reset-password" element={<ResetPassword />} />
                   </Route>
                 </Routes>
 

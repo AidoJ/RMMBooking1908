@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Card, Form, Input, Button, message, Typography } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router';
 
-const { Title, Text } = Typography;
+const { Title, Text, Link } = Typography;
 
 export const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleLogin = async (values: { email: string; password: string }) => {
     try {
@@ -75,6 +77,12 @@ export const Login: React.FC = () => {
 
           <Form.Item name="password" rules={[{ required: true, message: 'Please enter your password' }]}>
             <Input.Password prefix={<LockOutlined />} placeholder="Password" />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 16, textAlign: 'right' }}>
+            <Link onClick={() => navigate('/forgot-password')} style={{ color: '#007e8c' }}>
+              Forgot password?
+            </Link>
           </Form.Item>
 
           <Form.Item>

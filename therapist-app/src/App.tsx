@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ConfigProvider, Spin, App as AntApp } from 'antd';
 import { AppLayout } from './components/AppLayout';
 import { Login } from './pages/Login';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
 import { Dashboard } from './pages/Dashboard';
 import { Calendar } from './pages/Calendar';
 import { Bookings } from './pages/Bookings';
@@ -163,10 +165,11 @@ function App() {
       <AntApp>
         <BrowserRouter basename="/therapist">
         <Routes>
-          {/* Public route - no auth required */}
+          {/* Public routes - no auth required */}
           <Route path="/clientintake" element={<ClientIntakeForm />} />
-
           <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+          <Route path="/forgot-password" element={user ? <Navigate to="/" /> : <ForgotPassword />} />
+          <Route path="/reset-password" element={user ? <Navigate to="/" /> : <ResetPassword />} />
 
           <Route
             path="/*"
