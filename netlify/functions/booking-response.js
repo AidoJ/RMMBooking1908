@@ -367,7 +367,7 @@ Client will be notified. Check email for full details.
         
         const customerSMSMessage = `🎉 BOOKING CONFIRMED!
 
-${therapist.first_name} ${therapist.last_name} has accepted your massage booking for ${getShortDate(booking.booking_time, booking.booking_timezone)} at ${getLocalTime(booking.booking_time, booking.booking_timezone)}.
+${therapist.first_name} ${therapist.last_name} has accepted your booking for ${getShortDate(booking.booking_time, booking.booking_timezone)} at ${getLocalTime(booking.booking_time, booking.booking_timezone)}.
 
 Check your email for full details!
 - Rejuvenators`;
@@ -633,7 +633,7 @@ You'll be notified once someone accepts!
       try {
         const customerSMSMessage = `❌ BOOKING UPDATE
 
-Unfortunately, your massage booking ${booking.booking_id} has been declined and no alternative therapists are available.
+Unfortunately, your booking ${booking.booking_id} has been declined and no alternative therapists are available.
 
 Please contact us at 1300 302542 to reschedule.
 - Rejuvenators`;

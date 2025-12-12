@@ -307,6 +307,7 @@ async function handleSMSAccept(booking, therapist, therapistPhone) {
     const confirmMessage = `✅ BOOKING CONFIRMED!
 
 You've accepted booking ${booking.booking_id}
+Service: ${booking.services?.name || 'Service'}
 Client: ${booking.first_name} ${booking.last_name}
 Date: ${new Date(booking.booking_time).toLocaleDateString()} at ${new Date(booking.booking_time).toLocaleTimeString()}
 Fee: $${booking.therapist_fee || 'TBD'}
@@ -326,7 +327,7 @@ Client will be notified. Check email for full details.
       console.log('📱 Sending confirmation SMS to customer...');
       const customerMessage = `🎉 BOOKING CONFIRMED!
 
-${therapist.first_name} ${therapist.last_name} has accepted your massage booking for ${new Date(booking.booking_time).toLocaleDateString()} at ${new Date(booking.booking_time).toLocaleTimeString()}.
+${therapist.first_name} ${therapist.last_name} has accepted your booking for ${new Date(booking.booking_time).toLocaleDateString()} at ${new Date(booking.booking_time).toLocaleTimeString()}.
 
 Check your email for full details!
 - Rejuvenators`;
@@ -595,6 +596,7 @@ async function sendBookingRequestSMS(therapistPhone, booking, therapist) {
   const message = `📱 NEW BOOKING REQUEST
 
 Booking ID: ${booking.booking_id}
+Service: ${booking.services?.name || 'Service'}
 Client: ${booking.first_name} ${booking.last_name}
 Date: ${new Date(booking.booking_time).toLocaleDateString()}
 Time: ${new Date(booking.booking_time).toLocaleTimeString()}

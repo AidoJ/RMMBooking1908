@@ -262,7 +262,7 @@ async function sendCustomerNotification(customerPhone, booking, therapist, actio
   const message = isAccept ?
     `🎉 BOOKING CONFIRMED!
 
-${therapist.first_name} ${therapist.last_name} has accepted your massage booking for ${getShortDate(booking.booking_time, timezone)} at ${getLocalTime(booking.booking_time, timezone)}.
+${therapist.first_name} ${therapist.last_name} has accepted your booking for ${getShortDate(booking.booking_time, timezone)} at ${getLocalTime(booking.booking_time, timezone)}.
 
 Check your email for full details!
 - Rejuvenators` :

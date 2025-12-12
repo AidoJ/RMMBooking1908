@@ -32,6 +32,7 @@ export class SMSService {
       const message = `📱 NEW BOOKING REQUEST
 
 Booking ID: ${booking.booking_id}
+Service: ${booking.service_name || booking.services?.name || 'Service'}
 Client: ${booking.first_name} ${booking.last_name}
 Date: ${new Date(booking.booking_time).toLocaleDateString()}
 Time: ${new Date(booking.booking_time).toLocaleTimeString()}
@@ -68,7 +69,7 @@ Quick Response:
       const message = isConfirmed ?
         `🎉 BOOKING CONFIRMED!
 
-${therapist.first_name} ${therapist.last_name} has accepted your massage booking for ${new Date(booking.booking_time).toLocaleDateString()} at ${new Date(booking.booking_time).toLocaleTimeString()}.
+${therapist.first_name} ${therapist.last_name} has accepted your booking for ${new Date(booking.booking_time).toLocaleDateString()} at ${new Date(booking.booking_time).toLocaleTimeString()}.
 
 Check your email for full details!
 - Rejuvenators` :
@@ -100,6 +101,7 @@ Unfortunately, your therapist declined booking ${booking.booking_id}. We're look
       const message = `✅ BOOKING CONFIRMED!
 
 You've accepted booking ${booking.booking_id}
+Service: ${booking.service_name || booking.services?.name || 'Service'}
 Client: ${booking.first_name} ${booking.last_name}
 Date: ${new Date(booking.booking_time).toLocaleDateString()} at ${new Date(booking.booking_time).toLocaleTimeString()}
 Fee: $${booking.therapist_fee || 'TBD'}
@@ -185,7 +187,7 @@ You've declined booking ${booking.booking_id}. The client has been notified.
 
       const message = `📋 BOOKING UPDATED
 
-Your massage booking has been updated.
+Your booking has been updated.
 
 Booking ID: ${booking.booking_id || booking.id}
 Therapist: ${therapistName}
@@ -222,6 +224,7 @@ Check your email for full details.
 A booking assigned to you has been updated.
 
 Booking ID: ${booking.booking_id || booking.id}
+Service: ${booking.service_name || booking.services?.name || 'Service'}
 Client: ${customerName}
 Date: ${new Date(booking.booking_time).toLocaleDateString()}
 Time: ${new Date(booking.booking_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}

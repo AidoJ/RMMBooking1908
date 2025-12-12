@@ -57,7 +57,7 @@ exports.handler = async (event, context) => {
         booking_time: bookingData?.booking_time || '',
         therapist_fee: bookingData?.therapist_fee?.toString() || '0',
       },
-      description: `Massage Booking Authorization - ${bookingData?.service_name || 'Service'}`,
+      description: `Booking Authorization - ${bookingData?.service_name || 'Service'}`,
     });
 
     return {
