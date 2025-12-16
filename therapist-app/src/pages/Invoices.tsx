@@ -108,7 +108,7 @@ export const Invoices: React.FC = () => {
     }
   };
 
-  const loadInvoices = async (therapistId: string) => {
+  const loadInvoices = async (_therapistId: string) => {
     try {
       // Get JWT token
       const token = localStorage.getItem('therapistToken');
