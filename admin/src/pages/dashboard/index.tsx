@@ -563,7 +563,7 @@ export const Dashboard = () => {
         <Text type="secondary">
           {isTherapist(userRole)
             ? "Here's an overview of your bookings and performance"
-            : "Overview of your massage booking business"
+            : "Overview of your booking business"
           }
         </Text>
         <div style={{ marginTop: 8 }}>

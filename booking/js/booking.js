@@ -4221,7 +4221,7 @@ async function sendBookingNotifications(bookingData, bookingId) {
 // NEW: Send SMS confirmation to customer when booking is received
 async function sendCustomerBookingConfirmationSMS(customerPhone, customerName, bookingId) {
   try {
-    const message = `Hi ${customerName}! Your massage booking ${bookingId} has been received. We're finding you a therapist now. You'll get updates via SMS! - Rejuvenators`;
+    const message = `Hi ${customerName}! Your booking ${bookingId} has been received. We're finding you a therapist now. You'll get updates via SMS! - Rejuvenators`;
     
     console.log('📱 Sending booking confirmation SMS to:', customerPhone);
     
