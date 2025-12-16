@@ -167,7 +167,7 @@ export const MyEarnings: React.FC = () => {
               // Match invoices to weeks
               summaries.forEach((summary) => {
                 const invoice = invoices?.find(
-                  (inv) =>
+                  (inv: any) =>
                     inv.week_start_date === summary.week_start &&
                     inv.week_end_date === summary.week_end
                 );
