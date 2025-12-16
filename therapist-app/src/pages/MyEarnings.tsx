@@ -292,6 +292,8 @@ export const MyEarnings: React.FC = () => {
         therapist_invoice_url: invoiceFile || null,
         therapist_invoiced_fees: parseFloat(values.therapist_invoiced_fees || selectedWeek.total_fees),
         therapist_parking_amount: parseFloat(values.therapist_parking_amount || 0),
+        therapist_total_claimed: parseFloat(values.therapist_invoiced_fees || selectedWeek.total_fees) + parseFloat(values.therapist_parking_amount || 0),
+        variance_fees: parseFloat(values.therapist_invoiced_fees || selectedWeek.total_fees) - selectedWeek.total_fees,
         parking_receipt_url: parkingReceiptFile || null,
         therapist_notes: values.therapist_notes || null,
         submitted_at: new Date().toISOString(),
@@ -302,17 +304,29 @@ export const MyEarnings: React.FC = () => {
 
       console.log('Submitting invoice data:', invoiceData);
 
-      const { data, error } = await supabaseClient
-        .from('therapist_payments')
-        .insert([invoiceData])
-        .select();
-
-      if (error) {
-        console.error('Supabase error:', error);
-        throw error;
+      // Get JWT token
+      const token = localStorage.getItem('therapistToken');
+      if (!token) {
+        throw new Error('Not authenticated. Please log in again.');
       }
 
-      console.log('Invoice submitted successfully:', data);
+      // Submit via Netlify function (bypasses RLS with service role)
+      const response = await fetch('/.netlify/functions/therapist-submit-invoice', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(invoiceData)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to submit invoice');
+      }
+
+      console.log('Invoice submitted successfully:', result.data);
       antdMessage.success('Invoice submitted successfully!');
       setSubmitModalVisible(false);
       loadEarningsData(); // Reload to update status
