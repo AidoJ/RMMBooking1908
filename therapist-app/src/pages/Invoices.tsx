@@ -110,18 +110,31 @@ export const Invoices: React.FC = () => {
 
   const loadInvoices = async (therapistId: string) => {
     try {
-      const { data, error } = await supabaseClient
-        .from('therapist_payments')
-        .select('*')
-        .eq('therapist_id', therapistId)
-        .order('week_start_date', { ascending: false });
+      // Get JWT token
+      const token = localStorage.getItem('therapistToken');
+      if (!token) {
+        throw new Error('Not authenticated. Please log in again.');
+      }
 
-      if (error) throw error;
+      // Retrieve invoices via Netlify function (bypasses RLS with service role)
+      const response = await fetch('/.netlify/functions/therapist-get-invoices', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
 
-      setInvoices(data || []);
-    } catch (error) {
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to fetch invoices');
+      }
+
+      setInvoices(result.data || []);
+    } catch (error: any) {
       console.error('Error loading invoices:', error);
-      message.error('Failed to load invoices');
+      message.error(error.message || 'Failed to load invoices');
     }
   };
 

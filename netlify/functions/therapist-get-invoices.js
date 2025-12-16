@@ -85,7 +85,7 @@ exports.handler = async (event, context) => {
     // Retrieve invoices using service role (bypasses RLS)
     const { data, error } = await supabase
       .from('therapist_payments')
-      .select('week_start_date, week_end_date, status, id')
+      .select('*')
       .eq('therapist_id', therapistId)
       .order('week_start_date', { ascending: false });
 
