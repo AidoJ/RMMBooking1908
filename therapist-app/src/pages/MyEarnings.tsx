@@ -146,25 +146,42 @@ export const MyEarnings: React.FC = () => {
 
       // Check for existing invoices for each week
       if (summaries.length > 0) {
-        const { data: invoices, error: invoicesError } = await supabaseClient
-          .from('therapist_payments')
-          .select('week_start_date, week_end_date, status, id')
-          .eq('therapist_id', profile.id);
+        // Get JWT token
+        const token = localStorage.getItem('therapistToken');
+        if (token) {
+          try {
+            // Retrieve invoices via Netlify function (bypasses RLS with service role)
+            const response = await fetch('/.netlify/functions/therapist-get-invoices', {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              }
+            });
 
-        if (invoicesError) throw invoicesError;
+            const result = await response.json();
 
-        // Match invoices to weeks
-        summaries.forEach((summary) => {
-          const invoice = invoices?.find(
-            (inv) =>
-              inv.week_start_date === summary.week_start &&
-              inv.week_end_date === summary.week_end
-          );
-          if (invoice) {
-            summary.invoice_status = invoice.status;
-            summary.invoice_id = invoice.id;
+            if (response.ok && result.success) {
+              const invoices = result.data;
+
+              // Match invoices to weeks
+              summaries.forEach((summary) => {
+                const invoice = invoices?.find(
+                  (inv) =>
+                    inv.week_start_date === summary.week_start &&
+                    inv.week_end_date === summary.week_end
+                );
+                if (invoice) {
+                  summary.invoice_status = invoice.status;
+                  summary.invoice_id = invoice.id;
+                }
+              });
+            }
+          } catch (err) {
+            console.error('Error fetching invoices:', err);
+            // Continue without invoice data - don't throw
           }
-        });
+        }
       }
 
       setWeeklySummaries(summaries);
