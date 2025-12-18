@@ -482,7 +482,23 @@ export const BookingDetail: React.FC = () => {
 
               console.log(`✅ Payment intent created: ${createResult.payment_intent_id}`);
 
-              // Step 2: Capture the newly created payment intent
+              // Step 2: Update database with new payment_intent_id
+              const { error: updateError } = await supabaseClient
+                .from('bookings')
+                .update({
+                  payment_intent_id: createResult.payment_intent_id,
+                  payment_status: 'authorized'
+                })
+                .eq('id', booking.id);
+
+              if (updateError) {
+                console.error('❌ Failed to update payment_intent_id:', updateError);
+                throw new Error('Failed to save payment intent to database');
+              }
+
+              console.log('💾 Payment intent ID saved to database');
+
+              // Step 3: Capture the newly created payment intent
               const captureResponse = await fetch('/.netlify/functions/capture-payment', {
                 method: 'POST',
                 headers: {
@@ -570,6 +586,24 @@ export const BookingDetail: React.FC = () => {
                 const createResult = await createResponse.json();
 
                 if (createResponse.ok && createResult.payment_intent_id) {
+                  console.log(`✅ Payment intent created: ${createResult.payment_intent_id}`);
+
+                  // Update database with new payment_intent_id
+                  const { error: updateError } = await supabaseClient
+                    .from('bookings')
+                    .update({
+                      payment_intent_id: createResult.payment_intent_id,
+                      payment_status: 'authorized'
+                    })
+                    .eq('id', booking.id);
+
+                  if (updateError) {
+                    console.error('❌ Failed to update payment_intent_id:', updateError);
+                    throw new Error('Failed to save payment intent to database');
+                  }
+
+                  console.log('💾 Payment intent ID saved to database');
+
                   const captureResponse = await fetch('/.netlify/functions/capture-payment', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
