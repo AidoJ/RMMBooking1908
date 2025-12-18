@@ -504,7 +504,85 @@ export const BookingDetail: React.FC = () => {
             message.warning('Job marked complete, but no payment method found. Customer may need to pay manually.');
           }
         } else if (occurrenceNumber === 1) {
-          console.log('📅 First occurrence - payment was already captured on accept');
+          // First occurrence - payment SHOULD have been captured on accept
+          // But if payment_status is still pending/authorized, capture it now
+          if (booking?.payment_status === 'pending' || booking?.payment_status === 'authorized') {
+            console.log('⚠️ First occurrence not yet paid - attempting capture now');
+
+            if (booking?.payment_intent_id) {
+              try {
+                const captureResponse = await fetch('/.netlify/functions/capture-payment', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    payment_intent_id: booking.payment_intent_id,
+                    booking_id: booking.booking_id,
+                    completed_by: userId
+                  })
+                });
+
+                const captureResult = await captureResponse.json();
+
+                if (captureResponse.ok && captureResult.success) {
+                  console.log(`✅ Payment captured successfully for occurrence #1`);
+                } else {
+                  console.error('❌ Payment capture failed:', captureResult.error);
+                  message.warning('Job marked complete, but payment capture failed. Please contact admin.');
+                }
+              } catch (captureError) {
+                console.error('❌ Error capturing payment:', captureError);
+                message.warning('Job marked complete, but payment capture failed. Please contact admin.');
+              }
+            } else if (booking?.stripe_payment_method_id && booking?.stripe_customer_id) {
+              // No payment intent but has saved method - create and capture
+              console.log('💳 Creating payment intent for occurrence #1 with saved method');
+              try {
+                const createResponse = await fetch('/.netlify/functions/create-payment-intent-offSession', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    amount: booking.price,
+                    currency: 'aud',
+                    stripe_customer_id: booking.stripe_customer_id,
+                    stripe_payment_method_id: booking.stripe_payment_method_id,
+                    bookingData: {
+                      booking_id: booking.booking_id,
+                      id: booking.id,
+                      customer_email: booking.email,
+                      service_name: booking.service_name,
+                      booking_time: booking.booking_time,
+                      therapist_fee: booking.therapist_fee,
+                      occurrence_number: occurrenceNumber
+                    }
+                  })
+                });
+
+                const createResult = await createResponse.json();
+
+                if (createResponse.ok && createResult.payment_intent_id) {
+                  const captureResponse = await fetch('/.netlify/functions/capture-payment', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      payment_intent_id: createResult.payment_intent_id,
+                      booking_id: booking.booking_id,
+                      completed_by: userId
+                    })
+                  });
+
+                  const captureResult = await captureResponse.json();
+                  if (captureResponse.ok && captureResult.success) {
+                    console.log(`✅ Payment captured for occurrence #1`);
+                  }
+                }
+              } catch (paymentError: any) {
+                console.error('❌ Error processing payment:', paymentError);
+                message.warning(`Job marked complete, but payment failed: ${paymentError.message}`);
+              }
+            }
+          } else {
+            console.log('📅 First occurrence - payment already captured');
+          }
         }
 
         // Schedule review request
