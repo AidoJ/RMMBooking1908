@@ -408,6 +408,15 @@ export const BookingDetail: React.FC = () => {
         const occurrenceNumber = booking?.occurrence_number ?? 0;
         const isSubsequentOccurrence = occurrenceNumber >= 1;
 
+        console.log('💳 Payment capture check:', {
+          occurrenceNumber,
+          isSubsequentOccurrence,
+          payment_intent_id: booking?.payment_intent_id,
+          stripe_payment_method_id: booking?.stripe_payment_method_id,
+          stripe_customer_id: booking?.stripe_customer_id,
+          payment_status: booking?.payment_status
+        });
+
         if (isSubsequentOccurrence) {
           // If payment_intent_id exists, capture it
           if (booking?.payment_intent_id) {
