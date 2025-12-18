@@ -71,7 +71,7 @@ exports.handler = async (event, context) => {
     }
 
     // Create payment intent for AUTHORIZATION (not immediate capture)
-    const paymentIntent = await stripe.paymentIntents.create({
+    const paymentIntentParams = {
       amount: Math.round(amount * 100), // Convert to cents
       currency: currency.toLowerCase(),
       customer: customer ? customer.id : undefined, // Attach customer for recurring payments
@@ -87,7 +87,15 @@ exports.handler = async (event, context) => {
         therapist_fee: bookingData?.therapist_fee?.toString() || '0',
       },
       description: `Booking Authorization - ${bookingData?.service_name || 'Service'}`,
-    });
+    };
+
+    // For recurring payments, tell Stripe to save the payment method for future use
+    if (customer) {
+      paymentIntentParams.setup_future_usage = 'off_session';
+      console.log('Setting up payment method for future off-session use');
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
     return {
       statusCode: 200,
