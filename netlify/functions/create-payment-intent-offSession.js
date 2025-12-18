@@ -66,6 +66,22 @@ exports.handler = async (event, context) => {
       booking_id: bookingData?.booking_id
     });
 
+    // IMPORTANT: Attach payment method to customer if not already attached
+    // Payment methods used once without a customer can't be reused unless attached
+    try {
+      await stripe.paymentMethods.attach(stripe_payment_method_id, {
+        customer: stripe_customer_id,
+      });
+      console.log('✅ Payment method attached to customer');
+    } catch (attachError) {
+      // If already attached, error code will be 'resource_missing' or 'payment_method_attached'
+      if (attachError.code === 'resource_missing') {
+        console.log('ℹ️ Payment method already attached to customer');
+      } else {
+        console.warn('⚠️ Payment method attach error (may already be attached):', attachError.message);
+      }
+    }
+
     // Create payment intent for AUTHORIZATION (not immediate capture)
     // Using saved payment method for off-session payment
     const paymentIntent = await stripe.paymentIntents.create({
