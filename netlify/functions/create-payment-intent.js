@@ -51,8 +51,8 @@ exports.handler = async (event, context) => {
         enabled: true,
       },
       metadata: {
-        booking_id: bookingData?.booking_id || '',
-        customer_email: bookingData?.customer_email || '',
+        booking_id: bookingData?.booking_id || bookingData?.id || '',
+        customer_email: bookingData?.customer_email || bookingData?.email || '',
         service_name: bookingData?.service_name || '',
         booking_time: bookingData?.booking_time || '',
         therapist_fee: bookingData?.therapist_fee?.toString() || '0',

@@ -287,10 +287,40 @@ async function handleBookingAccept(booking, therapist, headers) {
 
     console.log('✅ All bookings with request_id', bookingForRequestId.request_id, 'updated to confirmed');
 
+    // CAPTURE PAYMENT for non-recurring bookings
+    const isRecurring = booking.is_recurring === true || booking.is_recurring === 'true';
+    if (!isRecurring && booking.payment_intent_id) {
+      console.log('💳 Capturing payment for non-recurring booking:', booking.payment_intent_id);
+      try {
+        const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+        const paymentIntent = await stripe.paymentIntents.capture(booking.payment_intent_id);
+
+        if (paymentIntent.status === 'succeeded') {
+          console.log('✅ Payment captured successfully:', paymentIntent.id);
+
+          // Update booking payment status
+          await supabase
+            .from('bookings')
+            .update({
+              payment_status: 'paid',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', booking.id);
+        } else {
+          console.error('❌ Payment capture failed. Status:', paymentIntent.status);
+        }
+      } catch (captureError) {
+        console.error('❌ Error capturing payment:', captureError);
+        // Don't fail the whole booking - log and continue
+      }
+    } else if (isRecurring) {
+      console.log('📅 Recurring booking - payment will be captured when therapist marks complete');
+    }
+
     // Add status history
     try {
-      const historyNote = (booking.status === 'timeout_reassigned' || booking.status === 'seeking_alternate') ? 
-        'Accepted by alternate therapist via email' : 
+      const historyNote = (booking.status === 'timeout_reassigned' || booking.status === 'seeking_alternate') ?
+        'Accepted by alternate therapist via email' :
         'Accepted by original therapist via email';
       await addStatusHistory(booking.id, 'confirmed', therapist.id, historyNote);
       console.log('✅ Status history added');

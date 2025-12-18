@@ -376,6 +376,10 @@ export const BookingDetail: React.FC = () => {
     try {
       setUpdating(true);
 
+      // Get therapist user ID for payment capture
+      const userStr = localStorage.getItem('therapistUser');
+      const userId = userStr ? (JSON.parse(userStr).user_id || JSON.parse(userStr).id) : 'unknown';
+
       const updateData: any = { status: newStatus };
       if (reason) {
         updateData.cancellation_reason = reason;
@@ -397,8 +401,41 @@ export const BookingDetail: React.FC = () => {
       console.log('Update successful');
       message.success(`Booking ${newStatus}`);
 
-      // If completing the job, schedule a review request for 60 minutes later
+      // If completing the job, handle payment capture and review request
       if (newStatus === 'completed') {
+        // CAPTURE PAYMENT for recurring bookings
+        if (booking?.is_recurring && booking?.payment_intent_id) {
+          console.log('💳 Capturing payment for recurring booking:', booking.payment_intent_id);
+          try {
+            const captureResponse = await fetch('/.netlify/functions/capture-payment', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                payment_intent_id: booking.payment_intent_id,
+                booking_id: booking.booking_id,
+                completed_by: userId
+              })
+            });
+
+            const captureResult = await captureResponse.json();
+
+            if (captureResponse.ok && captureResult.success) {
+              console.log('✅ Payment captured successfully for recurring booking');
+            } else {
+              console.error('❌ Payment capture failed:', captureResult.error);
+              message.warning('Job marked complete, but payment capture failed. Please contact admin.');
+            }
+          } catch (captureError) {
+            console.error('❌ Error capturing payment:', captureError);
+            message.warning('Job marked complete, but payment capture failed. Please contact admin.');
+          }
+        } else if (!booking?.is_recurring) {
+          console.log('📅 Non-recurring booking - payment was already captured on accept');
+        }
+
+        // Schedule review request
         try {
           const scheduleUrl = `/.netlify/functions/schedule-review-request?booking=${id}`;
           const scheduleResponse = await fetch(scheduleUrl, {
