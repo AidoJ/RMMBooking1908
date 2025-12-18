@@ -403,9 +403,12 @@ export const BookingDetail: React.FC = () => {
 
       // If completing the job, handle payment capture and review request
       if (newStatus === 'completed') {
-        // CAPTURE PAYMENT for recurring bookings
-        if (booking?.is_recurring && booking?.payment_intent_id) {
-          console.log('💳 Capturing payment for recurring booking:', booking.payment_intent_id);
+        // CAPTURE PAYMENT for subsequent occurrences (occurrence_number > 1)
+        const occurrenceNumber = booking?.occurrence_number || 1;
+        const isSubsequentOccurrence = occurrenceNumber > 1;
+
+        if (isSubsequentOccurrence && booking?.payment_intent_id) {
+          console.log(`💳 Capturing payment for subsequent occurrence #${occurrenceNumber}:`, booking.payment_intent_id);
           try {
             const captureResponse = await fetch('/.netlify/functions/capture-payment', {
               method: 'POST',
@@ -422,7 +425,7 @@ export const BookingDetail: React.FC = () => {
             const captureResult = await captureResponse.json();
 
             if (captureResponse.ok && captureResult.success) {
-              console.log('✅ Payment captured successfully for recurring booking');
+              console.log(`✅ Payment captured successfully for occurrence #${occurrenceNumber}`);
             } else {
               console.error('❌ Payment capture failed:', captureResult.error);
               message.warning('Job marked complete, but payment capture failed. Please contact admin.');
@@ -431,8 +434,8 @@ export const BookingDetail: React.FC = () => {
             console.error('❌ Error capturing payment:', captureError);
             message.warning('Job marked complete, but payment capture failed. Please contact admin.');
           }
-        } else if (!booking?.is_recurring) {
-          console.log('📅 Non-recurring booking - payment was already captured on accept');
+        } else if (occurrenceNumber === 1) {
+          console.log('📅 First occurrence - payment was already captured on accept');
         }
 
         // Schedule review request
