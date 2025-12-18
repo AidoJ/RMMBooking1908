@@ -223,6 +223,7 @@ exports.handler = async (event, context) => {
           booking_time: dateTime, // Same local time as initial booking
           status: 'requested', // Repeats start as requested (therapist already accepted series via initial)
           payment_status: 'pending', // Repeats are not yet paid
+          payment_intent_id: null, // Each occurrence gets its own payment intent (not created yet)
           // Don't apply discount/gift card to repeats
           discount_amount: 0,
           gift_card_amount: 0,
