@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Card, Form, Input, Button, Checkbox, Radio, DatePicker, InputNumber, message, Spin, Alert, Typography, Space, Divider, Row, Col } from 'antd';
 import { CheckCircleOutlined } from '@ant-design/icons';
-import { supabaseClient } from '../services/supabaseClient';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -114,33 +113,24 @@ export function ClientIntakeForm() {
 
   async function loadBookingData() {
     try {
-      // Check if form already submitted
-      const { data: existingForm, error: formError } = await supabaseClient
-        .from('client_intake_forms')
-        .select('*')
-        .eq('booking_id', bookingId)
-        .maybeSingle();
+      // Fetch booking and form data via Netlify function (bypasses RLS)
+      const response = await fetch(`/.netlify/functions/client-intake?booking=${bookingId}`);
+      const result = await response.json();
 
-      if (formError && formError.code !== 'PGRST116') {
-        throw formError;
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to load booking data');
       }
 
-      if (existingForm && existingForm.completed_at) {
-        setSubmitted(true);
+      const { booking, intakeForm: existingForm } = result;
+
+      if (!booking) {
+        setError('Booking not found. Please check your link and try again.');
         setLoading(false);
         return;
       }
 
-      // Fetch booking details
-      const { data: booking, error: bookingError } = await supabaseClient
-        .from('bookings')
-        .select('*')
-        .eq('id', bookingId)
-        .single();
-
-      if (bookingError) throw bookingError;
-      if (!booking) {
-        setError('Booking not found. Please check your link and try again.');
+      if (existingForm && existingForm.completed_at) {
+        setSubmitted(true);
         setLoading(false);
         return;
       }
@@ -283,11 +273,20 @@ export function ClientIntakeForm() {
         completed_at: new Date().toISOString(),
       };
 
-      const { error } = await supabaseClient
-        .from('client_intake_forms')
-        .upsert(formData, { onConflict: 'booking_id' });
+      // Submit via Netlify function (bypasses RLS)
+      const response = await fetch('/.netlify/functions/client-intake', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
 
-      if (error) throw error;
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to submit form');
+      }
 
       message.success('Health intake form submitted successfully!');
       setSubmitted(true);

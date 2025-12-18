@@ -88,14 +88,27 @@ export const BookingDetail: React.FC = () => {
       setBooking(bookingData);
       setTherapistNotes(data.therapist_notes || '');
 
-      // Load intake form if exists
-      const { data: intakeData } = await supabaseClient
-        .from('client_intake_forms')
-        .select('*')
-        .eq('booking_id', id)
-        .maybeSingle();
+      // Load intake form if exists via Netlify function (bypasses RLS)
+      const token = localStorage.getItem('therapistToken');
+      if (token) {
+        try {
+          const response = await fetch(`/.netlify/functions/therapist-get-intake-form?booking=${id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
 
-      setIntakeForm(intakeData);
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+              setIntakeForm(result.data);
+            }
+          }
+        } catch (err) {
+          console.error('Error loading intake form:', err);
+          // Continue without intake form - don't break booking detail view
+        }
+      }
     } catch (error) {
       console.error('Error loading booking:', error);
       message.error('Failed to load booking details');
