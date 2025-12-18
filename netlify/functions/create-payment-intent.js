@@ -42,17 +42,46 @@ exports.handler = async (event, context) => {
       };
     }
 
+    const customerEmail = bookingData?.customer_email || bookingData?.email || '';
+    const customerName = bookingData?.customer_name || '';
+
+    // Create or retrieve Stripe customer for recurring payments
+    let customer;
+    if (customerEmail) {
+      // Check if customer already exists
+      const existingCustomers = await stripe.customers.list({
+        email: customerEmail,
+        limit: 1
+      });
+
+      if (existingCustomers.data.length > 0) {
+        customer = existingCustomers.data[0];
+        console.log('Found existing Stripe customer:', customer.id);
+      } else {
+        // Create new customer
+        customer = await stripe.customers.create({
+          email: customerEmail,
+          name: customerName,
+          metadata: {
+            source: 'rejuvenators_booking'
+          }
+        });
+        console.log('Created new Stripe customer:', customer.id);
+      }
+    }
+
     // Create payment intent for AUTHORIZATION (not immediate capture)
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100), // Convert to cents
       currency: currency.toLowerCase(),
+      customer: customer ? customer.id : undefined, // Attach customer for recurring payments
       capture_method: 'manual', // KEY: This authorizes but doesn't capture payment
       automatic_payment_methods: {
         enabled: true,
       },
       metadata: {
         booking_id: bookingData?.booking_id || bookingData?.id || '',
-        customer_email: bookingData?.customer_email || bookingData?.email || '',
+        customer_email: customerEmail,
         service_name: bookingData?.service_name || '',
         booking_time: bookingData?.booking_time || '',
         therapist_fee: bookingData?.therapist_fee?.toString() || '0',
@@ -69,6 +98,7 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         client_secret: paymentIntent.client_secret,
         payment_intent_id: paymentIntent.id,
+        stripe_customer_id: customer ? customer.id : null, // Return customer ID
         amount: paymentIntent.amount,
         currency: paymentIntent.currency,
       }),

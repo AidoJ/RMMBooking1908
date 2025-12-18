@@ -3465,7 +3465,13 @@ async function authorizeCard() {
       throw new Error(errorData.error || 'Failed to initialize payment');
     }
 
-    const { client_secret, payment_intent_id } = await authResponse.json();
+    const { client_secret, payment_intent_id, stripe_customer_id } = await authResponse.json();
+
+    // Save customer ID for recurring bookings
+    if (stripe_customer_id) {
+      window.stripeCustomerId = stripe_customer_id;
+      console.log('✅ Stripe customer ID saved:', stripe_customer_id);
+    }
 
     // Step 2: Confirm card payment (authorize, don't charge)
     console.log('💳 Step 2: Confirming card payment...');
@@ -4461,10 +4467,12 @@ if (confirmBtn) {
           payload.status = 'requested'; // Waiting for therapist acceptance
           payload.payment_intent_id = authorizedPaymentIntentId;
 
-          // For recurring bookings, include payment method for future charges
+          // For recurring bookings, include payment method and customer for future charges
           if (window.recurringBooking?.enabled && window.stripePaymentMethodId) {
             payload.stripe_payment_method_id = window.stripePaymentMethodId;
+            payload.stripe_customer_id = window.stripeCustomerId || null;
             console.log('🔄 Including payment method for recurring bookings:', window.stripePaymentMethodId);
+            console.log('🔄 Including customer ID for recurring bookings:', window.stripeCustomerId);
           }
         } else {
           // Bank transfer or invoice - no card authorization needed
