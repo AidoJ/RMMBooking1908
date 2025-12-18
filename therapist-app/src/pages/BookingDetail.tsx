@@ -407,32 +407,101 @@ export const BookingDetail: React.FC = () => {
         const occurrenceNumber = booking?.occurrence_number || 1;
         const isSubsequentOccurrence = occurrenceNumber > 1;
 
-        if (isSubsequentOccurrence && booking?.payment_intent_id) {
-          console.log(`💳 Capturing payment for subsequent occurrence #${occurrenceNumber}:`, booking.payment_intent_id);
-          try {
-            const captureResponse = await fetch('/.netlify/functions/capture-payment', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                payment_intent_id: booking.payment_intent_id,
-                booking_id: booking.booking_id,
-                completed_by: userId
-              })
-            });
+        if (isSubsequentOccurrence) {
+          // If payment_intent_id exists, capture it
+          if (booking?.payment_intent_id) {
+            console.log(`💳 Capturing payment for subsequent occurrence #${occurrenceNumber}:`, booking.payment_intent_id);
+            try {
+              const captureResponse = await fetch('/.netlify/functions/capture-payment', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  payment_intent_id: booking.payment_intent_id,
+                  booking_id: booking.booking_id,
+                  completed_by: userId
+                })
+              });
 
-            const captureResult = await captureResponse.json();
+              const captureResult = await captureResponse.json();
 
-            if (captureResponse.ok && captureResult.success) {
-              console.log(`✅ Payment captured successfully for occurrence #${occurrenceNumber}`);
-            } else {
-              console.error('❌ Payment capture failed:', captureResult.error);
+              if (captureResponse.ok && captureResult.success) {
+                console.log(`✅ Payment captured successfully for occurrence #${occurrenceNumber}`);
+              } else {
+                console.error('❌ Payment capture failed:', captureResult.error);
+                message.warning('Job marked complete, but payment capture failed. Please contact admin.');
+              }
+            } catch (captureError) {
+              console.error('❌ Error capturing payment:', captureError);
               message.warning('Job marked complete, but payment capture failed. Please contact admin.');
             }
-          } catch (captureError) {
-            console.error('❌ Error capturing payment:', captureError);
-            message.warning('Job marked complete, but payment capture failed. Please contact admin.');
+          }
+          // If no payment_intent_id but has saved payment method, create and capture on-the-spot
+          else if (booking?.stripe_payment_method_id && booking?.stripe_customer_id) {
+            console.log(`💳 No payment intent found for occurrence #${occurrenceNumber}, creating one now with saved payment method`);
+            try {
+              // Step 1: Create payment intent with saved payment method
+              const createResponse = await fetch('/.netlify/functions/create-payment-intent-offSession', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  amount: booking.price,
+                  currency: 'aud',
+                  stripe_customer_id: booking.stripe_customer_id,
+                  stripe_payment_method_id: booking.stripe_payment_method_id,
+                  bookingData: {
+                    booking_id: booking.booking_id,
+                    id: booking.id,
+                    customer_email: booking.email,
+                    service_name: booking.service_name,
+                    booking_time: booking.booking_time,
+                    therapist_fee: booking.therapist_fee,
+                    occurrence_number: occurrenceNumber
+                  }
+                })
+              });
+
+              const createResult = await createResponse.json();
+
+              if (!createResponse.ok || !createResult.payment_intent_id) {
+                throw new Error(createResult.error || 'Failed to create payment intent');
+              }
+
+              console.log(`✅ Payment intent created: ${createResult.payment_intent_id}`);
+
+              // Step 2: Capture the newly created payment intent
+              const captureResponse = await fetch('/.netlify/functions/capture-payment', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  payment_intent_id: createResult.payment_intent_id,
+                  booking_id: booking.booking_id,
+                  completed_by: userId
+                })
+              });
+
+              const captureResult = await captureResponse.json();
+
+              if (captureResponse.ok && captureResult.success) {
+                console.log(`✅ Payment captured successfully for occurrence #${occurrenceNumber}`);
+              } else {
+                console.error('❌ Payment capture failed:', captureResult.error);
+                message.warning('Job marked complete, but payment capture failed. Please contact admin.');
+              }
+            } catch (paymentError: any) {
+              console.error('❌ Error creating/capturing payment:', paymentError);
+              message.warning(`Job marked complete, but payment processing failed: ${paymentError.message || 'Unknown error'}`);
+            }
+          }
+          // No payment method saved - this shouldn't happen but log it
+          else {
+            console.warn(`⚠️ No payment intent or saved payment method for occurrence #${occurrenceNumber}`);
+            message.warning('Job marked complete, but no payment method found. Customer may need to pay manually.');
           }
         } else if (occurrenceNumber === 1) {
           console.log('📅 First occurrence - payment was already captured on accept');
