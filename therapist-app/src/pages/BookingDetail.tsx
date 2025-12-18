@@ -403,9 +403,10 @@ export const BookingDetail: React.FC = () => {
 
       // If completing the job, handle payment capture and review request
       if (newStatus === 'completed') {
-        // CAPTURE PAYMENT for subsequent occurrences (occurrence_number > 1)
-        const occurrenceNumber = booking?.occurrence_number || 1;
-        const isSubsequentOccurrence = occurrenceNumber > 1;
+        // CAPTURE PAYMENT for subsequent occurrences (occurrence_number >= 1)
+        // occurrence_number can be 0, so use ?? to handle it properly
+        const occurrenceNumber = booking?.occurrence_number ?? 0;
+        const isSubsequentOccurrence = occurrenceNumber >= 1;
 
         if (isSubsequentOccurrence) {
           // If payment_intent_id exists, capture it
@@ -503,11 +504,11 @@ export const BookingDetail: React.FC = () => {
             console.warn(`⚠️ No payment intent or saved payment method for occurrence #${occurrenceNumber}`);
             message.warning('Job marked complete, but no payment method found. Customer may need to pay manually.');
           }
-        } else if (occurrenceNumber === 1) {
-          // First occurrence - payment SHOULD have been captured on accept
+        } else if (occurrenceNumber === 0) {
+          // Initial booking - payment SHOULD have been captured on accept
           // But if payment_status is still pending/authorized, capture it now
           if (booking?.payment_status === 'pending' || booking?.payment_status === 'authorized') {
-            console.log('⚠️ First occurrence not yet paid - attempting capture now');
+            console.log('⚠️ Initial booking not yet paid - attempting capture now');
 
             if (booking?.payment_intent_id) {
               try {
@@ -524,7 +525,7 @@ export const BookingDetail: React.FC = () => {
                 const captureResult = await captureResponse.json();
 
                 if (captureResponse.ok && captureResult.success) {
-                  console.log(`✅ Payment captured successfully for occurrence #1`);
+                  console.log(`✅ Payment captured successfully for initial booking`);
                 } else {
                   console.error('❌ Payment capture failed:', captureResult.error);
                   message.warning('Job marked complete, but payment capture failed. Please contact admin.');
@@ -535,7 +536,7 @@ export const BookingDetail: React.FC = () => {
               }
             } else if (booking?.stripe_payment_method_id && booking?.stripe_customer_id) {
               // No payment intent but has saved method - create and capture
-              console.log('💳 Creating payment intent for occurrence #1 with saved method');
+              console.log('💳 Creating payment intent for initial booking with saved method');
               try {
                 const createResponse = await fetch('/.netlify/functions/create-payment-intent-offSession', {
                   method: 'POST',
@@ -572,7 +573,7 @@ export const BookingDetail: React.FC = () => {
 
                   const captureResult = await captureResponse.json();
                   if (captureResponse.ok && captureResult.success) {
-                    console.log(`✅ Payment captured for occurrence #1`);
+                    console.log(`✅ Payment captured for initial booking`);
                   }
                 }
               } catch (paymentError: any) {
@@ -581,7 +582,7 @@ export const BookingDetail: React.FC = () => {
               }
             }
           } else {
-            console.log('📅 First occurrence - payment already captured');
+            console.log('📅 Initial booking - payment already captured');
           }
         }
 

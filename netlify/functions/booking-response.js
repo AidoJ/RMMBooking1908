@@ -287,13 +287,13 @@ async function handleBookingAccept(booking, therapist, headers) {
 
     console.log('✅ All bookings with request_id', bookingForRequestId.request_id, 'updated to confirmed');
 
-    // CAPTURE PAYMENT for first occurrence (initial job)
-    // occurrence_number = 1 OR null/undefined = first booking or single booking
-    const occurrenceNumber = booking.occurrence_number || 1;
-    const isFirstOccurrence = occurrenceNumber === 1;
+    // CAPTURE PAYMENT for initial booking (occurrence_number = 0)
+    // occurrence_number can be 0, so use ?? instead of || to handle falsy 0
+    const occurrenceNumber = booking.occurrence_number ?? 0;
+    const isInitialBooking = occurrenceNumber === 0;
 
-    if (isFirstOccurrence && booking.payment_intent_id) {
-      console.log(`💳 Capturing payment for first occurrence (occurrence #${occurrenceNumber}):`, booking.payment_intent_id);
+    if (isInitialBooking && booking.payment_intent_id) {
+      console.log(`💳 Capturing payment for initial booking (occurrence #${occurrenceNumber}):`, booking.payment_intent_id);
       try {
         const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
         const paymentIntent = await stripe.paymentIntents.capture(booking.payment_intent_id);
@@ -316,8 +316,8 @@ async function handleBookingAccept(booking, therapist, headers) {
         console.error('❌ Error capturing payment:', captureError);
         // Don't fail the whole booking - log and continue
       }
-    } else if (!isFirstOccurrence) {
-      console.log(`📅 Subsequent occurrence #${occurrenceNumber} - payment will be captured when therapist marks complete`);
+    } else {
+      console.log(`📅 Repeat occurrence #${occurrenceNumber} - payment will be captured when therapist marks complete`);
     }
 
     // Add status history
