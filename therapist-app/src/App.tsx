@@ -25,42 +25,29 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for Supabase Auth session
+    // Check for Supabase Auth session - SIMPLE VERSION
     const checkAuth = async () => {
       try {
-        const { data: { session }, error } = await supabaseClient.auth.getSession();
-
-        if (error) {
-          console.error('Session error:', error);
-          setLoading(false);
-          return;
-        }
+        const { data: { session } } = await supabaseClient.auth.getSession();
 
         if (session?.user) {
-          // Fetch therapist profile
-          const { data: therapistProfile, error: profileError } = await supabaseClient
-            .from('therapist_profiles')
-            .select('*')
-            .eq('auth_id', session.user.id)
-            .single();
+          // Get profile from localStorage (set during login)
+          const profileStr = localStorage.getItem('therapist_profile');
 
-          if (profileError || !therapistProfile) {
-            console.error('Failed to fetch therapist profile:', profileError);
-            await supabaseClient.auth.signOut();
-            localStorage.removeItem('therapist_profile');
-            setLoading(false);
-            return;
+          if (profileStr) {
+            try {
+              const therapistProfile = JSON.parse(profileStr);
+              setUser({
+                id: therapistProfile.id,
+                email: therapistProfile.email,
+                role: 'therapist',
+                therapist_profile: therapistProfile,
+              });
+            } catch (e) {
+              console.error('Error parsing therapist profile:', e);
+              localStorage.removeItem('therapist_profile');
+            }
           }
-
-          // Store in localStorage for easy access
-          localStorage.setItem('therapist_profile', JSON.stringify(therapistProfile));
-
-          setUser({
-            id: therapistProfile.id,
-            email: therapistProfile.email,
-            role: 'therapist',
-            therapist_profile: therapistProfile,
-          });
         }
       } catch (error) {
         console.error('Error checking auth:', error);
@@ -72,27 +59,10 @@ function App() {
     checkAuth();
 
     // Listen for auth state changes
-    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         setUser(null);
         localStorage.removeItem('therapist_profile');
-      } else if (event === 'SIGNED_IN' && session?.user) {
-        // Refresh therapist profile
-        const { data: therapistProfile } = await supabaseClient
-          .from('therapist_profiles')
-          .select('*')
-          .eq('auth_id', session.user.id)
-          .single();
-
-        if (therapistProfile) {
-          localStorage.setItem('therapist_profile', JSON.stringify(therapistProfile));
-          setUser({
-            id: therapistProfile.id,
-            email: therapistProfile.email,
-            role: 'therapist',
-            therapist_profile: therapistProfile,
-          });
-        }
       }
     });
 
