@@ -26,7 +26,6 @@ import {
   CloseCircleOutlined,
   DollarOutlined
 } from '@ant-design/icons';
-import { supabaseClient } from '../utility/supabaseClient';
 import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;

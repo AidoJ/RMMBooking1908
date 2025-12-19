@@ -363,7 +363,7 @@ export const BookingDetail: React.FC = () => {
       // Get therapist profile from localStorage
       const profileStr = localStorage.getItem('therapist_profile');
       const profile = profileStr ? JSON.parse(profileStr) : null;
-      const therapistId = profile?.id || 'unknown';
+      const userId = profile?.id || 'unknown';
 
       const updateData: any = { status: newStatus };
       if (reason) {

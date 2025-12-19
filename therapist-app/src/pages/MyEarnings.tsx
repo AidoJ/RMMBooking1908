@@ -92,12 +92,6 @@ export const MyEarnings: React.FC = () => {
         return;
       }
 
-      if (profileError) throw profileError;
-      if (!profile) {
-        antdMessage.error('Profile not found');
-        return;
-      }
-
       setTherapistId(profile.id);
 
       // Query completed bookings from last 12 weeks
