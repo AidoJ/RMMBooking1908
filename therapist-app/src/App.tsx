@@ -4,6 +4,7 @@ import { ConfigProvider, Spin, App as AntApp } from 'antd';
 import { AppLayout } from './components/AppLayout';
 import { Login } from './pages/Login';
 import { ForgotPassword } from './pages/ForgotPassword';
+import { setTherapistSession } from './utility/supabaseClient';
 import { ResetPassword } from './pages/ResetPassword';
 import { Dashboard } from './pages/Dashboard';
 import { Calendar } from './pages/Calendar';
@@ -32,6 +33,10 @@ function App() {
       if (token && userStr) {
         try {
           const therapistData = JSON.parse(userStr);
+
+          // Set Supabase session for RLS
+          setTherapistSession(token);
+
           setUser({
             id: therapistData.user_id || therapistData.id,
             email: therapistData.email,

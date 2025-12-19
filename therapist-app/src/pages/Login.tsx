@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, Form, Input, Button, message, Typography } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
+import { setTherapistSession } from '../utility/supabaseClient';
 
 const { Title, Text, Link } = Typography;
 
@@ -34,6 +35,9 @@ export const Login: React.FC = () => {
       // Store token and user info in localStorage
       localStorage.setItem('therapistToken', result.token);
       localStorage.setItem('therapistUser', JSON.stringify(result.user));
+
+      // Set Supabase session with custom JWT for RLS
+      setTherapistSession(result.token);
 
       message.success('Welcome back!');
       // Force page reload to trigger auth check in App.tsx
