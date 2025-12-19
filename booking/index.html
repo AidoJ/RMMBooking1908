@@ -156,7 +156,7 @@
           <label style="font-weight:600; margin-bottom:8px; display:block;">Do you have a preferred therapist gender?</label>
           <div class="radio-group horizontal">
              <label class="radio-inline">
-              <span>Don't mind, just want a great massage</span>
+              <span>Don't mind, just want a great therapist</span>
               <input type="radio" name="genderPref" value="any" checked>
             </label>
             <label class="radio-inline">
@@ -460,17 +460,21 @@
         <!-- Room Details Section -->
         <div class="form-section">
        <h3> Room Details and Notes</h3>
-          <div class="form-group">
-            <label for="roomNumber">Room Number</label>
-            <input type="text" id="roomNumber" placeholder="e.g. Room 101, Apartment 2B (write N/A if not applicable)" />
+          <!-- Two-column layout for Room Number and Booker Name -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="roomNumber">Room Number</label>
+              <input type="text" id="roomNumber" placeholder="e.g. Room 101, 2B" />
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="bookerName">Person who booked</label>
+              <input type="text" id="bookerName" placeholder="N/A if not applicable" />
+            </div>
           </div>
-          <div class="form-group">
-            <label for="bookerName">Name of person who booked the room</label>
-            <input type="text" id="bookerName" placeholder="(write N/A if not applicable)" />
-          </div>
+          <!-- Single line input for notes -->
           <div class="form-group">
             <label for="notes">Additional Notes (Optional)</label>
-            <textarea id="notes" rows="4" placeholder="e.g., Parking instructions, access codes, special requirements, medical conditions, preferred pressure, etc." style="font-size: 13px;"></textarea>
+            <input type="text" id="notes" placeholder="e.g., Parking instructions, access codes, special requirements, etc." style="font-size: 13px;" />
           </div>
         </div>
 
