@@ -29,17 +29,24 @@ export const Login: React.FC = () => {
       }
 
       // Fetch therapist_profiles record to get profile info
+      console.log('🔍 Fetching profile for auth_id:', data.user.id);
+
       const { data: therapistProfile, error: profileError } = await supabaseClient
         .from('therapist_profiles')
         .select('*')
         .eq('auth_id', data.user.id)
         .single();
 
+      console.log('Profile fetch result:', { therapistProfile, profileError });
+
       if (profileError || !therapistProfile) {
-        console.error('Failed to fetch therapist profile:', profileError);
+        console.error('❌ Failed to fetch therapist profile:', profileError);
+        console.error('Auth ID was:', data.user.id);
         await supabaseClient.auth.signOut();
         throw new Error('Access denied - not a therapist user');
       }
+
+      console.log('✅ Profile loaded:', therapistProfile.email);
 
       // Store therapist profile in localStorage for easy access
       localStorage.setItem('therapist_profile', JSON.stringify(therapistProfile));
