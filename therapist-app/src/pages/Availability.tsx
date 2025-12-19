@@ -61,8 +61,6 @@ export const Availability: React.FC = () => {
       }
 
       const profileData = { id: profile.id };
-      }
-
       setTherapistProfileId(profileData.id);
 
       // Load availability slots

@@ -89,9 +89,6 @@ export const Invoices: React.FC = () => {
         setLoading(false);
         return;
       }
-        console.error('Profile error:', profileError);
-        return;
-      }
 
       setTherapistId(profile.id);
 

@@ -65,14 +65,6 @@ export const TimeOff: React.FC = () => {
       }
 
       const profileData = { id: profile.id };
-        if (profileError.code === 'PGRST116') {
-          message.warning('Please complete your profile first');
-          setLoading(false);
-          return;
-        }
-        throw profileError;
-      }
-
       setTherapistProfileId(profileData.id);
 
       // Load time off periods
