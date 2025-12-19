@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Form, Input, Button, Card, Typography, Alert, message } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useNavigate } from 'react-router';
+import { realSupabaseClient } from '../../utility/supabaseClient';
 
 const { Title, Text } = Typography;
 
@@ -11,49 +12,50 @@ export const ResetPassword: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [form] = Form.useForm();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
-    if (!token) {
-      setError('Invalid or missing reset token');
-    }
-  }, [token]);
+    // Check if user arrived via password reset link
+    const checkSession = async () => {
+      const { data: { session }, error } = await realSupabaseClient.auth.getSession();
+
+      if (error) {
+        console.error('Session error:', error);
+        setError('Invalid or expired reset link');
+        return;
+      }
+
+      if (session) {
+        setHasSession(true);
+      } else {
+        setError('Invalid or expired reset link. Please request a new password reset.');
+      }
+    };
+
+    checkSession();
+  }, []);
 
   const handleSubmit = async (values: { password: string; confirmPassword: string }) => {
-    if (!token) {
-      message.error('Invalid reset token');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/.netlify/functions/password-reset-confirm', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          token: token,
-          new_password: values.password
-        }),
+      const { error } = await realSupabaseClient.auth.updateUser({
+        password: values.password
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (error) {
+        setError(error.message || 'Failed to reset password');
+        message.error(error.message || 'Failed to reset password');
+      } else {
         setSuccess(true);
         message.success('Password reset successful');
 
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
+        // Sign out and redirect to login after 3 seconds
+        setTimeout(async () => {
+          await realSupabaseClient.auth.signOut();
           navigate('/login');
         }, 3000);
-      } else {
-        setError(data.error || 'Failed to reset password');
-        message.error(data.error || 'Failed to reset password');
       }
     } catch (error) {
       console.error('Password reset error:', error);
@@ -133,7 +135,7 @@ export const ResetPassword: React.FC = () => {
           layout="vertical"
           onFinish={handleSubmit}
           size="large"
-          disabled={!token}
+          disabled={!hasSession}
         >
           <Form.Item
             name="password"
@@ -199,7 +201,7 @@ export const ResetPassword: React.FC = () => {
               htmlType="submit"
               block
               loading={loading}
-              disabled={!token}
+              disabled={!hasSession}
             >
               Reset Password
             </Button>

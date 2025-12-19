@@ -1,5 +1,5 @@
 import { AuthBindings } from "@refinedev/core";
-import { AdminDataService } from "./services/adminDataService";
+import { realSupabaseClient } from "./utility/supabaseClient";
 
 // Define login credentials type
 interface LoginCredentials {
@@ -10,24 +10,59 @@ interface LoginCredentials {
 const authProvider: AuthBindings = {
   login: async ({ email, password }: LoginCredentials) => {
     try {
-      console.log('🔐 Attempting secure admin login for:', email);
-      
-      // Use AdminDataService for secure authentication
-      const result = await AdminDataService.authenticate(email, password);
+      console.log('🔐 Attempting Supabase Auth login for:', email);
 
-      if (!result.success) {
-        console.error('❌ Login failed:', result.error);
+      // Use Supabase Auth for authentication
+      const { data, error } = await realSupabaseClient.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        console.error('❌ Login failed:', error.message);
         return {
           success: false,
           error: {
-            message: result.error || "Invalid email or password",
+            message: error.message || "Invalid email or password",
             name: "Login Error",
           },
         };
       }
 
-      console.log('✅ Login successful:', result.user?.email, 'Role:', result.user?.role);
-      
+      if (!data.user) {
+        return {
+          success: false,
+          error: {
+            message: "Login failed - no user returned",
+            name: "Login Error",
+          },
+        };
+      }
+
+      // Fetch admin_users record to get role and other info
+      const { data: adminUser, error: adminError } = await realSupabaseClient
+        .from('admin_users')
+        .select('*')
+        .eq('auth_id', data.user.id)
+        .single();
+
+      if (adminError || !adminUser) {
+        console.error('❌ Failed to fetch admin user:', adminError);
+        await realSupabaseClient.auth.signOut();
+        return {
+          success: false,
+          error: {
+            message: "Access denied - not an admin user",
+            name: "Authorization Error",
+          },
+        };
+      }
+
+      console.log('✅ Login successful:', data.user.email, 'Role:', adminUser.role);
+
+      // Store user info in localStorage for getPermissions and getIdentity
+      localStorage.setItem('admin_user', JSON.stringify(adminUser));
+
       return {
         success: true,
         redirectTo: "/",
@@ -45,7 +80,8 @@ const authProvider: AuthBindings = {
   },
 
   logout: async () => {
-    AdminDataService.logout();
+    await realSupabaseClient.auth.signOut();
+    localStorage.removeItem('admin_user');
     return {
       success: true,
       redirectTo: "/login",
@@ -53,10 +89,12 @@ const authProvider: AuthBindings = {
   },
 
   check: async () => {
-    const isAuthenticated = AdminDataService.isAuthenticated();
-    if (isAuthenticated) {
+    const { data: { session } } = await realSupabaseClient.auth.getSession();
+
+    if (session) {
       return { authenticated: true };
     }
+
     return {
       authenticated: false,
       logout: true,
@@ -65,22 +103,22 @@ const authProvider: AuthBindings = {
   },
 
   getPermissions: async () => {
-    const user = localStorage.getItem("user");
-    if (user) {
-      const userData = JSON.parse(user);
+    const adminUser = localStorage.getItem("admin_user");
+    if (adminUser) {
+      const userData = JSON.parse(adminUser);
       return userData.role;
     }
     return null;
   },
 
   getIdentity: async () => {
-    const user = localStorage.getItem("user");
-    if (user) {
-      const userData = JSON.parse(user);
+    const adminUser = localStorage.getItem("admin_user");
+    if (adminUser) {
+      const userData = JSON.parse(adminUser);
       return {
         id: userData.id,
         email: userData.email,
-        name: `${userData.first_name} ${userData.last_name}`,
+        name: `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || userData.email,
         first_name: userData.first_name,
         last_name: userData.last_name,
         role: userData.role,
