@@ -75,21 +75,27 @@ export const ServiceArea: React.FC = () => {
     try {
       setLoading(true);
 
-      // Get user data from localStorage
-      const userStr = localStorage.getItem('therapistUser');
-      if (!userStr) {
+      // Get therapist profile from localStorage
+      const profileStr = localStorage.getItem('therapist_profile');
+      if (!profileStr) {
         message.error('Please log in again');
+        setLoading(false);
         return;
       }
 
-      const userData = JSON.parse(userStr);
-      const userId = userData.user_id || userData.id;
+      const storedProfile = JSON.parse(profileStr);
+      if (!storedProfile || !storedProfile.id) {
+        console.error('Invalid therapist profile in localStorage');
+        message.error('Please log in again');
+        setLoading(false);
+        return;
+      }
 
-      // Get therapist profile
+      // Get latest profile data from database
       const { data: profile, error } = await supabaseClient
         .from('therapist_profiles')
         .select('id, home_address, latitude, longitude, service_radius_km, service_area_polygon, address_verified')
-        .eq('user_id', userId)
+        .eq('id', storedProfile.id)
         .single();
 
       if (error) {

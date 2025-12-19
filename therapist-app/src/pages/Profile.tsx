@@ -79,20 +79,26 @@ export const Profile: React.FC = () => {
     try {
       setInitialLoading(true);
 
-      // Get user data from localStorage
-      const userStr = localStorage.getItem('therapistUser');
-      if (!userStr) {
+      // Get therapist profile from localStorage
+      const profileStr = localStorage.getItem('therapist_profile');
+      if (!profileStr) {
         message.error('Please log in again');
+        setInitialLoading(false);
         return;
       }
 
-      const userData = JSON.parse(userStr);
-      const userId = userData.user_id || userData.id;
+      const storedProfile = JSON.parse(profileStr);
+      if (!storedProfile || !storedProfile.id) {
+        message.error('Invalid therapist profile');
+        setInitialLoading(false);
+        return;
+      }
 
+      // Get latest profile data from database
       const { data, error } = await supabaseClient
         .from('therapist_profiles')
         .select('*')
-        .eq('user_id', userId)
+        .eq('id', storedProfile.id)
         .single();
 
       if (error && error.code !== 'PGRST116') {
@@ -209,14 +215,18 @@ export const Profile: React.FC = () => {
         first_aid_expiry_date: values.first_aid_expiry_date ? values.first_aid_expiry_date.format('YYYY-MM-DD') : null,
       };
 
-      const userStr = localStorage.getItem('therapistUser');
-      if (!userStr) {
+      // Get therapist profile from localStorage
+      const profileStr = localStorage.getItem('therapist_profile');
+      if (!profileStr) {
         message.error('Please log in again');
         return;
       }
 
-      const userData = JSON.parse(userStr);
-      const userId = userData.user_id || userData.id;
+      const storedProfile = JSON.parse(profileStr);
+      if (!storedProfile || !storedProfile.id) {
+        message.error('Invalid therapist profile');
+        return;
+      }
 
       let savedProfile;
 
@@ -231,9 +241,10 @@ export const Profile: React.FC = () => {
         if (error) throw error;
         savedProfile = data;
       } else {
+        // If no profile.id, use stored profile id
         const newProfileData = {
           ...profileData,
-          user_id: userId
+          auth_id: storedProfile.auth_id || storedProfile.id
         };
 
         const { data, error } = await supabaseClient
@@ -249,8 +260,7 @@ export const Profile: React.FC = () => {
       setProfile(savedProfile);
 
       // Update localStorage with new profile data
-      const updatedUser = { ...userData, ...savedProfile };
-      localStorage.setItem('therapistUser', JSON.stringify(updatedUser));
+      localStorage.setItem('therapist_profile', JSON.stringify(savedProfile));
 
       // Show success message with longer duration
       message.success({
@@ -270,14 +280,21 @@ export const Profile: React.FC = () => {
     try {
       setChangingPassword(true);
 
-      const userStr = localStorage.getItem('therapistUser');
-      if (!userStr) {
+      // Get therapist profile from localStorage
+      const profileStr = localStorage.getItem('therapist_profile');
+      if (!profileStr) {
         message.error('Please log in again');
         return;
       }
 
-      const userData = JSON.parse(userStr);
-      const userId = userData.user_id || userData.id;
+      const profile = JSON.parse(profileStr);
+      if (!profile || !profile.auth_id) {
+        message.error('Invalid therapist profile');
+        return;
+      }
+
+      // Get auth user ID from profile
+      const userId = profile.auth_id;
 
       // Call password update function
       const token = localStorage.getItem('therapistToken');

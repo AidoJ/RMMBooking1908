@@ -51,27 +51,31 @@ export const Dashboard: React.FC = () => {
     try {
       setLoading(true);
 
-      // Get user data from localStorage
-      const userStr = localStorage.getItem('therapistUser');
-      if (!userStr) {
+      // Get therapist profile from localStorage
+      const profileStr = localStorage.getItem('therapist_profile');
+      if (!profileStr) {
         setLoading(false);
         return;
       }
 
-      const userData = JSON.parse(userStr);
-      const userId = userData.user_id || userData.id;
-
-      // Get therapist profile with certificate dates
-      const { data: profile, error: profileError } = await supabaseClient
-        .from('therapist_profiles')
-        .select('id, insurance_expiry_date, first_aid_expiry_date')
-        .eq('user_id', userId)
-        .single();
-
-      if (profileError || !profile) {
-        console.error('Profile error:', profileError);
+      const profile = JSON.parse(profileStr);
+      if (!profile || !profile.id) {
+        console.error('Invalid therapist profile in localStorage');
         setLoading(false);
         return;
+      }
+
+      // Get updated certificate dates from database
+      const { data: profileData, error: profileError } = await supabaseClient
+        .from('therapist_profiles')
+        .select('id, insurance_expiry_date, first_aid_expiry_date')
+        .eq('id', profile.id)
+        .single();
+
+      if (!profileError && profileData) {
+        // Update profile with latest certificate dates
+        profile.insurance_expiry_date = profileData.insurance_expiry_date;
+        profile.first_aid_expiry_date = profileData.first_aid_expiry_date;
       }
 
       // Check certificate expiry status

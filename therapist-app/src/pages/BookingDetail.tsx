@@ -220,24 +220,16 @@ export const BookingDetail: React.FC = () => {
     try {
       setUpdating(true);
 
-      // Get therapist profile ID
-      const userStr = localStorage.getItem('therapistUser');
-      if (!userStr) {
+      // Get therapist profile from localStorage
+      const profileStr = localStorage.getItem('therapist_profile');
+      if (!profileStr) {
         message.error('Session expired. Please log in again.');
         return;
       }
 
-      const userData = JSON.parse(userStr);
-      const userId = userData.user_id || userData.id;
-
-      const { data: profile } = await supabaseClient
-        .from('therapist_profiles')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (!profile) {
-        message.error('Therapist profile not found');
+      const profile = JSON.parse(profileStr);
+      if (!profile || !profile.id) {
+        message.error('Invalid therapist profile');
         return;
       }
 
@@ -271,24 +263,16 @@ export const BookingDetail: React.FC = () => {
     try {
       setUpdating(true);
 
-      // Get therapist profile ID
-      const userStr = localStorage.getItem('therapistUser');
-      if (!userStr) {
+      // Get therapist profile from localStorage
+      const profileStr = localStorage.getItem('therapist_profile');
+      if (!profileStr) {
         message.error('Session expired. Please log in again.');
         return;
       }
 
-      const userData = JSON.parse(userStr);
-      const userId = userData.user_id || userData.id;
-
-      const { data: profile } = await supabaseClient
-        .from('therapist_profiles')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (!profile) {
-        message.error('Therapist profile not found');
+      const profile = JSON.parse(profileStr);
+      if (!profile || !profile.id) {
+        message.error('Invalid therapist profile');
         return;
       }
 
@@ -376,9 +360,10 @@ export const BookingDetail: React.FC = () => {
     try {
       setUpdating(true);
 
-      // Get therapist user ID for payment capture
-      const userStr = localStorage.getItem('therapistUser');
-      const userId = userStr ? (JSON.parse(userStr).user_id || JSON.parse(userStr).id) : 'unknown';
+      // Get therapist profile from localStorage
+      const profileStr = localStorage.getItem('therapist_profile');
+      const profile = profileStr ? JSON.parse(profileStr) : null;
+      const therapistId = profile?.id || 'unknown';
 
       const updateData: any = { status: newStatus };
       if (reason) {

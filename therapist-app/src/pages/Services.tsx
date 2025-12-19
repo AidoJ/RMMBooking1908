@@ -47,31 +47,23 @@ export const Services: React.FC = () => {
     try {
       setLoading(true);
 
-      // Get user data from localStorage
-      const userStr = localStorage.getItem('therapistUser');
-      if (!userStr) {
+      // Get therapist profile from localStorage
+      const profileStr = localStorage.getItem('therapist_profile');
+      if (!profileStr) {
         message.error('Please log in again');
+        setLoading(false);
         return;
       }
 
-      const userData = JSON.parse(userStr);
-      const userId = userData.user_id || userData.id;
-
-      // Get therapist profile first
-      const { data: profileData, error: profileError } = await supabaseClient
-        .from('therapist_profiles')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (profileError) {
-        if (profileError.code === 'PGRST116') {
-          message.warning('Please complete your profile first');
-          setLoading(false);
-          return;
-        }
-        throw profileError;
+      const profile = JSON.parse(profileStr);
+      if (!profile || !profile.id) {
+        console.error('Invalid therapist profile in localStorage');
+        message.error('Please log in again');
+        setLoading(false);
+        return;
       }
+
+      const profileData = { id: profile.id };
 
       setTherapistProfileId(profileData.id);
 

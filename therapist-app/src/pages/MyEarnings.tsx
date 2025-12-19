@@ -76,21 +76,21 @@ export const MyEarnings: React.FC = () => {
     try {
       setLoading(true);
 
-      // Get therapist profile
-      const userStr = localStorage.getItem('therapistUser');
-      if (!userStr) {
+      // Get therapist profile from localStorage
+      const profileStr = localStorage.getItem('therapist_profile');
+      if (!profileStr) {
         antdMessage.error('Please log in again');
+        setLoading(false);
         return;
       }
 
-      const userData = JSON.parse(userStr);
-      const userId = userData.user_id || userData.id;
-
-      const { data: profile, error: profileError } = await supabaseClient
-        .from('therapist_profiles')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
+      const profile = JSON.parse(profileStr);
+      if (!profile || !profile.id) {
+        console.error('Invalid therapist profile in localStorage');
+        antdMessage.error('Please log in again');
+        setLoading(false);
+        return;
+      }
 
       if (profileError) throw profileError;
       if (!profile) {
