@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Card, Form, Input, Button, message, Typography, Alert } from 'antd';
 import { MailOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
+import { supabaseClient } from '../utility/supabaseClient';
 
 const { Title, Text } = Typography;
 
@@ -15,24 +16,16 @@ export const ForgotPassword: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch('/.netlify/functions/password-reset-request', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: values.email,
-          app: 'therapist'
-        }),
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(values.email, {
+        redirectTo: `${window.location.origin}/therapist/reset-password`,
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
+      if (error) {
+        console.error('Password reset error:', error);
+        message.error(error.message || 'Failed to send reset email');
+      } else {
         setSubmitted(true);
         message.success('Password reset instructions sent to your email');
-      } else {
-        message.error(data.error || 'Failed to send reset email');
       }
     } catch (error) {
       console.error('Password reset error:', error);

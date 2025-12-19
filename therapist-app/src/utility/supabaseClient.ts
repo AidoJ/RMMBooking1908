@@ -7,14 +7,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
-// Create client - token will be set via setSession when user logs in
-export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
-
-// Function to set the therapist session after login
-export const setTherapistSession = (token: string) => {
-  // Set a fake Supabase session using the custom JWT
-  supabaseClient.auth.setSession({
-    access_token: token,
-    refresh_token: token, // Using same token as we don't have refresh
-  });
-};
+// Create client with auth persistence enabled
+export const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true, // Enable session persistence for Supabase Auth
+    storage: window.localStorage, // Use localStorage for session
+    autoRefreshToken: true, // Auto refresh tokens
+    detectSessionInUrl: true, // Detect session from URL (for password reset)
+  },
+});

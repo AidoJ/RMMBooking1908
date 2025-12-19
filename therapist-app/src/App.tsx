@@ -4,7 +4,7 @@ import { ConfigProvider, Spin, App as AntApp } from 'antd';
 import { AppLayout } from './components/AppLayout';
 import { Login } from './pages/Login';
 import { ForgotPassword } from './pages/ForgotPassword';
-import { setTherapistSession } from './utility/supabaseClient';
+import { supabaseClient } from './utility/supabaseClient';
 import { ResetPassword } from './pages/ResetPassword';
 import { Dashboard } from './pages/Dashboard';
 import { Calendar } from './pages/Calendar';
@@ -25,35 +25,80 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored therapist session (using localStorage like admin panel)
-    const checkAuth = () => {
-      const token = localStorage.getItem('therapistToken');
-      const userStr = localStorage.getItem('therapistUser');
+    // Check for Supabase Auth session
+    const checkAuth = async () => {
+      try {
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
 
-      if (token && userStr) {
-        try {
-          const therapistData = JSON.parse(userStr);
+        if (error) {
+          console.error('Session error:', error);
+          setLoading(false);
+          return;
+        }
 
-          // Set Supabase session for RLS
-          setTherapistSession(token);
+        if (session?.user) {
+          // Fetch therapist profile
+          const { data: therapistProfile, error: profileError } = await supabaseClient
+            .from('therapist_profiles')
+            .select('*')
+            .eq('auth_id', session.user.id)
+            .single();
+
+          if (profileError || !therapistProfile) {
+            console.error('Failed to fetch therapist profile:', profileError);
+            await supabaseClient.auth.signOut();
+            localStorage.removeItem('therapist_profile');
+            setLoading(false);
+            return;
+          }
+
+          // Store in localStorage for easy access
+          localStorage.setItem('therapist_profile', JSON.stringify(therapistProfile));
 
           setUser({
-            id: therapistData.user_id || therapistData.id,
-            email: therapistData.email,
+            id: therapistProfile.id,
+            email: therapistProfile.email,
             role: 'therapist',
-            therapist_profile: therapistData,
+            therapist_profile: therapistProfile,
           });
-        } catch (error) {
-          console.error('Error parsing user data:', error);
-          // Clear invalid data
-          localStorage.removeItem('therapistToken');
-          localStorage.removeItem('therapistUser');
         }
+      } catch (error) {
+        console.error('Error checking auth:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     checkAuth();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        localStorage.removeItem('therapist_profile');
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        // Refresh therapist profile
+        const { data: therapistProfile } = await supabaseClient
+          .from('therapist_profiles')
+          .select('*')
+          .eq('auth_id', session.user.id)
+          .single();
+
+        if (therapistProfile) {
+          localStorage.setItem('therapist_profile', JSON.stringify(therapistProfile));
+          setUser({
+            id: therapistProfile.id,
+            email: therapistProfile.email,
+            role: 'therapist',
+            therapist_profile: therapistProfile,
+          });
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   if (loading) {

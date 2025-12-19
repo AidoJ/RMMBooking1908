@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Card, Form, Input, Button, message, Typography } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
-import { setTherapistSession } from '../utility/supabaseClient';
+import { supabaseClient } from '../utility/supabaseClient';
 
 const { Title, Text, Link } = Typography;
 
@@ -14,30 +14,35 @@ export const Login: React.FC = () => {
     try {
       setLoading(true);
 
-      // Call therapist-auth Netlify function (same pattern as admin panel)
-      const response = await fetch('/.netlify/functions/therapist-auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: values.email,
-          password: values.password
-        })
+      // Use Supabase Auth for authentication
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
       });
 
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Authentication failed');
+      if (error) {
+        throw new Error(error.message || 'Authentication failed');
       }
 
-      // Store token and user info in localStorage
-      localStorage.setItem('therapistToken', result.token);
-      localStorage.setItem('therapistUser', JSON.stringify(result.user));
+      if (!data.user) {
+        throw new Error('Login failed - no user returned');
+      }
 
-      // Set Supabase session with custom JWT for RLS
-      setTherapistSession(result.token);
+      // Fetch therapist_profiles record to get profile info
+      const { data: therapistProfile, error: profileError } = await supabaseClient
+        .from('therapist_profiles')
+        .select('*')
+        .eq('auth_id', data.user.id)
+        .single();
+
+      if (profileError || !therapistProfile) {
+        console.error('Failed to fetch therapist profile:', profileError);
+        await supabaseClient.auth.signOut();
+        throw new Error('Access denied - not a therapist user');
+      }
+
+      // Store therapist profile in localStorage for easy access
+      localStorage.setItem('therapist_profile', JSON.stringify(therapistProfile));
 
       message.success('Welcome back!');
       // Force page reload to trigger auth check in App.tsx
