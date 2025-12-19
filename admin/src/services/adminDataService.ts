@@ -196,16 +196,20 @@ class AdminQueryBuilder implements QueryBuilder {
 
   private async execute(): Promise<{ data: any; error: any; count: any; }> {
     try {
-      // Get JWT token from localStorage
-      const token = localStorage.getItem('adminToken');
+      // Get Supabase Auth session token
+      // Import realSupabaseClient dynamically to avoid circular dependency
+      const { realSupabaseClient } = await import('../utility/supabaseClient');
+      const { data: { session } } = await realSupabaseClient.auth.getSession();
       
-      if (!token) {
+      if (!session || !session.access_token) {
         return {
           data: null,
           error: { message: 'Not authenticated', code: 'UNAUTHENTICATED' },
           count: null
         };
       }
+
+      const token = session.access_token;
 
       // Call admin-data proxy function
       const response = await fetch(ADMIN_DATA_ENDPOINT, {
@@ -225,10 +229,11 @@ class AdminQueryBuilder implements QueryBuilder {
 
       if (!response.ok) {
         // Handle token expiration
-        if (result.error === 'Token expired' || result.error === 'Invalid token') {
+        if (result.error === 'Token expired' || result.error === 'Invalid token' || result.error === 'Not authenticated') {
           // Clear auth data and redirect to login
-          localStorage.removeItem('adminToken');
-          localStorage.removeItem('user');
+          const { realSupabaseClient } = await import('../utility/supabaseClient');
+          await realSupabaseClient.auth.signOut();
+          localStorage.removeItem('admin_user');
           window.location.href = '/admin/login';
           
           return {

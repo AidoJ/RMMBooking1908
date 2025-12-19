@@ -11,18 +11,60 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Create a client with anon key for token verification
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseAnon = supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null;
+
 /**
- * Verify user is authenticated with Supabase
- * Since we use service_role_key, we don't need JWT verification
- * The service role key bypasses RLS and has full access
+ * Verify user is authenticated with Supabase Auth
+ * Verifies the Supabase Auth token and checks if user is an admin
  */
-function verifyAuth(authHeader) {
-  // Just check that an auth header exists
-  // The service role key bypasses RLS anyway
+async function verifyAuth(authHeader) {
   if (!authHeader) {
     throw new Error('Missing authorization header');
   }
-  return true;
+
+  // Extract token from "Bearer <token>" format
+  const token = authHeader.replace(/^Bearer\s+/i, '');
+  
+  if (!token) {
+    throw new Error('Missing token in authorization header');
+  }
+
+  // Create a client with the token to verify it
+  const tokenClient = createClient(supabaseUrl, supabaseAnonKey || supabaseKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  });
+
+  // Verify token by getting the user
+  const { data: { user }, error: userError } = await tokenClient.auth.getUser();
+  
+  if (userError || !user) {
+    throw new Error('Invalid or expired token');
+  }
+
+  // Verify user is in admin_users table
+  const { data: adminUser, error: adminError } = await supabase
+    .from('admin_users')
+    .select('id, email, role, is_active')
+    .eq('auth_id', user.id)
+    .eq('is_active', true)
+    .single();
+
+  if (adminError || !adminUser) {
+    throw new Error('User is not an admin');
+  }
+
+  // Check role is admin or super_admin
+  if (adminUser.role !== 'admin' && adminUser.role !== 'super_admin') {
+    throw new Error('User does not have admin privileges');
+  }
+
+  return adminUser;
 }
 
 /**
@@ -200,12 +242,12 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Verify JWT token
+    // Verify Supabase Auth token
     const authHeader = event.headers.authorization || event.headers.Authorization;
     let user;
     
     try {
-      user = verifyToken(authHeader);
+      user = await verifyAuth(authHeader);
     } catch (error) {
       console.error('❌ Token verification failed:', error.message);
       return {
