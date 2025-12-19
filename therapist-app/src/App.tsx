@@ -25,50 +25,38 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for Supabase Auth session - SIMPLE VERSION
+    // Dead simple auth check
     const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabaseClient.auth.getSession();
+      const profileStr = localStorage.getItem('therapist_profile');
 
-        if (session?.user) {
-          // Get profile from localStorage (set during login)
-          const profileStr = localStorage.getItem('therapist_profile');
+      if (profileStr) {
+        try {
+          const therapistProfile = JSON.parse(profileStr);
 
-          if (profileStr) {
-            try {
-              const therapistProfile = JSON.parse(profileStr);
-              setUser({
-                id: therapistProfile.id,
-                email: therapistProfile.email,
-                role: 'therapist',
-                therapist_profile: therapistProfile,
-              });
-            } catch (e) {
-              console.error('Error parsing therapist profile:', e);
-              localStorage.removeItem('therapist_profile');
-            }
+          // Verify there's actually a Supabase session
+          const { data: { session } } = await supabaseClient.auth.getSession();
+
+          if (session) {
+            setUser({
+              id: therapistProfile.id,
+              email: therapistProfile.email,
+              role: 'therapist',
+              therapist_profile: therapistProfile,
+            });
+          } else {
+            // No session, clear localStorage
+            localStorage.removeItem('therapist_profile');
           }
+        } catch (e) {
+          console.error('Auth check error:', e);
+          localStorage.removeItem('therapist_profile');
         }
-      } catch (error) {
-        console.error('Error checking auth:', error);
-      } finally {
-        setLoading(false);
       }
+
+      setLoading(false);
     };
 
     checkAuth();
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        setUser(null);
-        localStorage.removeItem('therapist_profile');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
   if (loading) {
