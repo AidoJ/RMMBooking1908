@@ -25,16 +25,34 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Dead simple auth check
-    const checkAuth = async () => {
-      const profileStr = localStorage.getItem('therapist_profile');
+    console.log('🔍 Starting auth check...');
 
-      if (profileStr) {
-        try {
+    // Add timeout to prevent infinite loading
+    const timeout = setTimeout(() => {
+      console.error('⏱️ Auth check timed out after 5 seconds');
+      setLoading(false);
+    }, 5000);
+
+    const checkAuth = async () => {
+      try {
+        console.log('📋 Checking localStorage for profile...');
+        const profileStr = localStorage.getItem('therapist_profile');
+
+        if (profileStr) {
+          console.log('✅ Found profile in localStorage');
           const therapistProfile = JSON.parse(profileStr);
 
-          // Verify there's actually a Supabase session
-          const { data: { session } } = await supabaseClient.auth.getSession();
+          console.log('🔐 Verifying Supabase session...');
+
+          // Add timeout to getSession call
+          const sessionPromise = supabaseClient.auth.getSession();
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Session check timeout')), 3000)
+          );
+
+          const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+
+          console.log('Session result:', session ? '✅ Valid session' : '❌ No session');
 
           if (session) {
             setUser({
@@ -43,17 +61,22 @@ function App() {
               role: 'therapist',
               therapist_profile: therapistProfile,
             });
+            console.log('✅ User authenticated:', therapistProfile.email);
           } else {
-            // No session, clear localStorage
+            console.log('🔄 No session, clearing localStorage');
             localStorage.removeItem('therapist_profile');
           }
-        } catch (e) {
-          console.error('Auth check error:', e);
-          localStorage.removeItem('therapist_profile');
+        } else {
+          console.log('📭 No profile in localStorage');
         }
+      } catch (e) {
+        console.error('❌ Auth check error:', e);
+        localStorage.removeItem('therapist_profile');
+      } finally {
+        clearTimeout(timeout);
+        setLoading(false);
+        console.log('✅ Auth check complete');
       }
-
-      setLoading(false);
     };
 
     checkAuth();
