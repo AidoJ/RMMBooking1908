@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Therapist Registration - Rejuvenators Mobile Massage</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <div>
+                <div class="logo">Rejuvenators Mobile Massage</div>
+                <div class="logo-sub">Therapist Registration</div>
+            </div>
+            <div class="header-links">
+                <a href="/">Home</a>
+                <a href="/therapist/login">Therapist Login</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Progress Bar -->
+        <div class="progress-bar">
+            <div class="progress-title">Registration Progress</div>
+            <div class="progress-steps">
+                <div class="progress-fill" id="progressFill"></div>
+
+                <div class="step active" data-step="1">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">Personal Info</div>
+                </div>
+                <div class="step" data-step="2">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">Business Details</div>
+                </div>
+                <div class="step" data-step="3">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">Service & Availability</div>
+                </div>
+                <div class="step" data-step="4">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">Qualifications</div>
+                </div>
+                <div class="step" data-step="5">
+                    <div class="step-circle">5</div>
+                    <div class="step-label">Insurance</div>
+                </div>
+                <div class="step" data-step="6">
+                    <div class="step-circle">6</div>
+                    <div class="step-label">Agreement</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert Messages -->
+        <div id="alertMessage" class="alert" style="display: none;"></div>
+
+        <!-- Auto-save indicator -->
+        <div class="auto-save" id="autoSaveIndicator" style="display: none;">
+            <span id="saveText">✓ Saved</span>
+        </div>
+
+        <!-- Form -->
+        <div class="form-card">
+            <form id="registrationForm">
+                <!-- STEP 1: Personal Information -->
+                <div class="step-content active" data-step="1">
+                    <h2 class="form-section-title">Step 1: Personal Information</h2>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>First Name <span class="required">*</span></label>
+                            <input type="text" id="firstName" name="firstName" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name <span class="required">*</span></label>
+                            <input type="text" id="lastName" name="lastName" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Date of Birth <span class="required">*</span></label>
+                            <input type="date" id="dateOfBirth" name="dateOfBirth" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Email <span class="required">*</span></label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Phone <span class="required">*</span></label>
+                        <input type="tel" id="phone" name="phone" placeholder="04XX XXX XXX" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Street Address <span class="required">*</span></label>
+                        <input type="text" id="streetAddress" name="streetAddress" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Suburb <span class="required">*</span></label>
+                            <input type="text" id="suburb" name="suburb" required>
+                        </div>
+                        <div class="form-group">
+                            <label>City <span class="required">*</span></label>
+                            <input type="text" id="city" name="city" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>State <span class="required">*</span></label>
+                            <select id="state" name="state" required>
+                                <option value="">Select State</option>
+                                <option value="QLD">Queensland</option>
+                                <option value="NSW">New South Wales</option>
+                                <option value="VIC">Victoria</option>
+                                <option value="SA">South Australia</option>
+                                <option value="WA">Western Australia</option>
+                                <option value="TAS">Tasmania</option>
+                                <option value="NT">Northern Territory</option>
+                                <option value="ACT">Australian Capital Territory</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Postcode <span class="required">*</span></label>
+                            <input type="text" id="postcode" name="postcode" pattern="[0-9]{4}" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Profile Photo (optional)</label>
+                        <div class="file-upload-area" id="profilePhotoUpload">
+                            <input type="file" id="profilePhoto" accept="image/*" style="display: none;">
+                            <div class="upload-content">
+                                <div class="upload-icon">📷</div>
+                                <div class="upload-text">Click to upload or drag and drop</div>
+                                <div class="upload-hint">JPG, PNG or GIF (max 5MB)</div>
+                            </div>
+                        </div>
+                        <div class="file-preview" id="profilePhotoPreview" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <!-- STEP 2: Business Details -->
+                <div class="step-content" data-step="2">
+                    <h2 class="form-section-title">Step 2: Business Details</h2>
+
+                    <div class="form-group">
+                        <label>Business Structure <span class="required">*</span></label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="businessStructure" value="sole_trader" required>
+                                <span>Sole Trader</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="businessStructure" value="pty_ltd" required>
+                                <span>Pty Ltd Company</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group" id="businessNameGroup" style="display:none;">
+                        <label>Business Name</label>
+                        <input type="text" id="businessName" name="businessName">
+                        <small>Trading name if different from your personal name</small>
+                    </div>
+
+                    <div id="companyFields" style="display:none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Company Name <span class="required">*</span></label>
+                                <input type="text" id="companyName" name="companyName">
+                            </div>
+                            <div class="form-group">
+                                <label>Company ACN <span class="required">*</span></label>
+                                <input type="text" id="companyAcn" name="companyAcn" pattern="[0-9]{9}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Business ABN <span class="required">*</span></label>
+                            <input type="text" id="businessAbn" name="businessAbn" pattern="[0-9]{11}" required>
+                            <small>11 digit ABN</small>
+                        </div>
+                        <div class="form-group">
+                            <label>GST Registered? <span class="required">*</span></label>
+                            <div class="radio-group">
+                                <label class="radio-label">
+                                    <input type="radio" name="gstRegistered" value="true" required>
+                                    <span>Yes</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="gstRegistered" value="false" required>
+                                    <span>No</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3 class="subsection-title">Banking Details</h3>
+
+                    <div class="form-group">
+                        <label>Account Name <span class="required">*</span></label>
+                        <input type="text" id="bankAccountName" name="bankAccountName" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>BSB <span class="required">*</span></label>
+                            <input type="text" id="bsb" name="bsb" pattern="[0-9]{6}" placeholder="XXX-XXX" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Account Number <span class="required">*</span></label>
+                            <input type="text" id="bankAccountNumber" name="bankAccountNumber" pattern="[0-9]{6,10}" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Service & Availability -->
+                <div class="step-content" data-step="3">
+                    <h2 class="form-section-title">Step 3: Service Locations & Availability</h2>
+
+                    <div class="form-group">
+                        <label>Service Cities <span class="required">*</span></label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serviceCities" value="brisbane">
+                                <span>Brisbane</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serviceCities" value="gold-coast">
+                                <span>Gold Coast</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serviceCities" value="sunshine-coast">
+                                <span>Sunshine Coast</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serviceCities" value="adelaide">
+                                <span>Adelaide</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Delivery Locations <span class="required">*</span></label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="deliveryLocations" value="hotels">
+                                <span>Hotels</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="deliveryLocations" value="corporate">
+                                <span>Corporate Offices</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="deliveryLocations" value="in-home">
+                                <span>In-Home</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="deliveryLocations" value="events">
+                                <span>Events</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Weekly Availability <span class="required">*</span></label>
+                        <small style="display: block; margin-bottom: 15px;">Select all time slots you're available</small>
+                        <div class="availability-table-wrapper">
+                            <table class="availability-table">
+                                <thead>
+                                    <tr>
+                                        <th>Day</th>
+                                        <th>7-11am</th>
+                                        <th>12-5pm</th>
+                                        <th>6-11:30pm</th>
+                                        <th>Not Available</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Monday</td>
+                                        <td><input type="checkbox" name="monday" value="7-11am"></td>
+                                        <td><input type="checkbox" name="monday" value="12-5pm"></td>
+                                        <td><input type="checkbox" name="monday" value="6-11:30pm"></td>
+                                        <td><input type="checkbox" name="monday" value="not-available"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Tuesday</td>
+                                        <td><input type="checkbox" name="tuesday" value="7-11am"></td>
+                                        <td><input type="checkbox" name="tuesday" value="12-5pm"></td>
+                                        <td><input type="checkbox" name="tuesday" value="6-11:30pm"></td>
+                                        <td><input type="checkbox" name="tuesday" value="not-available"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Wednesday</td>
+                                        <td><input type="checkbox" name="wednesday" value="7-11am"></td>
+                                        <td><input type="checkbox" name="wednesday" value="12-5pm"></td>
+                                        <td><input type="checkbox" name="wednesday" value="6-11:30pm"></td>
+                                        <td><input type="checkbox" name="wednesday" value="not-available"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Thursday</td>
+                                        <td><input type="checkbox" name="thursday" value="7-11am"></td>
+                                        <td><input type="checkbox" name="thursday" value="12-5pm"></td>
+                                        <td><input type="checkbox" name="thursday" value="6-11:30pm"></td>
+                                        <td><input type="checkbox" name="thursday" value="not-available"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Friday</td>
+                                        <td><input type="checkbox" name="friday" value="7-11am"></td>
+                                        <td><input type="checkbox" name="friday" value="12-5pm"></td>
+                                        <td><input type="checkbox" name="friday" value="6-11:30pm"></td>
+                                        <td><input type="checkbox" name="friday" value="not-available"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Saturday</td>
+                                        <td><input type="checkbox" name="saturday" value="7-11am"></td>
+                                        <td><input type="checkbox" name="saturday" value="12-5pm"></td>
+                                        <td><input type="checkbox" name="saturday" value="6-11:30pm"></td>
+                                        <td><input type="checkbox" name="saturday" value="not-available"></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Sunday</td>
+                                        <td><input type="checkbox" name="sunday" value="7-11am"></td>
+                                        <td><input type="checkbox" name="sunday" value="12-5pm"></td>
+                                        <td><input type="checkbox" name="sunday" value="6-11:30pm"></td>
+                                        <td><input type="checkbox" name="sunday" value="not-available"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Preferred Start Date</label>
+                        <input type="date" id="startDate" name="startDate">
+                    </div>
+                </div>
+
+                <!-- STEP 4: Qualifications -->
+                <div class="step-content" data-step="4">
+                    <h2 class="form-section-title">Step 4: Qualifications & Services</h2>
+
+                    <div class="form-group">
+                        <label>Therapies You Offer <span class="required">*</span></label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="therapiesOffered" value="stressbuster">
+                                <span>StressBuster Massage</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="therapiesOffered" value="sports">
+                                <span>Sports Massage</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="therapiesOffered" value="remedial">
+                                <span>Remedial Massage</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="therapiesOffered" value="pregnancy">
+                                <span>Pregnancy Massage</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="therapiesOffered" value="relaxation">
+                                <span>Relaxation Massage</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Qualification Certificates <span class="required">*</span></label>
+                        <small style="display: block; margin-bottom: 15px;">Upload your massage qualification certificates (Cert IV, Diploma, etc.)</small>
+                        <div class="file-upload-area" id="qualificationsUpload">
+                            <input type="file" id="qualifications" accept=".pdf,.jpg,.jpeg,.png" multiple style="display: none;">
+                            <div class="upload-content">
+                                <div class="upload-icon">📄</div>
+                                <div class="upload-text">Click to upload multiple files</div>
+                                <div class="upload-hint">PDF, JPG or PNG (max 10MB each)</div>
+                            </div>
+                        </div>
+                        <div class="file-preview" id="qualificationsPreview" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <!-- STEP 5: Insurance -->
+                <div class="step-content" data-step="5">
+                    <h2 class="form-section-title">Step 5: Insurance & Compliance</h2>
+
+                    <h3 class="subsection-title">Public Liability Insurance</h3>
+
+                    <div class="form-group">
+                        <label>Do you have current Public Liability Insurance ($10M+)? <span class="required">*</span></label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="hasInsurance" value="true" required>
+                                <span>Yes</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="hasInsurance" value="false" required>
+                                <span>No</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="insuranceFields" style="display:none;">
+                        <div class="form-group">
+                            <label>Insurance Expiry Date <span class="required">*</span></label>
+                            <input type="date" id="insuranceExpiryDate" name="insuranceExpiryDate">
+                        </div>
+                        <div class="form-group">
+                            <label>Insurance Certificate <span class="required">*</span></label>
+                            <div class="file-upload-area" id="insuranceCertUpload">
+                                <input type="file" id="insuranceCert" accept=".pdf,.jpg,.jpeg,.png" style="display: none;">
+                                <div class="upload-content">
+                                    <div class="upload-icon">📄</div>
+                                    <div class="upload-text">Upload Certificate of Currency</div>
+                                    <div class="upload-hint">PDF, JPG or PNG</div>
+                                </div>
+                            </div>
+                            <div class="file-preview" id="insuranceCertPreview" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <h3 class="subsection-title">First Aid Certification</h3>
+
+                    <div class="form-group">
+                        <label>Do you have current First Aid certification? <span class="required">*</span></label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="hasFirstAid" value="true" required>
+                                <span>Yes</span>
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="hasFirstAid" value="false" required>
+                                <span>No</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="firstAidFields" style="display:none;">
+                        <div class="form-group">
+                            <label>First Aid Expiry Date <span class="required">*</span></label>
+                            <input type="date" id="firstAidExpiryDate" name="firstAidExpiryDate">
+                        </div>
+                        <div class="form-group">
+                            <label>First Aid Certificate <span class="required">*</span></label>
+                            <div class="file-upload-area" id="firstAidCertUpload">
+                                <input type="file" id="firstAidCert" accept=".pdf,.jpg,.jpeg,.png" style="display: none;">
+                                <div class="upload-content">
+                                    <div class="upload-icon">📄</div>
+                                    <div class="upload-text">Upload First Aid Certificate</div>
+                                    <div class="upload-hint">PDF, JPG or PNG</div>
+                                </div>
+                            </div>
+                            <div class="file-preview" id="firstAidCertPreview" style="display: none;"></div>
+                        </div>
+                    </div>
+
+                    <h3 class="subsection-title">Work Eligibility</h3>
+
+                    <div class="form-group">
+                        <label class="checkbox-label checkbox-block">
+                            <input type="checkbox" id="workEligibility" name="workEligibilityConfirmed" required>
+                            <span>I confirm that I am legally eligible to work in Australia and can provide proof if requested. <span class="required">*</span></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- STEP 6: Agreement -->
+                <div class="step-content" data-step="6">
+                    <h2 class="form-section-title">Step 6: Independent Contractor Agreement</h2>
+
+                    <!-- Full Agreement Box -->
+                    <div class="agreement-box">
+                        <div class="agreement-header">
+                            📋 INDEPENDENT CONTRACTOR AGREEMENT
+                            <a href="#" id="downloadPdf" class="download-link" style="display: none;" target="_blank">📥 Download PDF</a>
+                        </div>
+                        <div class="agreement-content" id="agreementContent">
+                            <p style="text-align: center; padding: 40px; color: #999;">Loading agreement...</p>
+                        </div>
+                    </div>
+
+                    <!-- Acknowledgements -->
+                    <div class="acknowledgements">
+                        <label class="checkbox-label checkbox-block">
+                            <input type="checkbox" id="agreementRead" name="agreementReadConfirmed" required>
+                            <span>I have read and understood the Independent Contractor Agreement OR I have chosen to waive my right to seek independent legal advice. <span class="required">*</span></span>
+                        </label>
+
+                        <label class="checkbox-label checkbox-block">
+                            <input type="checkbox" id="legalAdvice" name="legalAdviceConfirmed" required>
+                            <span>I acknowledge that I have been advised to seek independent legal advice before signing this agreement. <span class="required">*</span></span>
+                        </label>
+
+                        <label class="checkbox-label checkbox-block">
+                            <input type="checkbox" id="contractorRelationship" name="contractorRelationshipConfirmed" required>
+                            <span>I understand this is an INDEPENDENT CONTRACTOR relationship, NOT employment, and I am responsible for my own tax, superannuation, insurance, and equipment. <span class="required">*</span></span>
+                        </label>
+
+                        <label class="checkbox-label checkbox-block">
+                            <input type="checkbox" id="infoAccurate" name="informationAccurateConfirmed" required>
+                            <span>I confirm that all information I have provided in this registration is accurate and complete. <span class="required">*</span></span>
+                        </label>
+
+                        <label class="checkbox-label checkbox-block">
+                            <input type="checkbox" id="termsAccepted" name="termsAcceptedConfirmed" required>
+                            <span>I accept all terms and conditions of the Independent Contractor Agreement. <span class="required">*</span></span>
+                        </label>
+                    </div>
+
+                    <!-- Signature -->
+                    <div class="signature-section">
+                        <label>Digital Signature <span class="required">*</span></label>
+                        <small style="display: block; margin-bottom: 10px;">Please sign using your mouse or touchscreen</small>
+                        <canvas id="signaturePad" class="signature-pad" width="720" height="200"></canvas>
+                        <button type="button" class="btn-secondary btn-small" id="clearSignature" style="margin-top: 10px;">Clear Signature</button>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Full Legal Name <span class="required">*</span></label>
+                            <input type="text" id="fullLegalName" name="fullLegalName" required>
+                            <small>Type your full legal name as confirmation</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Date</label>
+                            <input type="date" id="signedDate" name="signedDate" readonly>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="form-navigation">
+                    <button type="button" class="btn-secondary" id="prevBtn" style="display: none;">← Previous</button>
+                    <div></div>
+                    <button type="button" class="btn-primary" id="nextBtn">Next →</button>
+                    <button type="button" class="btn-submit" id="submitBtn" style="display: none;">Submit Registration</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p id="loadingText">Submitting your registration...</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="registration.js"></script>
+</body>
+</html>
