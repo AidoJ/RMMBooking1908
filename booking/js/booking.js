@@ -1199,6 +1199,8 @@ console.log('Globals:', {
         if (s.key === 'therapist_daytime_hourly_rate') window.therapistDaytimeRate = Number(s.value);
         if (s.key === 'therapist_afterhours_hourly_rate') window.therapistAfterhoursRate = Number(s.value);
         if (s.key === 'therapist_response_timeout_minutes') window.therapistResponseTimeoutMinutes = Number(s.value);
+        if (s.key === 'urgent_response_timeout_minutes') window.urgentResponseTimeoutMinutes = Number(s.value);
+        if (s.key === 'standard_response_timeout_minutes') window.standardResponseTimeoutMinutes = Number(s.value);
       }
       }
     } catch (error) {
@@ -1211,7 +1213,56 @@ console.log('Globals:', {
       window.minBookingAdvanceHours = 2;
       window.therapistDaytimeRate = 45;
       window.therapistAfterhoursRate = 55;
-      window.therapistResponseTimeoutMinutes = 3; // Default 3 minutes
+      window.therapistResponseTimeoutMinutes = 60;
+      window.urgentResponseTimeoutMinutes = 120;
+      window.standardResponseTimeoutMinutes = 240;
+    }
+  }
+
+  /**
+   * Calculate appropriate timeout based on how far in the future the booking is
+   * @param {Date} bookingDateTime - The date/time of the booking
+   * @returns {number} Timeout in minutes
+   */
+  function calculateResponseTimeout(bookingDateTime) {
+    const now = new Date();
+    const hoursUntilService = (bookingDateTime - now) / (1000 * 60 * 60);
+
+    console.log('⏱️ Calculating timeout - Hours until service:', hoursUntilService.toFixed(2));
+
+    let timeoutMinutes;
+    let tier;
+
+    if (hoursUntilService < 3) {
+      // Tier 1: IMMEDIATE (0-3 hours)
+      timeoutMinutes = window.therapistResponseTimeoutMinutes || 60;
+      tier = 'Immediate';
+    } else if (hoursUntilService < 12) {
+      // Tier 2: URGENT (3-12 hours)
+      timeoutMinutes = window.urgentResponseTimeoutMinutes || 120;
+      tier = 'Urgent';
+    } else {
+      // Tier 3: STANDARD (12+ hours)
+      timeoutMinutes = window.standardResponseTimeoutMinutes || 240;
+      tier = 'Standard';
+    }
+
+    console.log(`⏱️ Using ${tier} timeout: ${timeoutMinutes} minutes`);
+    return timeoutMinutes;
+  }
+
+  /**
+   * Get client-friendly timeout message
+   * @param {number} timeoutMinutes - Timeout in minutes
+   * @returns {string} Message to display to client
+   */
+  function getTimeoutMessage(timeoutMinutes) {
+    if (timeoutMinutes <= 60) {
+      return 'Therapist will respond within 1 hour';
+    } else if (timeoutMinutes <= 120) {
+      return 'Therapist will respond within 2 hours';
+    } else {
+      return 'Therapist will respond within 2-4 hours';
     }
   }
 
@@ -4190,11 +4241,15 @@ async function sendBookingNotifications(bookingData, bookingId) {
         
         if (therapistData && !therapistError) {
           console.log('📧 Therapist data found:', therapistData);
-          
+
+          // Calculate dynamic response timeout based on booking urgency
+          const bookingDateTime = new Date(`${emailData.booking_date}T${emailData.booking_time}`);
+          const responseTimeoutMinutes = calculateResponseTimeout(bookingDateTime);
+
           therapistEmailResult = await window.EmailService.sendTherapistBookingRequest(
-            emailData, 
-            therapistData, 
-            window.therapistResponseTimeoutMinutes || 3
+            emailData,
+            therapistData,
+            responseTimeoutMinutes
           );
         } else {
           console.error('❌ Error fetching therapist data:', therapistError);

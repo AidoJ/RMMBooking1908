@@ -17,6 +17,64 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+/**
+ * Calculate dynamic timeout based on booking date
+ * Gives therapists more time for future bookings while maintaining urgency for same-day
+ * 
+ * @param {string} bookingTime - ISO string of booking date/time
+ * @param {number} baseTimeoutMinutes - Base timeout from system settings (for same-day bookings)
+ * @returns {number} Calculated timeout in minutes
+ */
+function calculateTimeoutForBooking(bookingTime, baseTimeoutMinutes) {
+  const now = new Date();
+  const bookingDate = new Date(bookingTime);
+  
+  // Calculate days until booking (can be negative for past bookings, but we'll handle that)
+  const diffMs = bookingDate.getTime() - now.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = diffMs / (1000 * 60 * 60);
+  
+  // Same day booking (within 24 hours)
+  if (diffHours <= 24) {
+    return baseTimeoutMinutes; // Use base timeout for urgency
+  }
+  
+  // Tomorrow (1 day ahead)
+  if (diffDays === 1) {
+    // Give 6 hours or until end of business day (whichever is longer)
+    // Assuming business day ends at 6 PM (18:00)
+    const businessEnd = new Date(bookingDate);
+    businessEnd.setHours(18, 0, 0, 0);
+    const hoursUntilBusinessEnd = (businessEnd.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return Math.max(6 * 60, Math.min(hoursUntilBusinessEnd * 60, 12 * 60)); // 6-12 hours
+  }
+  
+  // 2-7 days ahead
+  if (diffDays >= 2 && diffDays <= 7) {
+    // Give 24 hours or until end of business day before booking (whichever comes first)
+    const dayBeforeBooking = new Date(bookingDate);
+    dayBeforeBooking.setDate(dayBeforeBooking.getDate() - 1);
+    dayBeforeBooking.setHours(18, 0, 0, 0); // End of business day
+    
+    const hoursUntilDayBefore = (dayBeforeBooking.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return Math.max(24 * 60, Math.min(hoursUntilDayBefore * 60, 48 * 60)); // 24-48 hours
+  }
+  
+  // 7+ days ahead
+  if (diffDays > 7) {
+    // Give 48 hours or until end of business day 2 days before booking
+    const twoDaysBefore = new Date(bookingDate);
+    twoDaysBefore.setDate(twoDaysBefore.getDate() - 2);
+    twoDaysBefore.setHours(18, 0, 0, 0); // End of business day
+    
+    const hoursUntilTwoDaysBefore = (twoDaysBefore.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return Math.max(48 * 60, Math.min(hoursUntilTwoDaysBefore * 60, 72 * 60)); // 48-72 hours
+  }
+  
+  // Fallback to base timeout
+  return baseTimeoutMinutes;
+}
+
 // EmailJS configuration
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_puww2kb';
 const EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID = process.env.EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID || 'template_51wt6of';
@@ -39,7 +97,7 @@ exports.handler = async (event, context) => {
     const timeoutMinutes = timeoutSetting && timeoutSetting.value ? parseInt(timeoutSetting.value) : 60;
     console.log('⏰ Using timeout:', timeoutMinutes, 'minutes');
 
-    // Find bookings that need timeout processing
+    // Find bookings that need timeout processing (using dynamic timeout calculation)
     const bookingsToProcess = await findBookingsNeedingTimeout(timeoutMinutes);
     console.log('📊 Found', bookingsToProcess.length, 'bookings needing timeout processing');
 
@@ -48,11 +106,16 @@ exports.handler = async (event, context) => {
       return { statusCode: 200, body: 'No timeouts to process' };
     }
 
-    // Process each booking
+    // Process each booking with dynamic timeout
     const results = [];
+    const now = new Date();
     for (const booking of bookingsToProcess) {
       console.log('🔄 Processing booking:', booking.booking_id, 'status:', booking.status, 'stage:', booking.timeoutStage);
-      const result = await processBookingTimeout(booking, timeoutMinutes);
+      // Calculate dynamic timeout for this specific booking
+      const dynamicTimeout = calculateTimeoutForBooking(booking.booking_time, timeoutMinutes);
+      const daysUntilBooking = Math.floor((new Date(booking.booking_time).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      console.log(`⏰ Dynamic timeout for booking ${booking.booking_id}: ${dynamicTimeout} minutes (booking in ${daysUntilBooking} days)`);
+      const result = await processBookingTimeout(booking, dynamicTimeout);
       results.push(result);
     }
 
@@ -77,11 +140,15 @@ exports.handler = async (event, context) => {
 };
 
 // UPDATED: Find bookings that need timeout processing (fixed first therapist timeout)
-async function findBookingsNeedingTimeout(timeoutMinutes) {
+// Now uses dynamic timeout calculation based on booking date
+async function findBookingsNeedingTimeout(baseTimeoutMinutes) {
   try {
     const now = new Date();
-    const firstTimeoutCutoff = new Date(now.getTime() - timeoutMinutes * 60 * 1000);
-    const secondTimeoutCutoff = new Date(now.getTime() - (timeoutMinutes * 2) * 60 * 1000);
+    
+    // We'll calculate timeout per booking, but for query efficiency, use base timeout for cutoff
+    // The actual timeout check happens per booking in processBookingTimeout
+    const firstTimeoutCutoff = new Date(now.getTime() - baseTimeoutMinutes * 60 * 1000);
+    const secondTimeoutCutoff = new Date(now.getTime() - (baseTimeoutMinutes * 2) * 60 * 1000);
     
     console.log('🔍 Looking for bookings needing timeout processing...');
     console.log('📅 First timeout cutoff:', firstTimeoutCutoff.toISOString());

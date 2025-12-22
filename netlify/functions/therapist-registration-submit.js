@@ -5,6 +5,26 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// ===================================================
+// HELPER: SANITIZE DATA
+// ===================================================
+// Convert empty strings to null, especially important for dates
+function sanitizeValue(value) {
+  if (value === '' || value === undefined) {
+    return null;
+  }
+  return value;
+}
+
+// Sanitize all string and date fields in an object
+function sanitizeData(data) {
+  const sanitized = {};
+  for (const [key, value] of Object.entries(data)) {
+    sanitized[key] = sanitizeValue(value);
+  }
+  return sanitized;
+}
+
 exports.handler = async (event, context) => {
   // Handle CORS preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -130,65 +150,77 @@ async function saveDraft(registrationId, step, formData) {
     updated_at: new Date().toISOString()
   };
 
-  // Map form fields based on step
+  // Map form fields based on step - SANITIZE ALL VALUES
   switch(step) {
     case 'step1': // Personal Information
-      updateData.first_name = formData.firstName;
-      updateData.last_name = formData.lastName;
-      updateData.date_of_birth = formData.dateOfBirth;
-      updateData.email = formData.email;
-      updateData.phone = formData.phone;
-      updateData.street_address = formData.streetAddress;
-      updateData.suburb = formData.suburb;
-      updateData.city = formData.city;
-      updateData.state = formData.state;
-      updateData.postcode = formData.postcode;
-      updateData.profile_photo_url = formData.profilePhotoUrl;
+      Object.assign(updateData, sanitizeData({
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        date_of_birth: formData.dateOfBirth,
+        email: formData.email,
+        phone: formData.phone,
+        street_address: formData.streetAddress,
+        suburb: formData.suburb,
+        city: formData.city,
+        state: formData.state,
+        postcode: formData.postcode,
+        profile_photo_url: formData.profilePhotoUrl
+      }));
       break;
 
     case 'step2': // Business Details
-      updateData.business_structure = formData.businessStructure;
-      updateData.business_name = formData.businessName;
-      updateData.company_name = formData.companyName;
-      updateData.company_acn = formData.companyAcn;
-      updateData.business_abn = formData.businessAbn;
-      updateData.gst_registered = formData.gstRegistered;
-      updateData.bank_account_name = formData.bankAccountName;
-      updateData.bsb = formData.bsb;
-      updateData.bank_account_number = formData.bankAccountNumber;
+      Object.assign(updateData, sanitizeData({
+        business_structure: formData.businessStructure,
+        business_name: formData.businessName,
+        company_name: formData.companyName,
+        company_acn: formData.companyAcn,
+        business_abn: formData.businessAbn,
+        gst_registered: formData.gstRegistered,
+        bank_account_name: formData.bankAccountName,
+        bsb: formData.bsb,
+        bank_account_number: formData.bankAccountNumber
+      }));
       break;
 
     case 'step3': // Service Locations & Availability
-      updateData.service_cities = formData.serviceCities;
-      updateData.delivery_locations = formData.deliveryLocations;
-      updateData.availability_schedule = formData.availabilitySchedule;
-      updateData.start_date = formData.startDate;
+      Object.assign(updateData, {
+        service_cities: formData.serviceCities || [],
+        delivery_locations: formData.deliveryLocations || [],
+        availability_schedule: formData.availabilitySchedule || {},
+        start_date: sanitizeValue(formData.startDate)
+      });
       break;
 
     case 'step4': // Qualifications & Services
-      updateData.therapies_offered = formData.therapiesOffered;
-      updateData.qualification_certificates = formData.qualificationCertificates;
+      Object.assign(updateData, {
+        therapies_offered: formData.therapiesOffered || [],
+        qualification_certificates: formData.qualificationCertificates || []
+      });
       break;
 
     case 'step5': // Insurance & Compliance
-      updateData.has_insurance = formData.hasInsurance;
-      updateData.insurance_expiry_date = formData.insuranceExpiryDate;
-      updateData.insurance_certificate_url = formData.insuranceCertificateUrl;
-      updateData.has_first_aid = formData.hasFirstAid;
-      updateData.first_aid_expiry_date = formData.firstAidExpiryDate;
-      updateData.first_aid_certificate_url = formData.firstAidCertificateUrl;
-      updateData.work_eligibility_confirmed = formData.workEligibilityConfirmed;
+      Object.assign(updateData, {
+        has_insurance: formData.hasInsurance || false,
+        insurance_expiry_date: sanitizeValue(formData.insuranceExpiryDate),
+        insurance_certificate_url: sanitizeValue(formData.insuranceCertificateUrl),
+        has_first_aid: formData.hasFirstAid || false,
+        first_aid_expiry_date: sanitizeValue(formData.firstAidExpiryDate),
+        first_aid_certificate_url: sanitizeValue(formData.firstAidCertificateUrl),
+        work_eligibility_confirmed: formData.workEligibilityConfirmed || false
+      });
       break;
 
     case 'step6': // Agreement & Signature
-      updateData.agreement_read_confirmed = formData.agreementReadConfirmed;
-      updateData.legal_advice_confirmed = formData.legalAdviceConfirmed;
-      updateData.contractor_relationship_confirmed = formData.contractorRelationshipConfirmed;
-      updateData.information_accurate_confirmed = formData.informationAccurateConfirmed;
-      updateData.terms_accepted_confirmed = formData.termsAcceptedConfirmed;
-      updateData.signature_data = formData.signatureData;
-      updateData.signed_date = formData.signedDate;
-      updateData.full_legal_name = formData.fullLegalName;
+      Object.assign(updateData, {
+        agreement_read_confirmed: formData.agreementReadConfirmed || false,
+        legal_advice_confirmed: formData.legalAdviceConfirmed || false,
+        contractor_relationship_confirmed: formData.contractorRelationshipConfirmed || false,
+        information_accurate_confirmed: formData.informationAccurateConfirmed || false,
+        terms_accepted_confirmed: formData.termsAcceptedConfirmed || false,
+        signature_data: sanitizeValue(formData.signatureData),
+        signed_date: sanitizeValue(formData.signedDate),
+        full_legal_name: sanitizeValue(formData.fullLegalName)
+      });
       break;
   }
 
@@ -204,34 +236,9 @@ async function saveDraft(registrationId, step, formData) {
     if (error) throw error;
     return data;
   } else {
-    // For initial insert, include placeholder values for required NOT NULL fields
-    const insertData = {
-      ...updateData,
-      // Required fields with placeholders (will be updated in later steps)
-      business_structure: updateData.business_structure || 'sole_trader',
-      business_abn: updateData.business_abn || '00000000000',
-      bank_account_name: updateData.bank_account_name || 'TBD',
-      bsb: updateData.bsb || '000000',
-      bank_account_number: updateData.bank_account_number || '000000',
-      service_cities: updateData.service_cities || [],
-      delivery_locations: updateData.delivery_locations || [],
-      availability_schedule: updateData.availability_schedule || {},
-      therapies_offered: updateData.therapies_offered || [],
-      qualification_certificates: updateData.qualification_certificates || [],
-      has_insurance: updateData.has_insurance !== undefined ? updateData.has_insurance : false,
-      has_first_aid: updateData.has_first_aid !== undefined ? updateData.has_first_aid : false,
-      work_eligibility_confirmed: updateData.work_eligibility_confirmed !== undefined ? updateData.work_eligibility_confirmed : false,
-      agreement_read_confirmed: updateData.agreement_read_confirmed !== undefined ? updateData.agreement_read_confirmed : false,
-      legal_advice_confirmed: updateData.legal_advice_confirmed !== undefined ? updateData.legal_advice_confirmed : false,
-      contractor_relationship_confirmed: updateData.contractor_relationship_confirmed !== undefined ? updateData.contractor_relationship_confirmed : false,
-      information_accurate_confirmed: updateData.information_accurate_confirmed !== undefined ? updateData.information_accurate_confirmed : false,
-      terms_accepted_confirmed: updateData.terms_accepted_confirmed !== undefined ? updateData.terms_accepted_confirmed : false,
-      gst_registered: updateData.gst_registered !== undefined ? updateData.gst_registered : false
-    };
-
     const { data, error } = await supabase
       .from('therapist_registrations')
-      .insert(insertData)
+      .insert(updateData)
       .select()
       .single();
 

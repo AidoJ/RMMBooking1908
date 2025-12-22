@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Therapist Registration - Rejuvenators Mobile Massage</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            color: #007e8c;
+        }
+
+        .logo-sub {
+            font-size: 14px;
+            color: #666;
+            font-weight: 400;
+        }
+
+        .header-links {
+            display: flex;
+            gap: 20px;
+        }
+
+        .header-links a {
+            color: #007e8c;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .progress-bar {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .progress-title {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .progress-steps {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin-top: 20px;
+        }
+
+        .progress-steps::before {
+            content: '';
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #e0e0e0;
+            z-index: 0;
+        }
+
+        .progress-fill {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            height: 3px;
+            background: #007e8c;
+            transition: width 0.3s ease;
+            z-index: 1;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .step-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #999;
+            margin-bottom: 8px;
+        }
+
+        .step.active .step-circle {
+            background: #007e8c;
+            color: white;
+        }
+
+        .step.completed .step-circle {
+            background: #007e8c;
+            color: white;
+        }
+
+        .step-label {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            max-width: 80px;
+        }
+
+        .step.active .step-label {
+            color: #007e8c;
+            font-weight: 600;
+        }
+
+        .form-card {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .form-section-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        .required {
+            color: #e74c3c;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #007e8c;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .section-subtitle {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 30px 0 20px;
+            color: #34495e;
+        }
+
+        .toggle-group {
+            display: flex;
+            gap: 0;
+            margin-top: 8px;
+        }
+
+        .toggle-option {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .toggle-option:first-child {
+            border-radius: 8px 0 0 8px;
+        }
+
+        .toggle-option:last-child {
+            border-radius: 0 8px 8px 0;
+            border-left: none;
+        }
+
+        .toggle-option.active {
+            background: #007e8c;
+            color: white;
+            border-color: #007e8c;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            margin: 0;
+            font-weight: 400;
+            cursor: pointer;
+        }
+
+        .availability-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .availability-table th,
+        .availability-table td {
+            padding: 12px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+        }
+
+        .availability-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        .availability-table td:first-child {
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .file-upload {
+            border: 2px dashed #007e8c;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .file-upload:hover {
+            background: #e8f4f5;
+        }
+
+        .file-upload-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .file-upload-text {
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .file-upload-hint {
+            font-size: 13px;
+            color: #999;
+        }
+
+        .uploaded-file {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .uploaded-file-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .remove-file {
+            color: #e74c3c;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .agreement-box {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 30px;
+            background: #f8f9fa;
+            margin-bottom: 30px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .agreement-header {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+
+        .agreement-parties {
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+
+        .agreement-section {
+            margin-bottom: 25px;
+        }
+
+        .agreement-section h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #34495e;
+        }
+
+        .agreement-section ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .agreement-section li {
+            padding: 5px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+
+        .agreement-section li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #007e8c;
+            font-weight: 600;
+        }
+
+        .download-btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: white;
+            border: 2px solid #007e8c;
+            color: #007e8c;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+
+        .checkbox-acknowledgment {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .checkbox-acknowledgment input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            cursor: pointer;
+        }
+
+        .checkbox-acknowledgment label {
+            margin: 0;
+            font-weight: 400;
+            cursor: pointer;
+            line-height: 1.5;
+        }
+
+        .signature-pad {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 40px;
+            background: white;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .signature-placeholder {
+            font-size: 48px;
+            color: #ccc;
+            font-family: 'Brush Script MT', cursive;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .btn {
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+        }
+
+        .btn-back {
+            background: white;
+            color: #666;
+            border: 2px solid #e0e0e0;
+        }
+
+        .btn-back:hover {
+            border-color: #007e8c;
+            color: #007e8c;
+        }
+
+        .btn-continue {
+            background: #007e8c;
+            color: white;
+        }
+
+        .btn-continue:hover {
+            background: #006270;
+        }
+
+        .info-box {
+            background: #e8f4f5;
+            border-left: 4px solid #007e8c;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .info-box h5 {
+            margin-bottom: 8px;
+            color: #007e8c;
+        }
+
+        .info-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .info-box li {
+            padding: 3px 0;
+        }
+
+        @media (max-width: 768px) {
+            .form-row,
+            .checkbox-group {
+                grid-template-columns: 1fr;
+            }
+
+            .progress-steps {
+                flex-wrap: wrap;
+                gap: 15px;
+            }
+
+            .step-label {
+                font-size: 10px;
+            }
+
+            .form-card {
+                padding: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div>
+                <div class="logo">🖐️ REJUVENATORS</div>
+                <div class="logo-sub">Mobile Massage</div>
+            </div>
+            <div class="header-links">
+                <a href="#">Login</a>
+                <a href="#">Help</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Progress Bar -->
+        <div class="progress-bar">
+            <h2 class="progress-title">Therapist Registration</h2>
+            <div class="progress-steps">
+                <div class="progress-fill" style="width: 16.6%;"></div>
+                <div class="step active">
+                    <div class="step-circle">1</div>
+                    <div class="step-label">Personal</div>
+                </div>
+                <div class="step">
+                    <div class="step-circle">2</div>
+                    <div class="step-label">Business</div>
+                </div>
+                <div class="step">
+                    <div class="step-circle">3</div>
+                    <div class="step-label">Location</div>
+                </div>
+                <div class="step">
+                    <div class="step-circle">4</div>
+                    <div class="step-label">Qualify</div>
+                </div>
+                <div class="step">
+                    <div class="step-circle">5</div>
+                    <div class="step-label">Insurance</div>
+                </div>
+                <div class="step">
+                    <div class="step-circle">6</div>
+                    <div class="step-label">Agreement</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 1: Personal Information -->
+        <div class="form-card" id="step1">
+            <h2 class="form-section-title">STEP 1: Personal Information</h2>
+
+            <h3 class="section-subtitle">About You</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>First Name <span class="required">*</span></label>
+                    <input type="text" placeholder="Enter first name">
+                </div>
+                <div class="form-group">
+                    <label>Surname <span class="required">*</span></label>
+                    <input type="text" placeholder="Enter surname">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Date of Birth <span class="required">*</span></label>
+                <input type="date">
+            </div>
+
+            <div class="form-group">
+                <label>Email <span class="required">*</span></label>
+                <input type="email" placeholder="your.email@example.com">
+            </div>
+
+            <div class="form-group">
+                <label>Phone <span class="required">*</span></label>
+                <input type="tel" placeholder="+61 4XX XXX XXX">
+            </div>
+
+            <h3 class="section-subtitle">Address</h3>
+            <div class="form-group">
+                <label>Street Address <span class="required">*</span></label>
+                <input type="text" placeholder="Enter street address">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Suburb <span class="required">*</span></label>
+                    <input type="text" placeholder="Enter suburb">
+                </div>
+                <div class="form-group">
+                    <label>City <span class="required">*</span></label>
+                    <select>
+                        <option value="">Select city</option>
+                        <option value="brisbane">Brisbane</option>
+                        <option value="gold-coast">Gold Coast</option>
+                        <option value="adelaide">Adelaide</option>
+                        <option value="sydney">Sydney</option>
+                        <option value="melbourne">Melbourne</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>State <span class="required">*</span></label>
+                    <select>
+                        <option value="">Select state</option>
+                        <option value="qld">QLD</option>
+                        <option value="nsw">NSW</option>
+                        <option value="vic">VIC</option>
+                        <option value="sa">SA</option>
+                        <option value="wa">WA</option>
+                        <option value="tas">TAS</option>
+                        <option value="nt">NT</option>
+                        <option value="act">ACT</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Postcode <span class="required">*</span></label>
+                    <input type="text" placeholder="XXXX">
+                </div>
+            </div>
+
+            <h3 class="section-subtitle">Profile Photo</h3>
+            <div class="form-group">
+                <div class="file-upload">
+                    <div class="file-upload-icon">📸</div>
+                    <div class="file-upload-text">Drag & drop or click to upload</div>
+                    <div class="file-upload-hint">JPG, PNG (max 5MB) - Optional but recommended</div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-back" disabled>← Back</button>
+                <button class="btn btn-continue">Continue to Step 2 →</button>
+            </div>
+        </div>
+
+        <!-- Step 2: Business Details -->
+        <div class="form-card" id="step2" style="display: none;">
+            <h2 class="form-section-title">STEP 2: Business Details</h2>
+
+            <div class="form-group">
+                <label>Business Structure <span class="required">*</span></label>
+                <div class="toggle-group">
+                    <div class="toggle-option">Pty Ltd Company</div>
+                    <div class="toggle-option active">Sole Trader</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Business Name <span class="required">*</span></label>
+                <input type="text" placeholder="Enter business name">
+            </div>
+
+            <div class="form-group">
+                <label>ABN <span class="required">*</span></label>
+                <input type="text" placeholder="XX-XXX-XXX-XXX">
+            </div>
+
+            <div class="form-group">
+                <label>Registered for GST? <span class="required">*</span></label>
+                <div class="toggle-group">
+                    <div class="toggle-option">Yes</div>
+                    <div class="toggle-option active">No</div>
+                </div>
+            </div>
+
+            <h3 class="section-subtitle">Banking Details</h3>
+            <div class="form-group">
+                <label>Bank Account Name <span class="required">*</span></label>
+                <input type="text" placeholder="Enter account name">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>BSB <span class="required">*</span></label>
+                    <input type="text" placeholder="XXX-XXX">
+                </div>
+                <div class="form-group">
+                    <label>Account Number <span class="required">*</span></label>
+                    <input type="text" placeholder="XXXXXXXX">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-back">← Back</button>
+                <button class="btn btn-continue">Continue to Step 3 →</button>
+            </div>
+        </div>
+
+        <!-- Step 3: Service Locations & Availability -->
+        <div class="form-card" id="step3" style="display: none;">
+            <h2 class="form-section-title">STEP 3: Service Locations & Availability</h2>
+
+            <div class="form-group">
+                <label>Service Area <span class="required">*</span></label>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Select the cities you wish to provide services for</p>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="city-brisbane">
+                        <label for="city-brisbane">Brisbane</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="city-adelaide">
+                        <label for="city-adelaide">Adelaide</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="city-gold-coast">
+                        <label for="city-gold-coast">Gold Coast</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="city-sydney">
+                        <label for="city-sydney">Sydney</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="city-melbourne">
+                        <label for="city-melbourne">Melbourne</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="city-perth">
+                        <label for="city-perth">Perth</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Preferred Delivery Locations <span class="required">*</span></label>
+                <div class="checkbox-group" style="grid-template-columns: 1fr;">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="loc-hotels">
+                        <label for="loc-hotels">Hotels</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="loc-corporate">
+                        <label for="loc-corporate">Corporate Office (sitting neck/shoulder massages)</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="loc-home">
+                        <label for="loc-home">In-Home</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="loc-events">
+                        <label for="loc-events">Events</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Typical Availability</label>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">These are booking start times - can be changed in app</p>
+                <table class="availability-table">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>7-11am</th>
+                            <th>12-5pm</th>
+                            <th>6-11:30pm</th>
+                            <th>Not Available</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Monday</td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                        </tr>
+                        <tr>
+                            <td>Tuesday</td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                        </tr>
+                        <tr>
+                            <td>Wednesday</td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                        </tr>
+                        <tr>
+                            <td>Thursday</td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                        </tr>
+                        <tr>
+                            <td>Friday</td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                        </tr>
+                        <tr>
+                            <td>Saturday</td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                        </tr>
+                        <tr>
+                            <td>Sunday</td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                            <td><input type="checkbox"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="form-group">
+                <label>Start Date</label>
+                <p style="color: #666; font-size: 14px; margin-bottom: 8px;">When can you start?</p>
+                <input type="date">
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-back">← Back</button>
+                <button class="btn btn-continue">Continue to Step 4 →</button>
+            </div>
+        </div>
+
+        <!-- Step 4: Qualifications & Services -->
+        <div class="form-card" id="step4" style="display: none;">
+            <h2 class="form-section-title">STEP 4: Qualifications & Services</h2>
+
+            <div class="form-group">
+                <label>Therapies Offered <span class="required">*</span></label>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Select therapies you are qualified to deliver</p>
+
+                <h4 style="font-size: 15px; margin: 20px 0 10px; color: #34495e;">Signature Services</h4>
+                <div class="checkbox-group" style="grid-template-columns: 1fr;">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="therapy-stressbuster">
+                        <label for="therapy-stressbuster">Stressbuster Massage (deep tissue/therapeutic)</label>
+                    </div>
+                </div>
+
+                <h4 style="font-size: 15px; margin: 20px 0 10px; color: #34495e;">Specialized Therapies</h4>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="therapy-sports">
+                        <label for="therapy-sports">Sports Massage</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="therapy-remedial">
+                        <label for="therapy-remedial">Remedial Massage</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="therapy-pregnancy">
+                        <label for="therapy-pregnancy">Pregnancy Massage</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="therapy-aromatherapy">
+                        <label for="therapy-aromatherapy">Aromatherapy Style</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="therapy-foot">
+                        <label for="therapy-foot">Foot and Scalp Massage</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="therapy-facial">
+                        <label for="therapy-facial">Facial Massage</label>
+                    </div>
+                </div>
+
+                <h4 style="font-size: 15px; margin: 20px 0 10px; color: #34495e;">Additional Services</h4>
+                <div class="checkbox-group" style="grid-template-columns: 1fr;">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="therapy-couples">
+                        <label for="therapy-couples">Couples Massage (back to back)</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="therapy-corporate">
+                        <label for="therapy-corporate">Corporate Sitting Neck and Shoulders</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="therapy-advanced">
+                        <label for="therapy-advanced">Advanced Techniques (dry needling, cupping, trigger point)</label>
+                    </div>
+                </div>
+
+                <div class="checkbox-item" style="margin-top: 15px;">
+                    <input type="checkbox" id="select-all">
+                    <label for="select-all"><strong>Select All</strong></label>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Qualification Certificates <span class="required">*</span></label>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Upload your Cert IV/Diploma certificates</p>
+                <div class="file-upload">
+                    <div class="file-upload-icon">📄</div>
+                    <div class="file-upload-text">Drag & drop files here or click to browse</div>
+                    <div class="file-upload-hint">PDF, JPG, PNG (max 10MB each)</div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-back">← Back</button>
+                <button class="btn btn-continue">Continue to Step 5 →</button>
+            </div>
+        </div>
+
+        <!-- Step 5: Insurance & Compliance -->
+        <div class="form-card" id="step5" style="display: none;">
+            <h2 class="form-section-title">STEP 5: Insurance & Compliance</h2>
+
+            <h3 class="section-subtitle">Professional Indemnity Insurance</h3>
+
+            <div class="form-group">
+                <label>Do you have current insurance? <span class="required">*</span></label>
+                <div class="toggle-group">
+                    <div class="toggle-option active">Yes</div>
+                    <div class="toggle-option">No</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Insurance Expiry Date <span class="required">*</span></label>
+                <input type="date">
+            </div>
+
+            <div class="form-group">
+                <label>Upload Certificate of Currency <span class="required">*</span></label>
+                <div class="file-upload">
+                    <div class="file-upload-icon">📄</div>
+                    <div class="file-upload-text">Drag & drop or click to browse</div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <h5>ℹ️ Required Coverage:</h5>
+                <ul>
+                    <li>• Workers' Compensation</li>
+                    <li>• Vehicle and Equipment Insurance</li>
+                    <li>• Public & Products Liability ($10M+ required)</li>
+                </ul>
+            </div>
+
+            <h3 class="section-subtitle">First Aid Certification</h3>
+
+            <div class="form-group">
+                <label>Have you completed First Aid training? <span class="required">*</span></label>
+                <div class="toggle-group">
+                    <div class="toggle-option active">Yes</div>
+                    <div class="toggle-option">No</div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Upload First Aid Certificate <span class="required">*</span></label>
+                <div class="file-upload">
+                    <div class="file-upload-icon">📄</div>
+                    <div class="file-upload-text">Drag & drop or click to browse</div>
+                </div>
+            </div>
+
+            <h3 class="section-subtitle">Work Eligibility</h3>
+
+            <div class="checkbox-acknowledgment">
+                <input type="checkbox" id="work-eligibility">
+                <label for="work-eligibility">I confirm that I and any employees/subcontractors have valid visas to work in Australia and can provide VEVO verification upon request</label>
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-back">← Back</button>
+                <button class="btn btn-continue">Continue to Step 6 →</button>
+            </div>
+        </div>
+
+        <!-- Step 6: Agreement & Signature -->
+        <div class="form-card" id="step6" style="display: none;">
+            <h2 class="form-section-title">STEP 6: Agreement & Signature</h2>
+
+            <h3 class="section-subtitle">Independent Contractor Agreement</h3>
+
+            <div class="agreement-box">
+                <div class="agreement-header">📋 INDEPENDENT CONTRACTOR AGREEMENT</div>
+
+                <div class="agreement-parties">
+                    <strong>BETWEEN:</strong> Galdon Training Pty Ltd<br>
+                    T/A Rejuvenators Mobile Massage<br><br>
+                    <strong>AND:</strong> [Your Name]<br>
+                    [Your Business Name] (ABN: [Your ABN])
+                </div>
+
+                <hr style="margin: 20px 0; border: none; border-top: 2px solid #e0e0e0;">
+
+                <div class="agreement-section">
+                    <h4>KEY TERMS:</h4>
+                    <ul>
+                        <li>Contract Period: 12 months (auto-renews)</li>
+                        <li>Relationship: Independent Contractor</li>
+                        <li>Payment: As per agreed rates</li>
+                        <li>Notice Period: 30 days</li>
+                    </ul>
+                </div>
+
+                <div class="agreement-section">
+                    <h4>YOUR OBLIGATIONS:</h4>
+                    <ul>
+                        <li>Complete StressBuster training</li>
+                        <li>Maintain Therapist App</li>
+                        <li>Maintain $10M+ insurance</li>
+                        <li>Handle own tax & super</li>
+                        <li>Keep client info confidential</li>
+                        <li>Provide own equipment & supplies</li>
+                    </ul>
+                </div>
+
+                <div class="agreement-section">
+                    <h4>CANCELLATION POLICY:</h4>
+                    <ul>
+                        <li>Your late cancel (&lt;1hr): Full charge + review</li>
+                        <li>Client cancel &lt;3hrs: You get full payment</li>
+                        <li>Client cancel &gt;3hrs: No payment</li>
+                    </ul>
+                </div>
+
+                <div class="agreement-section">
+                    <h4>NON-COMPETE:</h4>
+                    <ul>
+                        <li>3-12 months after termination</li>
+                        <li>Cannot solicit clients you served</li>
+                        <li>Geographic restrictions apply</li>
+                    </ul>
+                </div>
+
+                <a href="#" class="download-btn">📄 Download Complete Agreement PDF</a>
+            </div>
+
+            <h3 class="section-subtitle">Acknowledgments</h3>
+
+            <div class="checkbox-acknowledgment">
+                <input type="checkbox" id="ack1">
+                <label for="ack1">I have read and understood the entire Independent Contractor Agreement</label>
+            </div>
+
+            <div class="checkbox-acknowledgment">
+                <input type="checkbox" id="ack2">
+                <label for="ack2">I have sought legal advice OR waive my right to obtain such advice</label>
+            </div>
+
+            <div class="checkbox-acknowledgment">
+                <input type="checkbox" id="ack3">
+                <label for="ack3">I understand this is an independent contractor relationship, NOT employment</label>
+            </div>
+
+            <div class="checkbox-acknowledgment">
+                <input type="checkbox" id="ack4">
+                <label for="ack4">All information provided is accurate and complete</label>
+            </div>
+
+            <div class="checkbox-acknowledgment">
+                <input type="checkbox" id="ack5">
+                <label for="ack5">I agree to non-solicitation and confidentiality terms</label>
+            </div>
+
+            <h3 class="section-subtitle">Signature</h3>
+
+            <div class="signature-pad">
+                <div class="signature-placeholder">[Digital signature pad]</div>
+            </div>
+
+            <div class="form-group">
+                <label>Full Legal Name</label>
+                <input type="text" placeholder="Your full legal name" readonly style="background: #f8f9fa;">
+            </div>
+
+            <div class="form-group">
+                <label>Date</label>
+                <input type="text" value="22/12/2025" readonly style="background: #f8f9fa;">
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-back">← Back</button>
+                <button class="btn btn-continue">Submit Registration →</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // Simple navigation for demonstration
+        document.querySelectorAll('.btn-continue').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // This is just a demo - add actual validation
+                alert('In production, this would validate and move to next step');
+            });
+        });
+
+        // Toggle functionality
+        document.querySelectorAll('.toggle-option').forEach(option => {
+            option.addEventListener('click', function() {
+                const parent = this.parentElement;
+                parent.querySelectorAll('.toggle-option').forEach(opt => {
+                    opt.classList.remove('active');
+                });
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>

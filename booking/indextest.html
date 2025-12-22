@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+  new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+  j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+  'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+  })(window,document,'script','dataLayer','GTM-57Z9T273');</script>
+  <!-- End Google Tag Manager -->
+
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rejuvenators Mobile Massage Booking</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/quote-form-enhanced.css" />
+  <script src="https://js.stripe.com/v3/"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBSFcQHl262KbU3H7-N6AdzEj-VO-wRASI&libraries=places"></script>
+  <script src="js/analytics.js"></script>
+</head>
+<body>
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-57Z9T273"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+  <div id="container">
+    <!-- Logo Header -->
+    <div class="logo-header">
+      <div class="header-content">
+        <img src="images/rejuvenators-logo-white.png" alt="Rejuvenators" class="header-logo">
+        <h1>Book Your Rejuvenators Experience</h1>
+      </div>
+    </div>
+    <!-- Simple Progress Indicator -->
+    <div class="progress-container">
+      <div class="simple-progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+        <img src="images/hand-icon.png" alt="" class="progress-icon" id="progressIcon">
+      </div>
+    </div>
+    <!-- Step 0: Booking Method Selection -->
+    <div id="step0" class="step active">
+      <div class="booking-method-container">
+        <div class="step-header">
+          <h2>Select your booking type</h2>
+          <p class="step-description">Request an individual booking, or get a quote for corporate and group services.</p>
+        </div>
+        
+        <div class="step-content">
+          <div class="booking-options">
+            <div class="booking-option" data-type="instant" onclick="selectBookingMethod('instant', this)">
+              <div class="option-icon"><img src="images/booking-request-icon.png" alt="Booking Request" style="width: 60px; height: 60px;"></div>
+              <div class="option-text">Request a Booking</div>
+            </div>
+            <div class="booking-option" data-type="quote" onclick="selectBookingMethod('quote', this)">
+              <div class="option-icon"><img src="images/quote-request-icon.png" alt="Quote Request" style="width: 60px; height: 60px;"></div>
+              <div class="option-text">Request a Quote</div>
+            </div>
+          </div>
+          
+          <div class="option-description">
+            <div class="description-card instant">
+              <div class="description-header">
+                <div class="description-icon"><img src="images/booking-request-icon.png" alt="Booking Request" style="width: 40px; height: 40px;"></div>
+                <h3>Request a Booking</h3>
+              </div>
+              <p>Perfect for one-off sessions. Request your preferred service, therapist and time — we'll confirm availability soon.</p>
+            </div>
+            <div class="description-card quote">
+              <div class="description-header">
+                <div class="description-icon"><img src="images/quote-request-icon.png" alt="Quote Request" style="width: 40px; height: 40px;"></div>
+                <h3>Request a Quote</h3>
+              </div>
+              <p>Get a personalised quote for your event or group booking. Perfect for corporate events, parties, or custom requirements.</p>
+            </div>
+          </div>
+          
+          <div class="button-group">
+            <button class="btn btn-continue" onclick="proceedFromStep0()">Continue</button>
+          </div>
+        </div>
+      </div>
+    </div>
+<style>
+  .row {
+    display: flex;
+    gap: 12px;
+    max-width: 600px; /* prevents full-page stretch */
+  }
+
+  .row input {
+    flex: 1;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+
+  .row input.small {
+    flex: 0 0 100px;
+  }
+</style>
+<div class="row">
+  <input placeholder="Street address">
+  <input class="small" placeholder="Unit">
+</div>
+
+
+    <!-- Step 1: Address -->
+    <div id="step1" class="step">
+      <div class="step-header">
+        <h2>Enter your booking location</h2>
+        <p class="step-description">Type in your address so we can confirm therapist availability in your area.</p>
+      </div>
+      <div class="step-content">
+        <!-- Booking type selection removed - now handled in Step 0 -->
+        <div class="form-group horizontal" id="businessNameGroup" style="display:none;">
+          <label for="businessName">Business Name</label>
+          <input type="text" id="businessName" placeholder="e.g., Google HQ" />
+        </div>
+        <input id="address" autocomplete="off" placeholder="Start typing your address..." />
+        <div id="address-autocomplete-status" class="status-message"></div>
+        <!-- Timezone notification container -->
+        <div id="bookingTimezoneNotification" style="display: none;"></div>
+        <!-- Step 1 Navigation Buttons -->
+        <div class="button-group">
+          <button class="btn btn-back" onclick="showStep('step0')">Back</button>
+          <button class="btn btn-continue" onclick="validateAndContinueFromStep1()">Continue</button>
+        </div>
+      </div>
+    </div>
+    <!-- Step 2: Therapy Selection -->
+    <div id="step2" class="step">
+      <div class="step-header">
+        <h2>Choose your service</h2>
+        <p class="step-description">Select your preferred service and duration.</p>
+      </div>
+      <div class="step-content">
+        <div class="section-title">Service Type</div>
+
+        <!-- Category Tabs (only shown for instant booking mode) -->
+        <div id="categoryTabs" class="category-tabs" style="display: none;">
+          <!-- Tabs will be populated by JavaScript -->
+        </div>
+
+        <div id="servicesGrid" class="services-grid">
+          <!-- Services will be populated by JavaScript -->
+        </div>
+        <button class="show-more-btn" id="showMoreBtn" onclick="toggleServices()" style="display: none;">
+          + View All Services
+        </button>
+        <div class="form-group horizontal" id="minimumDurationInfo" style="display: none;">
+          <label style="color: #666;">Minimum Duration</label>
+          <div style="color: #666; font-style: italic; padding: 8px 12px; border: 1px solid #ddd; background: #f9f9f9;">
+            <span id="minimumDurationText">Select a service to see minimum duration</span>
+          </div>
+        </div>
+        <div class="form-group horizontal" id="durationField" style="display: none;">
+          <label for="duration">Service Duration</label>
+          <select id="duration">
+            <option value="">Select duration...</option>
+          </select>
+        </div>
+        
+        <!-- Step 2 Navigation Buttons -->
+        <div class="button-group">
+          <button class="btn btn-back" onclick="showStep('step1')">Back</button>
+          <button class="btn btn-continue" onclick="validateAndContinueFromStep2()">Continue</button>
+        </div>
+      </div>
+    </div>
+    <!-- Step 3: Gender -->
+    <div id="step3" class="step">
+      <div class="step-header">
+        <h2>Your preferences</h2>
+        <p class="step-description">Let us know your therapist preferences so we can personalise your booking.</p>
+      </div>
+      <div class="step-content">
+        <div class="form-group">
+          <label style="font-weight:600; margin-bottom:8px; display:block;">Do you have a preferred therapist gender?</label>
+          <div class="radio-group horizontal">
+             <label class="radio-inline">
+              <span>Don't mind, just want a great therapist</span>
+              <input type="radio" name="genderPref" value="any" checked>
+            </label>
+            <label class="radio-inline">
+              <span>Female</span>
+              <input type="radio" name="genderPref" value="female">
+            </label>
+            <label class="radio-inline">
+              <span>Male</span>
+              <input type="radio" name="genderPref" value="male">
+            </label>
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:18px;">
+          <label style="font-weight:600; margin-bottom:8px; display:block;">
+            If your selected therapist is not available, would you like us to look for a similar therapist for you?
+          </label>
+          <div class="radio-group">
+            <label class="radio-inline" style="font-weight:400;">
+              <input type="radio" name="fallbackOption" value="yes" checked> Yes, happy to accept a similar therapist
+            </label>
+            <label class="radio-inline" style="font-weight:400;">
+              <input type="radio" name="fallbackOption" value="no"> No, I will request a different time with the same therapist
+            </label>
+          </div>
+        </div>
+        <div id="gender-availability-status" class="status-message"></div>
+        <div class="button-group" style="margin-top:24px;">
+          <button class="btn prev" data-prev="step2">Back</button>
+          <button class="btn next" data-next="step4">Continue</button>
+        </div>
+      </div>
+    </div>
+    <!-- Step 4: Date and Time -->
+    <div id="step4" class="step">
+      <div class="step-header">
+        <h2>Your preferred time</h2>
+        <p class="step-description">Choose your preferred date and time for your service, and specify parking options for our team.</p>
+      </div>
+      <div class="step-content">
+        <div class="form-group horizontal">
+          <label for="date">Date</label>
+          <input type="date" id="date" />
+        </div>
+        <div class="form-group horizontal">
+          <label for="time">Time</label>
+          <div id="timeSlotsContainer"></div>
+          <input type="hidden" id="time" />
+        </div>
+        <div class="form-group horizontal">
+          <label for="parking">Parking</label>
+          <select id="parking">
+            <option value="free">Free Parking Available</option>
+            <option value="paid">Paid Parking Required</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </div>
+
+        <!-- Recurring Booking Section -->
+        <div class="form-group recurring-section" style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+            <input type="checkbox" id="recurringToggle" style="width: 20px; height: 20px; cursor: pointer;" />
+            <label for="recurringToggle" style="margin: 0; cursor: pointer; font-weight: 600; font-size: 16px;">
+              🔄 Make this a recurring booking
+            </label>
+          </div>
+          <p style="margin: 0 0 20px 0; color: #666; font-size: 14px;">Book multiple sessions in advance with the same therapist - perfect for regular wellness routines.</p>
+
+          <div id="recurringOptions" style="display: none;">
+            <div class="form-group">
+              <label for="recurringFrequency">Frequency</label>
+              <select id="recurringFrequency" onchange="updateRecurringPreview()">
+                <option value="daily">Daily (consecutive days)</option>
+                <option value="weekly" selected>Weekly (same day & time each week)</option>
+                <option value="biweekly">Bi-weekly (every 2 weeks)</option>
+                <option value="monthly">Monthly (every 4 weeks)</option>
+                <option value="custom">Custom interval</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="customIntervalGroup" style="display: none;">
+              <label for="customInterval">Days between repeats</label>
+              <input type="number" id="customInterval" min="1" max="30" value="3" onchange="updateRecurringPreview()" />
+            </div>
+
+            <div class="form-group">
+              <label for="recurringCount">Number of repeats</label>
+              <select id="recurringCount" onchange="updateRecurringPreview()">
+                <option value="1">1 repeat (2 total sessions)</option>
+                <option value="2">2 repeats (3 total sessions)</option>
+                <option value="3">3 repeats (4 total sessions)</option>
+                <option value="4">4 repeats (5 total sessions)</option>
+                <option value="5">5 repeats (6 total sessions)</option>
+                <option value="6" selected>6 repeats (7 total sessions)</option>
+                <option value="7">7 repeats (8 total sessions)</option>
+                <option value="8">8 repeats (9 total sessions)</option>
+                <option value="9">9 repeats (10 total sessions)</option>
+                <option value="10">10 repeats (11 total sessions)</option>
+                <option value="11">11 repeats (12 total sessions)</option>
+              </select>
+            </div>
+
+            <div id="recurringPreview" class="recurring-preview" style="background: white; padding: 15px; border-radius: 6px; border: 1px solid #dee2e6;">
+              <h4 style="margin: 0 0 10px 0; color: #007e8c; font-size: 14px;">📅 Your Session Schedule:</h4>
+              <div id="recurringDatesList" style="font-size: 13px; line-height: 1.8;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="priceDisplay" class="price-display">
+          <div class="price-header">
+            <strong>Estimated Session Price: $<span id="priceAmount"></span></strong>
+          </div>
+          <div id="priceBreakdown" class="price-breakdown-aligned"></div>
+        </div>
+
+        <!-- Discount & Gift Card Section -->
+        <div id="discountSection" class="discount-section" style="display:none;">
+          <div class="discount-title">Apply Discounts & Gift Cards</div>
+          
+          <!-- Promo Code -->
+          <div class="form-group">
+            <label for="promoCode">🏷️ Promo Code</label>
+            <div class="input-group">
+              <input type="text" id="promoCode" placeholder="Enter promo code" />
+              <button type="button" id="applyPromoBtn" class="apply-button">Apply</button>
+            </div>
+            <div id="promoStatus" class="status-message" style="display:none;"></div>
+          </div>
+
+          <!-- Gift Card -->
+          <div class="form-group">
+            <label for="giftCard">💳 Gift Card</label>
+            <div class="input-group">
+              <input type="text" id="giftCard" placeholder="Enter gift card code" />
+              <button type="button" id="applyGiftCardBtn" class="apply-button">Apply</button>
+            </div>
+            <div id="giftCardStatus" class="status-message" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- Final Pricing Breakdown -->
+        <div id="finalPricingBreakdown" class="final-pricing-breakdown" style="display:none;">
+          <h3>Final Pricing</h3>
+          <div class="pricing-line">
+            <span>Subtotal:</span><span id="subtotalAmount">$0.00</span>
+          </div>
+          <div class="pricing-line discount-line" id="discountLine" style="display:none;">
+            <span>Discount (<span id="appliedDiscountCode"></span>):</span><span id="discountAmount">-$0.00</span>
+          </div>
+          <div class="pricing-line gift-card-line" id="giftCardLine" style="display:none;">
+            <span>Gift Card (<span id="appliedGiftCardCode"></span>):</span><span id="giftCardAmount">-$0.00</span>
+          </div>
+          <div class="pricing-line">
+            <span>GST (10%):</span><span id="gstAmount">$0.00</span>
+          </div>
+          <hr class="pricing-divider">
+          <div class="pricing-line total-line">
+            <span>Total Amount:</span><span id="totalAmount">$0.00</span>
+          </div>
+        </div>
+
+        <!-- Discount & Gift Card Section -->
+        <div id="discountSection" class="discount-section" style="display:none;">
+          <div class="discount-title">Apply Discounts & Gift Cards</div>
+          
+          <!-- Promo Code -->
+          <div class="form-group">
+            <label for="promoCode">🏷️ Promo Code</label>
+            <div class="input-group">
+              <input type="text" id="promoCode" placeholder="Enter promo code" />
+              <button type="button" id="applyPromoBtn" class="apply-button">Apply</button>
+            </div>
+            <div id="promoStatus" class="status-message" style="display:none;"></div>
+          </div>
+
+          <!-- Gift Card -->
+          <div class="form-group">
+            <label for="giftCard">💳 Gift Card</label>
+            <div class="input-group">
+              <input type="text" id="giftCard" placeholder="Enter gift card code" />
+              <button type="button" id="applyGiftCardBtn" class="apply-button">Apply</button>
+            </div>
+            <div id="giftCardStatus" class="status-message" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- Final Pricing Breakdown -->
+        <div id="finalPricingBreakdown" class="final-pricing-breakdown" style="display:none;">
+          <h3>Final Pricing</h3>
+          <div class="pricing-line">
+            <span>Subtotal:</span><span id="subtotalAmount">$0.00</span>
+          </div>
+          <div class="pricing-line discount-line" id="discountLine" style="display:none;">
+            <span>Discount (<span id="appliedDiscountCode"></span>):</span><span id="discountAmount">-$0.00</span>
+          </div>
+          <div class="pricing-line gift-card-line" id="giftCardLine" style="display:none;">
+            <span>Gift Card (<span id="appliedGiftCardCode"></span>):</span><span id="giftCardAmount">-$0.00</span>
+          </div>
+          <div class="pricing-line">
+            <span>GST (10%):</span><span id="gstAmount">$0.00</span>
+          </div>
+          <hr class="pricing-divider">
+          <div class="pricing-line total-line">
+            <span>Total Amount:</span><span id="totalAmount">$0.00</span>
+          </div>
+        </div>
+        <div class="button-group">
+          <button class="btn prev" data-prev="step3">Back</button>
+          <button class="btn next" data-next="step5">Continue</button>
+        </div>
+      </div>
+    </div>
+    <!-- Step 5: Therapist Selection -->
+    <div id="step5" class="step">
+      <div class="step-header">
+        <h2>Select your preferred therapist</h2>
+        <p class="step-description">Based on your preferences and service time, we have the following team available for you to choose from</p>
+      </div>
+      <div class="step-content">
+        <div id="therapistSelection"></div>
+        <div class="button-group">
+          <button class="btn prev" data-prev="step4">Back</button>
+          <button class="btn next" data-next="step6">Continue</button>
+        </div>
+      </div>
+    </div>
+    <!-- Step 6: Customer Details -->
+    <div id="step6" class="step">
+      <div class="step-header">
+        <h2>Your Details</h2>
+        <p class="step-description">Please enter your contact details</p>
+      </div>
+      <div class="step-content">
+        <!-- Email field first (primary identifier) -->
+        <div class="form-group">
+          <label for="customerEmail" style="font-weight:600; margin-bottom:8px; display:block;">Email Address *</label>
+          <input type="email" id="customerEmail" placeholder="Enter your email address" required />
+          <div id="emailStatus" style="font-size:0.9rem; margin-top:4px;"></div>
+        </div>
+        
+        <!-- Customer lookup result display -->
+        <div id="customerLookupResult" style="display:none; background:#e8f5e8; border:1px solid #4caf50; padding:12px; border-radius:5px; margin:10px 0;">
+          <div style="font-weight:600; color:#2e7d32;">Welcome back!</div>
+          <div id="customerInfo" style="margin-top:4px;"></div>
+        </div>
+        
+        <!-- Registration option (shown for new customers) -->
+        <div id="registrationOption" class="form-group" style="display:none;">
+          <label for="customerCode" style="font-weight:600; margin-bottom:8px; display:block;">Customer Code (if you have one)</label>
+          <input type="text" id="customerCode" placeholder="e.g., RJM123" />
+          <div id="customerCodeStatus" style="font-size:0.9rem; margin-top:4px;"></div>
+        </div>
+        
+        <!-- Name fields -->
+        <div class="form-group horizontal">
+          <div style="flex:1; margin-right:10px;">
+            <label for="customerFirstName" style="font-weight:600; margin-bottom:8px; display:block;">First Name *</label>
+            <input type="text" id="customerFirstName" placeholder="First Name" required />
+          </div>
+          <div style="flex:1;">
+            <label for="customerLastName" style="font-weight:600; margin-bottom:8px; display:block;">Last Name *</label>
+            <input type="text" id="customerLastName" placeholder="Last Name" required />
+          </div>
+        </div>
+        
+        <!-- Phone field -->
+        <div class="form-group">
+          <label for="customerPhone" style="font-weight:600; margin-bottom:8px; display:block;">Phone Number *</label>
+          <input type="tel" id="customerPhone" placeholder="Phone Number" required />
+        </div>
+        
+        <!-- Marketing Subscription Checkbox -->
+        <div class="form-group" style="margin-top: 20px; padding: 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px;">
+          <label style="display: flex; align-items: flex-start; cursor: pointer; font-weight: 400; color: #0c4a6e;">
+            <input type="checkbox" id="marketingConsent" value="yes" style="margin-right: 12px; margin-top: 4px; width: 18px; height: 18px; cursor: pointer;" />
+            <span style="font-size: 14px; line-height: 1.5;">
+              I'd like to receive special offers, wellness tips, and exclusive promotions from Rejuvenators via email. You can unsubscribe at any time.
+            </span>
+          </label>
+        </div>
+        
+        <!-- Customer code display -->
+        <div id="customerCodeDisplay" style="display:none; background:#f0f8ff; border:1px solid #007e8c; padding:10px; border-radius:5px; margin-top:10px;">
+          <div style="font-weight:600; color:#007e8c;">Your Customer ID:</div>
+          <div id="customerCodeText" style="font-family:monospace; font-size:1.1rem; margin-top:4px;"></div>
+        </div>
+        
+        <div class="button-group">
+          <button class="btn prev" data-prev="step5">Back</button>
+          <button class="btn next" data-next="step7">Continue</button>
+        </div>
+      </div>
+    </div>
+    <!-- Step 7: Room and Notes -->
+    <div id="step7" class="step">
+      <div class="step-header">
+        <h2>Tell us about your location</h2>
+        <p class="step-description">Add any details that will help your therapist find and access your location, such as room number, gate code, or parking instructions, as well as additional notes for your service.</p>
+      </div>
+      <div class="step-content">
+        <!-- Room Details Section -->
+        <div class="form-section">
+       <h3> Room Details and Notes</h3>
+          <div class="form-group">
+          <div class="text-group horizontal">
+            <label for="roomNumber">Room Number</label>
+            <input type="text" id="roomNumber" placeholder="e.g. Room 101, Apartment 2B (write N/A if not applicable)" />
+          </div>
+          <div class="form-group">
+            <label for="bookerName">Name of person who booked the room</label>
+            <input type="text" id="bookerName" placeholder="(write N/A if not applicable)" />
+          </div>
+          <div class="form-group">
+            <label for="notes">Additional Notes (Optional)</label>
+            <textarea id="notes" rows="2" placeholder="e.g., Parking instructions, access codes, special requirements, medical conditions, preferred pressure, etc." style="font-size: 13px;"></textarea>
+          </div>
+        </div>
+
+        <!-- Terms & Conditions Section -->
+        <div class="form-section">
+          <h3>Terms & Conditions</h3>
+          <div class="form-group">
+            <label for="termsAcceptance">Please confirm you've read our Terms & Conditions — they're designed to ensure a smooth, relaxing experience for every booking.</label>
+            <p class="section-description"><a href="https://rejuvenators.com/terms-and-conditions/" target="_blank" style="color: #007e8c;">View T&Cs.</a></p>
+            <select id="termsAcceptance" required>
+              <option value="">Please select your response...</option>
+              <option value="yes">Yes, I have read and accept Terms & Conditions</option>
+              <option value="no">No, I don't accept, cancel this booking process</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="button-group">
+          <button class="btn prev" data-prev="step6">Back</button>
+          <button class="btn next" data-next="step8">Continue</button>
+        </div>
+      </div>
+    </div>
+    <!-- Step 8: Payment Card Entry -->
+    <div id="step8" class="step">
+      <div class="step-header">
+        <h2>Payment Information</h2>
+        <p class="step-description">Please enter your card details below. Your card will only be charged after a therapist accepts your booking.</p>
+      </div>
+      <div class="step-content" autocomplete="off" name="no-autofill-payment">
+        <div class="payment-info">
+          <!-- Admin-only Payment Method Selector -->
+          <div id="adminPaymentMethodSelector" style="display: none; margin-bottom: 24px;">
+            <label for="paymentMethod" style="display: block; font-weight: 600; margin-bottom: 8px; color: #1f2937;">Payment Method</label>
+            <select id="paymentMethod" style="width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 16px; background-color: white;">
+              <option value="card">Credit Card (Stripe)</option>
+              <option value="bank_transfer">EFT/Bank Transfer</option>
+              <option value="invoice">Invoice (Pay Later)</option>
+            </select>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">Select how the customer will pay for this booking.</p>
+          </div>
+
+          <div class="payment-security">
+            <div class="security-badge">
+              <span class="security-icon">🔒</span>
+              <span class="security-text">Secure Payment</span>
+            </div>
+            <p class="security-note">Your payment information is encrypted and secure. We use industry-standard security measures to protect your data.</p>
+          </div>
+
+          <div class="card-input-container">
+            <label for="card-element">Card Details</label>
+            <div id="card-element" class="card-element"></div>
+            <div id="card-errors" style="color: #dc2626; font-size: 14px; margin-top: 8px;"></div>
+          </div>
+
+          <!-- Card Authorization Button -->
+          <div style="margin-top: 24px; text-align: center;">
+            <button id="authorizeCardBtn" class="btn primary" style="min-width: 250px; font-weight: 600; font-size: 16px;">
+              🔒 Authorise Card
+            </button>
+            <p style="color: #6b7280; font-size: 14px; margin-top: 8px;">
+              We'll hold the funds but won't charge until your booking is confirmed
+            </p>
+          </div>
+
+          <!-- Card Authorization Status -->
+          <div id="cardAuthStatus" style="display: none; margin-top: 20px; padding: 16px; border-radius: 8px; text-align: center;">
+            <!-- Status will be populated by JavaScript -->
+          </div>
+        </div>
+        
+        <div class="button-group">
+          <button class="btn prev" data-prev="step7">Back</button>
+          <button id="proceedToSummaryBtn" class="btn next primary" data-next="step9" disabled style="opacity: 0.5; cursor: not-allowed;">Proceed to Booking Request</button>
+        </div>
+      </div>
+    </div>
+    <!-- Step 9: Booking Summary -->
+    <div id="step9" class="step">
+      <div class="step-header">
+        <h2>Booking Summary</h2>
+        <p class="step-description">Review your booking details before confirming</p>
+      </div>
+      <div class="step-content">
+        <div id="bookingSummaryDetails" class="booking-summary"></div>
+        <div class="button-group">
+          <button class="btn prev" data-prev="step8">Back</button>
+          <button class="btn next primary" data-next="step10">Confirm and Request Booking</button>
+        </div>
+      </div>
+    </div>
+    <!-- Step 10: Confirm Booking Request -->
+    <div id="step10" class="step">
+      <div class="step-header">
+        <h2>Booking Request Submitted</h2>
+        <p class="step-description">Thank you! Your booking request has been submitted.</p>
+      </div>
+      <div class="step-content">
+        <!-- Loading state while waiting for confirmation -->
+        <div id="confirmationLoading" class="confirmation-loading">
+          <div class="spinner"></div>
+          <div class="warning-message">
+            <h3 style="color: #dc2626; margin-bottom: 1rem;">⚠️ IMPORTANT</h3>
+            <p style="font-weight: 600; font-size: 18px; color: #dc2626; margin-bottom: 1rem;">
+              Do not close this page or click the back button until you see confirmation messages
+            </p>
+          </div>
+          <p>Processing your booking request...</p>
+          <p class="loading-subtext">Please wait while we confirm your booking details. This page will update automatically.</p>
+        </div>
+
+        <!-- Confirmation details (hidden initially) -->
+        <div id="confirmationDetails" class="booking-summary" style="display: none;"></div>
+
+        <!-- Success message and next steps -->
+        <div id="confirmationSuccess" class="confirmation-success" style="display: none;">
+          <div id="confirmationMessages" class="confirmation-messages"></div>
+
+          <div class="button-group" style="margin-top: 2rem;">
+            <button class="btn prev" onclick="window.close()">
+              Close Page
+            </button>
+            <button class="btn" onclick="window.location.reload()">
+              Make Another Booking
+            </button>
+            <button class="btn btn-continue" onclick="window.location.href='https://rejuvenators.com'">
+              Visit Our Website →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enhanced Quote Form Step -->
+<!-- ENHANCED QUOTE FORM - Fixed to match business requirements -->
+<!-- Integrates with time validation and database-driven pricing -->
+
+<div id="quoteStep" class="step">
+  <div class="step-header">
+    <h2>✨ Request Your Custom Quote</h2>
+    <p class="step-description">Tell us about your event and we'll create the perfect massage experience</p>
+  </div>
+
+  <div class="step-content">
+    <!-- Unified Event Planning -->
+    <div class="form-section event-structure-section">
+      <h3>Event Details</h3>
+
+      <!-- EVENT LOCATION FIRST - Critical for timezone detection -->
+      <div class="form-group">
+        <label for="eventLocation">Event Location *</label>
+        <input type="text" id="eventLocation" class="form-control" placeholder="Start typing your address..." required>
+        <div id="event-address-status" class="address-status"></div>
+      </div>
+
+      <!-- Timezone notification container -->
+      <div id="quoteTimezoneNotification" style="display: none;"></div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="eventType">Event Type</label>
+          <select id="eventType" class="form-control">
+            <option value="">Select event type...</option>
+            <option value="corporate_wellness">Corporate Wellness</option>
+            <option value="team_building">Team Building</option>
+            <option value="conference">Conference</option>
+            <option value="retreat">Retreat</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="expectedAttendees">Expected Attendees</label>
+          <input type="number" id="expectedAttendees" class="form-control" min="1" placeholder="Number of people">
+        </div>
+      </div>
+    </div>
+
+    <!-- Unified Event Date/Time Fields -->
+    <div id="multiDayFields" class="form-section multi-day-container active">
+      <h3>Event Schedule</h3>
+      <div class="form-group">
+        <label for="numberOfDays">Number of Event Days</label>
+        <select id="numberOfDays" class="form-control">
+          <option value="">Select number of days...</option>
+          <option value="1">1 Day</option>
+          <option value="2">2 Days</option>
+          <option value="3">3 Days</option>
+          <option value="4">4 Days</option>
+          <option value="5">5 Days</option>
+        </select>
+      </div>
+      <div id="multiDayDates"></div>
+      <button type="button" class="btn btn-outline-success" id="addEventDate">+ Add Another Day</button>
+    </div>
+
+    <!-- Contact Information -->
+    <div class="form-section">
+      <h3>Contact Information</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="contactName">Full Name *</label>
+          <input type="text" id="contactName" class="form-control" placeholder="Your full name" required>
+        </div>
+        <div class="form-group">
+          <label for="companyName">Company Name</label>
+          <input type="text" id="companyName" class="form-control" placeholder="Your company">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="contactEmail">Email Address *</label>
+          <input type="email" id="contactEmail" class="form-control" placeholder="your@email.com" required>
+        </div>
+        <div class="form-group">
+          <label for="contactPhone">Phone Number *</label>
+          <input type="tel" id="contactPhone" class="form-control" placeholder="+61 XXX XXX XXX" required>
+        </div>
+      </div>
+    </div>
+
+    <!-- Massage Specifications -->
+    <div class="form-section">
+      <h3>Service Specifications</h3>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="numberOfServices">Total Number of Service Sessions *</label>
+          <input type="number" id="numberOfServices" class="form-control" min="1" placeholder="How many service sessions required" required>
+        </div>
+        <div class="form-group">
+          <label for="durationPerService">Average Service Duration (Calculated) *</label>
+          <input type="number" id="durationPerService" class="form-control calculated-field" readonly
+                 placeholder="Calculated from event time ÷ sessions" required>
+          <small class="calculated-help">Auto-calculated from: Event Schedule Time ÷ Total Sessions</small>
+        </div>
+      </div>
+
+      <!-- Time Validation Display -->
+      <div class="calculation-display">
+        <div class="calculation-row">
+          <span>Event Schedule Time:</span>
+          <span id="eventScheduleTime">-</span>
+        </div>
+        <div class="calculation-row">
+          <span>Service Requirements Time:</span>
+          <span id="serviceRequirementsTime">-</span>
+        </div>
+        <div class="calculation-row total-row">
+          <span>Total Validated Time:</span>
+          <span id="totalValidatedTime">-</span>
+        </div>
+      </div>
+
+      <div id="timeValidationMessage" class="validation-message"></div>
+    </div>
+
+    <!-- Business Requirements -->
+    <div class="form-section">
+      <h3>Business Requirements</h3>
+      <div class="form-group">
+        <label for="paymentMethod">Preferred Payment Method *</label>
+        <select id="paymentMethod" class="form-control" required>
+          <option value="">Select payment method...</option>
+          <option value="card">Credit Card</option>
+          <option value="bank_transfer">Bank Transfer/EFT</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Special Requirements -->
+    <div class="form-section">
+      <h3>Special Requirements</h3>
+      <div class="form-group">
+        <label for="specialRequirements">Tell us more about your event and what items you will require we provide to deliver the massages.</label>
+        <textarea id="specialRequirements" class="form-control" rows="6" placeholder="e.g., Changing rooms needed, tables provided, music preferences, privacy requirements, accessibility needs, dietary restrictions for therapists, etc."></textarea>
+      </div>
+    </div>
+
+    <!-- Investment Estimate -->
+    <div class="form-section">
+      <h3>Investment Estimate</h3>
+      <div class="estimate-display">
+        <div class="estimate-row">
+          <span>Sessions:</span>
+          <span id="estimateSessions">-</span>
+        </div>
+        <div class="estimate-row">
+          <span>Duration per Session:</span>
+          <span id="estimateDuration">-</span>
+        </div>
+        <div class="estimate-row total-estimate">
+          <span>Estimated Range:</span>
+          <span id="estimatePrice">Enter details above</span>
+        </div>
+      </div>
+      <p class="estimate-note">*Final pricing will be confirmed in your detailed quote</p>
+    </div>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+      <button type="button" class="btn btn-outline-secondary" onclick="resetToServiceSelection()">
+        ← Start New Quote
+      </button>
+      <button type="button" id="submitQuoteRequest" class="btn btn-primary btn-lg">
+        Request Quote 🚀
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div id="quoteSuccessModal" class="quote-modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>✅ Quote Request Submitted!</h2>
+    </div>
+    <div class="modal-body">
+      <p>Your quote request has been submitted successfully.</p>
+      <p><strong>Reference Number:</strong> <span id="quoteReferenceNumber"></span></p>
+      <p>We'll review your request and send you a detailed quote within 24 hours.</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" onclick="document.getElementById('quoteSuccessModal').style.display='none'">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+  </div>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+  <script>
+    // Ensure EmailJS is loaded before other scripts
+    window.addEventListener('load', function() {
+      if (typeof emailjs !== 'undefined') {
+        console.log('✅ EmailJS loaded successfully');
+      } else {
+        console.error('❌ EmailJS failed to load');
+      }
+    });
+  </script>
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/emailService.js"></script>
+  <script src="js/booking.js"></script>
+  <script src="js/quote-form-enhanced.js"></script>
+</body>
+</html> 

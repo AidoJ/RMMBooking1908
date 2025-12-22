@@ -169,6 +169,66 @@ exports.handler = async (event, context) => {
   }
 };
 
+/**
+ * Calculate appropriate response timeout based on booking urgency
+ * @param {Date} bookingDateTime - The date/time of the booking
+ * @returns {Promise<number>} - Timeout in minutes
+ */
+async function calculateResponseTimeout(bookingDateTime) {
+  try {
+    // Load all timeout settings from system_settings
+    const { data: settings } = await supabase
+      .from('system_settings')
+      .select('key, value')
+      .in('key', [
+        'therapist_response_timeout_minutes',
+        'urgent_response_timeout_minutes',
+        'standard_response_timeout_minutes'
+      ]);
+
+    // Parse settings with fallback values
+    let immediateTimeout = 60;
+    let urgentTimeout = 120;
+    let standardTimeout = 240;
+
+    if (settings) {
+      settings.forEach(s => {
+        if (s.key === 'therapist_response_timeout_minutes') immediateTimeout = parseInt(s.value) || 60;
+        if (s.key === 'urgent_response_timeout_minutes') urgentTimeout = parseInt(s.value) || 120;
+        if (s.key === 'standard_response_timeout_minutes') standardTimeout = parseInt(s.value) || 240;
+      });
+    }
+
+    // Calculate hours until service
+    const now = new Date();
+    const hoursUntilService = (bookingDateTime - now) / (1000 * 60 * 60);
+
+    let timeoutMinutes;
+    let tier;
+
+    if (hoursUntilService < 3) {
+      // Tier 1: IMMEDIATE (0-3 hours)
+      timeoutMinutes = immediateTimeout;
+      tier = 'Immediate';
+    } else if (hoursUntilService < 12) {
+      // Tier 2: URGENT (3-12 hours)
+      timeoutMinutes = urgentTimeout;
+      tier = 'Urgent';
+    } else {
+      // Tier 3: STANDARD (12+ hours)
+      timeoutMinutes = standardTimeout;
+      tier = 'Standard';
+    }
+
+    console.log(`⏱️ Booking in ${hoursUntilService.toFixed(1)} hours - Using ${tier} timeout: ${timeoutMinutes} minutes`);
+    return timeoutMinutes;
+
+  } catch (error) {
+    console.error('❌ Error calculating timeout, using default 60 minutes:', error);
+    return 60;
+  }
+}
+
 // Verify if therapist can respond to booking
 async function verifyTherapistCanRespond(booking, therapistId) {
   try {
@@ -571,13 +631,10 @@ You'll be notified once someone accepts!
           therapist.first_name + ' ' + therapist.last_name + ' declined - searching ' + availableTherapists.length + ' alternatives');
         
         // 3. Send booking requests to ALL available therapists
-        const { data: timeoutSetting } = await supabase
-          .from('system_settings')
-          .select('value')
-          .eq('key', 'therapist_response_timeout_minutes')
-          .single();
-        const timeoutMinutes = timeoutSetting && timeoutSetting.value ? parseInt(timeoutSetting.value) : 60;
-        
+        // Calculate dynamic response timeout based on booking urgency
+        const bookingDateTime = new Date(booking.booking_time);
+        const timeoutMinutes = await calculateResponseTimeout(bookingDateTime);
+
         const emailResults = await sendBookingRequestsToMultipleTherapists(booking, availableTherapists, timeoutMinutes);
         console.log('📧 Sent requests to', availableTherapists.length, 'therapists');
         
