@@ -574,7 +574,7 @@ async createShortLink(url, metadata = {}) {
         company_name: 'Rejuvenators Mobile Massage',
         company_phone: '1300 302 542',
         company_email: 'info@rejuvenators.com',
-        booking_url: 'https://rejuvenators.com.au'
+        booking_url: 'https://rejuvenators.com'
       };
 
       console.log('📧 Gift card template parameters:', templateParams);
