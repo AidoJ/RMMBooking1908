@@ -44,9 +44,15 @@ exports.handler = async (event, context) => {
 
     console.log(`📤 Uploading file: ${file.filename} (${file.contentType})`);
 
+    // Sanitize filename - remove special characters that Supabase doesn't allow
+    const sanitizedFilename = file.filename
+      .replace(/[^a-zA-Z0-9.-]/g, '_') // Replace special chars with underscore
+      .replace(/_+/g, '_') // Replace multiple underscores with single
+      .replace(/^_|_$/g, ''); // Remove leading/trailing underscores
+
     // Generate unique filename
     const timestamp = Date.now();
-    const fileName = `therapist-registrations/${timestamp}-${file.filename}`;
+    const fileName = `therapist-registrations/${timestamp}-${sanitizedFilename}`;
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage

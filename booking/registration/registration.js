@@ -525,31 +525,49 @@ function checkAvailabilitySelected() {
 // DATA COLLECTION
 // ===================================================
 
+// Helper function to safely get value from element
+function safeGetValue(selector, isId = true) {
+    const element = isId ? document.getElementById(selector) : document.querySelector(selector);
+    return element ? element.value : '';
+}
+
+// Helper function to safely get checked radio value
+function safeGetRadio(name) {
+    const element = document.querySelector(`input[name="${name}"]:checked`);
+    return element ? element.value : '';
+}
+
+// Helper function to safely get checkbox state
+function safeGetCheckbox(id) {
+    const element = document.getElementById(id);
+    return element ? element.checked : false;
+}
+
 function collectStepData(step) {
     switch (step) {
         case 1:
-            formData.firstName = document.getElementById('firstName').value;
-            formData.lastName = document.getElementById('lastName').value;
-            formData.dateOfBirth = document.getElementById('dateOfBirth').value;
-            formData.email = document.getElementById('email').value;
-            formData.phone = document.getElementById('phone').value;
-            formData.streetAddress = document.getElementById('streetAddress').value;
-            formData.suburb = document.getElementById('suburb').value;
-            formData.city = document.getElementById('city').value;
-            formData.state = document.getElementById('state').value;
-            formData.postcode = document.getElementById('postcode').value;
+            formData.firstName = safeGetValue('firstName');
+            formData.lastName = safeGetValue('lastName');
+            formData.dateOfBirth = safeGetValue('dateOfBirth');
+            formData.email = safeGetValue('email');
+            formData.phone = safeGetValue('phone');
+            formData.streetAddress = safeGetValue('streetAddress');
+            formData.suburb = safeGetValue('suburb');
+            formData.city = safeGetValue('city');
+            formData.state = safeGetValue('state');
+            formData.postcode = safeGetValue('postcode');
             break;
 
         case 2:
-            formData.businessStructure = document.querySelector('input[name="businessStructure"]:checked').value;
-            formData.businessName = document.getElementById('businessName').value;
-            formData.companyName = document.getElementById('companyName').value;
-            formData.companyAcn = document.getElementById('companyAcn').value;
-            formData.businessAbn = document.getElementById('businessAbn').value;
-            formData.gstRegistered = document.querySelector('input[name="gstRegistered"]:checked').value === 'true';
-            formData.bankAccountName = document.getElementById('bankAccountName').value;
-            formData.bsb = document.getElementById('bsb').value;
-            formData.bankAccountNumber = document.getElementById('bankAccountNumber').value;
+            formData.businessStructure = safeGetRadio('businessStructure');
+            formData.businessName = safeGetValue('businessName');
+            formData.companyName = safeGetValue('companyName');
+            formData.companyAcn = safeGetValue('companyAcn');
+            formData.businessAbn = safeGetValue('businessAbn');
+            formData.gstRegistered = safeGetRadio('gstRegistered') === 'true';
+            formData.bankAccountName = safeGetValue('bankAccountName');
+            formData.bsb = safeGetValue('bsb');
+            formData.bankAccountNumber = safeGetValue('bankAccountNumber');
             break;
 
         case 3:
@@ -558,7 +576,7 @@ function collectStepData(step) {
             formData.deliveryLocations = Array.from(document.querySelectorAll('input[name="deliveryLocations"]:checked'))
                 .map(cb => cb.value);
             formData.availabilitySchedule = collectAvailability();
-            formData.startDate = document.getElementById('startDate').value;
+            formData.startDate = safeGetValue('startDate');
             break;
 
         case 4:
@@ -567,21 +585,21 @@ function collectStepData(step) {
             break;
 
         case 5:
-            formData.hasInsurance = document.querySelector('input[name="hasInsurance"]:checked').value === 'true';
-            formData.insuranceExpiryDate = document.getElementById('insuranceExpiryDate').value;
-            formData.hasFirstAid = document.querySelector('input[name="hasFirstAid"]:checked').value === 'true';
-            formData.firstAidExpiryDate = document.getElementById('firstAidExpiryDate').value;
-            formData.workEligibilityConfirmed = document.getElementById('workEligibility').checked;
+            formData.hasInsurance = safeGetRadio('hasInsurance') === 'true';
+            formData.insuranceExpiryDate = safeGetValue('insuranceExpiryDate');
+            formData.hasFirstAid = safeGetRadio('hasFirstAid') === 'true';
+            formData.firstAidExpiryDate = safeGetValue('firstAidExpiryDate');
+            formData.workEligibilityConfirmed = safeGetCheckbox('workEligibility');
             break;
 
         case 6:
-            formData.agreementReadConfirmed = document.getElementById('agreementRead').checked;
-            formData.legalAdviceConfirmed = document.getElementById('legalAdvice').checked;
-            formData.contractorRelationshipConfirmed = document.getElementById('contractorRelationship').checked;
-            formData.informationAccurateConfirmed = document.getElementById('infoAccurate').checked;
-            formData.termsAcceptedConfirmed = document.getElementById('termsAccepted').checked;
-            formData.signedDate = document.getElementById('signedDate').value;
-            formData.fullLegalName = document.getElementById('fullLegalName').value;
+            formData.agreementReadConfirmed = safeGetCheckbox('agreementRead');
+            formData.legalAdviceConfirmed = safeGetCheckbox('legalAdvice');
+            formData.contractorRelationshipConfirmed = safeGetCheckbox('contractorRelationship');
+            formData.informationAccurateConfirmed = safeGetCheckbox('infoAccurate');
+            formData.termsAcceptedConfirmed = safeGetCheckbox('termsAccepted');
+            formData.signedDate = safeGetValue('signedDate');
+            formData.fullLegalName = safeGetValue('fullLegalName');
             break;
     }
 }
