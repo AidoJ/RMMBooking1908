@@ -204,9 +204,34 @@ async function saveDraft(registrationId, step, formData) {
     if (error) throw error;
     return data;
   } else {
+    // For initial insert, include placeholder values for required NOT NULL fields
+    const insertData = {
+      ...updateData,
+      // Required fields with placeholders (will be updated in later steps)
+      business_structure: updateData.business_structure || 'sole_trader',
+      business_abn: updateData.business_abn || '00000000000',
+      bank_account_name: updateData.bank_account_name || 'TBD',
+      bsb: updateData.bsb || '000000',
+      bank_account_number: updateData.bank_account_number || '000000',
+      service_cities: updateData.service_cities || [],
+      delivery_locations: updateData.delivery_locations || [],
+      availability_schedule: updateData.availability_schedule || {},
+      therapies_offered: updateData.therapies_offered || [],
+      qualification_certificates: updateData.qualification_certificates || [],
+      has_insurance: updateData.has_insurance !== undefined ? updateData.has_insurance : false,
+      has_first_aid: updateData.has_first_aid !== undefined ? updateData.has_first_aid : false,
+      work_eligibility_confirmed: updateData.work_eligibility_confirmed !== undefined ? updateData.work_eligibility_confirmed : false,
+      agreement_read_confirmed: updateData.agreement_read_confirmed !== undefined ? updateData.agreement_read_confirmed : false,
+      legal_advice_confirmed: updateData.legal_advice_confirmed !== undefined ? updateData.legal_advice_confirmed : false,
+      contractor_relationship_confirmed: updateData.contractor_relationship_confirmed !== undefined ? updateData.contractor_relationship_confirmed : false,
+      information_accurate_confirmed: updateData.information_accurate_confirmed !== undefined ? updateData.information_accurate_confirmed : false,
+      terms_accepted_confirmed: updateData.terms_accepted_confirmed !== undefined ? updateData.terms_accepted_confirmed : false,
+      gst_registered: updateData.gst_registered !== undefined ? updateData.gst_registered : false
+    };
+
     const { data, error } = await supabase
       .from('therapist_registrations')
-      .insert(updateData)
+      .insert(insertData)
       .select()
       .single();
 
