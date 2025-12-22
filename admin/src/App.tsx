@@ -72,6 +72,9 @@ import TherapistPayments from "./pages/therapist-payments";
 // Import the user management components
 import { UserManagementList } from "./pages/user-management";
 
+// Import the therapist registrations management components
+import { TherapistRegistrationList, TherapistRegistrationShow } from "./pages/therapist-registrations";
+
 // Import the reports component
 import { Reports } from "./pages/reports";
 
@@ -174,6 +177,15 @@ function App() {
                       canDelete: true,
                       label: "Therapists",
                       icon: "👨‍⚕️",
+                    },
+                  },
+                  {
+                    name: "therapist-registrations",
+                    list: "/therapist-registrations",
+                    show: "/therapist-registrations/show/:id",
+                    meta: {
+                      label: "Therapist Registrations",
+                      icon: "📝",
                     },
                   },
                   {
@@ -317,6 +329,12 @@ function App() {
                       <Route path="create" element={<TherapistCreate />} />
                       <Route path="edit/:id" element={<TherapistEdit />} />
                       <Route path="show/:id" element={<TherapistShow />} />
+                    </Route>
+
+                    {/* Therapist Registrations Management */}
+                    <Route path="/therapist-registrations">
+                      <Route index element={<TherapistRegistrationList />} />
+                      <Route path="show/:id" element={<TherapistRegistrationShow />} />
                     </Route>
 
                     {/* Customer Management */}
