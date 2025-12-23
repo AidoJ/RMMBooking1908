@@ -77,6 +77,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: 'Therapists',
     },
     {
+      key: '/therapist-registrations',
+      icon: <FileTextOutlined />,
+      label: 'Therapist Registrations',
+    },
+    {
       key: '/therapist-payments',
       icon: <DollarOutlined />,
       label: 'Therapist Payments',
