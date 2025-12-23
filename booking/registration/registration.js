@@ -713,11 +713,19 @@ async function submitForm(e) {
 
         const result = await response.json();
 
+        console.log('Submission response:', result);
+
         if (result.success) {
             localStorage.removeItem('therapistRegistrationId');
             showSuccessPage();
         } else {
-            throw new Error(result.error || 'Submission failed');
+            // Log full error details
+            console.error('Submission failed:', result);
+            if (result.errors && Array.isArray(result.errors)) {
+                throw new Error('Validation errors: ' + result.errors.join(', '));
+            } else {
+                throw new Error(result.error || 'Submission failed');
+            }
         }
     } catch (error) {
         console.error('Submission error:', error);
