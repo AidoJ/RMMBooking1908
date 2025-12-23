@@ -699,11 +699,9 @@ async function submitForm(e) {
     try {
         document.getElementById('loadingOverlay').style.display = 'flex';
 
-        console.log('Submitting with data:', {
-            step: 'submit',
-            registrationId: registrationId,
-            formData: formData
-        });
+        console.log('=== FORM SUBMISSION DEBUG ===');
+        console.log('Registration ID:', registrationId);
+        console.log('Form Data:', JSON.stringify(formData, null, 2));
 
         const response = await fetch('/.netlify/functions/therapist-registration-submit', {
             method: 'POST',
@@ -718,25 +716,41 @@ async function submitForm(e) {
         });
 
         console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
 
-        const result = await response.json();
+        let result;
+        try {
+            const text = await response.text();
+            console.log('Response text:', text);
+            result = JSON.parse(text);
+        } catch (parseError) {
+            console.error('Failed to parse response:', parseError);
+            throw new Error('Invalid response from server');
+        }
 
-        console.log('Submission response:', result);
+        console.log('Parsed result:', result);
 
         if (result.success) {
             localStorage.removeItem('therapistRegistrationId');
             showSuccessPage();
         } else {
             // Log full error details
-            console.error('Submission failed:', result);
+            console.error('=== VALIDATION FAILED ===');
+            console.error('Errors:', result.errors);
+            console.error('Error message:', result.error);
+
             if (result.errors && Array.isArray(result.errors)) {
-                throw new Error('Validation errors:\n' + result.errors.join('\n'));
+                alert('Please fix the following errors:\n\n' + result.errors.join('\n'));
+                throw new Error('Validation errors: ' + result.errors.join(', '));
             } else {
                 throw new Error(result.error || 'Submission failed');
             }
         }
     } catch (error) {
-        console.error('Submission error:', error);
+        console.error('=== SUBMISSION ERROR ===');
+        console.error('Error:', error);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
         document.getElementById('loadingOverlay').style.display = 'none';
         showAlert('Error submitting registration: ' + error.message, 'error');
     }
