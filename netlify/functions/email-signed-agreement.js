@@ -1,5 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-const nodemailer = require('nodemailer');
+const emailjs = require('@emailjs/nodejs');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -56,103 +56,29 @@ exports.handler = async (event, context) => {
     console.log(`✓ Registration data fetched`);
 
     // ===================================================
-    // STEP 2: Download PDF from Supabase Storage
-    // ===================================================
-    const fileName = `signed-agreements/${registrationId}.pdf`;
-
-    const { data: pdfData, error: downloadError } = await supabase.storage
-      .from('therapist-documents')
-      .download(fileName);
-
-    if (downloadError) throw downloadError;
-
-    const pdfBuffer = await pdfData.arrayBuffer();
-    console.log(`✓ PDF downloaded (${pdfBuffer.byteLength} bytes)`);
-
-    // ===================================================
-    // STEP 3: Send Email with Attachment
+    // STEP 2: Send Email via EmailJS with PDF Link
     // ===================================================
 
-    // Configure email transporter (using environment variables)
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: process.env.SMTP_PORT || 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-
-    const mailOptions = {
-      from: `"Rejuvenators Mobile Massage" <${process.env.SMTP_USER}>`,
-      to: registration.email,
-      subject: 'Your Signed Independent Contractor Agreement - Rejuvenators',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <div style="background: #007e8c; color: white; padding: 20px; text-align: center;">
-            <h1 style="margin: 0;">REJUVENATORS<sup>®</sup></h1>
-            <p style="margin: 5px 0 0 0; font-style: italic;">Mobile Massage Therapy</p>
-          </div>
-
-          <div style="padding: 30px; background: #f5f7fa;">
-            <h2 style="color: #007e8c;">Thank You for Your Registration!</h2>
-
-            <p>Dear ${registration.first_name},</p>
-
-            <p>Thank you for completing your Independent Contractor registration with Rejuvenators Mobile Massage.</p>
-
-            <p>Your signed agreement is attached to this email for your records. Please keep this document safe as it contains:</p>
-
-            <ul>
-              <li>Your complete registration details</li>
-              <li>The full Independent Contractor Agreement</li>
-              <li>Your digital signature and acknowledgements</li>
-            </ul>
-
-            <h3 style="color: #007e8c; margin-top: 30px;">Next Steps:</h3>
-
-            <ol>
-              <li><strong>Review Period:</strong> Our team will review your application within 5-7 business days</li>
-              <li><strong>Interview:</strong> If approved, we'll contact you to schedule an interview</li>
-              <li><strong>Onboarding:</strong> Upon final approval, you'll receive login credentials for the Therapist App</li>
-            </ol>
-
-            <div style="background: white; padding: 20px; border-radius: 8px; margin: 30px 0; border-left: 4px solid #007e8c;">
-              <h4 style="margin: 0 0 10px 0; color: #007e8c;">Registration Summary</h4>
-              <p style="margin: 5px 0;"><strong>Registration ID:</strong> ${registration.id.substring(0, 8).toUpperCase()}</p>
-              <p style="margin: 5px 0;"><strong>Submitted:</strong> ${formatDate(registration.submitted_at)}</p>
-              <p style="margin: 5px 0;"><strong>Email:</strong> ${registration.email}</p>
-            </div>
-
-            <p>If you have any questions, please don't hesitate to contact us:</p>
-            <ul>
-              <li>Email: <a href="mailto:recruitment@rejuvenators.com" style="color: #007e8c;">recruitment@rejuvenators.com</a></li>
-              <li>Phone: 1300 REJUVENATORS</li>
-            </ul>
-
-            <p>We look forward to potentially welcoming you to our team!</p>
-
-            <p style="margin-top: 30px;">Best regards,<br>
-            <strong>The Rejuvenators Team</strong></p>
-          </div>
-
-          <div style="background: #333; color: #999; padding: 20px; text-align: center; font-size: 12px;">
-            <p style="margin: 0;">This is an automated email. Please do not reply directly to this email.</p>
-            <p style="margin: 5px 0 0 0;">© ${new Date().getFullYear()} Rejuvenators Mobile Massage. All rights reserved.</p>
-          </div>
-        </div>
-      `,
-      attachments: [
-        {
-          filename: `Rejuvenators-Agreement-${registration.last_name}-${registration.id.substring(0, 8)}.pdf`,
-          content: Buffer.from(pdfBuffer),
-          contentType: 'application/pdf'
-        }
-      ]
+    const templateParams = {
+      to_email: registration.email,
+      to_name: registration.first_name,
+      first_name: registration.first_name,
+      last_name: registration.last_name,
+      registration_id: registration.id.substring(0, 8).toUpperCase(),
+      submitted_date: formatDate(registration.submitted_at),
+      pdf_download_url: registration.signed_agreement_pdf_url,
+      pdf_filename: `Rejuvenators-Agreement-${registration.last_name}-${registration.id.substring(0, 8)}.pdf`
     };
 
-    await transporter.sendMail(mailOptions);
+    await emailjs.send(
+      process.env.EMAILJS_SERVICE_ID,
+      process.env.EMAILJS_TEMPLATE_THERAPIST_REGISTRATION, // New template ID
+      templateParams,
+      {
+        publicKey: process.env.EMAILJS_PUBLIC_KEY,
+        privateKey: process.env.EMAILJS_PRIVATE_KEY,
+      }
+    );
 
     console.log(`✅ Email sent successfully to ${registration.email}`);
 
