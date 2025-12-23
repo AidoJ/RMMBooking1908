@@ -699,6 +699,12 @@ async function submitForm(e) {
     try {
         document.getElementById('loadingOverlay').style.display = 'flex';
 
+        console.log('Submitting with data:', {
+            step: 'submit',
+            registrationId: registrationId,
+            formData: formData
+        });
+
         const response = await fetch('/.netlify/functions/therapist-registration-submit', {
             method: 'POST',
             headers: {
@@ -711,6 +717,8 @@ async function submitForm(e) {
             })
         });
 
+        console.log('Response status:', response.status);
+
         const result = await response.json();
 
         console.log('Submission response:', result);
@@ -722,7 +730,7 @@ async function submitForm(e) {
             // Log full error details
             console.error('Submission failed:', result);
             if (result.errors && Array.isArray(result.errors)) {
-                throw new Error('Validation errors: ' + result.errors.join(', '));
+                throw new Error('Validation errors:\n' + result.errors.join('\n'));
             } else {
                 throw new Error(result.error || 'Submission failed');
             }
