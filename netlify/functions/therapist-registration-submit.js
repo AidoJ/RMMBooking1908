@@ -57,9 +57,38 @@ exports.handler = async (event, context) => {
     console.log(`📝 Registration ${step} for ID: ${registrationId || 'new'}`);
 
     // ===================================================
+    // GET PDF URL (for download after submission)
+    // ===================================================
+    if (step === 'get-pdf-url') {
+      if (!registrationId) {
+        throw new Error('Registration ID required');
+      }
+
+      const { data: reg, error } = await supabase
+        .from('therapist_registrations')
+        .select('signed_agreement_pdf_url')
+        .eq('id', registrationId)
+        .single();
+
+      if (error) throw error;
+
+      return {
+        statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          success: true,
+          pdfUrl: reg.signed_agreement_pdf_url
+        }),
+      };
+    }
+
+    // ===================================================
     // STEP-BY-STEP SAVE (DRAFT MODE)
     // ===================================================
-    if (step && step !== 'submit') {
+    if (step && step !== 'submit' && step !== 'get-pdf-url') {
       // Save draft at each step
       const result = await saveDraft(registrationId, step, formData);
 
@@ -265,6 +294,28 @@ async function submitRegistration(registrationId, formData) {
     .single();
 
   if (error) throw error;
+
+  // Generate signed agreement PDF
+  console.log(`📄 Triggering signed agreement generation...`);
+  try {
+    const pdfResponse = await fetch(`${process.env.URL}/.netlify/functions/generate-signed-agreement`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ registrationId })
+    });
+
+    const pdfResult = await pdfResponse.json();
+
+    if (pdfResult.success) {
+      console.log(`✅ Signed agreement PDF generated: ${pdfResult.pdfUrl}`);
+    } else {
+      console.error(`⚠️ PDF generation failed:`, pdfResult.error);
+      // Don't fail the submission if PDF fails - can regenerate later
+    }
+  } catch (pdfError) {
+    console.error(`⚠️ Error calling PDF generation:`, pdfError);
+    // Don't fail the submission
+  }
 
   // TODO: Send email notification to admin
   // TODO: Send confirmation email to applicant

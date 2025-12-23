@@ -764,17 +764,34 @@ function showSuccessPage() {
             <p style="color: #666; font-size: 18px; margin-bottom: 30px; max-width: 600px; margin-left: auto; margin-right: auto;">
                 Thank you for your registration. We have received your application and will review it shortly.
             </p>
+
+            <div style="background: #e8f4f5; border: 2px solid #007e8c; padding: 30px; border-radius: 12px; margin-bottom: 30px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                <h3 style="margin-bottom: 20px; color: #007e8c;">📄 Your Signed Agreement</h3>
+                <p style="color: #2c3e50; margin-bottom: 25px;">
+                    Your signed Independent Contractor Agreement is ready. Please download a copy for your records.
+                </p>
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <button id="downloadPdfBtn" onclick="downloadSignedAgreement()" style="display: inline-flex; align-items: center; gap: 10px; padding: 14px 28px; background: #007e8c; color: white; border: none; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; transition: all 0.3s;">
+                        📥 Download PDF
+                    </button>
+                    <button id="emailPdfBtn" onclick="emailSignedAgreement()" style="display: inline-flex; align-items: center; gap: 10px; padding: 14px 28px; background: white; color: #007e8c; border: 2px solid #007e8c; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; transition: all 0.3s;">
+                        📧 Email Me a Copy
+                    </button>
+                </div>
+                <p id="pdfStatus" style="margin-top: 15px; font-size: 14px; color: #666;"></p>
+            </div>
+
             <div style="background: #f5f7fa; padding: 40px; border-radius: 12px; margin-bottom: 30px; max-width: 600px; margin-left: auto; margin-right: auto;">
                 <h3 style="margin-bottom: 20px; color: #007e8c;">What Happens Next?</h3>
                 <ol style="text-align: left; line-height: 2; color: #2c3e50;">
-                    <li>Our team will review your application</li>
-                    <li>We'll contact you to schedule interviews if suitable</li>
-                    <li>Upon approval, you'll receive enrollment instructions</li>
-                    <li>You'll get access to the Therapist App and training materials</li>
+                    <li><strong>Review Period:</strong> Our team will review your application within 5-7 business days</li>
+                    <li><strong>Interview:</strong> If approved, we'll contact you to schedule interviews</li>
+                    <li><strong>Onboarding:</strong> Upon final approval, you'll receive enrollment instructions and app access</li>
+                    <li><strong>Training:</strong> Access to training materials and therapist resources</li>
                 </ol>
             </div>
             <p style="color: #666; margin-bottom: 30px;">
-                A confirmation email has been sent to <strong>${formData.email}</strong>
+                Questions? Contact us at <strong>recruitment@rejuvenators.com</strong>
             </p>
             <a href="/" style="display: inline-block; padding: 14px 32px; background: #007e8c; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: all 0.3s;">
                 Return to Home
@@ -784,6 +801,91 @@ function showSuccessPage() {
 
     document.getElementById('loadingOverlay').style.display = 'none';
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===================================================
+// SIGNED AGREEMENT DOWNLOAD & EMAIL
+// ===================================================
+async function downloadSignedAgreement() {
+    const btn = document.getElementById('downloadPdfBtn');
+    const status = document.getElementById('pdfStatus');
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Preparing download...';
+        status.textContent = 'Please wait...';
+        status.style.color = '#666';
+
+        // Fetch the registration record to get PDF URL
+        const response = await fetch(`/.netlify/functions/therapist-registration-submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                step: 'get-pdf-url',
+                registrationId: registrationId
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.pdfUrl) {
+            // Trigger download
+            const link = document.createElement('a');
+            link.href = result.pdfUrl;
+            link.download = `Rejuvenators-Agreement-${formData.lastName}-${registrationId.substring(0, 8)}.pdf`;
+            link.target = '_blank';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            status.textContent = '✅ Download started! Check your downloads folder.';
+            status.style.color = '#27ae60';
+            btn.innerHTML = '📥 Download PDF';
+        } else {
+            throw new Error('PDF not ready yet. Please wait a moment and try again.');
+        }
+    } catch (error) {
+        console.error('Download error:', error);
+        status.textContent = '❌ ' + error.message;
+        status.style.color = '#e74c3c';
+        btn.innerHTML = '📥 Download PDF';
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function emailSignedAgreement() {
+    const btn = document.getElementById('emailPdfBtn');
+    const status = document.getElementById('pdfStatus');
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Sending email...';
+        status.textContent = 'Please wait...';
+        status.style.color = '#666';
+
+        const response = await fetch(`/.netlify/functions/email-signed-agreement`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ registrationId: registrationId })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            status.textContent = `✅ Email sent to ${formData.email}! Check your inbox.`;
+            status.style.color = '#27ae60';
+            btn.innerHTML = '✓ Email Sent';
+        } else {
+            throw new Error(result.error || 'Failed to send email');
+        }
+    } catch (error) {
+        console.error('Email error:', error);
+        status.textContent = '❌ ' + error.message;
+        status.style.color = '#e74c3c';
+        btn.innerHTML = '📧 Email Me a Copy';
+        btn.disabled = false;
+    }
 }
 
 // ===================================================
