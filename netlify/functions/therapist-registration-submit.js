@@ -309,15 +309,16 @@ function validateRegistration(formData) {
   if (!formData.therapiesOffered || formData.therapiesOffered.length === 0) {
     errors.push('At least one therapy must be selected');
   }
-  if (!formData.qualificationCertificates || formData.qualificationCertificates.length === 0) {
-    errors.push('At least one qualification certificate is required');
-  }
+  // Qualification certificates are optional - can be uploaded later
 
   // Step 5: Insurance & Compliance
-  if (!formData.hasInsurance) errors.push('Insurance is required');
-  if (!formData.insuranceCertificateUrl) errors.push('Insurance certificate is required');
-  if (!formData.hasFirstAid) errors.push('First aid certification is required');
-  if (!formData.firstAidCertificateUrl) errors.push('First aid certificate is required');
+  // Only require certificate if they answered YES to having it
+  if (formData.hasInsurance === true && !formData.insuranceCertificateUrl) {
+    errors.push('Please upload your insurance certificate or select "No"');
+  }
+  if (formData.hasFirstAid === true && !formData.firstAidCertificateUrl) {
+    errors.push('Please upload your first aid certificate or select "No"');
+  }
   if (!formData.workEligibilityConfirmed) errors.push('Work eligibility confirmation is required');
 
   // Step 6: Agreement & Signature
