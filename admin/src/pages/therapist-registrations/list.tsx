@@ -269,7 +269,7 @@ const TherapistRegistrationList: React.FC = () => {
             <Button
               type="link"
               icon={<EyeOutlined />}
-              onClick={() => show('therapist-registrations', record.id)}
+              onClick={() => show('therapist_registrations', record.id)}
             />
           </Tooltip>
         </Space>

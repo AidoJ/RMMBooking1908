@@ -301,7 +301,7 @@ const TherapistRegistrationShow: React.FC = () => {
             <Space style={{ marginBottom: 16 }}>
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => list('therapist-registrations')}
+                onClick={() => list('therapist_registrations')}
               >
                 Back to List
               </Button>

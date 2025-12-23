@@ -180,7 +180,7 @@ function App() {
                     },
                   },
                   {
-                    name: "therapist-registrations",
+                    name: "therapist_registrations",
                     list: "/therapist-registrations",
                     show: "/therapist-registrations/show/:id",
                     meta: {
