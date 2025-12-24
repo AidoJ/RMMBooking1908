@@ -732,7 +732,7 @@ async function submitForm(e) {
 
         if (result.success) {
             localStorage.removeItem('therapistRegistrationId');
-            showSuccessPage();
+            showSuccessPage(result.pdfUrl);
         } else {
             // Log full error details
             console.error('=== VALIDATION FAILED ===');
@@ -756,7 +756,10 @@ async function submitForm(e) {
     }
 }
 
-function showSuccessPage() {
+let signedAgreementPdfUrl = null;
+
+function showSuccessPage(pdfUrl) {
+    signedAgreementPdfUrl = pdfUrl;
     document.querySelector('.form-card').innerHTML = `
         <div style="text-align: center; padding: 60px 20px;">
             <div style="font-size: 80px; margin-bottom: 20px;">✅</div>
@@ -811,39 +814,27 @@ async function downloadSignedAgreement() {
     const status = document.getElementById('pdfStatus');
 
     try {
+        if (!signedAgreementPdfUrl) {
+            throw new Error('PDF not available. Please refresh and try again.');
+        }
+
         btn.disabled = true;
         btn.innerHTML = '⏳ Preparing download...';
         status.textContent = 'Please wait...';
         status.style.color = '#666';
 
-        // Fetch the registration record to get PDF URL
-        const response = await fetch(`/.netlify/functions/therapist-registration-submit`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                step: 'get-pdf-url',
-                registrationId: registrationId
-            })
-        });
+        // Trigger download
+        const link = document.createElement('a');
+        link.href = signedAgreementPdfUrl;
+        link.download = `Rejuvenators-Agreement-${formData.lastName}-${registrationId.substring(0, 8)}.pdf`;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
-        const result = await response.json();
-
-        if (result.success && result.pdfUrl) {
-            // Trigger download
-            const link = document.createElement('a');
-            link.href = result.pdfUrl;
-            link.download = `Rejuvenators-Agreement-${formData.lastName}-${registrationId.substring(0, 8)}.pdf`;
-            link.target = '_blank';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-
-            status.textContent = '✅ Download started! Check your downloads folder.';
-            status.style.color = '#27ae60';
-            btn.innerHTML = '📥 Download PDF';
-        } else {
-            throw new Error('PDF not ready yet. Please wait a moment and try again.');
-        }
+        status.textContent = '✅ Download started! Check your downloads folder.';
+        status.style.color = '#27ae60';
+        btn.innerHTML = '📥 Download PDF';
     } catch (error) {
         console.error('Download error:', error);
         status.textContent = '❌ ' + error.message;

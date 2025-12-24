@@ -140,7 +140,8 @@ exports.handler = async (event, context) => {
           success: true,
           registrationId: result.id,
           message: 'Registration submitted successfully',
-          email: formData.email
+          email: formData.email,
+          pdfUrl: result.signed_agreement_pdf_url
         }),
       };
     }
@@ -295,25 +296,29 @@ async function submitRegistration(registrationId, formData) {
 
   if (error) throw error;
 
-  // Generate signed agreement PDF
-  console.log(`📄 Triggering signed agreement generation...`);
+  // Generate signed agreement PDF - WAIT for it to complete
+  console.log(`📄 Generating signed agreement PDF...`);
   try {
-    const pdfResponse = await fetch(`${process.env.URL}/.netlify/functions/generate-signed-agreement`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    // Call the generate-signed-agreement function directly
+    const generatePdf = require('./generate-signed-agreement');
+    const pdfEvent = {
+      httpMethod: 'POST',
       body: JSON.stringify({ registrationId })
-    });
+    };
 
-    const pdfResult = await pdfResponse.json();
+    const pdfResult = await generatePdf.handler(pdfEvent, {});
+    const pdfResponse = JSON.parse(pdfResult.body);
 
-    if (pdfResult.success) {
-      console.log(`✅ Signed agreement PDF generated: ${pdfResult.pdfUrl}`);
+    if (pdfResponse.success) {
+      console.log(`✅ Signed agreement PDF generated: ${pdfResponse.pdfUrl}`);
+      // Update the data object with PDF URL
+      data.signed_agreement_pdf_url = pdfResponse.pdfUrl;
     } else {
-      console.error(`⚠️ PDF generation failed:`, pdfResult.error);
+      console.error(`⚠️ PDF generation failed:`, pdfResponse.error);
       // Don't fail the submission if PDF fails - can regenerate later
     }
   } catch (pdfError) {
-    console.error(`⚠️ Error calling PDF generation:`, pdfError);
+    console.error(`⚠️ Error generating PDF:`, pdfError);
     // Don't fail the submission
   }
 
