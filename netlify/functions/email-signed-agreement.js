@@ -72,7 +72,7 @@ exports.handler = async (event, context) => {
 
     await emailjs.send(
       process.env.EMAILJS_SERVICE_ID,
-      process.env.EMAILJS_TEMPLATE_THERAPIST_REG, // EmailJS template ID (max 12 chars)
+      'template_therapistrego',
       templateParams,
       {
         publicKey: process.env.EMAILJS_PUBLIC_KEY,
