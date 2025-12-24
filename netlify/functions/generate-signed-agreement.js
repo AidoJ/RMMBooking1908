@@ -304,6 +304,9 @@ function buildCompleteHTML(registration, agreement) {
       ` : ''}
     </table>
 
+    <h3 class="subsection-title">Weekly Availability</h3>
+    ${formatAvailability(registration.availability_schedule)}
+
     <h3 class="subsection-title">Compliance</h3>
     <table class="info-table">
       <tr>
@@ -618,4 +621,47 @@ function formatBusinessStructure(structure) {
 function formatArray(arr) {
   if (!arr || arr.length === 0) return 'None specified';
   return arr.map(item => item.charAt(0).toUpperCase() + item.slice(1).replace(/-/g, ' ')).join(', ');
+}
+
+function formatAvailability(schedule) {
+  if (!schedule || Object.keys(schedule).length === 0) {
+    return '<p style="color: #999;">No availability specified</p>';
+  }
+
+  const dayNames = {
+    'monday': 'Monday',
+    'tuesday': 'Tuesday',
+    'wednesday': 'Wednesday',
+    'thursday': 'Thursday',
+    'friday': 'Friday',
+    'saturday': 'Saturday',
+    'sunday': 'Sunday'
+  };
+
+  const timeSlotLabels = {
+    '7-11am': '7:00 AM - 11:00 AM',
+    '12-5pm': '12:00 PM - 5:00 PM',
+    '6-11:30pm': '6:00 PM - 11:30 PM'
+  };
+
+  let html = '<table class="info-table" style="width: 100%; border-collapse: collapse;">';
+  html += '<thead><tr style="background: #f5f5f5;"><th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Day</th><th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Available Times</th></tr></thead>';
+  html += '<tbody>';
+
+  const orderedDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+  orderedDays.forEach(day => {
+    const dayLabel = dayNames[day];
+    const timeSlots = schedule[day];
+
+    if (timeSlots && timeSlots.length > 0) {
+      const formattedSlots = timeSlots.map(slot => timeSlotLabels[slot] || slot).join(', ');
+      html += `<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>${dayLabel}</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${formattedSlots}</td></tr>`;
+    } else {
+      html += `<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>${dayLabel}</strong></td><td style="padding: 8px; border: 1px solid #ddd; color: #999;">Not available</td></tr>`;
+    }
+  });
+
+  html += '</tbody></table>';
+  return html;
 }
