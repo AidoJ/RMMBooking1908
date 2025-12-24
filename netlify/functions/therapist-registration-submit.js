@@ -307,18 +307,23 @@ async function submitRegistration(registrationId, formData) {
     };
 
     const pdfResult = await generatePdf.handler(pdfEvent, {});
+    console.log(`📄 PDF Result Status: ${pdfResult.statusCode}`);
+    console.log(`📄 PDF Result Body: ${pdfResult.body}`);
+
     const pdfResponse = JSON.parse(pdfResult.body);
 
-    if (pdfResponse.success) {
+    if (pdfResponse.success && pdfResponse.pdfUrl) {
       console.log(`✅ Signed agreement PDF generated: ${pdfResponse.pdfUrl}`);
       // Update the data object with PDF URL
       data.signed_agreement_pdf_url = pdfResponse.pdfUrl;
     } else {
-      console.error(`⚠️ PDF generation failed:`, pdfResponse.error);
+      console.error(`⚠️ PDF generation failed:`, pdfResponse.error || 'No PDF URL returned');
+      console.error(`⚠️ Full response:`, JSON.stringify(pdfResponse));
       // Don't fail the submission if PDF fails - can regenerate later
     }
   } catch (pdfError) {
-    console.error(`⚠️ Error generating PDF:`, pdfError);
+    console.error(`⚠️ Error generating PDF:`, pdfError.message);
+    console.error(`⚠️ Stack:`, pdfError.stack);
     // Don't fail the submission
   }
 
