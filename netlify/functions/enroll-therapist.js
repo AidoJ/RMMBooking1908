@@ -97,7 +97,9 @@ exports.handler = async (event, context) => {
     // ===================================================
 
     const therapistProfileData = {
-      user_id: authUser.user.id,
+      auth_id: authUser.user.id,  // Links to auth.users(id) - correct field for Supabase Auth
+      user_id: null,  // Legacy field for admin_users link - not used for new therapists
+      registration_id: registration.id,  // Link back to registration record
       first_name: registration.first_name,
       last_name: registration.last_name,
       email: registration.email,
