@@ -224,7 +224,8 @@ async function saveDraft(registrationId, step, formData) {
     case 'step4': // Qualifications & Services
       Object.assign(updateData, {
         therapies_offered: formData.therapiesOffered || [],
-        qualification_certificates: formData.qualificationCertificates || []
+        qualification_certificates: formData.qualificationCertificates || [],
+        other_services: sanitizeValue(formData.otherServices)
       });
       break;
 

@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupFirstAidToggle();
     setupFileUploads();
     setupSignaturePad();
+    loadServices();
     loadAgreement();
     restoreDraft();
 });
@@ -143,6 +144,77 @@ function setupFirstAidToggle() {
             }
         });
     });
+}
+
+// ===================================================
+// LOAD SERVICES FROM DATABASE
+// ===================================================
+
+async function loadServices() {
+    try {
+        const response = await fetch(`${window.location.origin}/.netlify/functions/get-system-settings?key=active_services`);
+
+        if (!response.ok) {
+            throw new Error('Failed to load services');
+        }
+
+        const data = await response.json();
+        const servicesListDiv = document.getElementById('therapiesOfferedList');
+
+        // Fallback: If the API doesn't work, fetch directly from Supabase
+        let services = [];
+
+        // Try to get services from Supabase directly
+        const supabaseUrl = 'https://dzclnjkjlmsivikojygv.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6Y2xuamtqbG1zaXZpa29qeWd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjcyMzc3MTYsImV4cCI6MjA0MjgxMzcxNn0.Y5wbJ1CmCD4TDT-6RWzvEoHWnqmxwmFvJNNaT46DUZk';
+
+        const servicesResponse = await fetch(`${supabaseUrl}/rest/v1/services?is_active=eq.true&select=id,name&order=sort_order,name`, {
+            headers: {
+                'apikey': supabaseAnonKey,
+                'Authorization': `Bearer ${supabaseAnonKey}`
+            }
+        });
+
+        if (servicesResponse.ok) {
+            services = await servicesResponse.json();
+        }
+
+        // Clear loading message
+        servicesListDiv.innerHTML = '';
+
+        if (services.length === 0) {
+            servicesListDiv.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #999;">No services available at this time.</div>';
+            return;
+        }
+
+        // Create checkbox for each service
+        services.forEach(service => {
+            const label = document.createElement('label');
+            label.className = 'checkbox-label';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'therapiesOffered';
+            checkbox.value = service.name;
+
+            const span = document.createElement('span');
+            span.textContent = service.name;
+
+            label.appendChild(checkbox);
+            label.appendChild(span);
+            servicesListDiv.appendChild(label);
+
+            // Add change listener for auto-save
+            checkbox.addEventListener('change', scheduleAutoSave);
+        });
+
+        console.log(`✅ Loaded ${services.length} services`);
+
+    } catch (error) {
+        console.error('Error loading services:', error);
+        const servicesListDiv = document.getElementById('therapiesOfferedList');
+        servicesListDiv.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #ff4d4f;">Failed to load services. Please refresh the page.</div>';
+    }
 }
 
 // ===================================================
@@ -582,6 +654,7 @@ function collectStepData(step) {
         case 4:
             formData.therapiesOffered = Array.from(document.querySelectorAll('input[name="therapiesOffered"]:checked'))
                 .map(cb => cb.value);
+            formData.otherServices = safeGetValue('otherServices');
             break;
 
         case 5:

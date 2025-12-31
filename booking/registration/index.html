@@ -232,7 +232,7 @@
 
                     <div class="form-group">
                         <label>Service Cities <span class="required">*</span></label>
-                        <div class="checkbox-group">
+                        <div class="checkbox-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                             <label class="checkbox-label">
                                 <input type="checkbox" name="serviceCities" value="brisbane">
                                 <span>Brisbane</span>
@@ -249,27 +249,29 @@
                                 <input type="checkbox" name="serviceCities" value="adelaide">
                                 <span>Adelaide</span>
                             </label>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Delivery Locations <span class="required">*</span></label>
-                        <div class="checkbox-group">
                             <label class="checkbox-label">
-                                <input type="checkbox" name="deliveryLocations" value="hotels">
-                                <span>Hotels</span>
+                                <input type="checkbox" name="serviceCities" value="sydney">
+                                <span>Sydney</span>
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="deliveryLocations" value="corporate">
-                                <span>Corporate Offices</span>
+                                <input type="checkbox" name="serviceCities" value="melbourne">
+                                <span>Melbourne</span>
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="deliveryLocations" value="in-home">
-                                <span>In-Home</span>
+                                <input type="checkbox" name="serviceCities" value="canberra">
+                                <span>Canberra</span>
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="deliveryLocations" value="events">
-                                <span>Events</span>
+                                <input type="checkbox" name="serviceCities" value="perth">
+                                <span>Perth</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serviceCities" value="darwin">
+                                <span>Darwin</span>
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="serviceCities" value="cairns">
+                                <span>Cairns</span>
                             </label>
                         </div>
                     </div>
@@ -355,28 +357,18 @@
 
                     <div class="form-group">
                         <label>Therapies You Offer <span class="required">*</span></label>
-                        <div class="checkbox-group">
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="therapiesOffered" value="stressbuster">
-                                <span>StressBuster Massage</span>
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="therapiesOffered" value="sports">
-                                <span>Sports Massage</span>
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="therapiesOffered" value="remedial">
-                                <span>Remedial Massage</span>
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="therapiesOffered" value="pregnancy">
-                                <span>Pregnancy Massage</span>
-                            </label>
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="therapiesOffered" value="relaxation">
-                                <span>Relaxation Massage</span>
-                            </label>
+                        <div class="checkbox-group" id="therapiesOfferedList" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                            <!-- Services will be loaded dynamically from database -->
+                            <div style="grid-column: 1 / -1; text-align: center; padding: 20px; color: #999;">
+                                Loading available services...
+                            </div>
                         </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Other Additional Services</label>
+                        <small style="display: block; margin-bottom: 10px;">If you offer services not listed above, please specify</small>
+                        <textarea id="otherServices" name="otherServices" rows="3" placeholder="E.g., Deep Tissue Massage, Cupping Therapy, Aromatherapy..."></textarea>
                     </div>
 
                     <div class="form-group">
