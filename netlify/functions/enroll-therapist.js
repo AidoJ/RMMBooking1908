@@ -125,7 +125,7 @@ exports.handler = async (event, context) => {
       qualification_certificate_url: registration.qualification_certificates?.[0]?.url,
 
       // Status
-      is_active: true,
+      is_active: false,  // Set to false - admin must manually activate therapist
       address_verified: false,
 
       // Ratings
@@ -133,7 +133,7 @@ exports.handler = async (event, context) => {
       total_reviews: 0,
 
       // Additional metadata
-      service_radius_km: 50 // Default value
+      service_radius_km: 10 // Default 10km radius - therapist can expand later
     };
 
     console.log(`🏥 Creating therapist profile...`);
