@@ -363,9 +363,7 @@ function validateRegistration(formData) {
   if (!formData.serviceCities || formData.serviceCities.length === 0) {
     errors.push('At least one service city is required');
   }
-  if (!formData.deliveryLocations || formData.deliveryLocations.length === 0) {
-    errors.push('At least one delivery location is required');
-  }
+  // Delivery locations removed from form - no longer required
 
   // Step 4: Qualifications & Services
   if (!formData.therapiesOffered || formData.therapiesOffered.length === 0) {

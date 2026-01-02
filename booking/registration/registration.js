@@ -152,19 +152,10 @@ function setupFirstAidToggle() {
 
 async function loadServices() {
     try {
-        const response = await fetch(`${window.location.origin}/.netlify/functions/get-system-settings?key=active_services`);
-
-        if (!response.ok) {
-            throw new Error('Failed to load services');
-        }
-
-        const data = await response.json();
         const servicesListDiv = document.getElementById('therapiesOfferedList');
-
-        // Fallback: If the API doesn't work, fetch directly from Supabase
         let services = [];
 
-        // Try to get services from Supabase directly
+        // Fetch services directly from Supabase
         const supabaseUrl = 'https://dzclnjkjlmsivikojygv.supabase.co';
         const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6Y2xuamtqbG1zaXZpa29qeWd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjcyMzc3MTYsImV4cCI6MjA0MjgxMzcxNn0.Y5wbJ1CmCD4TDT-6RWzvEoHWnqmxwmFvJNNaT46DUZk';
 
@@ -175,9 +166,11 @@ async function loadServices() {
             }
         });
 
-        if (servicesResponse.ok) {
-            services = await servicesResponse.json();
+        if (!servicesResponse.ok) {
+            throw new Error(`Failed to fetch services: ${servicesResponse.status}`);
         }
+
+        services = await servicesResponse.json();
 
         // Clear loading message
         servicesListDiv.innerHTML = '';
@@ -644,8 +637,6 @@ function collectStepData(step) {
 
         case 3:
             formData.serviceCities = Array.from(document.querySelectorAll('input[name="serviceCities"]:checked'))
-                .map(cb => cb.value);
-            formData.deliveryLocations = Array.from(document.querySelectorAll('input[name="deliveryLocations"]:checked'))
                 .map(cb => cb.value);
             formData.availabilitySchedule = collectAvailability();
             formData.startDate = safeGetValue('startDate');
