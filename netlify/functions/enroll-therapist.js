@@ -93,12 +93,43 @@ exports.handler = async (event, context) => {
     console.log(`✅ Auth user created: ${authUser.user.id}`);
 
     // ===================================================
-    // STEP 3: Create Therapist Profile
+    // STEP 3: Create Admin User Record
+    // ===================================================
+
+    console.log(`👤 Creating admin_users record...`);
+
+    const { data: adminUser, error: adminUserError } = await supabase
+      .from('admin_users')
+      .insert({
+        auth_id: authUser.user.id,
+        email: registration.email,
+        first_name: registration.first_name,
+        last_name: registration.last_name,
+        role: 'therapist',
+        is_active: true,
+        password: '' // Not used - auth handled by Supabase
+      })
+      .select()
+      .single();
+
+    if (adminUserError) {
+      console.error('❌ Admin user creation failed:', adminUserError);
+
+      // Rollback: Delete the auth user
+      await supabase.auth.admin.deleteUser(authUser.user.id);
+
+      throw new Error(`Failed to create admin user: ${adminUserError.message}`);
+    }
+
+    console.log(`✅ Admin user created: ${adminUser.id}`);
+
+    // ===================================================
+    // STEP 4: Create Therapist Profile
     // ===================================================
 
     const therapistProfileData = {
-      auth_id: authUser.user.id,  // Links to auth.users(id) - correct field for Supabase Auth
-      user_id: null,  // Legacy field for admin_users link - not used for new therapists
+      auth_id: authUser.user.id,  // Links to auth.users(id) - for Supabase Auth login
+      user_id: adminUser.id,  // Links to admin_users(id) - maintains system compatibility
       registration_id: registration.id,  // Link back to registration record
       first_name: registration.first_name,
       last_name: registration.last_name,
@@ -147,7 +178,8 @@ exports.handler = async (event, context) => {
     if (profileError) {
       console.error('❌ Therapist profile creation failed:', profileError);
 
-      // Rollback: Delete the auth user
+      // Rollback: Delete admin user and auth user
+      await supabase.from('admin_users').delete().eq('id', adminUser.id);
       await supabase.auth.admin.deleteUser(authUser.user.id);
 
       throw new Error(`Failed to create therapist profile: ${profileError.message}`);
@@ -156,7 +188,7 @@ exports.handler = async (event, context) => {
     console.log(`✅ Therapist profile created: ${therapistProfile.id}`);
 
     // ===================================================
-    // STEP 4: Link Services (therapist_services table)
+    // STEP 5: Link Services (therapist_services table)
     // ===================================================
 
     if (registration.therapies_offered && registration.therapies_offered.length > 0) {
@@ -188,7 +220,7 @@ exports.handler = async (event, context) => {
     }
 
     // ===================================================
-    // STEP 5: Update Registration Status
+    // STEP 6: Update Registration Status
     // ===================================================
 
     console.log(`📝 Updating registration status to enrolled...`);
@@ -209,7 +241,7 @@ exports.handler = async (event, context) => {
     }
 
     // ===================================================
-    // STEP 6: Send Welcome Email
+    // STEP 7: Send Welcome Email
     // ===================================================
 
     console.log(`📧 Sending welcome email to: ${registration.email}`);
