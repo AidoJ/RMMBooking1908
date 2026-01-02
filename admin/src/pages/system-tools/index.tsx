@@ -80,27 +80,47 @@ const SystemTools: React.FC = () => {
         }
       }
 
-      // 2. Check for therapist profiles without user accounts
+      // 2. Check for therapist profiles without auth accounts (NEW: uses auth_id)
       const { data: therapistProfiles, error: profilesError } = await supabaseClient
         .from('therapist_profiles')
-        .select('id, user_id, first_name, last_name, email');
+        .select('id, user_id, auth_id, first_name, last_name, email');
 
       if (profilesError) throw profilesError;
 
       for (const profile of therapistProfiles || []) {
-        if (!profile.user_id) {
+        // Check for auth_id (new system) - this is now the primary check
+        if (!profile.auth_id) {
           foundIssues.push({
-            id: `missing_user_${profile.id}`,
+            id: `missing_auth_${profile.id}`,
             type: 'missing_user',
             severity: 'error',
-            description: `Therapist "${profile.first_name} ${profile.last_name}" (${profile.email}) has no linked user account (user_id is null)`,
+            description: `Therapist "${profile.first_name} ${profile.last_name}" (${profile.email}) has no linked auth account (auth_id is null)`,
             therapistId: profile.id,
             userEmail: profile.email,
             userName: `${profile.first_name} ${profile.last_name}`,
             canAutoFix: false
           });
         } else {
-          // Check if user_id exists and has correct role
+          // Verify auth_id exists in auth.users
+          const { data: authUser, error: authError } = await supabaseClient.auth.admin.getUserById(profile.auth_id);
+
+          if (authError || !authUser?.user) {
+            foundIssues.push({
+              id: `orphaned_profile_${profile.id}`,
+              type: 'missing_user',
+              severity: 'error',
+              description: `Therapist "${profile.first_name} ${profile.last_name}" has auth_id="${profile.auth_id}" but this auth user doesn't exist`,
+              therapistId: profile.id,
+              userId: profile.auth_id,
+              userEmail: profile.email,
+              userName: `${profile.first_name} ${profile.last_name}`,
+              canAutoFix: false
+            });
+          }
+        }
+
+        // Legacy check: user_id (old system) - only check if populated
+        if (profile.user_id) {
           const { data: user } = await supabaseClient
             .from('admin_users')
             .select('id, email, role')
@@ -109,10 +129,10 @@ const SystemTools: React.FC = () => {
 
           if (!user) {
             foundIssues.push({
-              id: `orphaned_profile_${profile.id}`,
-              type: 'missing_user',
-              severity: 'error',
-              description: `Therapist "${profile.first_name} ${profile.last_name}" has user_id="${profile.user_id}" but this user account doesn't exist`,
+              id: `orphaned_legacy_${profile.id}`,
+              type: 'role_mismatch',
+              severity: 'warning',
+              description: `Therapist "${profile.first_name} ${profile.last_name}" has legacy user_id="${profile.user_id}" but this user doesn't exist (not critical if auth_id is set)`,
               therapistId: profile.id,
               userId: profile.user_id,
               userEmail: profile.email,
@@ -124,7 +144,7 @@ const SystemTools: React.FC = () => {
               id: `role_mismatch_${profile.id}`,
               type: 'role_mismatch',
               severity: 'warning',
-              description: `Therapist "${profile.first_name} ${profile.last_name}" has linked user with role="${user.role}" (should be "therapist")`,
+              description: `Therapist "${profile.first_name} ${profile.last_name}" has legacy user with role="${user.role}" (expected "therapist")`,
               therapistId: profile.id,
               userId: user.id,
               userEmail: user.email,
