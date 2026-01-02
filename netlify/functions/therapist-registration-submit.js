@@ -224,8 +224,10 @@ async function saveDraft(registrationId, step, formData) {
     case 'step4': // Qualifications & Services
       Object.assign(updateData, {
         therapies_offered: formData.therapiesOffered || [],
-        qualification_certificates: formData.qualificationCertificates || [],
-        other_services: sanitizeValue(formData.otherServices)
+        qualification_certificates: formData.qualificationCertificates || []
+        // Note: other_services temporarily removed until migration 003 is run
+        // Uncomment after running: database/migrations/003_add_other_services_to_registrations.sql
+        // other_services: sanitizeValue(formData.otherServices)
       });
       break;
 

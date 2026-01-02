@@ -155,22 +155,20 @@ async function loadServices() {
         const servicesListDiv = document.getElementById('therapiesOfferedList');
         let services = [];
 
-        // Fetch services directly from Supabase
-        const supabaseUrl = 'https://dzclnjkjlmsivikojygv.supabase.co';
-        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR6Y2xuamtqbG1zaXZpa29qeWd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjcyMzc3MTYsImV4cCI6MjA0MjgxMzcxNn0.Y5wbJ1CmCD4TDT-6RWzvEoHWnqmxwmFvJNNaT46DUZk';
-
-        const servicesResponse = await fetch(`${supabaseUrl}/rest/v1/services?is_active=eq.true&select=id,name&order=sort_order,name`, {
-            headers: {
-                'apikey': supabaseAnonKey,
-                'Authorization': `Bearer ${supabaseAnonKey}`
-            }
-        });
+        // Fetch services from our Netlify function
+        const servicesResponse = await fetch('/.netlify/functions/get-active-services');
 
         if (!servicesResponse.ok) {
             throw new Error(`Failed to fetch services: ${servicesResponse.status}`);
         }
 
-        services = await servicesResponse.json();
+        const data = await servicesResponse.json();
+
+        if (!data.success || !data.services) {
+            throw new Error('Invalid response from services API');
+        }
+
+        services = data.services;
 
         // Clear loading message
         servicesListDiv.innerHTML = '';
