@@ -1205,17 +1205,7 @@ console.log('Globals:', {
       }
     } catch (error) {
       console.error('❌ Error fetching settings:', error);
-      // Use fallback settings
-      window.businessOpeningHour = 9;
-      window.businessClosingHour = 17;
-      window.beforeServiceBuffer = 15;
-      window.afterServiceBuffer = 15;
-      window.minBookingAdvanceHours = 2;
-      window.therapistDaytimeRate = 45;
-      window.therapistAfterhoursRate = 55;
-      window.therapistResponseTimeoutMinutes = 60;
-      window.urgentResponseTimeoutMinutes = 120;
-      window.standardResponseTimeoutMinutes = 240;
+      console.error('⚠️ System settings failed to load - system may not function correctly');
     }
   }
 
@@ -4170,6 +4160,32 @@ function hideCustomerLookup() {
   customerLookupResult.style.display = 'none';
   registrationOption.style.display = 'none';
   emailStatus.innerHTML = '';
+}
+
+/**
+ * Calculate appropriate timeout based on how far in the future the booking is
+ * @param {Date} bookingDateTime - The date/time of the booking
+ * @returns {number} Timeout in minutes
+ */
+function calculateResponseTimeout(bookingDateTime) {
+  const now = new Date();
+  const hoursUntilService = (bookingDateTime - now) / (1000 * 60 * 60);
+
+  console.log('⏱️ Calculating timeout - Hours until service:', hoursUntilService.toFixed(2));
+
+  let timeoutMinutes;
+
+  if (hoursUntilService < 12) {
+    // Within 12 hours - use therapist_response_timeout_minutes
+    timeoutMinutes = window.therapistResponseTimeoutMinutes;
+    console.log(`⏱️ Booking within 12 hours - Using therapist_response_timeout_minutes: ${timeoutMinutes} minutes`);
+  } else {
+    // 12+ hours ahead - use standard_response_timeout_minutes
+    timeoutMinutes = window.standardResponseTimeoutMinutes;
+    console.log(`⏱️ Booking 12+ hours ahead - Using standard_response_timeout_minutes: ${timeoutMinutes} minutes`);
+  }
+
+  return timeoutMinutes;
 }
 
 // Send booking notifications via EmailJS AND SMS
