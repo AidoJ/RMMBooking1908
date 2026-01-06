@@ -3999,11 +3999,11 @@ async function generateSequentialQuoteId() {
 
 // Add customer registration logic
 // Add customer registration logic - Uses Netlify function to bypass RLS
-async function getOrCreateCustomerId(firstName, lastName, email, phone, isGuest = false) {
+async function getOrCreateCustomerId(firstName, lastName, email, phone, isGuest = false, emailSubscribed = false) {
   if (!email) return null;
-  
+
   console.log('🔍 Getting or creating customer via Netlify function...');
-  
+
   try {
     // Use Netlify function to create/get customer (bypasses RLS)
     const response = await fetch('/.netlify/functions/create-customer', {
@@ -4014,7 +4014,8 @@ async function getOrCreateCustomerId(firstName, lastName, email, phone, isGuest 
         lastName: lastName,
         email: email,
         phone: phone,
-        isGuest: isGuest
+        isGuest: isGuest,
+        emailSubscribed: emailSubscribed
       })
     });
 
@@ -4413,13 +4414,14 @@ if (confirmBtn) {
         
     // Registration option
     const registerOption = document.querySelector('input[name="registerOption"]:checked')?.value;
+    const emailSubscribed = document.getElementById('marketingConsent')?.checked || false;
     let customer_id = null;
-        
+
     if (registerOption === 'yes') {
-          customer_id = await getOrCreateCustomerId(customerFirstName, customerLastName, customerEmail, customerPhone, false);
+          customer_id = await getOrCreateCustomerId(customerFirstName, customerLastName, customerEmail, customerPhone, false, emailSubscribed);
         } else {
           // Create guest customer
-          customer_id = await getOrCreateCustomerId(customerFirstName, customerLastName, customerEmail, customerPhone, true);
+          customer_id = await getOrCreateCustomerId(customerFirstName, customerLastName, customerEmail, customerPhone, true, emailSubscribed);
         }
         
         // Get service name for email
@@ -4484,6 +4486,7 @@ if (confirmBtn) {
       last_name: customerLastName,
       customer_email: customerEmail,
       customer_phone: customerPhone,
+      email_subscribed: document.getElementById('marketingConsent')?.checked || false,
       room_number: roomNumber,
       booker_name: bookerName,
       notes,

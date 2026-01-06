@@ -28,7 +28,7 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const { firstName, lastName, email, phone, isGuest = false } = JSON.parse(event.body);
+    const { firstName, lastName, email, phone, isGuest = false, emailSubscribed = false } = JSON.parse(event.body);
 
     // Validate required fields
     if (!email || !email.includes('@')) {
@@ -65,9 +65,19 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // If customer exists, return existing
+    // If customer exists, update email subscription if they're opting in
     if (existing && existing.id) {
       console.log('✅ Existing customer found:', existing.customer_code);
+
+      // If they're opting in to emails, update their subscription preference
+      if (emailSubscribed) {
+        await supabase
+          .from('customers')
+          .update({ email_subscribed: true })
+          .eq('id', existing.id);
+        console.log('📧 Updated email subscription to true');
+      }
+
       return {
         statusCode: 200,
         headers,
@@ -143,7 +153,8 @@ exports.handler = async (event, context) => {
         email: email,
         phone: phone,
         customer_code: customerCode,
-        is_guest: isGuest
+        is_guest: isGuest,
+        email_subscribed: emailSubscribed
       }])
       .select('id, customer_code')
       .maybeSingle();
