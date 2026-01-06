@@ -93,14 +93,13 @@ exports.handler = async (event, context) => {
     if (recipientType === 'all_therapists') {
       const { data, error } = await supabase
         .from('therapist_profiles')
-        .select('id, first_name, last_name, email')
+        .select('id, first_name, email')
         .eq('is_active', true);
 
       if (error) throw new Error(`Failed to fetch therapists: ${error.message}`);
       recipients = data.map(t => ({
         id: t.id,
         first_name: t.first_name,
-        last_name: t.last_name,
         email: t.email,
         type: 'therapist'
       }));
@@ -108,14 +107,13 @@ exports.handler = async (event, context) => {
     } else if (recipientType === 'all_customers') {
       const { data, error } = await supabase
         .from('customers')
-        .select('id, first_name, last_name, email')
+        .select('id, first_name, email')
         .eq('email_subscribed', true);
 
       if (error) throw new Error(`Failed to fetch customers: ${error.message}`);
       recipients = data.map(c => ({
         id: c.id,
         first_name: c.first_name,
-        last_name: c.last_name,
         email: c.email,
         type: 'customer'
       }));
@@ -131,14 +129,13 @@ exports.handler = async (event, context) => {
 
       const { data, error } = await supabase
         .from('therapist_profiles')
-        .select('id, first_name, last_name, email')
+        .select('id, first_name, email')
         .in('id', recipientIds);
 
       if (error) throw new Error(`Failed to fetch therapists: ${error.message}`);
       recipients = data.map(t => ({
         id: t.id,
         first_name: t.first_name,
-        last_name: t.last_name,
         email: t.email,
         type: 'therapist'
       }));
@@ -154,14 +151,13 @@ exports.handler = async (event, context) => {
 
       const { data, error } = await supabase
         .from('customers')
-        .select('id, first_name, last_name, email')
+        .select('id, first_name, email')
         .in('id', recipientIds);
 
       if (error) throw new Error(`Failed to fetch customers: ${error.message}`);
       recipients = data.map(c => ({
         id: c.id,
         first_name: c.first_name,
-        last_name: c.last_name,
         email: c.email,
         type: 'customer'
       }));
@@ -209,17 +205,16 @@ exports.handler = async (event, context) => {
         // Replace template variables in body
         const personalizedBody = body
           .replace(/\{\{first_name\}\}/g, recipient.first_name)
-          .replace(/\{\{last_name\}\}/g, recipient.last_name)
           .replace(/\{\{email\}\}/g, recipient.email);
 
         // Send email via EmailJS
-        await sendBroadcastEmail(recipient.email, `${recipient.first_name} ${recipient.last_name}`, subject, personalizedBody);
+        await sendBroadcastEmail(recipient.email, recipient.first_name, subject, personalizedBody);
 
         // Track successful send
         recipientRecords.push({
           broadcast_id: broadcast.id,
           recipient_email: recipient.email,
-          recipient_name: `${recipient.first_name} ${recipient.last_name}`,
+          recipient_name: recipient.first_name,
           recipient_type: recipient.type,
           recipient_id: recipient.id,
           status: 'sent',
@@ -236,7 +231,7 @@ exports.handler = async (event, context) => {
         recipientRecords.push({
           broadcast_id: broadcast.id,
           recipient_email: recipient.email,
-          recipient_name: `${recipient.first_name} ${recipient.last_name}`,
+          recipient_name: recipient.first_name,
           recipient_type: recipient.type,
           recipient_id: recipient.id,
           status: 'failed',

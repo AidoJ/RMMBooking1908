@@ -216,12 +216,12 @@ const Communications: React.FC = () => {
   const recipientOptions =
     recipientType === 'individual_therapists'
       ? therapists.map(t => ({
-          label: `${t.first_name} ${t.last_name} (${t.email})`,
+          label: `${t.first_name} (${t.email})`,
           value: t.id
         }))
       : recipientType === 'individual_customers'
       ? customers.map(c => ({
-          label: `${c.first_name} ${c.last_name} (${c.email})`,
+          label: `${c.first_name} (${c.email})`,
           value: c.id
         }))
       : [];
@@ -367,14 +367,14 @@ const Communications: React.FC = () => {
               >
                 <TextArea
                   rows={12}
-                  placeholder="Type your message here...&#10;&#10;You can use these variables:&#10;{{first_name}} - Recipient's first name&#10;{{last_name}} - Recipient's last name&#10;{{email}} - Recipient's email"
+                  placeholder="Type your message here...&#10;&#10;You can use these variables:&#10;{{first_name}} - Recipient's first name&#10;{{email}} - Recipient's email"
                   style={{ fontFamily: 'monospace' }}
                 />
               </Form.Item>
 
               <Alert
                 message="Email Variables"
-                description="Use {{first_name}}, {{last_name}}, and {{email}} in your message to personalize emails for each recipient."
+                description="Use {{first_name}} and {{email}} in your message to personalize emails for each recipient."
                 type="info"
                 showIcon
                 style={{ marginBottom: 16 }}
