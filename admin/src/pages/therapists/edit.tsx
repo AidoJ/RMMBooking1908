@@ -789,13 +789,19 @@ const TherapistEdit: React.FC = () => {
         return;
       }
 
-      const token = localStorage.getItem('adminToken');
+      // Get Supabase Auth session token
+      const { data: { session } } = await supabaseClient.auth.getSession();
+
+      if (!session?.access_token) {
+        message.error('Not authenticated - please log in again');
+        return;
+      }
 
       const response = await fetch('/.netlify/functions/user-management', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           action: 'reset-password',

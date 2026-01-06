@@ -1,5 +1,4 @@
 const { createClient } = require('@supabase/supabase-js');
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -11,29 +10,36 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
-const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-CHANGE-IN-PRODUCTION';
 
 /**
- * Verify JWT token and check if user is admin or super_admin
+ * Verify Supabase Auth token and check if user is admin or super_admin
  */
 const verifyAuth = async (token) => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    // Verify Supabase Auth token
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
 
-    // Verify user exists and is admin or super_admin
-    const { data: user, error } = await supabase
-      .from('admin_users')
-      .select('id, email, role')
-      .eq('id', decoded.userId)
-      .eq('is_active', true)
-      .single();
-
-    if (error || !user || (user.role !== 'super_admin' && user.role !== 'admin')) {
+    if (authError || !authUser) {
+      console.error('❌ Auth verification failed:', authError?.message);
       return null;
     }
 
-    return user;
+    // Get admin_users record to check role
+    const { data: adminUser, error: adminError } = await supabase
+      .from('admin_users')
+      .select('id, email, role, auth_id')
+      .eq('auth_id', authUser.id)
+      .eq('is_active', true)
+      .single();
+
+    if (adminError || !adminUser || (adminUser.role !== 'super_admin' && adminUser.role !== 'admin')) {
+      console.error('❌ Admin user not found or invalid role:', adminError?.message);
+      return null;
+    }
+
+    return adminUser;
   } catch (error) {
+    console.error('❌ verifyAuth error:', error);
     return null;
   }
 };
@@ -408,21 +414,49 @@ async function resetPassword(data, authUser, headers) {
       };
     }
 
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // Get the admin_users record to find the auth_id
+    const { data: adminUserRecord, error: fetchError } = await supabase
+      .from('admin_users')
+      .select('auth_id, email')
+      .eq('id', id)
+      .single();
 
-    // Update password and reset lockout
-    const { error } = await supabase
+    if (fetchError || !adminUserRecord) {
+      return {
+        statusCode: 404,
+        headers,
+        body: JSON.stringify({ success: false, error: 'User not found' })
+      };
+    }
+
+    if (!adminUserRecord.auth_id) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ success: false, error: 'User does not have a Supabase Auth account' })
+      };
+    }
+
+    // Update password in Supabase Auth using admin API
+    const { error: authError } = await supabase.auth.admin.updateUserById(
+      adminUserRecord.auth_id,
+      { password: newPassword }
+    );
+
+    if (authError) {
+      console.error('Error updating Supabase Auth password:', authError);
+      throw authError;
+    }
+
+    // Update admin_users record (reset lockout fields if they exist)
+    await supabase
       .from('admin_users')
       .update({
-        password: hashedPassword,
         failed_login_attempts: 0,
         locked_until: null,
         updated_at: new Date().toISOString()
       })
       .eq('id', id);
-
-    if (error) throw error;
 
     // Log activity
     await supabase
@@ -433,6 +467,8 @@ async function resetPassword(data, authUser, headers) {
         table_name: 'admin_users',
         record_id: id
       });
+
+    console.log(`✅ Password reset successful for user ${adminUserRecord.email}`);
 
     return {
       statusCode: 200,
