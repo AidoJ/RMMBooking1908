@@ -89,17 +89,73 @@ const authProvider: AuthBindings = {
   },
 
   check: async () => {
-    const { data: { session } } = await realSupabaseClient.auth.getSession();
+    try {
+      const { data: { session }, error: sessionError } = await realSupabaseClient.auth.getSession();
 
-    if (session) {
+      if (sessionError) {
+        console.error('❌ Error checking session:', sessionError);
+        return {
+          authenticated: false,
+          logout: true,
+          redirectTo: "/login",
+        };
+      }
+
+      if (!session || !session.access_token) {
+        // Clear any stale admin_user data
+        localStorage.removeItem('admin_user');
+        return {
+          authenticated: false,
+          logout: true,
+          redirectTo: "/login",
+        };
+      }
+
+      // Verify admin_user exists in localStorage (should have been set during login)
+      const adminUser = localStorage.getItem('admin_user');
+      if (!adminUser) {
+        console.warn('⚠️ Session exists but admin_user not found, fetching...');
+        // Try to fetch admin user from database
+        try {
+          const { data: adminUserData, error: adminError } = await realSupabaseClient
+            .from('admin_users')
+            .select('*')
+            .eq('auth_id', session.user.id)
+            .single();
+
+          if (adminError || !adminUserData) {
+            console.error('❌ Admin user not found for session');
+            await realSupabaseClient.auth.signOut();
+            return {
+              authenticated: false,
+              logout: true,
+              redirectTo: "/login",
+            };
+          }
+
+          // Store admin user
+          localStorage.setItem('admin_user', JSON.stringify(adminUserData));
+          return { authenticated: true };
+        } catch (error) {
+          console.error('❌ Error fetching admin user:', error);
+          await realSupabaseClient.auth.signOut();
+          return {
+            authenticated: false,
+            logout: true,
+            redirectTo: "/login",
+          };
+        }
+      }
+
       return { authenticated: true };
+    } catch (error) {
+      console.error('❌ Error in auth check:', error);
+      return {
+        authenticated: false,
+        logout: true,
+        redirectTo: "/login",
+      };
     }
-
-    return {
-      authenticated: false,
-      logout: true,
-      redirectTo: "/login",
-    };
   },
 
   getPermissions: async () => {

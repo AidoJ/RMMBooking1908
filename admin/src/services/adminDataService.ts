@@ -199,12 +199,56 @@ class AdminQueryBuilder implements QueryBuilder {
       // Get Supabase Auth session token
       // Import realSupabaseClient dynamically to avoid circular dependency
       const { realSupabaseClient } = await import('../utility/supabaseClient');
-      const { data: { session } } = await realSupabaseClient.auth.getSession();
+      
+      // Try to get session, with retry logic for timing issues
+      let session = null;
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (attempts < maxAttempts && !session) {
+        const { data: { session: currentSession }, error: sessionError } = await realSupabaseClient.auth.getSession();
+        
+        if (sessionError) {
+          console.error('❌ Error getting session:', sessionError);
+          // If it's a network error, wait a bit and retry
+          if (attempts < maxAttempts - 1) {
+            await new Promise(resolve => setTimeout(resolve, 100 * (attempts + 1)));
+            attempts++;
+            continue;
+          }
+        }
+        
+        if (currentSession && currentSession.access_token) {
+          session = currentSession;
+          break;
+        }
+        
+        // If no session, try refreshing
+        if (attempts < maxAttempts - 1) {
+          try {
+            const { data: { session: refreshedSession }, error: refreshError } = await realSupabaseClient.auth.refreshSession();
+            if (!refreshError && refreshedSession && refreshedSession.access_token) {
+              session = refreshedSession;
+              break;
+            }
+          } catch (refreshError) {
+            console.error('❌ Error refreshing session:', refreshError);
+          }
+          await new Promise(resolve => setTimeout(resolve, 100 * (attempts + 1)));
+        }
+        attempts++;
+      }
       
       if (!session || !session.access_token) {
+        console.error('❌ No valid session found after', maxAttempts, 'attempts');
+        // Clear auth data and redirect to login
+        await realSupabaseClient.auth.signOut();
+        localStorage.removeItem('admin_user');
+        window.location.href = '/admin/login';
+        
         return {
           data: null,
-          error: { message: 'Not authenticated', code: 'UNAUTHENTICATED' },
+          error: { message: 'Not authenticated - session not available', code: 'UNAUTHENTICATED' },
           count: null
         };
       }

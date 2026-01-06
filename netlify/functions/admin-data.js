@@ -21,6 +21,7 @@ const supabaseAnon = supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey
  */
 async function verifyAuth(authHeader) {
   if (!authHeader) {
+    console.error('❌ Missing authorization header');
     throw new Error('Missing authorization header');
   }
 
@@ -28,43 +29,76 @@ async function verifyAuth(authHeader) {
   const token = authHeader.replace(/^Bearer\s+/i, '');
   
   if (!token) {
+    console.error('❌ Missing token in authorization header');
     throw new Error('Missing token in authorization header');
   }
 
-  // Create a client with the token to verify it
-  const tokenClient = createClient(supabaseUrl, supabaseAnonKey || supabaseKey, {
-    global: {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+  console.log('🔍 Verifying token (length:', token.length, 'chars)');
+
+  try {
+    // Create a client with the anon key to verify the user token
+    // We need the anon key (not service role) to properly verify user tokens
+    const clientKey = supabaseAnonKey || supabaseKey;
+    
+    if (!clientKey) {
+      console.error('❌ No Supabase key available for token verification');
+      throw new Error('Server configuration error');
     }
-  });
+    
+    const tokenClient = createClient(supabaseUrl, clientKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    });
+    
+    // Verify token by getting the user
+    const { data: { user }, error: userError } = await tokenClient.auth.getUser();
+    
+    if (userError) {
+      console.error('❌ Token verification error:', userError.message, userError.status);
+      throw new Error('Invalid or expired token');
+    }
+    
+    if (!user) {
+      console.error('❌ No user found for token');
+      throw new Error('Invalid or expired token');
+    }
 
-  // Verify token by getting the user
-  const { data: { user }, error: userError } = await tokenClient.auth.getUser();
-  
-  if (userError || !user) {
-    throw new Error('Invalid or expired token');
+    console.log('✅ Token verified. User ID:', user.id, 'Email:', user.email);
+
+    // Verify user is in admin_users table using service role client
+    const { data: adminUser, error: adminError } = await supabase
+      .from('admin_users')
+      .select('id, email, role, is_active')
+      .eq('auth_id', user.id)
+      .eq('is_active', true)
+      .single();
+
+    if (adminError) {
+      console.error('❌ Admin user lookup error:', adminError.message, adminError.code);
+      throw new Error('User is not an admin');
+    }
+    
+    if (!adminUser) {
+      console.error('❌ Admin user not found for auth_id:', user.id);
+      throw new Error('User is not an admin');
+    }
+
+    // Check role is admin or super_admin
+    if (adminUser.role !== 'admin' && adminUser.role !== 'super_admin') {
+      console.error('❌ User does not have admin privileges. Role:', adminUser.role);
+      throw new Error('User does not have admin privileges');
+    }
+
+    console.log('✅ Admin user verified:', adminUser.email, 'Role:', adminUser.role);
+    return adminUser;
+    
+  } catch (error) {
+    console.error('❌ Error in verifyAuth:', error.message);
+    throw error;
   }
-
-  // Verify user is in admin_users table
-  const { data: adminUser, error: adminError } = await supabase
-    .from('admin_users')
-    .select('id, email, role, is_active')
-    .eq('auth_id', user.id)
-    .eq('is_active', true)
-    .single();
-
-  if (adminError || !adminUser) {
-    throw new Error('User is not an admin');
-  }
-
-  // Check role is admin or super_admin
-  if (adminUser.role !== 'admin' && adminUser.role !== 'super_admin') {
-    throw new Error('User does not have admin privileges');
-  }
-
-  return adminUser;
 }
 
 /**
