@@ -35,6 +35,7 @@ import {
 import { useGetIdentity } from '@refinedev/core';
 import { RoleGuard } from '../../components/RoleGuard';
 import AdminDataService from '../../services/adminDataService';
+import { realSupabaseClient } from '../../utility';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -138,13 +139,18 @@ const UserManagementList: React.FC = () => {
 
   const handleDeleteUser = async (userId: string, userEmail: string) => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const { data: { session } } = await realSupabaseClient.auth.getSession();
+
+      if (!session?.access_token) {
+        message.error('Not authenticated - please log in again');
+        return;
+      }
 
       const response = await fetch('/.netlify/functions/user-management', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           action: 'delete',
@@ -171,13 +177,18 @@ const UserManagementList: React.FC = () => {
 
   const handleResetPassword = async (values: any) => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const { data: { session } } = await realSupabaseClient.auth.getSession();
+
+      if (!session?.access_token) {
+        message.error('Not authenticated - please log in again');
+        return;
+      }
 
       const response = await fetch('/.netlify/functions/user-management', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
           action: 'reset-password',
@@ -220,7 +231,12 @@ const UserManagementList: React.FC = () => {
 
   const handleSubmit = async (values: any) => {
     try {
-      const token = localStorage.getItem('adminToken');
+      const { data: { session } } = await realSupabaseClient.auth.getSession();
+
+      if (!session?.access_token) {
+        message.error('Not authenticated - please log in again');
+        return;
+      }
 
       if (selectedUser) {
         // Edit existing user - use Netlify function
@@ -228,7 +244,7 @@ const UserManagementList: React.FC = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${session.access_token}`
           },
           body: JSON.stringify({
             action: 'update',
@@ -252,7 +268,7 @@ const UserManagementList: React.FC = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
+            'Authorization': `Bearer ${session.access_token}`
           },
           body: JSON.stringify({
             action: 'create',
