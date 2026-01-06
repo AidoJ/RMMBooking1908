@@ -45,7 +45,7 @@ import {
 import { useParams, useNavigate } from 'react-router';
 import { useGetIdentity } from '@refinedev/core';
 import { RoleGuard } from '../../components/RoleGuard';
-import { supabaseClient } from '../../utility';
+import { supabaseClient, realSupabaseClient } from '../../utility';
 import { useAddressGeocoding } from '../../hooks/useAddressGeocoding';
 import ServiceAreaPolygonEditor from '../../components/ServiceAreaPolygonEditor';
 import dayjs from 'dayjs';
@@ -790,7 +790,7 @@ const TherapistEdit: React.FC = () => {
       }
 
       // Get Supabase Auth session token
-      const { data: { session } } = await supabaseClient.auth.getSession();
+      const { data: { session } } = await realSupabaseClient.auth.getSession();
 
       if (!session?.access_token) {
         message.error('Not authenticated - please log in again');
