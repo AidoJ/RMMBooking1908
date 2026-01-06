@@ -14,13 +14,13 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-CHANGE-IN-PRODUCTION';
 
 /**
- * Verify JWT token and check if user is super_admin
+ * Verify JWT token and check if user is admin or super_admin
  */
 const verifyAuth = async (token) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    // Verify user exists and is super_admin
+    // Verify user exists and is admin or super_admin
     const { data: user, error } = await supabase
       .from('admin_users')
       .select('id, email, role')
@@ -28,7 +28,7 @@ const verifyAuth = async (token) => {
       .eq('is_active', true)
       .single();
 
-    if (error || !user || user.role !== 'super_admin') {
+    if (error || !user || (user.role !== 'super_admin' && user.role !== 'admin')) {
       return null;
     }
 
@@ -68,7 +68,7 @@ exports.handler = async (event, context) => {
       return {
         statusCode: 403,
         headers,
-        body: JSON.stringify({ success: false, error: 'Forbidden: Super admin access required' })
+        body: JSON.stringify({ success: false, error: 'Forbidden: Admin access required' })
       };
     }
 
