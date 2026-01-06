@@ -80,20 +80,69 @@ const authProvider: AuthBindings = {
   },
 
   logout: async () => {
-    await realSupabaseClient.auth.signOut();
-    localStorage.removeItem('admin_user');
-    return {
-      success: true,
-      redirectTo: "/login",
-    };
+    try {
+      console.log('🚪 Logging out...');
+      
+      // Clear localStorage first to prevent re-authentication
+      localStorage.removeItem('admin_user');
+      
+      // Sign out from Supabase Auth
+      const { error: signOutError } = await realSupabaseClient.auth.signOut();
+      
+      if (signOutError) {
+        console.error('❌ Error during sign out:', signOutError);
+        // Continue with logout even if signOut fails
+      }
+      
+      // Clear any remaining session data
+      // Force clear Supabase session storage
+      const supabaseSessionKeys = Object.keys(localStorage).filter(key => 
+        key.startsWith('sb-') || key.includes('supabase')
+      );
+      supabaseSessionKeys.forEach(key => localStorage.removeItem(key));
+      
+      console.log('✅ Logout complete');
+      
+      return {
+        success: true,
+        redirectTo: "/login",
+      };
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+      // Even if there's an error, clear localStorage and redirect
+      localStorage.removeItem('admin_user');
+      const supabaseSessionKeys = Object.keys(localStorage).filter(key => 
+        key.startsWith('sb-') || key.includes('supabase')
+      );
+      supabaseSessionKeys.forEach(key => localStorage.removeItem(key));
+      
+      return {
+        success: true,
+        redirectTo: "/login",
+      };
+    }
   },
 
   check: async () => {
     try {
+      // First check if admin_user exists - if not, user is definitely not authenticated
+      const adminUser = localStorage.getItem('admin_user');
+      if (!adminUser) {
+        // Clear any Supabase session data
+        await realSupabaseClient.auth.signOut();
+        return {
+          authenticated: false,
+          logout: true,
+          redirectTo: "/login",
+        };
+      }
+
       const { data: { session }, error: sessionError } = await realSupabaseClient.auth.getSession();
 
       if (sessionError) {
         console.error('❌ Error checking session:', sessionError);
+        // Clear admin_user if session check fails
+        localStorage.removeItem('admin_user');
         return {
           authenticated: false,
           logout: true,
