@@ -81,6 +81,9 @@ import { Reports } from "./pages/reports";
 // Import the system tools component
 import SystemTools from "./pages/system-tools";
 
+// Import the communications component
+import Communications from "./pages/communications";
+
 // Import the auth components
 import { ForgotPassword, ResetPassword, CustomLogin } from "./pages/auth";
 
@@ -249,6 +252,14 @@ function App() {
                     },
                   },
                   {
+                    name: "communications",
+                    list: "/communications",
+                    meta: {
+                      label: "Communications",
+                      icon: "📧",
+                    },
+                  },
+                  {
                     name: "user-management",
                     list: "/user-management",
                     meta: {
@@ -373,6 +384,9 @@ function App() {
 
                     {/* System Tools (Super Admin Only) */}
                     <Route path="/system-tools" element={<SystemTools />} />
+
+                    {/* Communications */}
+                    <Route path="/communications" element={<Communications />} />
 
                     <Route path="*" element={<ErrorComponent />} />
                   </Route>
