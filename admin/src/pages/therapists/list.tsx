@@ -89,11 +89,11 @@ const TherapistList: React.FC = () => {
   const loadTherapists = async () => {
     try {
       setLoading(true);
-      
-      // First get therapists with their basic info
+
+      // First get therapists with their basic info (exclude large fields like profile_pic, service_area_polygon)
       const { data: therapistData, error: therapistError } = await supabaseClient
         .from('therapist_profiles')
-        .select('*')
+        .select('id, first_name, last_name, email, phone, is_active, rating, total_reviews, home_address, service_radius_km, created_at, user_id, auth_id')
         .order('first_name', { ascending: true });
 
       if (therapistError) throw therapistError;
