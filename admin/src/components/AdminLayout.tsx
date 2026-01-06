@@ -17,6 +17,7 @@ import {
   ScheduleOutlined,
   MoneyCollectOutlined,
   ToolOutlined,
+  MailOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router';
 import { useLogout, useGetIdentity } from '@refinedev/core';
@@ -105,6 +106,11 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       key: '/reports',
       icon: <BarChartOutlined />,
       label: 'Reports',
+    },
+    {
+      key: '/communications',
+      icon: <MailOutlined />,
+      label: 'Communications',
     },
     {
       key: '/system-settings',
