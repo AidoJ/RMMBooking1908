@@ -125,18 +125,7 @@ const authProvider: AuthBindings = {
 
   check: async () => {
     try {
-      // First check if admin_user exists - if not, user is definitely not authenticated
-      const adminUser = localStorage.getItem('admin_user');
-      if (!adminUser) {
-        // Clear any Supabase session data
-        await realSupabaseClient.auth.signOut();
-        return {
-          authenticated: false,
-          logout: true,
-          redirectTo: "/login",
-        };
-      }
-
+      // Get session first
       const { data: { session }, error: sessionError } = await realSupabaseClient.auth.getSession();
 
       if (sessionError) {
@@ -151,7 +140,7 @@ const authProvider: AuthBindings = {
       }
 
       if (!session || !session.access_token) {
-        // Clear any stale admin_user data
+        // No session - clear any stale admin_user data
         localStorage.removeItem('admin_user');
         return {
           authenticated: false,
@@ -160,11 +149,12 @@ const authProvider: AuthBindings = {
         };
       }
 
-      // Verify admin_user exists in localStorage (should have been set during login)
-      const adminUser = localStorage.getItem('admin_user');
+      // Session exists - check if admin_user is in localStorage
+      let adminUser = localStorage.getItem('admin_user');
+      
       if (!adminUser) {
         console.warn('⚠️ Session exists but admin_user not found, fetching...');
-        // Try to fetch admin user from database
+        // Try to fetch admin user from database using the authenticated session
         try {
           const { data: adminUserData, error: adminError } = await realSupabaseClient
             .from('admin_users')
@@ -173,8 +163,33 @@ const authProvider: AuthBindings = {
             .single();
 
           if (adminError || !adminUserData) {
-            console.error('❌ Admin user not found for session');
+            console.error('❌ Admin user not found for session:', adminError);
+            // Clear session and redirect to login
             await realSupabaseClient.auth.signOut();
+            localStorage.removeItem('admin_user');
+            return {
+              authenticated: false,
+              logout: true,
+              redirectTo: "/login",
+            };
+          }
+
+          // Verify the user is active and has admin role
+          if (!adminUserData.is_active) {
+            console.error('❌ Admin user is not active');
+            await realSupabaseClient.auth.signOut();
+            localStorage.removeItem('admin_user');
+            return {
+              authenticated: false,
+              logout: true,
+              redirectTo: "/login",
+            };
+          }
+
+          if (adminUserData.role !== 'admin' && adminUserData.role !== 'super_admin') {
+            console.error('❌ User does not have admin role:', adminUserData.role);
+            await realSupabaseClient.auth.signOut();
+            localStorage.removeItem('admin_user');
             return {
               authenticated: false,
               logout: true,
@@ -184,10 +199,12 @@ const authProvider: AuthBindings = {
 
           // Store admin user
           localStorage.setItem('admin_user', JSON.stringify(adminUserData));
+          console.log('✅ Admin user fetched and stored:', adminUserData.email);
           return { authenticated: true };
         } catch (error) {
           console.error('❌ Error fetching admin user:', error);
           await realSupabaseClient.auth.signOut();
+          localStorage.removeItem('admin_user');
           return {
             authenticated: false,
             logout: true,
@@ -196,9 +213,34 @@ const authProvider: AuthBindings = {
         }
       }
 
+      // Verify the stored admin_user is still valid
+      try {
+        const parsedAdminUser = JSON.parse(adminUser);
+        if (!parsedAdminUser.is_active) {
+          console.warn('⚠️ Stored admin user is not active, clearing...');
+          localStorage.removeItem('admin_user');
+          await realSupabaseClient.auth.signOut();
+          return {
+            authenticated: false,
+            logout: true,
+            redirectTo: "/login",
+          };
+        }
+      } catch (parseError) {
+        console.error('❌ Error parsing admin_user:', parseError);
+        localStorage.removeItem('admin_user');
+        await realSupabaseClient.auth.signOut();
+        return {
+          authenticated: false,
+          logout: true,
+          redirectTo: "/login",
+        };
+      }
+
       return { authenticated: true };
     } catch (error) {
       console.error('❌ Error in auth check:', error);
+      localStorage.removeItem('admin_user');
       return {
         authenticated: false,
         logout: true,
