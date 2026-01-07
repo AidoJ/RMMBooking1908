@@ -130,19 +130,24 @@ async function syncTherapistEmail(therapistId, newEmail) {
 
     console.log(`📧 Email changing from ${oldEmail} to ${newEmail}`);
 
-    // 1. Update Supabase Auth email
+    // 1. Update Supabase Auth email with auto-confirmation
     if (therapist.auth_id) {
       console.log(`🔐 Updating Supabase Auth email for auth_id: ${therapist.auth_id}`);
-      const { error: authError } = await supabase.auth.admin.updateUserById(
+      const { data: authUpdate, error: authError } = await supabase.auth.admin.updateUserById(
         therapist.auth_id,
-        { email: newEmail }
+        {
+          email: newEmail,
+          email_confirm: true // CRITICAL: Auto-confirm email to allow immediate login
+        }
       );
 
       if (authError) {
         console.error('❌ Failed to update Supabase Auth email:', authError);
-        throw new Error(`Failed to update auth email: ${authError.message}`);
+        throw new Error(`Failed to update Supabase Auth email: ${authError.message}`);
       }
-      console.log('✅ Supabase Auth email updated');
+      console.log('✅ Supabase Auth email updated and auto-confirmed');
+    } else {
+      console.warn('⚠️ No auth_id found - therapist will not be able to login');
     }
 
     // 2. Update admin_users email
@@ -161,12 +166,15 @@ async function syncTherapistEmail(therapistId, newEmail) {
         throw new Error(`Failed to update admin_users email: ${adminError.message}`);
       }
       console.log('✅ admin_users email updated');
+    } else {
+      console.warn('⚠️ No user_id found - admin_users not updated');
     }
 
-    console.log('✅ Email sync complete');
+    console.log('✅ Email sync complete - all three tables updated');
   } catch (error) {
     console.error('❌ Error syncing email:', error);
-    throw error;
+    // Throw the error to prevent partial updates
+    throw new Error(`Email sync failed: ${error.message}`);
   }
 }
 
