@@ -4486,7 +4486,6 @@ if (confirmBtn) {
       last_name: customerLastName,
       customer_email: customerEmail,
       customer_phone: customerPhone,
-      email_subscribed: document.getElementById('marketingConsent')?.checked || false,
       room_number: roomNumber,
       booker_name: bookerName,
       notes,
