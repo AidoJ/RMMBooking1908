@@ -58,6 +58,20 @@ const authProvider: AuthBindings = {
         };
       }
 
+      // CRITICAL: Verify user has admin or super_admin role
+      // Therapists should NOT be able to login to admin panel
+      if (adminUser.role !== 'admin' && adminUser.role !== 'super_admin') {
+        console.error('❌ Access denied - invalid role:', adminUser.email, 'Role:', adminUser.role);
+        await realSupabaseClient.auth.signOut();
+        return {
+          success: false,
+          error: {
+            message: "Access denied - This account does not have admin privileges. Please use the therapist portal.",
+            name: "Authorization Error",
+          },
+        };
+      }
+
       console.log('✅ Login successful:', data.user.email, 'Role:', adminUser.role);
 
       // Store user info in localStorage for getPermissions and getIdentity
