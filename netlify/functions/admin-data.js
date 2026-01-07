@@ -102,6 +102,75 @@ async function verifyAuth(authHeader) {
 }
 
 /**
+ * Sync email changes from therapist_profiles to Supabase Auth and admin_users
+ */
+async function syncTherapistEmail(therapistId, newEmail) {
+  try {
+    console.log(`🔄 Syncing email change for therapist ${therapistId} to: ${newEmail}`);
+
+    // Get therapist profile with auth_id and user_id
+    const { data: therapist, error: fetchError } = await supabase
+      .from('therapist_profiles')
+      .select('auth_id, user_id, email')
+      .eq('id', therapistId)
+      .single();
+
+    if (fetchError || !therapist) {
+      console.error('❌ Failed to fetch therapist:', fetchError);
+      throw new Error('Therapist not found');
+    }
+
+    const oldEmail = therapist.email;
+
+    // Only sync if email actually changed
+    if (oldEmail === newEmail) {
+      console.log('✅ Email unchanged, no sync needed');
+      return;
+    }
+
+    console.log(`📧 Email changing from ${oldEmail} to ${newEmail}`);
+
+    // 1. Update Supabase Auth email
+    if (therapist.auth_id) {
+      console.log(`🔐 Updating Supabase Auth email for auth_id: ${therapist.auth_id}`);
+      const { error: authError } = await supabase.auth.admin.updateUserById(
+        therapist.auth_id,
+        { email: newEmail }
+      );
+
+      if (authError) {
+        console.error('❌ Failed to update Supabase Auth email:', authError);
+        throw new Error(`Failed to update auth email: ${authError.message}`);
+      }
+      console.log('✅ Supabase Auth email updated');
+    }
+
+    // 2. Update admin_users email
+    if (therapist.user_id) {
+      console.log(`👤 Updating admin_users email for user_id: ${therapist.user_id}`);
+      const { error: adminError } = await supabase
+        .from('admin_users')
+        .update({
+          email: newEmail,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', therapist.user_id);
+
+      if (adminError) {
+        console.error('❌ Failed to update admin_users email:', adminError);
+        throw new Error(`Failed to update admin_users email: ${adminError.message}`);
+      }
+      console.log('✅ admin_users email updated');
+    }
+
+    console.log('✅ Email sync complete');
+  } catch (error) {
+    console.error('❌ Error syncing email:', error);
+    throw error;
+  }
+}
+
+/**
  * Build Supabase query based on request
  */
 function buildQuery(operation, table, queryParams = {}) {
@@ -303,6 +372,15 @@ exports.handler = async (event, context) => {
     }
 
     console.log(`🔍 Admin data request: ${operation} on ${table} by ${user.email}`);
+
+    // Special handling: Sync email changes for therapist_profiles
+    if (operation === 'update' && table === 'therapist_profiles' && queryParams.data?.email) {
+      // Get therapist ID from eq filter
+      const therapistId = queryParams.eq?.id;
+      if (therapistId) {
+        await syncTherapistEmail(therapistId, queryParams.data.email);
+      }
+    }
 
     // Build and execute query
     const query = buildQuery(operation, table, queryParams);
