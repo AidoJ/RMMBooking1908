@@ -45,6 +45,8 @@ const SystemTools: React.FC = () => {
   const [hasScanned, setHasScanned] = useState(false);
   const [fixingAuth, setFixingAuth] = useState(false);
   const [authFixResult, setAuthFixResult] = useState<any>(null);
+  const [syncingAuthIds, setSyncingAuthIds] = useState(false);
+  const [syncResult, setSyncResult] = useState<any>(null);
 
   const runSyncCheck = async () => {
     try {
@@ -267,6 +269,69 @@ const SystemTools: React.FC = () => {
     });
   };
 
+  const syncTherapistAuthIds = async () => {
+    Modal.confirm({
+      title: 'Sync Auth IDs to Therapist Profiles?',
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <div>
+          <p>This will:</p>
+          <ul>
+            <li>Find therapist_profiles records without auth_id</li>
+            <li>Copy the auth_id from their linked admin_users record</li>
+            <li>Update therapist_profiles with the correct auth_id</li>
+          </ul>
+          <p style={{ marginTop: 16 }}>
+            This fixes the "Access denied - not a therapist user" login error.
+          </p>
+        </div>
+      ),
+      okText: 'Yes, Sync Auth IDs',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          setSyncingAuthIds(true);
+          setSyncResult(null);
+
+          const { data: { session } } = await realSupabaseClient.auth.getSession();
+
+          if (!session?.access_token) {
+            message.error('Not authenticated - please log in again');
+            return;
+          }
+
+          const response = await fetch('/.netlify/functions/sync-therapist-auth-ids', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            }
+          });
+
+          const result = await response.json();
+
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to sync auth IDs');
+          }
+
+          setSyncResult(result);
+
+          if (result.syncedCount > 0) {
+            message.success(`Synced ${result.syncedCount} therapist profile(s)!`);
+          } else {
+            message.info(result.message);
+          }
+
+        } catch (error: any) {
+          console.error('Error syncing auth IDs:', error);
+          message.error(error.message || 'Failed to sync auth IDs');
+        } finally {
+          setSyncingAuthIds(false);
+        }
+      }
+    });
+  };
+
   const columns = [
     {
       title: 'Severity',
@@ -479,6 +544,84 @@ const SystemTools: React.FC = () => {
                       <Alert
                         message="No Users Need Fixing"
                         description={authFixResult.message}
+                        type="info"
+                        showIcon
+                      />
+                    )}
+                  </>
+                )}
+              </Space>
+            </Card>
+
+            <Card
+              title={
+                <Space>
+                  <SyncOutlined />
+                  <span>Sync Auth IDs to Therapist Profiles</span>
+                </Space>
+              }
+              extra={
+                <Button
+                  type="primary"
+                  icon={<SyncOutlined />}
+                  onClick={syncTherapistAuthIds}
+                  loading={syncingAuthIds}
+                >
+                  Sync Auth IDs
+                </Button>
+              }
+            >
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Alert
+                  message="What does this sync do?"
+                  description={
+                    <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
+                      <li>Fixes therapist profiles that are missing auth_id</li>
+                      <li>Copies auth_id from admin_users to therapist_profiles</li>
+                      <li>Allows therapists to login to therapist portal</li>
+                      <li>Run this AFTER running "Fix Auth Users" button above</li>
+                    </ul>
+                  }
+                  type="info"
+                  showIcon
+                />
+
+                {syncingAuthIds && (
+                  <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <Spin size="large" />
+                    <p style={{ marginTop: 16 }}>Syncing auth IDs to therapist profiles...</p>
+                  </div>
+                )}
+
+                {!syncingAuthIds && syncResult && (
+                  <>
+                    {syncResult.syncedCount > 0 ? (
+                      <Alert
+                        message={`Synced ${syncResult.syncedCount} Therapist Profile(s)!`}
+                        description={
+                          <div>
+                            <p>Therapist profiles synced:</p>
+                            <ul>
+                              {syncResult.results.filter((r: any) => r.status === 'synced').map((r: any, i: number) => (
+                                <li key={i}>{r.email}</li>
+                              ))}
+                            </ul>
+                            {syncResult.failCount > 0 && (
+                              <p style={{ color: '#ff4d4f' }}>Failed to sync {syncResult.failCount} profile(s)</p>
+                            )}
+                            <p style={{ marginTop: 16, color: '#52c41a' }}>
+                              <strong>Therapists can now login!</strong>
+                            </p>
+                          </div>
+                        }
+                        type="success"
+                        showIcon
+                        icon={<CheckCircleOutlined />}
+                      />
+                    ) : (
+                      <Alert
+                        message="No Profiles Need Syncing"
+                        description={syncResult.message}
                         type="info"
                         showIcon
                       />
