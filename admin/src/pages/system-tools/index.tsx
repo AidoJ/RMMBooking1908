@@ -21,7 +21,7 @@ import {
   ToolOutlined
 } from '@ant-design/icons';
 import { RoleGuard } from '../../components/RoleGuard';
-import { supabaseClient } from '../../utility';
+import { supabaseClient, realSupabaseClient } from '../../utility';
 
 const { Title, Text } = Typography;
 
@@ -43,6 +43,8 @@ const SystemTools: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [issues, setIssues] = useState<SyncIssue[]>([]);
   const [hasScanned, setHasScanned] = useState(false);
+  const [fixingAuth, setFixingAuth] = useState(false);
+  const [authFixResult, setAuthFixResult] = useState<any>(null);
 
   const runSyncCheck = async () => {
     try {
@@ -201,6 +203,70 @@ const SystemTools: React.FC = () => {
     });
   };
 
+  const fixUsersWithoutAuth = async () => {
+    Modal.confirm({
+      title: 'Fix Users Without Auth Credentials?',
+      icon: <ExclamationCircleOutlined />,
+      content: (
+        <div>
+          <p>This will:</p>
+          <ul>
+            <li>Find all users in admin_users without Supabase Auth credentials</li>
+            <li>Create Supabase Auth accounts for them</li>
+            <li>Set their password to: <strong>Test100!</strong></li>
+            <li>Link the auth accounts to their admin_users records</li>
+          </ul>
+          <p style={{ marginTop: 16, color: '#ff4d4f' }}>
+            <strong>Important:</strong> Users will need to use password "Test100!" to login, then change it.
+          </p>
+        </div>
+      ),
+      okText: 'Yes, Fix Users',
+      cancelText: 'Cancel',
+      onOk: async () => {
+        try {
+          setFixingAuth(true);
+          setAuthFixResult(null);
+
+          const { data: { session } } = await realSupabaseClient.auth.getSession();
+
+          if (!session?.access_token) {
+            message.error('Not authenticated - please log in again');
+            return;
+          }
+
+          const response = await fetch('/.netlify/functions/fix-existing-users', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`
+            }
+          });
+
+          const result = await response.json();
+
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to fix users');
+          }
+
+          setAuthFixResult(result);
+
+          if (result.successCount > 0) {
+            message.success(`Fixed ${result.successCount} user(s)! Default password: ${result.defaultPassword}`);
+          } else {
+            message.info(result.message);
+          }
+
+        } catch (error: any) {
+          console.error('Error fixing auth users:', error);
+          message.error(error.message || 'Failed to fix users');
+        } finally {
+          setFixingAuth(false);
+        }
+      }
+    });
+  };
+
   const columns = [
     {
       title: 'Severity',
@@ -340,6 +406,83 @@ const SystemTools: React.FC = () => {
                       rowKey="id"
                       pagination={{ pageSize: 10 }}
                     />
+                  </>
+                )}
+              </Space>
+            </Card>
+
+            <Card
+              title={
+                <Space>
+                  <CheckCircleOutlined />
+                  <span>Fix Users Without Auth Credentials</span>
+                </Space>
+              }
+              extra={
+                <Button
+                  type="primary"
+                  danger
+                  icon={<ToolOutlined />}
+                  onClick={fixUsersWithoutAuth}
+                  loading={fixingAuth}
+                >
+                  Fix Auth Users
+                </Button>
+              }
+            >
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Alert
+                  message="What does this fix do?"
+                  description={
+                    <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
+                      <li>Finds users in admin_users table who can't login (no Supabase Auth account)</li>
+                      <li>Creates Supabase Auth accounts for them with default password: <strong>Test100!</strong></li>
+                      <li>Links the auth accounts to their admin_users records</li>
+                      <li>Users can then login and change their password</li>
+                    </ul>
+                  }
+                  type="warning"
+                  showIcon
+                />
+
+                {fixingAuth && (
+                  <div style={{ textAlign: 'center', padding: '40px' }}>
+                    <Spin size="large" />
+                    <p style={{ marginTop: 16 }}>Creating auth credentials for users...</p>
+                  </div>
+                )}
+
+                {!fixingAuth && authFixResult && (
+                  <>
+                    {authFixResult.successCount > 0 ? (
+                      <Alert
+                        message={`Fixed ${authFixResult.successCount} User(s)!`}
+                        description={
+                          <div>
+                            <p><strong>Default Password:</strong> {authFixResult.defaultPassword}</p>
+                            <p>Users fixed:</p>
+                            <ul>
+                              {authFixResult.results.filter((r: any) => r.status === 'success').map((r: any, i: number) => (
+                                <li key={i}>{r.email} ({r.role})</li>
+                              ))}
+                            </ul>
+                            {authFixResult.failCount > 0 && (
+                              <p style={{ color: '#ff4d4f' }}>Failed to fix {authFixResult.failCount} user(s)</p>
+                            )}
+                          </div>
+                        }
+                        type="success"
+                        showIcon
+                        icon={<CheckCircleOutlined />}
+                      />
+                    ) : (
+                      <Alert
+                        message="No Users Need Fixing"
+                        description={authFixResult.message}
+                        type="info"
+                        showIcon
+                      />
+                    )}
                   </>
                 )}
               </Space>
