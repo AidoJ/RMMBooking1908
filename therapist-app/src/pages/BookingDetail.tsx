@@ -89,12 +89,12 @@ export const BookingDetail: React.FC = () => {
       setTherapistNotes(data.therapist_notes || '');
 
       // Load intake form if exists via Netlify function (bypasses RLS)
-      const token = localStorage.getItem('therapistToken');
-      if (token) {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (session) {
         try {
           const response = await fetch(`/.netlify/functions/therapist-get-intake-form?booking=${id}`, {
             headers: {
-              'Authorization': `Bearer ${token}`
+              'Authorization': `Bearer ${session.access_token}`
             }
           });
 

@@ -1,12 +1,9 @@
 // update-therapist-password.js - Handle therapist password changes
 
 const { createClient } = require('@supabase/supabase-js');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const jwtSecret = process.env.JWT_SECRET;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('❌ Missing required environment variables');
@@ -36,21 +33,23 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Verify JWT token
+    // Verify Supabase Auth token
     const authHeader = event.headers.authorization || event.headers.Authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return {
         statusCode: 401,
         headers,
-        body: JSON.stringify({ error: 'Missing or invalid authorization token' })
+        body: JSON.stringify({ error: 'Missing authorization token' })
       };
     }
 
-    const token = authHeader.substring(7);
-    let decoded;
-    try {
-      decoded = jwt.verify(token, jwtSecret);
-    } catch (error) {
+    const token = authHeader.replace('Bearer ', '');
+
+    // Verify token with Supabase Auth
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      console.error('❌ Invalid token:', authError?.message);
       return {
         statusCode: 401,
         headers,
@@ -58,44 +57,37 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Parse request body
-    const { user_id, current_password, new_password } = JSON.parse(event.body);
+    console.log('✅ Authenticated user:', user.id, user.email);
 
-    if (!user_id || !current_password || !new_password) {
+    // Parse request body
+    const { new_password } = JSON.parse(event.body);
+
+    if (!new_password) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Missing required fields' })
+        body: JSON.stringify({ error: 'New password is required' })
       };
     }
 
-    // Verify the user is updating their own password
-    if (decoded.userId !== user_id) {
+    // Validate password requirements
+    if (new_password.length < 6) {
       return {
-        statusCode: 403,
+        statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'You can only change your own password' })
-      };
-    }
-
-    // Get user from database
-    const { data: user, error: fetchError } = await supabase
-      .from('admin_users')
-      .select('id, password, role')
-      .eq('id', user_id)
-      .single();
-
-    if (fetchError || !user) {
-      console.error('Error fetching user:', fetchError);
-      return {
-        statusCode: 404,
-        headers,
-        body: JSON.stringify({ error: 'User not found' })
+        body: JSON.stringify({ error: 'Password must be at least 6 characters long' })
       };
     }
 
     // Verify user is a therapist
-    if (user.role !== 'therapist') {
+    const { data: therapistProfile, error: profileError } = await supabase
+      .from('therapist_profiles')
+      .select('id')
+      .eq('auth_id', user.id)
+      .single();
+
+    if (profileError || !therapistProfile) {
+      console.error('❌ Therapist profile not found:', profileError);
       return {
         statusCode: 403,
         headers,
@@ -103,27 +95,14 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Verify current password
-    const passwordMatch = await bcrypt.compare(current_password, user.password);
-    if (!passwordMatch) {
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({ error: 'Current password is incorrect' })
-      };
-    }
-
-    // Hash new password
-    const hashedPassword = await bcrypt.hash(new_password, 10);
-
-    // Update password in database
-    const { error: updateError } = await supabase
-      .from('admin_users')
-      .update({ password: hashedPassword })
-      .eq('id', user_id);
+    // Update password in Supabase Auth using service role
+    const { error: updateError } = await supabase.auth.admin.updateUserById(
+      user.id,
+      { password: new_password }
+    );
 
     if (updateError) {
-      console.error('Error updating password:', updateError);
+      console.error('❌ Error updating password:', updateError);
       return {
         statusCode: 500,
         headers,
@@ -131,7 +110,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    console.log('✅ Password updated successfully for user:', user_id);
+    console.log('✅ Password updated successfully for user:', user.email);
 
     return {
       statusCode: 200,

@@ -293,20 +293,20 @@ export const Profile: React.FC = () => {
         return;
       }
 
-      // Get auth user ID from profile
-      const userId = profile.auth_id;
+      // Get Supabase Auth session token
+      const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error('Not authenticated. Please log in again.');
+      }
 
       // Call password update function
-      const token = localStorage.getItem('therapistToken');
       const response = await fetch('/.netlify/functions/update-therapist-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({
-          user_id: userId,
-          current_password: values.current_password,
           new_password: values.new_password
         })
       });

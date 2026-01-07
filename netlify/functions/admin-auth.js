@@ -1,3 +1,13 @@
+/**
+ * DEPRECATED: This function uses JWT authentication and is no longer needed.
+ * The admin panel now uses Supabase Auth directly via authProvider.ts
+ * This file is kept for reference but should not be used in production.
+ *
+ * All admin authentication is handled by:
+ * - admin/src/authProvider.ts (uses Supabase Auth)
+ * - netlify/functions/admin-data.js (uses Supabase Auth token verification)
+ */
+
 const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');

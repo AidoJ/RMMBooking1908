@@ -27,6 +27,7 @@ import {
   DollarOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { supabaseClient } from '../utility/supabaseClient';
 
 const { Title, Text } = Typography;
 
@@ -103,9 +104,10 @@ export const Invoices: React.FC = () => {
 
   const loadInvoices = async (_therapistId: string) => {
     try {
-      // Get JWT token
-      const token = localStorage.getItem('therapistToken');
-      if (!token) {
+      // Get Supabase Auth session token
+      const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+
+      if (sessionError || !session) {
         throw new Error('Not authenticated. Please log in again.');
       }
 
@@ -114,7 +116,7 @@ export const Invoices: React.FC = () => {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${session.access_token}`
         }
       });
 

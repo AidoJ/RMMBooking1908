@@ -140,16 +140,16 @@ export const MyEarnings: React.FC = () => {
 
       // Check for existing invoices for each week
       if (summaries.length > 0) {
-        // Get JWT token
-        const token = localStorage.getItem('therapistToken');
-        if (token) {
+        // Get Supabase Auth session token
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session) {
           try {
             // Retrieve invoices via Netlify function (bypasses RLS with service role)
             const response = await fetch('/.netlify/functions/therapist-get-invoices', {
               method: 'GET',
               headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Authorization': `Bearer ${session.access_token}`
               }
             });
 
@@ -315,9 +315,9 @@ export const MyEarnings: React.FC = () => {
 
       console.log('Submitting invoice data:', invoiceData);
 
-      // Get JWT token
-      const token = localStorage.getItem('therapistToken');
-      if (!token) {
+      // Get Supabase Auth session token
+      const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError || !session) {
         throw new Error('Not authenticated. Please log in again.');
       }
 
@@ -326,7 +326,7 @@ export const MyEarnings: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify(invoiceData)
       });

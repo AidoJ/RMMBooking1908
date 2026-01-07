@@ -2,13 +2,11 @@
 // Allows therapists to submit invoices via service role (bypasses RLS)
 
 const { createClient } = require('@supabase/supabase-js');
-const jwt = require('jsonwebtoken');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const JWT_SECRET = process.env.JWT_SECRET;
 
-if (!supabaseUrl || !supabaseServiceKey || !JWT_SECRET) {
+if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Missing required environment variables');
   throw new Error('Configuration error');
 }
@@ -36,23 +34,23 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Verify JWT token
+    // Verify Supabase Auth token
     const authHeader = event.headers.authorization || event.headers.Authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return {
         statusCode: 401,
         headers,
-        body: JSON.stringify({ success: false, error: 'Missing or invalid authorization header' })
+        body: JSON.stringify({ success: false, error: 'Missing authorization token' })
       };
     }
 
-    const token = authHeader.split(' ')[1];
-    let decoded;
+    const token = authHeader.replace('Bearer ', '');
 
-    try {
-      decoded = jwt.verify(token, JWT_SECRET);
-    } catch (err) {
-      console.error('❌ Invalid token:', err.message);
+    // Verify token with Supabase Auth
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      console.error('❌ Invalid token:', authError?.message);
       return {
         statusCode: 401,
         headers,
@@ -60,14 +58,13 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const userId = decoded.userId;
-    console.log('✅ Authenticated user:', userId);
+    console.log('✅ Authenticated user:', user.id, user.email);
 
-    // Get therapist profile
+    // Get therapist profile using auth_id
     const { data: therapistProfile, error: profileError } = await supabase
       .from('therapist_profiles')
       .select('id')
-      .eq('user_id', userId)
+      .eq('auth_id', user.id)
       .single();
 
     if (profileError || !therapistProfile) {
