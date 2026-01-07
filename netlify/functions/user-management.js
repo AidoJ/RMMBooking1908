@@ -1,5 +1,4 @@
 const { createClient } = require('@supabase/supabase-js');
-const bcrypt = require('bcryptjs');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -145,7 +144,7 @@ async function createUser(data, authUser, headers) {
       };
     }
 
-    // Check if email already exists
+    // Check if email already exists in admin_users
     const { data: existingUser } = await supabase
       .from('admin_users')
       .select('id')
@@ -160,17 +159,33 @@ async function createUser(data, authUser, headers) {
       };
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Create user in Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true, // Auto-confirm email
+      user_metadata: {
+        first_name,
+        last_name,
+        role
+      }
+    });
 
-    // Create user
+    if (authError) {
+      console.error('❌ Error creating Supabase Auth user:', authError);
+      throw new Error(`Failed to create auth user: ${authError.message}`);
+    }
+
+    console.log('✅ Supabase Auth user created:', authData.user.id);
+
+    // Create user in admin_users table with auth_id
     const { data: newUser, error } = await supabase
       .from('admin_users')
       .insert({
+        auth_id: authData.user.id,
         first_name,
         last_name,
         email,
-        password: hashedPassword,
         role,
         is_active: true,
         created_at: new Date().toISOString(),
@@ -179,7 +194,12 @@ async function createUser(data, authUser, headers) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error creating admin_users record:', error);
+      // Rollback: delete the auth user we just created
+      await supabase.auth.admin.deleteUser(authData.user.id);
+      throw error;
+    }
 
     // Log activity
     await supabase
