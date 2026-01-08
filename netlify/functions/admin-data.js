@@ -78,18 +78,30 @@ async function verifyAuth(authHeader) {
 
     if (adminError) {
       console.error('❌ Admin user lookup error:', adminError.message, adminError.code);
-      throw new Error('User is not an admin');
-    }
-    
-    if (!adminUser) {
-      console.error('❌ Admin user not found for auth_id:', user.id);
+      console.error('❌ Looking for auth_id:', user.id, 'Email:', user.email);
       throw new Error('User is not an admin');
     }
 
+    if (!adminUser) {
+      console.error('❌ Admin user not found for auth_id:', user.id);
+      console.error('❌ User email:', user.email);
+      throw new Error('User is not an admin');
+    }
+
+    console.log('🔍 Admin user found:', {
+      email: adminUser.email,
+      role: adminUser.role,
+      is_active: adminUser.is_active,
+      auth_id: user.id
+    });
+
     // Check role is admin or super_admin
     if (adminUser.role !== 'admin' && adminUser.role !== 'super_admin') {
-      console.error('❌ User does not have admin privileges. Role:', adminUser.role);
-      throw new Error('User does not have admin privileges');
+      console.error('❌ User does not have admin privileges.');
+      console.error('❌ Email:', adminUser.email);
+      console.error('❌ Current role:', adminUser.role);
+      console.error('❌ Expected role: admin or super_admin');
+      throw new Error(`User does not have admin privileges. Current role: ${adminUser.role}. Please contact support to update your role.`);
     }
 
     console.log('✅ Admin user verified:', adminUser.email, 'Role:', adminUser.role);

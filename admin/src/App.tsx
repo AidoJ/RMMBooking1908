@@ -12,6 +12,7 @@ import "@refinedev/antd/dist/reset.css";
 
 // Import the new mobile-first Admin Layout
 import { AdminLayout } from "./components/AdminLayout";
+import { AuthenticatedApp } from "./components/AuthenticatedApp";
 
 import routerBindings, {
   CatchAllNavigate,
@@ -104,7 +105,8 @@ function App() {
       <RefineKbarProvider>
         <ColorModeContextProvider>
           <AntdApp>
-            <DevtoolsProvider>
+            <AuthenticatedApp>
+              <DevtoolsProvider>
               <Refine
                 dataProvider={dataProvider}
                 liveProvider={liveProvider(realSupabaseClient)}
@@ -416,6 +418,7 @@ function App() {
               </Refine>
               <DevtoolsPanel />
             </DevtoolsProvider>
+            </AuthenticatedApp>
           </AntdApp>
         </ColorModeContextProvider>
       </RefineKbarProvider>

@@ -21,6 +21,13 @@ export const Login: React.FC = () => {
       });
 
       if (error) {
+        // Provide more helpful error messages
+        if (error.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password. Please check your credentials and try again.');
+        }
+        if (error.message.includes('Email not confirmed')) {
+          throw new Error('Please check your email and confirm your account before logging in.');
+        }
         throw new Error(error.message || 'Authentication failed');
       }
 
