@@ -149,9 +149,9 @@ const TherapistRegistrationList: React.FC = () => {
 
   const filteredRegistrations = registrations.filter(reg => {
     const matchesSearch =
-      reg.first_name.toLowerCase().includes(searchText.toLowerCase()) ||
-      reg.last_name.toLowerCase().includes(searchText.toLowerCase()) ||
-      reg.email.toLowerCase().includes(searchText.toLowerCase()) ||
+      reg.first_name?.toLowerCase().includes(searchText.toLowerCase()) ||
+      reg.last_name?.toLowerCase().includes(searchText.toLowerCase()) ||
+      reg.email?.toLowerCase().includes(searchText.toLowerCase()) ||
       reg.phone?.includes(searchText);
 
     const matchesStatus = statusFilter === 'all' || reg.status === statusFilter;
