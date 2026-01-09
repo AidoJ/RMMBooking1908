@@ -105,8 +105,7 @@ function App() {
       <RefineKbarProvider>
         <ColorModeContextProvider>
           <AntdApp>
-            <AuthenticatedApp>
-              <DevtoolsProvider>
+            <DevtoolsProvider>
               <Refine
                 dataProvider={dataProvider}
                 liveProvider={liveProvider(realSupabaseClient)}
@@ -292,9 +291,11 @@ function App() {
                         key="authenticated-inner"
                         fallback={<CatchAllNavigate to="/login" />}
                       >
-                        <AdminLayout>
-                          <Outlet />
-                        </AdminLayout>
+                        <AuthenticatedApp>
+                          <AdminLayout>
+                            <Outlet />
+                          </AdminLayout>
+                        </AuthenticatedApp>
                       </Authenticated>
                     }
                   >
@@ -418,7 +419,6 @@ function App() {
               </Refine>
               <DevtoolsPanel />
             </DevtoolsProvider>
-            </AuthenticatedApp>
           </AntdApp>
         </ColorModeContextProvider>
       </RefineKbarProvider>
