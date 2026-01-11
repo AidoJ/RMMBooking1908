@@ -666,7 +666,7 @@ export const Help: React.FC = () => {
               </div>
 
               <div>
-                <Text strong>• Submit Invoice <Tag color="blue">Payment Required</Tag></strong>
+                <Text strong>• Submit Invoice <Tag color="blue">Payment Required</Tag></Text>
                 <Paragraph style={{ marginLeft: 20, marginTop: 8 }}>
                   To get paid, you must submit a weekly invoice:
                 </Paragraph>
