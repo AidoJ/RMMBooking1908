@@ -919,7 +919,7 @@ export const Help: React.FC = () => {
               <li>Quote has been sent to customer</li>
               <li>Waiting for customer to accept the quote</li>
               <li>You don't need to do anything - just wait</li>
-              <li>Once customer accepts, it will change to REQUESTED and you can accept/decline</li>
+              <li>Once customer accepts, it will change to CONFIRMED</li>
             </ul>
 
             <Divider />
