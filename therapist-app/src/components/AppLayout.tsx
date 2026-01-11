@@ -10,6 +10,7 @@ import {
   DollarOutlined,
   FileTextOutlined,
   LogoutOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabaseClient } from '../utility/supabaseClient';
@@ -87,6 +88,11 @@ export const AppLayout: React.FC<AppLayoutProps> = ({ children, therapistName, p
       key: '/invoices',
       icon: <FileTextOutlined />,
       label: 'Invoices',
+    },
+    {
+      key: '/help',
+      icon: <QuestionCircleOutlined />,
+      label: 'Help',
     },
   ];
 

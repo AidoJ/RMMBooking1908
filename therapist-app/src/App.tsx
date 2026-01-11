@@ -18,6 +18,7 @@ import { ServiceArea } from './pages/ServiceArea';
 import { Invoices } from './pages/Invoices';
 import { MyEarnings } from './pages/MyEarnings';
 import { ClientIntakeForm } from './pages/ClientIntakeForm';
+import { Help } from './pages/Help';
 import type { UserIdentity } from './types';
 
 function App() {
@@ -222,6 +223,7 @@ function App() {
                     <Route path="/service-area" element={<ServiceArea />} />
                     <Route path="/my-earnings" element={<MyEarnings />} />
                     <Route path="/invoices" element={<Invoices />} />
+                    <Route path="/help" element={<Help />} />
                     <Route path="*" element={<Navigate to="/" />} />
                   </Routes>
                 </AppLayout>
