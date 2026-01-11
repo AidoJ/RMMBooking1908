@@ -33,6 +33,8 @@ export const Dashboard: React.FC = () => {
     weekJobs: 0,
     todayEarnings: 0,
     weekEarnings: 0,
+    totalJobs: 0,
+    totalEarnings: 0,
   });
   const [todayBookings, setTodayBookings] = useState<any[]>([]);
   const [upcomingBookings, setUpcomingBookings] = useState<any[]>([]);
@@ -164,6 +166,17 @@ export const Dashboard: React.FC = () => {
         console.error('Pending bookings error:', pendingError);
       }
 
+      // Get ALL completed bookings for total stats (no date filter)
+      const { data: allCompletedData, error: allCompletedError } = await supabaseClient
+        .from('bookings')
+        .select('id, therapist_fee')
+        .eq('therapist_id', profile.id)
+        .eq('status', 'completed');
+
+      if (allCompletedError) {
+        console.error('All completed bookings error:', allCompletedError);
+      }
+
       // Process bookings data
       const todayBookingsData = (todayData || []).map((b: any) => ({
         ...b,
@@ -195,6 +208,13 @@ export const Dashboard: React.FC = () => {
       // Count pending jobs (quoted jobs awaiting client acceptance) - ALL pending, no date filter
       const pendingCount = pendingData?.length || 0;
 
+      // Calculate total jobs and total earnings from all completed bookings
+      const totalJobsCount = allCompletedData?.length || 0;
+      const totalEarningsAmount = (allCompletedData || []).reduce(
+        (sum: number, b: any) => sum + parseFloat(b.therapist_fee || '0'),
+        0
+      );
+
       setStats({
         todayJobs: todayBookingsData.length,
         requestedJobs: requestedCount,
@@ -202,6 +222,8 @@ export const Dashboard: React.FC = () => {
         weekJobs: weekData?.length || 0,
         todayEarnings: todayCompleted.reduce((sum: number, b: any) => sum + parseFloat(b.therapist_fee || '0'), 0),
         weekEarnings: weekCompleted.reduce((sum: number, b: any) => sum + parseFloat(b.therapist_fee || '0'), 0),
+        totalJobs: totalJobsCount,
+        totalEarnings: totalEarningsAmount,
       });
     } catch (error) {
       console.error('Error loading dashboard:', error);
@@ -303,6 +325,27 @@ export const Dashboard: React.FC = () => {
             <Statistic
               title="Week's Earnings"
               value={stats.weekEarnings}
+              precision={2}
+              prefix="$"
+              valueStyle={{ color: '#52c41a', fontSize: '24px' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} md={6}>
+          <Card>
+            <Statistic
+              title="Total Jobs"
+              value={stats.totalJobs}
+              prefix={<CheckCircleOutlined />}
+              valueStyle={{ color: '#1890ff', fontSize: '24px' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={12} md={6}>
+          <Card>
+            <Statistic
+              title="Total Earnings"
+              value={stats.totalEarnings}
               precision={2}
               prefix="$"
               valueStyle={{ color: '#52c41a', fontSize: '24px' }}
