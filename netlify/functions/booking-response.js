@@ -23,8 +23,6 @@ const EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID = process.env.EMAILJS_BOOKING_CONFIR
 const EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID = process.env.EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID || 'template_therapist_ok';
 const EMAILJS_BOOKING_DECLINED_TEMPLATE_ID = process.env.EMAILJS_BOOKING_DECLINED_TEMPLATE_ID || 'template_declined';
 const EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID = process.env.EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID || 'template_alternate';
-const EMAILJS_ADMIN_REQUEST_TEMPLATE_ID = 'Temp_AdminReqBook'; // Admin notification for booking requests
-const EMAILJS_ADMIN_CONFIRMED_TEMPLATE_ID = 'Temp_AdminConBook'; // Admin notification for booking confirmations
 const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || 'qfM_qA664E4JddSMN';
 const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL; // Configure in Netlify environment variables
@@ -1075,10 +1073,10 @@ async function sendTherapistConfirmationEmail(booking, therapist, seriesBookings
 
     const result = await sendEmail(EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID, templateParams);
 
-    // Send copy to superadmin
+    // Send copy to superadmin using same template
     if (SUPER_ADMIN_EMAIL) {
       const adminParams = { ...templateParams, to_email: SUPER_ADMIN_EMAIL, to_name: 'Admin' };
-      await sendEmail(EMAILJS_ADMIN_CONFIRMED_TEMPLATE_ID, adminParams);
+      await sendEmail(EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID, adminParams);
       console.log('📧 Booking confirmation copy sent to superadmin:', SUPER_ADMIN_EMAIL);
     }
 
@@ -1272,10 +1270,10 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
     const result = await sendEmail(EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID, templateParams);
     console.log('📧 Booking request sent to therapist:', therapist.email);
 
-    // Send copy to superadmin
+    // Send copy to superadmin using same template
     if (SUPER_ADMIN_EMAIL) {
       const adminParams = { ...templateParams, to_email: SUPER_ADMIN_EMAIL, to_name: 'Admin' };
-      await sendEmail(EMAILJS_ADMIN_REQUEST_TEMPLATE_ID, adminParams);
+      await sendEmail(EMAILJS_THERAPIST_REQUEST_TEMPLATE_ID, adminParams);
       console.log('📧 Booking request copy sent to superadmin:', SUPER_ADMIN_EMAIL);
     }
 
