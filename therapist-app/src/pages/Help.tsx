@@ -837,7 +837,12 @@ export const Help: React.FC = () => {
                   <li>You receive a notification</li>
                   <li>Booking appears with <Tag color="warning" style={{ backgroundColor: '#FFD700', color: '#000' }}>REQUESTED</Tag> status (gold/yellow)</li>
                   <li>Shows on Dashboard in "Requested Jobs" count</li>
-                  <li>You have 24-48 hours to respond</li>
+                  <li><strong>Response time required:</strong>
+                    <ul>
+                      <li>Same-day bookings: 60 minutes</li>
+                      <li>All other bookings: 4 hours</li>
+                    </ul>
+                  </li>
                 </ul>
               </div>
 
@@ -920,7 +925,7 @@ export const Help: React.FC = () => {
             <Divider />
             <Title level={5}>Important Tips:</Title>
             <ul>
-              <li>Respond to requests quickly (within 24 hours if possible)</li>
+              <li>Respond to requests quickly (60 minutes for same-day bookings, 4 hours for all others)</li>
               <li>Check customer intake form BEFORE accepting</li>
               <li>Decline if you're not qualified for the specific health conditions mentioned</li>
               <li>Update status during the booking so customer knows your progress</li>
