@@ -12,6 +12,8 @@ import {
   CheckCircleOutlined,
   WarningOutlined,
   InfoCircleOutlined,
+  PlusOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 
 const { Title, Paragraph, Text } = Typography;
