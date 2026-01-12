@@ -18,62 +18,18 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
- * Calculate dynamic timeout based on booking date
- * Gives therapists more time for future bookings while maintaining urgency for same-day
- * 
- * @param {string} bookingTime - ISO string of booking date/time
- * @param {number} baseTimeoutMinutes - Base timeout from system settings (for same-day bookings)
- * @returns {number} Calculated timeout in minutes
+ * TIMEOUT LOGIC:
+ *
+ * SIMPLE RULE:
+ * - If booking is TODAY (before midnight) → Use therapist_response_timeout_minutes
+ * - If booking is TOMORROW or LATER (after midnight) → Use standard_response_timeout_minutes
+ *
+ * BOTH STAGES USE THE SAME TIMEOUT:
+ * - First stage: Original therapist gets [timeout] minutes to respond
+ * - Second stage: Alternate therapists get SAME [timeout] minutes to respond
+ *
+ * NO DOUBLING, NO MULTIPLICATION - JUST THE APPROPRIATE TIMEOUT VALUE
  */
-function calculateTimeoutForBooking(bookingTime, baseTimeoutMinutes) {
-  const now = new Date();
-  const bookingDate = new Date(bookingTime);
-  
-  // Calculate days until booking (can be negative for past bookings, but we'll handle that)
-  const diffMs = bookingDate.getTime() - now.getTime();
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const diffHours = diffMs / (1000 * 60 * 60);
-  
-  // Same day booking (within 24 hours)
-  if (diffHours <= 24) {
-    return baseTimeoutMinutes; // Use base timeout for urgency
-  }
-  
-  // Tomorrow (1 day ahead)
-  if (diffDays === 1) {
-    // Give 6 hours or until end of business day (whichever is longer)
-    // Assuming business day ends at 6 PM (18:00)
-    const businessEnd = new Date(bookingDate);
-    businessEnd.setHours(18, 0, 0, 0);
-    const hoursUntilBusinessEnd = (businessEnd.getTime() - now.getTime()) / (1000 * 60 * 60);
-    return Math.max(6 * 60, Math.min(hoursUntilBusinessEnd * 60, 12 * 60)); // 6-12 hours
-  }
-  
-  // 2-7 days ahead
-  if (diffDays >= 2 && diffDays <= 7) {
-    // Give 24 hours or until end of business day before booking (whichever comes first)
-    const dayBeforeBooking = new Date(bookingDate);
-    dayBeforeBooking.setDate(dayBeforeBooking.getDate() - 1);
-    dayBeforeBooking.setHours(18, 0, 0, 0); // End of business day
-    
-    const hoursUntilDayBefore = (dayBeforeBooking.getTime() - now.getTime()) / (1000 * 60 * 60);
-    return Math.max(24 * 60, Math.min(hoursUntilDayBefore * 60, 48 * 60)); // 24-48 hours
-  }
-  
-  // 7+ days ahead
-  if (diffDays > 7) {
-    // Give 48 hours or until end of business day 2 days before booking
-    const twoDaysBefore = new Date(bookingDate);
-    twoDaysBefore.setDate(twoDaysBefore.getDate() - 2);
-    twoDaysBefore.setHours(18, 0, 0, 0); // End of business day
-    
-    const hoursUntilTwoDaysBefore = (twoDaysBefore.getTime() - now.getTime()) / (1000 * 60 * 60);
-    return Math.max(48 * 60, Math.min(hoursUntilTwoDaysBefore * 60, 72 * 60)); // 48-72 hours
-  }
-  
-  // Fallback to base timeout
-  return baseTimeoutMinutes;
-}
 
 // EmailJS configuration
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_puww2kb';
@@ -199,13 +155,14 @@ async function findBookingsNeedingTimeout(sameDayTimeoutMinutes, standardTimeout
     }
 
     // Find bookings for SECOND timeout (status = 'timeout_reassigned' or 'seeking_alternate' and past second timeout)
+    // CRITICAL: Check updated_at (when reassigned) not created_at
     // EXCLUDE quote-based bookings (BK-Q pattern) as they follow quote workflow
     const { data: secondTimeoutBookings, error: error2 } = await supabase
       .from('bookings')
       .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
       .in('status', ['timeout_reassigned', 'seeking_alternate'])
       .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
-      .lt('created_at', secondTimeoutCutoff.toISOString())
+      .lt('updated_at', firstTimeoutCutoff.toISOString()) // Use updated_at (when reassigned) and same timeout period
       .or('occurrence_number.is.null,occurrence_number.eq.0'); // Only initial or non-recurring
 
     if (error2) {
@@ -236,25 +193,35 @@ async function processBookingTimeout(booking, timeoutMinutes) {
 
     // CRITICAL: Verify booking has actually exceeded its timeout before processing
     const now = new Date();
-    const createdAt = new Date(booking.created_at);
-    const minutesSinceCreated = (now.getTime() - createdAt.getTime()) / (1000 * 60);
-
-    console.log(`⏰ Booking ${booking.booking_id} created ${Math.floor(minutesSinceCreated)} minutes ago, timeout threshold is ${timeoutMinutes} minutes`);
 
     if (booking.timeoutStage === 'first') {
-      // For first timeout, verify enough time has passed
+      // FIRST STAGE: Check time since booking was created
+      const createdAt = new Date(booking.created_at);
+      const minutesSinceCreated = (now.getTime() - createdAt.getTime()) / (1000 * 60);
+
+      console.log(`⏰ FIRST timeout: Booking ${booking.booking_id} created ${Math.floor(minutesSinceCreated)} minutes ago, timeout threshold is ${timeoutMinutes} minutes`);
+
+      // Verify enough time has passed since creation
       if (minutesSinceCreated < timeoutMinutes) {
-        console.log(`⏸️ Booking ${booking.booking_id} has not yet exceeded timeout (${Math.floor(minutesSinceCreated)}/${timeoutMinutes} minutes) - skipping`);
+        console.log(`⏸️ Booking ${booking.booking_id} has not yet exceeded first timeout (${Math.floor(minutesSinceCreated)}/${timeoutMinutes} minutes) - skipping`);
         return { success: true, booking_id: booking.booking_id, action: 'skipped_not_yet_timeout' };
       }
       return await handleFirstTimeout(booking, timeoutMinutes);
+
     } else if (booking.timeoutStage === 'second') {
-      // For second timeout, verify enough time has passed (double the timeout)
-      if (minutesSinceCreated < (timeoutMinutes * 2)) {
-        console.log(`⏸️ Booking ${booking.booking_id} has not yet exceeded second timeout (${Math.floor(minutesSinceCreated)}/${timeoutMinutes * 2} minutes) - skipping`);
+      // SECOND STAGE: Check time since booking was reassigned (updated_at)
+      const updatedAt = new Date(booking.updated_at);
+      const minutesSinceReassigned = (now.getTime() - updatedAt.getTime()) / (1000 * 60);
+
+      console.log(`⏰ SECOND timeout: Booking ${booking.booking_id} reassigned ${Math.floor(minutesSinceReassigned)} minutes ago, timeout threshold is ${timeoutMinutes} minutes (SAME as first)`);
+
+      // Verify enough time has passed since reassignment - USE SAME TIMEOUT (no doubling)
+      if (minutesSinceReassigned < timeoutMinutes) {
+        console.log(`⏸️ Booking ${booking.booking_id} has not yet exceeded second timeout (${Math.floor(minutesSinceReassigned)}/${timeoutMinutes} minutes) - skipping`);
         return { success: true, booking_id: booking.booking_id, action: 'skipped_not_yet_second_timeout' };
       }
       return await handleSecondTimeout(booking);
+
     } else {
       console.log('⚠️ Unknown timeout stage for booking', booking.booking_id);
       return { success: false, booking_id: booking.booking_id, reason: 'Unknown timeout stage' };
