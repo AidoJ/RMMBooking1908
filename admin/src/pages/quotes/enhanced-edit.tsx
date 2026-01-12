@@ -3,7 +3,7 @@ import {
   Edit,
   useForm,
 } from '@refinedev/antd';
-import { useDelete } from '@refinedev/core';
+import { useDelete, useGetIdentity } from '@refinedev/core';
 import { useParams, useNavigate } from 'react-router';
 import {
   Form,
@@ -68,6 +68,8 @@ interface WorkflowStep {
 export const EnhancedQuoteEdit: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { data: identity } = useGetIdentity<any>();
+  const isSuperAdmin = identity?.role === 'super_admin';
 
   // State management
   const [availabilityStatus, setAvailabilityStatus] = useState<'unchecked' | 'checking' | 'available' | 'partial' | 'unavailable'>('unchecked');
@@ -2662,13 +2664,14 @@ export const EnhancedQuoteEdit: React.FC = () => {
                 <div style={{ marginTop: 20 }}>
                   <Text strong style={{ display: 'block', marginBottom: 12, color: '#666' }}>Manual Status Controls:</Text>
                   <Space size="small" wrap>
-                    {workflowState.quoteSent && !workflowState.quoteAccepted && !workflowState.quoteDeclined && (
+                    {(isSuperAdmin || (workflowState.quoteSent && !workflowState.quoteAccepted && !workflowState.quoteDeclined)) && (
                       <>
                         <Button
                           size="middle"
                           type="default"
                           onClick={handleMarkAccepted}
                           style={{ borderColor: '#52c41a', color: '#52c41a' }}
+                          disabled={workflowState.quoteAccepted || workflowState.quoteDeclined}
                         >
                           ✅ Mark as Accepted
                         </Button>
@@ -2676,25 +2679,28 @@ export const EnhancedQuoteEdit: React.FC = () => {
                           size="middle"
                           danger
                           onClick={handleMarkDeclined}
+                          disabled={workflowState.quoteAccepted || workflowState.quoteDeclined}
                         >
                           ❌ Mark as Declined
                         </Button>
                       </>
                     )}
-                    {workflowState.quoteAccepted && !workflowState.invoiceSent && (
+                    {(isSuperAdmin || (workflowState.quoteAccepted && !workflowState.invoiceSent)) && (
                       <Button
                         size="middle"
                         onClick={handleMarkInvoiced}
                         style={{ borderColor: '#fa8c16', color: '#fa8c16' }}
+                        disabled={workflowState.invoiceSent}
                       >
                         💰 Mark as Invoiced
                       </Button>
                     )}
-                    {workflowState.invoiceSent && quotesData?.payment_status !== 'paid' && (
+                    {(isSuperAdmin || (workflowState.invoiceSent && quotesData?.payment_status !== 'paid')) && (
                       <Button
                         size="middle"
                         onClick={handleMarkPaid}
                         style={{ borderColor: '#1890ff', color: '#1890ff' }}
+                        disabled={quotesData?.payment_status === 'paid'}
                       >
                         💳 Mark as Paid
                       </Button>
