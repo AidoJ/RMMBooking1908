@@ -1029,6 +1029,8 @@ async function sendTherapistConfirmationEmail(booking, therapist, seriesBookings
   try {
     console.log('📧 Preparing therapist confirmation email...');
 
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+
     let serviceName = 'Massage Service';
     if (booking.services && booking.services.name) {
       serviceName = booking.services.name;

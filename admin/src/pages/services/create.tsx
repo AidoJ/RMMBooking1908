@@ -336,23 +336,15 @@ const ServiceCreate: React.FC = () => {
                       rules={[{ required: true, message: 'Please select or enter a category' }]}
                       tooltip="Select existing category or type to create a new one"
                     >
-                      <Select
-                        showSearch
+                      <AutoComplete
                         placeholder="Select or type category name..."
                         size="large"
                         allowClear
-                        mode="tags"
-                        maxTagCount={1}
                         filterOption={(inputValue, option) =>
-                          (option?.children as string)?.toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
+                          (option?.value as string)?.toUpperCase().indexOf(inputValue.toUpperCase()) !== -1
                         }
-                      >
-                        {categories.map(cat => (
-                          <Select.Option key={cat} value={cat}>
-                            {cat}
-                          </Select.Option>
-                        ))}
-                      </Select>
+                        options={categories.map(cat => ({ value: cat, label: cat }))}
+                      />
                     </Form.Item>
                   </Card>
                 </Col>

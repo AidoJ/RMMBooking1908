@@ -2690,7 +2690,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
                         size="middle"
                         onClick={handleMarkInvoiced}
                         style={{ borderColor: '#fa8c16', color: '#fa8c16' }}
-                        disabled={workflowState.invoiceSent}
+                        disabled={workflowState.invoiceSent || workflowState.quoteDeclined}
                       >
                         💰 Mark as Invoiced
                       </Button>
@@ -2700,7 +2700,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
                         size="middle"
                         onClick={handleMarkPaid}
                         style={{ borderColor: '#1890ff', color: '#1890ff' }}
-                        disabled={quotesData?.payment_status === 'paid'}
+                        disabled={quotesData?.payment_status === 'paid' || workflowState.quoteDeclined}
                       >
                         💳 Mark as Paid
                       </Button>
