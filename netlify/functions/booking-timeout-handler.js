@@ -85,20 +85,30 @@ const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 
 exports.handler = async (event, context) => {
   console.log('🕐 Starting booking timeout check...');
-  
+
   try {
-    // Get timeout settings from database
-    const { data: timeoutSetting } = await supabase
+    // Get BOTH timeout settings from database
+    const { data: sameDayTimeoutSetting } = await supabase
       .from('system_settings')
       .select('value')
       .eq('key', 'therapist_response_timeout_minutes')
       .single();
 
-    const timeoutMinutes = timeoutSetting && timeoutSetting.value ? parseInt(timeoutSetting.value) : 60;
-    console.log('⏰ Using timeout:', timeoutMinutes, 'minutes');
+    const { data: standardTimeoutSetting } = await supabase
+      .from('system_settings')
+      .select('value')
+      .eq('key', 'standard_response_timeout_minutes')
+      .single();
 
-    // Find bookings that need timeout processing (using dynamic timeout calculation)
-    const bookingsToProcess = await findBookingsNeedingTimeout(timeoutMinutes);
+    const sameDayTimeoutMinutes = sameDayTimeoutSetting && sameDayTimeoutSetting.value ? parseInt(sameDayTimeoutSetting.value) : 60;
+    const standardTimeoutMinutes = standardTimeoutSetting && standardTimeoutSetting.value ? parseInt(standardTimeoutSetting.value) : 240;
+
+    console.log('⏰ Timeout settings:');
+    console.log('  - Same-day bookings:', sameDayTimeoutMinutes, 'minutes');
+    console.log('  - Standard bookings (tomorrow+):', standardTimeoutMinutes, 'minutes');
+
+    // Find bookings that need timeout processing
+    const bookingsToProcess = await findBookingsNeedingTimeout(sameDayTimeoutMinutes, standardTimeoutMinutes);
     console.log('📊 Found', bookingsToProcess.length, 'bookings needing timeout processing');
 
     if (bookingsToProcess.length === 0) {
@@ -106,16 +116,28 @@ exports.handler = async (event, context) => {
       return { statusCode: 200, body: 'No timeouts to process' };
     }
 
-    // Process each booking with dynamic timeout
+    // Process each booking with correct timeout
     const results = [];
     const now = new Date();
     for (const booking of bookingsToProcess) {
       console.log('🔄 Processing booking:', booking.booking_id, 'status:', booking.status, 'stage:', booking.timeoutStage);
-      // Calculate dynamic timeout for this specific booking
-      const dynamicTimeout = calculateTimeoutForBooking(booking.booking_time, timeoutMinutes);
-      const daysUntilBooking = Math.floor((new Date(booking.booking_time).getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      console.log(`⏰ Dynamic timeout for booking ${booking.booking_id}: ${dynamicTimeout} minutes (booking in ${daysUntilBooking} days)`);
-      const result = await processBookingTimeout(booking, dynamicTimeout);
+
+      // Determine if booking is same-day or future
+      const bookingDate = new Date(booking.booking_time);
+      const nowDate = new Date(now);
+      const isSameDay = (
+        bookingDate.getFullYear() === nowDate.getFullYear() &&
+        bookingDate.getMonth() === nowDate.getMonth() &&
+        bookingDate.getDate() === nowDate.getDate()
+      );
+
+      // Use appropriate timeout based on booking date
+      const appropriateTimeout = isSameDay ? sameDayTimeoutMinutes : standardTimeoutMinutes;
+
+      const daysUntilBooking = Math.floor((bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      console.log(`⏰ Booking ${booking.booking_id}: ${isSameDay ? 'SAME-DAY' : 'FUTURE'} (${daysUntilBooking} days), using ${appropriateTimeout} minute timeout`);
+
+      const result = await processBookingTimeout(booking, appropriateTimeout);
       results.push(result);
     }
 
@@ -140,17 +162,19 @@ exports.handler = async (event, context) => {
 };
 
 // UPDATED: Find bookings that need timeout processing (fixed first therapist timeout)
-// Now uses dynamic timeout calculation based on booking date
-async function findBookingsNeedingTimeout(baseTimeoutMinutes) {
+// Now correctly handles same-day vs future bookings with different timeouts
+async function findBookingsNeedingTimeout(sameDayTimeoutMinutes, standardTimeoutMinutes) {
   try {
     const now = new Date();
-    
-    // We'll calculate timeout per booking, but for query efficiency, use base timeout for cutoff
-    // The actual timeout check happens per booking in processBookingTimeout
-    const firstTimeoutCutoff = new Date(now.getTime() - baseTimeoutMinutes * 60 * 1000);
-    const secondTimeoutCutoff = new Date(now.getTime() - (baseTimeoutMinutes * 2) * 60 * 1000);
-    
+
+    // Use the LARGER timeout for query efficiency (standard is larger)
+    // We'll do precise timeout checks per booking in the processing loop
+    const maxTimeoutMinutes = Math.max(sameDayTimeoutMinutes, standardTimeoutMinutes);
+    const firstTimeoutCutoff = new Date(now.getTime() - maxTimeoutMinutes * 60 * 1000);
+    const secondTimeoutCutoff = new Date(now.getTime() - (maxTimeoutMinutes * 2) * 60 * 1000);
+
     console.log('🔍 Looking for bookings needing timeout processing...');
+    console.log('📅 Using max timeout of', maxTimeoutMinutes, 'minutes for initial query');
     console.log('📅 First timeout cutoff:', firstTimeoutCutoff.toISOString());
     console.log('📅 Second timeout cutoff:', secondTimeoutCutoff.toISOString());
 
@@ -209,10 +233,27 @@ async function findBookingsNeedingTimeout(baseTimeoutMinutes) {
 async function processBookingTimeout(booking, timeoutMinutes) {
   try {
     console.log('⚡ Processing', booking.timeoutStage, 'timeout for booking', booking.booking_id);
-    
+
+    // CRITICAL: Verify booking has actually exceeded its timeout before processing
+    const now = new Date();
+    const createdAt = new Date(booking.created_at);
+    const minutesSinceCreated = (now.getTime() - createdAt.getTime()) / (1000 * 60);
+
+    console.log(`⏰ Booking ${booking.booking_id} created ${Math.floor(minutesSinceCreated)} minutes ago, timeout threshold is ${timeoutMinutes} minutes`);
+
     if (booking.timeoutStage === 'first') {
+      // For first timeout, verify enough time has passed
+      if (minutesSinceCreated < timeoutMinutes) {
+        console.log(`⏸️ Booking ${booking.booking_id} has not yet exceeded timeout (${Math.floor(minutesSinceCreated)}/${timeoutMinutes} minutes) - skipping`);
+        return { success: true, booking_id: booking.booking_id, action: 'skipped_not_yet_timeout' };
+      }
       return await handleFirstTimeout(booking, timeoutMinutes);
     } else if (booking.timeoutStage === 'second') {
+      // For second timeout, verify enough time has passed (double the timeout)
+      if (minutesSinceCreated < (timeoutMinutes * 2)) {
+        console.log(`⏸️ Booking ${booking.booking_id} has not yet exceeded second timeout (${Math.floor(minutesSinceCreated)}/${timeoutMinutes * 2} minutes) - skipping`);
+        return { success: true, booking_id: booking.booking_id, action: 'skipped_not_yet_second_timeout' };
+      }
       return await handleSecondTimeout(booking);
     } else {
       console.log('⚠️ Unknown timeout stage for booking', booking.booking_id);
