@@ -103,7 +103,7 @@ exports.handler = async (event, context) => {
       try {
         console.log(`📤 Processing reminder for booking ${booking.booking_id}`);
 
-        let paymentAuthorized = booking.payment_status === 'authorized';
+        let paymentAuthorized = booking.payment_status === 'authorized' || booking.payment_status === 'paid';
         let paymentLink = null;
 
         // CHECK PAYMENT AUTHORIZATION STATUS
