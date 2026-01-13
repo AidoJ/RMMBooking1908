@@ -1,5 +1,5 @@
-import React from 'react';
-import { Card, Collapse, Typography, Space, Divider, Tag } from 'antd';
+import React, { useState } from 'react';
+import { Card, Collapse, Typography, Space, Divider, Tag, Button } from 'antd';
 import {
   DashboardOutlined,
   CalendarOutlined,
@@ -14,10 +14,68 @@ import {
   InfoCircleOutlined,
   PlusOutlined,
   DeleteOutlined,
+  PlayCircleOutlined,
+  UpOutlined,
+  DownOutlined,
 } from '@ant-design/icons';
 
 const { Title, Paragraph, Text } = Typography;
 const { Panel } = Collapse;
+
+// Video Player Component
+const VideoPlayer: React.FC<{ videoSrc: string }> = ({ videoSrc }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <Button
+        type="dashed"
+        size="large"
+        icon={isExpanded ? <UpOutlined /> : <PlayCircleOutlined />}
+        onClick={() => setIsExpanded(!isExpanded)}
+        style={{
+          width: '100%',
+          height: 'auto',
+          padding: '12px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: isExpanded ? '#e6f7ff' : '#fafafa',
+          borderColor: isExpanded ? '#1890ff' : '#d9d9d9',
+        }}
+      >
+        <Space>
+          <PlayCircleOutlined style={{ fontSize: 20, color: '#1890ff' }} />
+          <Text strong style={{ fontSize: 16 }}>
+            {isExpanded ? 'Hide Video Tutorial' : 'Watch Video Tutorial'}
+          </Text>
+        </Space>
+        {isExpanded ? <UpOutlined /> : <DownOutlined />}
+      </Button>
+
+      {isExpanded && (
+        <div style={{
+          marginTop: 12,
+          border: '2px solid #1890ff',
+          borderRadius: 8,
+          overflow: 'hidden',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          <video
+            controls
+            style={{ width: '100%', display: 'block', backgroundColor: '#000' }}
+            preload="metadata"
+          >
+            <source src={videoSrc} type="video/webm" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+      )}
+
+      {isExpanded && <Divider />}
+    </div>
+  );
+};
 
 export const Help: React.FC = () => {
   return (
@@ -45,6 +103,8 @@ export const Help: React.FC = () => {
             }
             key="1"
           >
+            <VideoPlayer videoSrc="/videos/Dashboard.webm" />
+
             <Title level={4}>What is the Dashboard?</Title>
             <Paragraph>
               The Dashboard is your home page and provides a quick overview of your bookings and earnings at a glance.
@@ -134,6 +194,8 @@ export const Help: React.FC = () => {
             }
             key="2"
           >
+            <VideoPlayer videoSrc="/videos/Calendar and My Bookings.webm" />
+
             <Title level={4}>What is the Calendar?</Title>
             <Paragraph>
               The Calendar provides a visual overview of all your bookings in a month/week/day view format.
@@ -202,6 +264,8 @@ export const Help: React.FC = () => {
             }
             key="3"
           >
+            <VideoPlayer videoSrc="/videos/Calendar and My Bookings.webm" />
+
             <Title level={4}>What is My Bookings?</Title>
             <Paragraph>
               My Bookings shows a detailed table of all your bookings with powerful filtering and sorting options.
@@ -276,6 +340,8 @@ export const Help: React.FC = () => {
             }
             key="4"
           >
+            <VideoPlayer videoSrc="/videos/My profile.webm" />
+
             <Title level={4}>What is My Profile?</Title>
             <Paragraph>
               Your Profile contains all your personal, business, and compliance information. Keep this up to date!
@@ -370,6 +436,8 @@ export const Help: React.FC = () => {
             }
             key="5"
           >
+            <VideoPlayer videoSrc="/videos/My Services.webm" />
+
             <Title level={4}>What is My Services?</Title>
             <Paragraph>
               My Services lets you select which types of massage therapy services you offer from the available list.
@@ -427,6 +495,8 @@ export const Help: React.FC = () => {
             }
             key="6"
           >
+            <VideoPlayer videoSrc="/videos/Availability.webm" />
+
             <Title level={4}>What is Availability?</Title>
             <Paragraph>
               Set your recurring weekly work schedule so customers know when you're available for bookings.
@@ -491,6 +561,8 @@ export const Help: React.FC = () => {
             }
             key="7"
           >
+            <VideoPlayer videoSrc="/videos/Time Off.webm" />
+
             <Title level={4}>What is Time Off?</Title>
             <Paragraph>
               Block out specific dates or date ranges when you're unavailable (holidays, sick leave, personal time, etc.)
@@ -560,6 +632,8 @@ export const Help: React.FC = () => {
             }
             key="8"
           >
+            <VideoPlayer videoSrc="/videos/Service Area.webm" />
+
             <Title level={4}>What is Service Area?</Title>
             <Paragraph>
               Define the geographic area where you provide mobile massage services, based on your home address and service radius.
@@ -627,6 +701,8 @@ export const Help: React.FC = () => {
             }
             key="9"
           >
+            <VideoPlayer videoSrc="/videos/My Earnings.webm" />
+
             <Title level={4}>What is My Earnings?</Title>
             <Paragraph>
               Track your completed jobs and earnings by week, view daily breakdowns, and submit invoices for payment.
@@ -720,6 +796,8 @@ export const Help: React.FC = () => {
             }
             key="10"
           >
+            <VideoPlayer videoSrc="/videos/Invoices.webm" />
+
             <Title level={4}>What is Invoices?</Title>
             <Paragraph>
               View all your submitted invoices, track their status, see admin reviews, and monitor payments.
