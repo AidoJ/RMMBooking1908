@@ -257,7 +257,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
           // Convert other timestamp fields to dayjs objects if they exist
           const timestampFields = [
             'created_at', 'updated_at', 'quote_sent_at', 'quote_accepted_at',
-            'invoice_sent_at', 'quote_valid_until'
+            'quote_declined_at', 'invoice_sent_at', 'quote_valid_until'
           ];
 
           timestampFields.forEach(field => {
@@ -527,14 +527,25 @@ export const EnhancedQuoteEdit: React.FC = () => {
               ...prev,
               availabilityConfirmed: true,
               quoteSent: true,
-              quoteAccepted: true
+              quoteAccepted: true,
+              quoteAcceptedAt: quotesData?.quote_accepted_at ? new Date(quotesData.quote_accepted_at).toLocaleDateString() : null
+            }));
+          } else if (quotesData?.status === 'declined') {
+            setWorkflowStep(4); // Quote was declined
+            setWorkflowState(prev => ({
+              ...prev,
+              availabilityConfirmed: true,
+              quoteSent: true,
+              quoteDeclined: true,
+              quoteDeclinedAt: quotesData?.quote_declined_at ? new Date(quotesData.quote_declined_at).toLocaleDateString() : null
             }));
           } else if (quotesData?.status === 'sent') {
             setWorkflowStep(4); // Quote sent, waiting for response
             setWorkflowState(prev => ({
               ...prev,
               availabilityConfirmed: true,
-              quoteSent: true
+              quoteSent: true,
+              quoteSentAt: quotesData?.quote_sent_at ? new Date(quotesData.quote_sent_at).toLocaleDateString() : null
             }));
           } else {
             setWorkflowStep(3); // Has assignments but not sent yet
@@ -1226,19 +1237,31 @@ export const EnhancedQuoteEdit: React.FC = () => {
         try {
           message.loading('Updating quote status...', 0);
 
-          // Delete all bookings
-          await supabaseClient
+          // Delete all bookings to unblock therapist diaries
+          const { error: deleteError } = await supabaseClient
             .from('bookings')
             .delete()
             .eq('parent_quote_id', id);
 
-          // Update quote status
-          await supabaseClient
+          if (deleteError) {
+            console.error('Error deleting bookings:', deleteError);
+            throw deleteError;
+          }
+
+          // Update quote status with timestamp
+          const { error: updateError } = await supabaseClient
             .from('quotes')
             .update({
-              status: 'declined'
+              status: 'declined',
+              quote_declined_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
             })
             .eq('id', id);
+
+          if (updateError) {
+            console.error('Error updating quote status:', updateError);
+            throw updateError;
+          }
 
           const now = new Date().toLocaleDateString();
           setWorkflowState(prev => ({
@@ -1250,9 +1273,10 @@ export const EnhancedQuoteEdit: React.FC = () => {
           message.destroy();
           message.success(`❌ Quote marked as Declined ${now}. All bookings deleted.`);
           queryResult?.refetch();
-        } catch (error) {
+        } catch (error: any) {
+          console.error('Error in handleMarkDeclined:', error);
           message.destroy();
-          message.error('Failed to mark quote as declined');
+          message.error(`Failed to mark quote as declined: ${error.message || 'Unknown error'}`);
         }
       }
     });
