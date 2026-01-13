@@ -275,29 +275,80 @@ async function processBookingResponse(action, bookingId, therapist, therapistPho
   }
 }
 
-// *** UPDATED: Handle SMS acceptance WITH EMAIL SENDING ***
+// *** UPDATED: Handle SMS acceptance WITH EMAIL SENDING AND RACE CONDITION PROTECTION ***
 async function handleSMSAccept(booking, therapist, therapistPhone) {
   try {
-    console.log('✅ Processing SMS acceptance for', booking.booking_id);
-    
-    // Update booking status
-    console.log('🔄 Updating booking status...');
-    const { error: updateError } = await supabase
+    console.log('✅ [START] Processing SMS acceptance for', booking.booking_id);
+    console.log('📊 Current booking status:', booking.status);
+    console.log('👤 Therapist:', therapist.first_name, therapist.last_name, therapist.id);
+
+    // CRITICAL: Double-check booking status before updating to prevent race conditions
+    console.log('🔍 [SAFETY CHECK 1] Verifying booking is still available...');
+    const { data: currentBooking, error: checkError } = await supabase
       .from('bookings')
-      .update({
-        status: 'confirmed',
-        therapist_id: therapist.id,
-        therapist_response_time: new Date().toISOString(),
-        responding_therapist_id: therapist.id,
-        updated_at: new Date().toISOString()
-      })
-      .eq('booking_id', booking.booking_id);
+      .select('status, therapist_response_time, updated_at')
+      .eq('booking_id', booking.booking_id)
+      .single();
+
+    if (checkError) {
+      console.error('❌ Error checking current booking status:', checkError);
+      throw new Error('Failed to verify booking status');
+    }
+
+    console.log('📊 Current status from DB:', currentBooking.status);
+    console.log('⏰ Last updated:', currentBooking.updated_at);
+
+    // Check if booking has already been responded to
+    if (currentBooking.status === 'confirmed') {
+      console.log('⚠️ Booking already confirmed - skipping update');
+      await sendErrorSMS(therapistPhone, `Booking ${booking.booking_id} has already been accepted by another therapist.`);
+      return { success: false, error: 'Already confirmed' };
+    }
+
+    if (currentBooking.status === 'declined') {
+      console.log('⚠️ Booking already declined - skipping update');
+      await sendErrorSMS(therapistPhone, `Booking ${booking.booking_id} has already been declined or timed out.`);
+      return { success: false, error: 'Already declined' };
+    }
+
+    if (!['requested', 'timeout_reassigned', 'seeking_alternate'].includes(currentBooking.status)) {
+      console.error('❌ Invalid booking status for acceptance:', currentBooking.status);
+      await sendErrorSMS(therapistPhone, `Booking ${booking.booking_id} cannot be accepted in current status.`);
+      return { success: false, error: 'Invalid status' };
+    }
+
+    // Update booking status WITH STATUS CHECK to prevent race condition
+    console.log('🔄 [STEP 2] Updating booking status to confirmed...');
+    const updateData = {
+      status: 'confirmed',
+      therapist_id: therapist.id,
+      therapist_response_time: new Date().toISOString(),
+      responding_therapist_id: therapist.id,
+      updated_at: new Date().toISOString()
+    };
+    console.log('📝 Update data:', JSON.stringify(updateData, null, 2));
+
+    const { data: updateResult, error: updateError } = await supabase
+      .from('bookings')
+      .update(updateData)
+      .eq('booking_id', booking.booking_id)
+      .eq('status', currentBooking.status) // CRITICAL: Only update if status hasn't changed
+      .select();
 
     if (updateError) {
       console.error('❌ Database update error:', updateError);
-      throw new Error('Failed to update booking status');
+      console.error('❌ Update error details:', JSON.stringify(updateError, null, 2));
+      throw new Error('Failed to update booking status: ' + updateError.message);
     }
-    console.log('✅ Booking status updated');
+
+    if (!updateResult || updateResult.length === 0) {
+      console.error('⚠️ UPDATE RACE CONDITION DETECTED - Status changed by another process');
+      await sendErrorSMS(therapistPhone, `Booking ${booking.booking_id} status changed while processing. Please check booking status.`);
+      return { success: false, error: 'Race condition detected - status changed' };
+    }
+
+    console.log('✅ [STEP 2 COMPLETE] Booking status updated successfully');
+    console.log('📊 Update result:', JSON.stringify(updateResult, null, 2));
 
     // Add status history
     await addStatusHistory(booking.id, 'confirmed', therapist.id, 'Accepted via SMS');
@@ -376,13 +427,43 @@ Check your email for full details!
   }
 }
 
-// *** UPDATED: Handle SMS decline WITH EMAIL SENDING ***
+// *** UPDATED: Handle SMS decline WITH EMAIL SENDING AND RACE CONDITION PROTECTION ***
 async function handleSMSDecline(booking, therapist, therapistPhone) {
   try {
-    console.log('❌ Processing SMS decline for', booking.booking_id);
-    
-    // Update booking status to declined
-    const { error: updateError } = await supabase
+    console.log('❌ [START] Processing SMS decline for', booking.booking_id);
+    console.log('📊 Current booking status:', booking.status);
+
+    // CRITICAL: Double-check booking status before updating
+    console.log('🔍 [SAFETY CHECK 1] Verifying booking can be declined...');
+    const { data: currentBooking, error: checkError } = await supabase
+      .from('bookings')
+      .select('status, updated_at')
+      .eq('booking_id', booking.booking_id)
+      .single();
+
+    if (checkError) {
+      console.error('❌ Error checking current booking status:', checkError);
+      throw new Error('Failed to verify booking status');
+    }
+
+    console.log('📊 Current status from DB:', currentBooking.status);
+
+    // Check if booking has already been responded to
+    if (currentBooking.status === 'confirmed') {
+      console.log('⚠️ Booking already confirmed - cannot decline');
+      await sendErrorSMS(therapistPhone, `Booking ${booking.booking_id} has already been accepted by another therapist.`);
+      return { success: false, error: 'Already confirmed' };
+    }
+
+    if (currentBooking.status === 'declined') {
+      console.log('⚠️ Booking already declined - skipping update');
+      await sendErrorSMS(therapistPhone, `Booking ${booking.booking_id} has already been declined.`);
+      return { success: false, error: 'Already declined' };
+    }
+
+    // Update booking status to declined WITH STATUS CHECK
+    console.log('🔄 [STEP 2] Updating booking status to declined...');
+    const { data: updateResult, error: updateError } = await supabase
       .from('bookings')
       .update({
         status: 'declined',
@@ -390,11 +471,22 @@ async function handleSMSDecline(booking, therapist, therapistPhone) {
         responding_therapist_id: therapist.id,
         updated_at: new Date().toISOString()
       })
-      .eq('booking_id', booking.booking_id);
+      .eq('booking_id', booking.booking_id)
+      .eq('status', currentBooking.status) // CRITICAL: Only update if status hasn't changed
+      .select();
 
     if (updateError) {
+      console.error('❌ Database update error:', updateError);
       throw new Error('Failed to update booking status');
     }
+
+    if (!updateResult || updateResult.length === 0) {
+      console.error('⚠️ UPDATE RACE CONDITION DETECTED - Status changed by another process');
+      await sendErrorSMS(therapistPhone, `Booking ${booking.booking_id} status changed while processing. Please check booking status.`);
+      return { success: false, error: 'Race condition detected - status changed' };
+    }
+
+    console.log('✅ [STEP 2 COMPLETE] Booking status updated to declined');
 
     await addStatusHistory(booking.id, 'declined', therapist.id, 'Declined via SMS');
     

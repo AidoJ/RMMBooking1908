@@ -191,8 +191,47 @@ async function processBookingTimeout(booking, timeoutMinutes) {
   try {
     console.log('⚡ Processing', booking.timeoutStage, 'timeout for booking', booking.booking_id);
 
-    // CRITICAL: Verify booking has actually exceeded its timeout before processing
     const now = new Date();
+
+    // *** CRITICAL RACE CONDITION PROTECTION: 60-SECOND GRACE PERIOD ***
+    // If booking has therapist_response_time set within last 60 seconds, skip it
+    // This prevents timeout handler from overwriting an acceptance/decline that just happened
+    if (booking.therapist_response_time) {
+      const responseTime = new Date(booking.therapist_response_time);
+      const secondsSinceResponse = (now.getTime() - responseTime.getTime()) / 1000;
+
+      if (secondsSinceResponse < 60) {
+        console.log(`🛡️ GRACE PERIOD PROTECTION: Booking ${booking.booking_id} has therapist_response_time from ${Math.floor(secondsSinceResponse)} seconds ago - SKIPPING to prevent race condition`);
+        return { success: true, booking_id: booking.booking_id, action: 'skipped_grace_period', secondsSinceResponse: Math.floor(secondsSinceResponse) };
+      }
+    }
+
+    // Re-check booking status from database to catch any recent changes
+    console.log('🔍 [SAFETY CHECK] Re-verifying booking status before timeout processing...');
+    const { data: currentBooking, error: checkError } = await supabase
+      .from('bookings')
+      .select('status, therapist_response_time, updated_at')
+      .eq('id', booking.id)
+      .single();
+
+    if (checkError) {
+      console.error('❌ Error checking current booking status:', checkError);
+      return { success: false, booking_id: booking.booking_id, error: 'Status check failed' };
+    }
+
+    // If status changed to confirmed or declined, skip processing
+    if (currentBooking.status === 'confirmed') {
+      console.log(`✅ RACE CONDITION AVOIDED: Booking ${booking.booking_id} was just confirmed - SKIPPING timeout processing`);
+      return { success: true, booking_id: booking.booking_id, action: 'skipped_already_confirmed' };
+    }
+
+    if (currentBooking.status === 'declined') {
+      console.log(`❌ RACE CONDITION AVOIDED: Booking ${booking.booking_id} was just declined - SKIPPING timeout processing`);
+      return { success: true, booking_id: booking.booking_id, action: 'skipped_already_declined' };
+    }
+
+    // CRITICAL: Verify booking has actually exceeded its timeout before processing
+    console.log('⏰ Proceeding with timeout verification...');
 
     if (booking.timeoutStage === 'first') {
       // FIRST STAGE: Check time since booking was created
@@ -704,12 +743,12 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
 }
 
 // Utility functions
-async function updateBookingStatus(bookingId, status) {
+async function updateBookingStatus(bookingId, status, requiredCurrentStatus = null) {
   try {
-    // First, get the request_id for this booking (to handle series)
+    // First, get the request_id and current status for this booking (to handle series)
     const { data: bookingData, error: fetchError } = await supabase
       .from('bookings')
-      .select('request_id')
+      .select('request_id, status')
       .eq('booking_id', bookingId)
       .single();
 
@@ -719,10 +758,30 @@ async function updateBookingStatus(bookingId, status) {
     }
 
     const requestId = bookingData.request_id;
+    const currentStatus = bookingData.status;
 
-    // Update ALL bookings in the series using request_id
+    console.log(`🔄 Updating booking ${bookingId} from status '${currentStatus}' to '${status}'`);
+
+    // RACE CONDITION PROTECTION: If requiredCurrentStatus specified, verify it matches
+    if (requiredCurrentStatus && currentStatus !== requiredCurrentStatus) {
+      console.error(`⚠️ RACE CONDITION DETECTED: Expected status '${requiredCurrentStatus}' but found '${currentStatus}' - ABORTING update to prevent data corruption`);
+      return { success: false, reason: 'status_mismatch', expected: requiredCurrentStatus, found: currentStatus };
+    }
+
+    // Additional safety: Don't overwrite confirmed or declined status from timeout handler
+    if (currentStatus === 'confirmed' && (status === 'declined' || status === 'timeout_reassigned')) {
+      console.error(`⚠️ PROTECTION: Booking ${bookingId} is CONFIRMED - refusing to change to '${status}'`);
+      return { success: false, reason: 'protected_confirmed_status' };
+    }
+
+    if (currentStatus === 'declined' && status === 'timeout_reassigned') {
+      console.error(`⚠️ PROTECTION: Booking ${bookingId} is DECLINED - refusing to change to 'timeout_reassigned'`);
+      return { success: false, reason: 'protected_declined_status' };
+    }
+
+    // Update ALL bookings in the series using request_id with status check
     // This ensures if booking times out, entire recurring series is cancelled
-    const { error } = await supabase
+    const updateQuery = supabase
       .from('bookings')
       .update({
         status: status,
@@ -730,13 +789,29 @@ async function updateBookingStatus(bookingId, status) {
       })
       .eq('request_id', requestId);
 
+    // Add status check if required
+    if (requiredCurrentStatus) {
+      updateQuery.eq('status', requiredCurrentStatus);
+    }
+
+    const { data: result, error } = await updateQuery.select();
+
     if (error) {
       console.error('❌ Error updating booking', bookingId, 'status:', error);
-    } else {
-      console.log('✅ Updated booking', bookingId, 'status to:', status);
+      return { success: false, error: error.message };
     }
+
+    if (requiredCurrentStatus && (!result || result.length === 0)) {
+      console.error(`⚠️ RACE CONDITION: Status update failed - booking status changed from '${requiredCurrentStatus}' before update completed`);
+      return { success: false, reason: 'race_condition_status_changed' };
+    }
+
+    console.log('✅ Updated booking', bookingId, 'status to:', status);
+    return { success: true };
+
   } catch (error) {
     console.error('❌ Error updating booking status:', error);
+    return { success: false, error: error.message };
   }
 }
 

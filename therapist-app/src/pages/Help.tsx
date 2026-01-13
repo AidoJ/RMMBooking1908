@@ -22,9 +22,14 @@ import {
 const { Title, Paragraph, Text } = Typography;
 const { Panel } = Collapse;
 
-// Video Player Component
+// Video Player Component - uses BASE_URL for correct path in production
 const VideoPlayer: React.FC<{ videoSrc: string }> = ({ videoSrc }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+
+  // Get base URL from Vite (will be '/therapist/' in production)
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  const fullVideoPath = `${baseUrl}${videoSrc}`;
 
   return (
     <div style={{ marginBottom: 24 }}>
@@ -61,14 +66,25 @@ const VideoPlayer: React.FC<{ videoSrc: string }> = ({ videoSrc }) => {
           overflow: 'hidden',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
         }}>
-          <video
-            controls
-            style={{ width: '100%', display: 'block', backgroundColor: '#000' }}
-            preload="metadata"
-          >
-            <source src={videoSrc} type="video/webm" />
-            Your browser does not support the video tag.
-          </video>
+          {videoError ? (
+            <div style={{ padding: 20, textAlign: 'center', backgroundColor: '#fff2f0', color: '#cf1322' }}>
+              <WarningOutlined style={{ fontSize: 24, marginBottom: 8 }} />
+              <p>Unable to load video. Please try refreshing the page.</p>
+            </div>
+          ) : (
+            <video
+              controls
+              style={{ width: '100%', display: 'block', backgroundColor: '#000' }}
+              preload="metadata"
+              onError={() => {
+                console.error('Video failed to load:', fullVideoPath);
+                setVideoError(true);
+              }}
+            >
+              <source src={fullVideoPath} type="video/webm" />
+              Your browser does not support the video tag.
+            </video>
+          )}
         </div>
       )}
 
@@ -103,7 +119,7 @@ export const Help: React.FC = () => {
             }
             key="1"
           >
-            <VideoPlayer videoSrc="/videos/Dashboard.webm" />
+            <VideoPlayer videoSrc="videos/Dashboard.webm" />
 
             <Title level={4}>What is the Dashboard?</Title>
             <Paragraph>
@@ -194,7 +210,7 @@ export const Help: React.FC = () => {
             }
             key="2"
           >
-            <VideoPlayer videoSrc="/videos/Calendar and My Bookings.webm" />
+            <VideoPlayer videoSrc="videos/Calendar and My Bookings.webm" />
 
             <Title level={4}>What is the Calendar?</Title>
             <Paragraph>
@@ -264,7 +280,7 @@ export const Help: React.FC = () => {
             }
             key="3"
           >
-            <VideoPlayer videoSrc="/videos/Calendar and My Bookings.webm" />
+            <VideoPlayer videoSrc="videos/Calendar and My Bookings.webm" />
 
             <Title level={4}>What is My Bookings?</Title>
             <Paragraph>
@@ -340,7 +356,7 @@ export const Help: React.FC = () => {
             }
             key="4"
           >
-            <VideoPlayer videoSrc="/videos/My profile.webm" />
+            <VideoPlayer videoSrc="videos/My profile.webm" />
 
             <Title level={4}>What is My Profile?</Title>
             <Paragraph>
@@ -436,7 +452,7 @@ export const Help: React.FC = () => {
             }
             key="5"
           >
-            <VideoPlayer videoSrc="/videos/My Services.webm" />
+            <VideoPlayer videoSrc="videos/My Services.webm" />
 
             <Title level={4}>What is My Services?</Title>
             <Paragraph>
@@ -495,7 +511,7 @@ export const Help: React.FC = () => {
             }
             key="6"
           >
-            <VideoPlayer videoSrc="/videos/Availability.webm" />
+            <VideoPlayer videoSrc="videos/Availability.webm" />
 
             <Title level={4}>What is Availability?</Title>
             <Paragraph>
@@ -561,7 +577,7 @@ export const Help: React.FC = () => {
             }
             key="7"
           >
-            <VideoPlayer videoSrc="/videos/Time Off.webm" />
+            <VideoPlayer videoSrc="videos/Time Off.webm" />
 
             <Title level={4}>What is Time Off?</Title>
             <Paragraph>
@@ -632,7 +648,7 @@ export const Help: React.FC = () => {
             }
             key="8"
           >
-            <VideoPlayer videoSrc="/videos/Service Area.webm" />
+            <VideoPlayer videoSrc="videos/Service Area.webm" />
 
             <Title level={4}>What is Service Area?</Title>
             <Paragraph>
@@ -701,7 +717,7 @@ export const Help: React.FC = () => {
             }
             key="9"
           >
-            <VideoPlayer videoSrc="/videos/My Earnings.webm" />
+            <VideoPlayer videoSrc="videos/My Earnings.webm" />
 
             <Title level={4}>What is My Earnings?</Title>
             <Paragraph>
@@ -796,7 +812,7 @@ export const Help: React.FC = () => {
             }
             key="10"
           >
-            <VideoPlayer videoSrc="/videos/Invoices.webm" />
+            <VideoPlayer videoSrc="videos/Invoices.webm" />
 
             <Title level={4}>What is Invoices?</Title>
             <Paragraph>
