@@ -825,7 +825,8 @@ const TherapistEdit: React.FC = () => {
   };
 
   const addAvailabilitySlot = () => {
-    setAvailability([...availability, {
+    // Use callback form to avoid stale closure issues
+    setAvailability(prev => [...prev, {
       day_of_week: 1,
       start_time: '09:00',
       end_time: '17:00'
@@ -833,17 +834,20 @@ const TherapistEdit: React.FC = () => {
   };
 
   const removeAvailabilitySlot = (index: number) => {
-    setAvailability(availability.filter((_, i) => i !== index));
+    setAvailability(prev => prev.filter((_, i) => i !== index));
   };
 
   const updateAvailabilitySlot = (index: number, field: keyof Availability, value: any) => {
-    const updated = [...availability];
-    updated[index] = { ...updated[index], [field]: value };
-    setAvailability(updated);
+    setAvailability(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   };
 
   const addTimeOffSlot = () => {
-    setTimeOff([...timeOff, {
+    // Use callback form to avoid stale closure issues
+    setTimeOff(prev => [...prev, {
       start_date: dayjs().format('YYYY-MM-DD'),
       end_date: dayjs().add(1, 'day').format('YYYY-MM-DD'),
       reason: '',
@@ -852,13 +856,15 @@ const TherapistEdit: React.FC = () => {
   };
 
   const removeTimeOffSlot = (index: number) => {
-    setTimeOff(timeOff.filter((_, i) => i !== index));
+    setTimeOff(prev => prev.filter((_, i) => i !== index));
   };
 
   const updateTimeOffSlot = (index: number, field: keyof TimeOff, value: any) => {
-    const updated = [...timeOff];
-    updated[index] = { ...updated[index], [field]: value };
-    setTimeOff(updated);
+    setTimeOff(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   };
 
   const handleSubmit = async (values: TherapistFormData) => {
@@ -1643,11 +1649,22 @@ const TherapistEdit: React.FC = () => {
                   label: 'Availability',
                   children: (
                     <div>
+                      {!canEditTherapists && (
+                        <Alert
+                          message="Restricted Access"
+                          description="You do not have permission to modify availability"
+                          type="warning"
+                          showIcon
+                          style={{ marginBottom: 16 }}
+                        />
+                      )}
+
                       <div style={{ marginBottom: '16px' }}>
                         <Button
                           type="dashed"
                           icon={<PlusOutlined />}
                           onClick={addAvailabilitySlot}
+                          disabled={!canEditTherapists}
                           block
                         >
                           Add Availability Slot
@@ -1662,6 +1679,7 @@ const TherapistEdit: React.FC = () => {
                                 value={avail.day_of_week}
                                 onChange={(value) => updateAvailabilitySlot(index, 'day_of_week', value)}
                                 style={{ width: '100%' }}
+                                disabled={!canEditTherapists}
                               >
                                 {[0, 1, 2, 3, 4, 5, 6].map(day => (
                                   <Option key={day} value={day}>
@@ -1672,18 +1690,20 @@ const TherapistEdit: React.FC = () => {
                             </Col>
                             <Col span={6}>
                               <TimePicker
-                                value={dayjs(avail.start_time, 'HH:mm')}
-                                onChange={(time) => updateAvailabilitySlot(index, 'start_time', time?.format('HH:mm'))}
+                                value={avail.start_time ? dayjs(avail.start_time.substring(0, 5), 'HH:mm') : null}
+                                onChange={(time) => updateAvailabilitySlot(index, 'start_time', time?.format('HH:mm') || '09:00')}
                                 format="HH:mm"
                                 style={{ width: '100%' }}
+                                disabled={!canEditTherapists}
                               />
                             </Col>
                             <Col span={6}>
                               <TimePicker
-                                value={dayjs(avail.end_time, 'HH:mm')}
-                                onChange={(time) => updateAvailabilitySlot(index, 'end_time', time?.format('HH:mm'))}
+                                value={avail.end_time ? dayjs(avail.end_time.substring(0, 5), 'HH:mm') : null}
+                                onChange={(time) => updateAvailabilitySlot(index, 'end_time', time?.format('HH:mm') || '17:00')}
                                 format="HH:mm"
                                 style={{ width: '100%' }}
+                                disabled={!canEditTherapists}
                               />
                             </Col>
                             <Col span={4}>
@@ -1692,6 +1712,7 @@ const TherapistEdit: React.FC = () => {
                                 danger
                                 icon={<DeleteOutlined />}
                                 onClick={() => removeAvailabilitySlot(index)}
+                                disabled={!canEditTherapists}
                               />
                             </Col>
                           </Row>
@@ -1705,11 +1726,22 @@ const TherapistEdit: React.FC = () => {
                   label: 'Time Off',
                   children: (
                     <div>
+                      {!canEditTherapists && (
+                        <Alert
+                          message="Restricted Access"
+                          description="You do not have permission to modify time off"
+                          type="warning"
+                          showIcon
+                          style={{ marginBottom: 16 }}
+                        />
+                      )}
+
                       <div style={{ marginBottom: '16px' }}>
                         <Button
                           type="dashed"
                           icon={<PlusOutlined />}
                           onClick={addTimeOffSlot}
+                          disabled={!canEditTherapists}
                           block
                         >
                           Add Time Off Period
@@ -1721,20 +1753,22 @@ const TherapistEdit: React.FC = () => {
                           <Row gutter={16} align="middle">
                             <Col span={6}>
                               <DatePicker
-                                value={dayjs(to.start_date)}
-                                onChange={(date) => updateTimeOffSlot(index, 'start_date', date?.format('YYYY-MM-DD'))}
+                                value={to.start_date ? dayjs(to.start_date) : null}
+                                onChange={(date) => updateTimeOffSlot(index, 'start_date', date?.format('YYYY-MM-DD') || dayjs().format('YYYY-MM-DD'))}
                                 format="DD/MM/YYYY"
                                 style={{ width: '100%' }}
                                 placeholder="Start Date"
+                                disabled={!canEditTherapists}
                               />
                             </Col>
                             <Col span={6}>
                               <DatePicker
-                                value={dayjs(to.end_date)}
-                                onChange={(date) => updateTimeOffSlot(index, 'end_date', date?.format('YYYY-MM-DD'))}
+                                value={to.end_date ? dayjs(to.end_date) : null}
+                                onChange={(date) => updateTimeOffSlot(index, 'end_date', date?.format('YYYY-MM-DD') || dayjs().add(1, 'day').format('YYYY-MM-DD'))}
                                 format="DD/MM/YYYY"
                                 style={{ width: '100%' }}
                                 placeholder="End Date"
+                                disabled={!canEditTherapists}
                               />
                             </Col>
                             <Col span={6}>
@@ -1742,6 +1776,7 @@ const TherapistEdit: React.FC = () => {
                                 value={to.reason}
                                 onChange={(e) => updateTimeOffSlot(index, 'reason', e.target.value)}
                                 placeholder="Reason (optional)"
+                                disabled={!canEditTherapists}
                               />
                             </Col>
                             <Col span={4}>
@@ -1749,6 +1784,7 @@ const TherapistEdit: React.FC = () => {
                                 value={to.status}
                                 onChange={(value) => updateTimeOffSlot(index, 'status', value)}
                                 style={{ width: '100%' }}
+                                disabled={!canEditTherapists}
                               >
                                 <Option value="pending">Pending</Option>
                                 <Option value="approved">Approved</Option>
@@ -1761,6 +1797,7 @@ const TherapistEdit: React.FC = () => {
                                 danger
                                 icon={<DeleteOutlined />}
                                 onClick={() => removeTimeOffSlot(index)}
+                                disabled={!canEditTherapists}
                               />
                             </Col>
                           </Row>
