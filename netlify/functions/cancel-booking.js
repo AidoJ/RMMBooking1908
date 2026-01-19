@@ -229,7 +229,7 @@ exports.handler = async (event, context) => {
         .select(`
           *,
           services (name),
-          therapist_profiles (id, first_name, last_name, email, phone)
+          therapist_profiles!bookings_therapist_id_fkey (id, first_name, last_name, email, phone)
         `)
         .eq('cancel_token', token)
         .single();
@@ -243,7 +243,7 @@ exports.handler = async (event, context) => {
         .select(`
           *,
           services (name),
-          therapist_profiles (id, first_name, last_name, email, phone)
+          therapist_profiles!bookings_therapist_id_fkey (id, first_name, last_name, email, phone)
         `)
         .eq('booking_id', bookingId)
         .single();
