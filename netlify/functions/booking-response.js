@@ -980,7 +980,7 @@ async function sendClientConfirmationEmail(booking, therapist, seriesBookings = 
     // Generate cancel and reschedule URLs using secure tokens
     const baseUrl = process.env.URL || 'https://booking.rejuvenators.com';
     const cancelUrl = booking.cancel_token
-      ? `${baseUrl}/.netlify/functions/booking-cancel?token=${booking.cancel_token}`
+      ? `${baseUrl}/.netlify/functions/cancel-booking?token=${booking.cancel_token}`
       : '';
     const rescheduleUrl = booking.reschedule_token
       ? `${baseUrl}/.netlify/functions/booking-reschedule?token=${booking.reschedule_token}`

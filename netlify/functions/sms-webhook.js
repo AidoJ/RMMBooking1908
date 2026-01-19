@@ -540,9 +540,9 @@ async function sendClientConfirmationEmail(booking, therapist) {
     }
 
     // Build cancel and reschedule URLs using tokens from the booking
-    const baseUrl = process.env.URL || 'https://rejuvenators.com';
+    const baseUrl = process.env.URL || 'https://booking.rejuvenators.com';
     const cancelUrl = booking.cancel_token
-      ? `${baseUrl}/.netlify/functions/booking-cancel?token=${booking.cancel_token}`
+      ? `${baseUrl}/.netlify/functions/cancel-booking?token=${booking.cancel_token}`
       : '';
     const rescheduleUrl = booking.reschedule_token
       ? `${baseUrl}/.netlify/functions/booking-reschedule?token=${booking.reschedule_token}`
