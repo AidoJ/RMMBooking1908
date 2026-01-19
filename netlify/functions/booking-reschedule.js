@@ -162,7 +162,20 @@ exports.handler = async (event, context) => {
   const headers = {
     'Content-Type': 'text/html',
     'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
   };
+
+  // Handle OPTIONS preflight requests
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers,
+      body: ''
+    };
+  }
+
+  console.log(`📅 Booking reschedule request: ${event.httpMethod} with token: ${event.queryStringParameters?.token}`);
 
   try {
     // Get token from query string
