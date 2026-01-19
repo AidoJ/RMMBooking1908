@@ -977,9 +977,14 @@ async function sendClientConfirmationEmail(booking, therapist, seriesBookings = 
       serviceName = booking.services.name;
     }
 
-    // Generate cancel URL
+    // Generate cancel and reschedule URLs using secure tokens
     const baseUrl = process.env.URL || 'https://booking.rejuvenators.com';
-    const cancelUrl = `${baseUrl}/.netlify/functions/cancel-booking?booking_id=${booking.booking_id}`;
+    const cancelUrl = booking.cancel_token
+      ? `${baseUrl}/.netlify/functions/booking-cancel?token=${booking.cancel_token}`
+      : '';
+    const rescheduleUrl = booking.reschedule_token
+      ? `${baseUrl}/.netlify/functions/booking-reschedule?token=${booking.reschedule_token}`
+      : '';
 
     // Generate intake form URL
     const intakeFormUrl = `${baseUrl}/therapist/clientintake?booking=${booking.id || booking.booking_id}`;
@@ -998,6 +1003,7 @@ async function sendClientConfirmationEmail(booking, therapist, seriesBookings = 
       therapist: therapist.first_name + ' ' + therapist.last_name,
       estimated_price: booking.price ? '$' + booking.price.toFixed(2) : 'N/A',
       cancel_url: cancelUrl,
+      reschedule_url: rescheduleUrl,
       intake_form_url: intakeFormUrl
     };
 

@@ -205,13 +205,14 @@ exports.handler = async (event, context) => {
     };
   }
 
-  console.log(`📋 Booking cancel request: ${event.httpMethod} with token: ${event.queryStringParameters?.token}`);
+  const token = event.queryStringParameters?.token;
+  const bookingId = event.queryStringParameters?.booking_id;
+
+  console.log(`📋 Booking cancel request: ${event.httpMethod} with token: ${token}, booking_id: ${bookingId}`);
 
   try {
-    // Get token from query string
-    const token = event.queryStringParameters?.token;
-
-    if (!token) {
+    // Need either token or booking_id
+    if (!token && !bookingId) {
       return {
         statusCode: 400,
         headers,
@@ -219,16 +220,36 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Look up booking by cancel token
-    const { data: booking, error: bookingError } = await supabase
-      .from('bookings')
-      .select(`
-        *,
-        services (name),
-        therapist_profiles (id, first_name, last_name, email, phone)
-      `)
-      .eq('cancel_token', token)
-      .single();
+    let booking, bookingError;
+
+    // Look up booking by cancel token (preferred) or booking_id (fallback)
+    if (token) {
+      const result = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          services (name),
+          therapist_profiles (id, first_name, last_name, email, phone)
+        `)
+        .eq('cancel_token', token)
+        .single();
+      booking = result.data;
+      bookingError = result.error;
+    } else if (bookingId) {
+      // Fallback for older links using booking_id
+      console.log(`⚠️ Using booking_id fallback for ${bookingId}`);
+      const result = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          services (name),
+          therapist_profiles (id, first_name, last_name, email, phone)
+        `)
+        .eq('booking_id', bookingId)
+        .single();
+      booking = result.data;
+      bookingError = result.error;
+    }
 
     if (bookingError || !booking) {
       console.error('Booking lookup error:', bookingError);

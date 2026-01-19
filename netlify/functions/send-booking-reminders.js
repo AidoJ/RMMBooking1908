@@ -742,54 +742,25 @@ async function createPaymentLink(booking) {
   }
 }
 
-// Create cancel link using short_links table
+// Create cancel link using secure token
 async function createCancelLink(booking) {
   try {
-    const cancelUrl = `${process.env.URL}/cancel-booking.html?b=${booking.booking_id}`;
-    const shortCode = `cancel-${booking.booking_id.toLowerCase()}`;
+    const baseUrl = process.env.URL || 'https://booking.rejuvenators.com';
 
-    console.log(`🔗 Creating cancel link for ${booking.booking_id}`);
-
-    // Try to insert new short link
-    const { data: shortLink, error } = await supabase
-      .from('short_links')
-      .insert({
-        short_code: shortCode,
-        original_url: cancelUrl,
-        metadata: {
-          booking_id: booking.booking_id,
-          type: 'cancellation',
-          created_for: 'reminder'
-        }
-      })
-      .select()
-      .single();
-
-    if (error) {
-      // Short code might already exist - fetch it
-      const { data: existing } = await supabase
-        .from('short_links')
-        .select('short_code')
-        .eq('short_code', shortCode)
-        .single();
-
-      if (existing) {
-        return `${process.env.URL}/s/${existing.short_code}`;
-      }
-
-      // Fallback to direct URL
-      console.warn(`⚠️ Could not create short cancel link, using direct URL`);
+    // Use the secure cancel token if available
+    if (booking.cancel_token) {
+      const cancelUrl = `${baseUrl}/.netlify/functions/booking-cancel?token=${booking.cancel_token}`;
+      console.log(`🔗 Cancel link for ${booking.booking_id}: ${cancelUrl}`);
       return cancelUrl;
     }
 
-    const link = `${process.env.URL}/s/${shortLink.short_code}`;
-    console.log(`✅ Cancel link created: ${link}`);
-    return link;
+    // Fallback for older bookings without tokens - generate warning
+    console.warn(`⚠️ Booking ${booking.booking_id} has no cancel_token - using booking_id fallback`);
+    return `${baseUrl}/.netlify/functions/booking-cancel?booking_id=${booking.booking_id}`;
 
   } catch (error) {
     console.error('❌ Error creating cancel link:', error);
-    // Fallback to direct URL
-    return `${process.env.URL}/cancel-booking.html?b=${booking.booking_id}`;
+    return '';
   }
 }
 
