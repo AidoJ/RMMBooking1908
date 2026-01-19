@@ -539,6 +539,15 @@ async function sendClientConfirmationEmail(booking, therapist) {
       serviceName = booking.services.name;
     }
 
+    // Build cancel and reschedule URLs using tokens from the booking
+    const baseUrl = process.env.URL || 'https://rejuvenators.com';
+    const cancelUrl = booking.cancel_token
+      ? `${baseUrl}/.netlify/functions/booking-cancel?token=${booking.cancel_token}`
+      : '';
+    const rescheduleUrl = booking.reschedule_token
+      ? `${baseUrl}/.netlify/functions/booking-reschedule?token=${booking.reschedule_token}`
+      : '';
+
     const templateParams = {
       to_email: booking.customer_email,
       to_name: booking.first_name + ' ' + booking.last_name,
@@ -550,7 +559,10 @@ async function sendClientConfirmationEmail(booking, therapist) {
       address: booking.address,
       room_number: booking.room_number || 'N/A',
       therapist: therapist.first_name + ' ' + therapist.last_name,
-      estimated_price: booking.price ? '$' + booking.price.toFixed(2) : 'N/A'
+      estimated_price: booking.price ? '$' + booking.price.toFixed(2) : 'N/A',
+      // Cancel and reschedule links
+      cancel_url: cancelUrl,
+      reschedule_url: rescheduleUrl
     };
 
     const result = await sendEmail(EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID, templateParams);
