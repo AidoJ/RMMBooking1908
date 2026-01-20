@@ -45,6 +45,11 @@ export const CustomLogin: React.FC = () => {
     }}>
       <Card style={{ maxWidth: 500, width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <img
+            src="/favicon.png"
+            alt="Rejuvenators"
+            style={{ width: 80, height: 80, marginBottom: 16 }}
+          />
           <Title level={2}>Rejuvenators Admin Panel</Title>
           <Text type="secondary">
             Sign in to access your account
