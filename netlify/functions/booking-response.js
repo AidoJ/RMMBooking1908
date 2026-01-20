@@ -335,18 +335,33 @@ async function handleBookingAccept(booking, therapist, headers) {
 
     console.log('📍 Found request_id:', bookingForRequestId.request_id);
 
-    // Update ALL bookings in the series with this request_id
-    const { error: updateError } = await supabase
+    // CRITICAL: Update ALL bookings in the series with this request_id
+    // Only update if status is still valid (prevents race condition with timeout handler)
+    const validStatusesForAccept = ['requested', 'seeking_alternate', 'timeout_reassigned'];
+
+    const { data: updatedBookings, error: updateError } = await supabase
       .from('bookings')
       .update(acceptUpdateData)
-      .eq('request_id', bookingForRequestId.request_id);
+      .eq('request_id', bookingForRequestId.request_id)
+      .in('status', validStatusesForAccept)
+      .select('id, booking_id, status');
 
     if (updateError) {
       console.error('❌ Error updating booking status:', updateError);
       throw new Error('Failed to confirm booking');
     }
 
-    console.log('✅ All bookings with request_id', bookingForRequestId.request_id, 'updated to confirmed');
+    // CRITICAL: Verify at least one booking was actually updated
+    if (!updatedBookings || updatedBookings.length === 0) {
+      console.error('❌ RACE CONDITION DETECTED: No bookings were updated - status already changed');
+      return {
+        statusCode: 409,
+        headers,
+        body: generateErrorPage('This booking has already been processed by another action. The status may have changed. Please check the booking status.')
+      };
+    }
+
+    console.log('✅ Updated', updatedBookings.length, 'bookings with request_id', bookingForRequestId.request_id, 'to confirmed');
 
     // CAPTURE PAYMENT for initial booking (occurrence_number = 0)
     // occurrence_number can be 0, so use ?? instead of || to handle falsy 0
@@ -679,7 +694,7 @@ You'll be notified once someone accepts!
 
     // No alternative found or customer didn't want fallback - send decline
     console.log('📧 Sending final decline email to customer for', booking.booking_id);
-    
+
     const declineUpdateData = {
       status: 'declined',
       therapist_response_time: new Date().toISOString(),
@@ -687,14 +702,29 @@ You'll be notified once someone accepts!
       updated_at: new Date().toISOString()
     };
 
-    const { error: updateError } = await supabase
+    // CRITICAL: Only decline if status is still valid (prevents race condition)
+    const validStatusesForDecline = ['requested', 'seeking_alternate', 'timeout_reassigned'];
+
+    const { data: declinedBooking, error: updateError } = await supabase
       .from('bookings')
       .update(declineUpdateData)
-      .eq('booking_id', booking.booking_id);
+      .eq('booking_id', booking.booking_id)
+      .in('status', validStatusesForDecline)
+      .select('id, booking_id, status');
 
     if (updateError) {
       console.error('❌ Error updating booking status to declined:', updateError);
       throw new Error('Failed to decline booking');
+    }
+
+    // CRITICAL: Verify booking was actually updated
+    if (!declinedBooking || declinedBooking.length === 0) {
+      console.error('❌ RACE CONDITION DETECTED: Booking was not declined - status already changed');
+      return {
+        statusCode: 409,
+        headers,
+        body: generateErrorPage('This booking has already been processed. The status may have changed to confirmed or another state.')
+      };
     }
 
     // Update all bookings in the series to declined (if this is part of a recurring series)
@@ -707,7 +737,8 @@ You'll be notified once someone accepts!
           updated_at: new Date().toISOString()
         })
         .eq('request_id', booking.request_id)
-        .neq('booking_id', booking.booking_id); // Don't update the current booking again
+        .neq('booking_id', booking.booking_id)
+        .in('status', validStatusesForDecline); // Only update if still in valid state
 
       if (seriesUpdateError) {
         console.error('❌ Error updating series bookings to declined:', seriesUpdateError);

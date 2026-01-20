@@ -286,17 +286,27 @@ async function handleFirstTimeout(booking, timeoutMinutes) {
       
       if (availableTherapists.length === 0) {
         console.log('❌ No alternative therapists available for', booking.booking_id, '- declining immediately');
+        // RACE CONDITION FIX: Only decline if status is still 'requested'
+        const declineResult = await updateBookingStatus(booking.booking_id, 'declined', 'requested');
+        if (!declineResult.success && declineResult.reason) {
+          console.log('⚠️ Booking already processed, skipping decline:', declineResult.reason);
+          return { success: true, booking_id: booking.booking_id, action: 'skipped_status_changed' };
+        }
         await sendClientDeclineEmail(booking);
-        await updateBookingStatus(booking.booking_id, 'declined');
         await addStatusHistory(booking.id, 'declined', null, 'Automatic timeout - no available therapists');
         return { success: true, booking_id: booking.booking_id, action: 'declined_no_alternatives' };
       }
 
-      // 1. FIRST: Send "Looking for Alternate" email to customer
-      await sendClientLookingForAlternateEmail(booking);
+      // 1. FIRST: Update booking status to prevent reprocessing (BEFORE sending emails)
+      // RACE CONDITION FIX: Only update if status is still 'requested'
+      const reassignResult = await updateBookingStatus(booking.booking_id, 'timeout_reassigned', 'requested');
+      if (!reassignResult.success && reassignResult.reason) {
+        console.log('⚠️ Booking already processed, skipping reassignment:', reassignResult.reason);
+        return { success: true, booking_id: booking.booking_id, action: 'skipped_status_changed' };
+      }
 
-      // 2. CRITICAL: Update booking status to prevent reprocessing
-      await updateBookingStatus(booking.booking_id, 'timeout_reassigned');
+      // 2. Send "Looking for Alternate" email to customer
+      await sendClientLookingForAlternateEmail(booking);
       await addStatusHistory(booking.id, 'timeout_reassigned', null, 'Reassigned to ' + availableTherapists.length + ' therapists after first timeout');
 
       // 3. Send booking requests to ALL available therapists  
@@ -316,10 +326,15 @@ async function handleFirstTimeout(booking, timeoutMinutes) {
     } else {
       // Customer doesn't want alternatives - decline immediately
       console.log('❌ Customer does not want alternatives - declining booking', booking.booking_id);
+      // RACE CONDITION FIX: Only decline if status is still 'requested'
+      const declineResult = await updateBookingStatus(booking.booking_id, 'declined', 'requested');
+      if (!declineResult.success && declineResult.reason) {
+        console.log('⚠️ Booking already processed, skipping decline:', declineResult.reason);
+        return { success: true, booking_id: booking.booking_id, action: 'skipped_status_changed' };
+      }
       await sendClientDeclineEmail(booking);
-      await updateBookingStatus(booking.booking_id, 'declined');
       await addStatusHistory(booking.id, 'declined', null, 'Automatic timeout - customer declined alternatives');
-      
+
       return {
         success: true,
         booking_id: booking.booking_id,
@@ -338,11 +353,21 @@ async function handleSecondTimeout(booking) {
   try {
     console.log('⏰ Second timeout for booking', booking.booking_id, '- sending final decline');
 
-    // Send final decline email to client
-    await sendClientDeclineEmail(booking);
+    // RACE CONDITION FIX: Only decline if status is still 'timeout_reassigned' or 'seeking_alternate'
+    // First try timeout_reassigned, then seeking_alternate
+    let declineResult = await updateBookingStatus(booking.booking_id, 'declined', 'timeout_reassigned');
+    if (!declineResult.success && declineResult.reason === 'status_mismatch') {
+      // Try seeking_alternate as fallback
+      declineResult = await updateBookingStatus(booking.booking_id, 'declined', 'seeking_alternate');
+    }
 
-    // CRITICAL: Update booking status to prevent reprocessing
-    await updateBookingStatus(booking.booking_id, 'declined');
+    if (!declineResult.success && declineResult.reason) {
+      console.log('⚠️ Booking already processed, skipping final decline:', declineResult.reason);
+      return { success: true, booking_id: booking.booking_id, action: 'skipped_status_changed' };
+    }
+
+    // Send final decline email to client AFTER status update
+    await sendClientDeclineEmail(booking);
     await addStatusHistory(booking.id, 'declined', null, 'Automatic final timeout - no therapist responses');
 
     return {
