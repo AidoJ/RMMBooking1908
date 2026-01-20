@@ -26,6 +26,7 @@ const EMAILJS_LOOKING_ALTERNATE_TEMPLATE_ID = process.env.EMAILJS_LOOKING_ALTERN
 const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || 'qfM_qA664E4JddSMN';
 const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 const SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL; // Configure in Netlify environment variables
+const SUPER_ADMIN_MOBILE_NO = process.env.SUPER_ADMIN_MOBILE_NO; // Configure in Netlify environment variables
 
 console.log('🔧 EmailJS Configuration:');
 console.log('Service ID:', EMAILJS_SERVICE_ID);
@@ -490,6 +491,19 @@ Check your email for full details!
       console.log('❌ No customer phone number found for SMS');
     }
 
+    // Send SMS notification to admin for confirmed booking
+    if (SUPER_ADMIN_MOBILE_NO) {
+      try {
+        const timezone = booking.booking_timezone || 'Australia/Brisbane';
+        const adminSMS = `✅ BOOKING CONFIRMED\n\nID: ${booking.booking_id}\nTherapist: ${therapist.first_name} ${therapist.last_name}\nDate: ${getShortDate(booking.booking_time, timezone)} at ${getLocalTime(booking.booking_time, timezone)}\nClient: ${booking.first_name} ${booking.last_name}\n\n- Rejuvenators`;
+
+        await sendSMSNotification(SUPER_ADMIN_MOBILE_NO, adminSMS);
+        console.log('📱 Admin SMS notification sent for confirmed booking');
+      } catch (smsError) {
+        console.error('❌ Error sending admin SMS:', smsError);
+      }
+    }
+
     // Get service name for display
     let serviceName = 'Massage Service';
     if (booking.services && booking.services.name) {
@@ -764,6 +778,19 @@ Please contact us at 1300 302542 to reschedule.
         console.log('✅ Customer decline SMS sent');
       } catch (smsError) {
         console.error('❌ Error sending customer decline SMS:', smsError);
+      }
+    }
+
+    // Send SMS notification to admin for declined booking
+    if (SUPER_ADMIN_MOBILE_NO) {
+      try {
+        const timezone = booking.booking_timezone || 'Australia/Brisbane';
+        const adminSMS = `❌ BOOKING DECLINED\n\nID: ${booking.booking_id}\nDeclined by: ${therapist.first_name} ${therapist.last_name}\nDate: ${getShortDate(booking.booking_time, timezone)} at ${getLocalTime(booking.booking_time, timezone)}\nClient: ${booking.first_name} ${booking.last_name}\nReason: No alternatives available\n\n- Rejuvenators`;
+
+        await sendSMSNotification(SUPER_ADMIN_MOBILE_NO, adminSMS);
+        console.log('📱 Admin SMS notification sent for declined booking');
+      } catch (smsError) {
+        console.error('❌ Error sending admin SMS:', smsError);
       }
     }
 

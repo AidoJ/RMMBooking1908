@@ -54,6 +54,50 @@ function isAustralianDST(date) {
   return date >= dstStart || date < dstEnd;
 }
 
+// Helper: Normalize Australian phone numbers to international format
+function normalizeAustralianPhone(phone) {
+  if (!phone) return null;
+  let cleaned = phone.replace(/[\s\-\(\)]/g, '');
+  if (cleaned.startsWith('+61')) return cleaned;
+  if (cleaned.startsWith('61')) return '+' + cleaned;
+  if (cleaned.startsWith('0')) return '+61' + cleaned.substring(1);
+  return '+61' + cleaned;
+}
+
+// Helper: Send SMS to admin
+async function sendAdminSMS(phoneNumber, message) {
+  try {
+    const normalizedPhone = normalizeAustralianPhone(phoneNumber);
+    if (!normalizedPhone) {
+      console.error('❌ Invalid admin phone number');
+      return { success: false, error: 'Invalid phone number' };
+    }
+
+    const smsUrl = process.env.URL
+      ? `${process.env.URL}/.netlify/functions/send-sms`
+      : 'https://booking.rejuvenators.com/.netlify/functions/send-sms';
+
+    const response = await fetch(smsUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: normalizedPhone, message: message })
+    });
+
+    const contentType = response.headers.get('content-type');
+    let result;
+    if (contentType && contentType.includes('application/json')) {
+      result = await response.json();
+    } else {
+      const text = await response.text();
+      result = { success: response.ok, message: text };
+    }
+    return result;
+  } catch (error) {
+    console.error('❌ Error sending admin SMS:', error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Get timezone offset string for Australian timezone on specific date
 function getTimezoneOffset(timezone, dateString) {
   // dateString: "2025-11-27T13:30:00"
@@ -304,6 +348,42 @@ exports.handler = async (event, context) => {
       }
 
       console.log('✅ Booking created successfully:', data[0]?.booking_id);
+
+      // Send SMS notification to admin for new booking request
+      const adminMobile = process.env.SUPER_ADMIN_MOBILE_NO;
+      if (adminMobile) {
+        try {
+          // Get therapist name
+          let therapistName = 'Unassigned';
+          if (bookingData.therapist_id) {
+            const { data: therapist } = await supabase
+              .from('therapist_profiles')
+              .select('first_name, last_name')
+              .eq('id', bookingData.therapist_id)
+              .single();
+            if (therapist) {
+              therapistName = `${therapist.first_name} ${therapist.last_name}`;
+            }
+          }
+
+          // Format date/time for SMS
+          const bookingDate = new Date(data[0].booking_time);
+          const dateStr = bookingDate.toLocaleDateString('en-AU', {
+            weekday: 'short', day: 'numeric', month: 'short', timeZone: bookingData.booking_timezone || 'Australia/Sydney'
+          });
+          const timeStr = bookingDate.toLocaleTimeString('en-AU', {
+            hour: '2-digit', minute: '2-digit', timeZone: bookingData.booking_timezone || 'Australia/Sydney'
+          });
+
+          const adminSMS = `📥 NEW BOOKING REQUEST\n\nID: ${data[0].booking_id}\nTherapist: ${therapistName}\nDate: ${dateStr} at ${timeStr}\nClient: ${bookingData.first_name} ${bookingData.last_name}\n\n- Rejuvenators`;
+
+          await sendAdminSMS(adminMobile, adminSMS);
+          console.log('📱 Admin SMS notification sent for new booking');
+        } catch (smsError) {
+          console.error('❌ Error sending admin SMS:', smsError);
+          // Don't fail the booking if SMS fails
+        }
+      }
 
       return {
         statusCode: 200,
