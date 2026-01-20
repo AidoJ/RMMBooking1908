@@ -3486,13 +3486,43 @@ async function authorizeCard() {
       price
     });
 
-    if (!customerEmail || !customerFirstName || !customerLastName || !price) {
+    // Validate customer details (price can be 0 for 100% discount bookings)
+    if (!customerEmail || !customerFirstName || !customerLastName || price === null || price === undefined) {
       const missingFields = [];
       if (!customerEmail) missingFields.push('Email');
       if (!customerFirstName) missingFields.push('First Name');
       if (!customerLastName) missingFields.push('Last Name');
-      if (!price) missingFields.push('Price');
+      if (price === null || price === undefined) missingFields.push('Price');
       throw new Error(`Missing: ${missingFields.join(', ')}. Please go back and complete all fields.`);
+    }
+
+    // Handle zero-price bookings (100% discount or gift card covers full amount)
+    if (price === 0) {
+      console.log('🎁 Zero-price booking detected - skipping card authorization');
+
+      // Mark as authorized (no payment needed)
+      cardAuthorized = true;
+      authorizedPaymentIntentId = null; // No payment intent for free bookings
+
+      // Update UI to show success
+      authorizeBtn.style.display = 'none';
+      statusDiv.innerHTML = `
+        <div style="background: #f0fdf4; border: 2px solid #86efac; color: #166534;">
+          <div style="font-size: 20px; margin-bottom: 8px;">✅</div>
+          <div style="font-weight: 700; font-size: 18px; margin-bottom: 8px;">No Payment Required!</div>
+          <div style="font-size: 14px; color: #15803d;">
+            Your booking is fully covered by discount/gift card. No credit card needed.
+          </div>
+        </div>
+      `;
+      statusDiv.style.display = 'block';
+
+      // Enable the "Proceed to Booking Request" button
+      proceedBtn.disabled = false;
+      proceedBtn.style.opacity = '1';
+      proceedBtn.style.cursor = 'pointer';
+
+      return true;
     }
 
     // Track payment initiation
@@ -4540,27 +4570,37 @@ if (confirmBtn) {
 
         // Check if using card payment method
         const selectedPaymentMethod = payload.payment_method || 'card';
+        const isZeroPriceBooking = payload.price === 0 || parseFloat(payload.price) === 0;
 
         if (selectedPaymentMethod === 'card') {
-          // Card payment - require authorization
-          if (!cardAuthorized || !authorizedPaymentIntentId) {
-            throw new Error('Card authorization missing. Please go back to the payment step.');
-          }
+          // Check if this is a zero-price booking (100% discount/gift card)
+          if (isZeroPriceBooking) {
+            console.log('🎁 Zero-price booking - no payment required');
+            confirmBtn.textContent = 'Creating Booking Request...';
+            payload.payment_status = 'not_required'; // No payment needed
+            payload.status = 'requested'; // Waiting for therapist acceptance
+            // No payment_intent_id for free bookings
+          } else {
+            // Card payment - require authorization
+            if (!cardAuthorized || !authorizedPaymentIntentId) {
+              throw new Error('Card authorization missing. Please go back to the payment step.');
+            }
 
-          console.log('✅ Using pre-authorized card:', authorizedPaymentIntentId);
+            console.log('✅ Using pre-authorized card:', authorizedPaymentIntentId);
 
-          // Create booking with card authorized (payment pending)
-          confirmBtn.textContent = 'Creating Booking Request...';
-          payload.payment_status = 'authorized'; // Card authorized, payment pending
-          payload.status = 'requested'; // Waiting for therapist acceptance
-          payload.payment_intent_id = authorizedPaymentIntentId;
+            // Create booking with card authorized (payment pending)
+            confirmBtn.textContent = 'Creating Booking Request...';
+            payload.payment_status = 'authorized'; // Card authorized, payment pending
+            payload.status = 'requested'; // Waiting for therapist acceptance
+            payload.payment_intent_id = authorizedPaymentIntentId;
 
-          // For recurring bookings, include payment method and customer for future charges
-          if (window.recurringBooking?.enabled && window.stripePaymentMethodId) {
-            payload.stripe_payment_method_id = window.stripePaymentMethodId;
-            payload.stripe_customer_id = window.stripeCustomerId || null;
-            console.log('🔄 Including payment method for recurring bookings:', window.stripePaymentMethodId);
-            console.log('🔄 Including customer ID for recurring bookings:', window.stripeCustomerId);
+            // For recurring bookings, include payment method and customer for future charges
+            if (window.recurringBooking?.enabled && window.stripePaymentMethodId) {
+              payload.stripe_payment_method_id = window.stripePaymentMethodId;
+              payload.stripe_customer_id = window.stripeCustomerId || null;
+              console.log('🔄 Including payment method for recurring bookings:', window.stripePaymentMethodId);
+              console.log('🔄 Including customer ID for recurring bookings:', window.stripeCustomerId);
+            }
           }
         } else {
           // Bank transfer or invoice - no card authorization needed
