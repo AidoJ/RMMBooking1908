@@ -4577,7 +4577,7 @@ if (confirmBtn) {
           if (isZeroPriceBooking) {
             console.log('🎁 Zero-price booking - no payment required');
             confirmBtn.textContent = 'Creating Booking Request...';
-            payload.payment_status = 'not_required'; // No payment needed
+            payload.payment_status = 'paid'; // Zero-price booking - fully covered by discount/gift card
             payload.status = 'requested'; // Waiting for therapist acceptance
             // No payment_intent_id for free bookings
           } else {
