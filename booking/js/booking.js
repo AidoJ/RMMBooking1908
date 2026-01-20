@@ -1185,6 +1185,9 @@ console.log('Globals:', {
   }
 
   async function fetchSettings() {
+    // Set default tax rate before fetching (10% GST)
+    window.taxRatePercentage = 10;
+
     try {
     const { data: settings } = await window.supabase
       .from('system_settings')
@@ -1201,7 +1204,9 @@ console.log('Globals:', {
         if (s.key === 'therapist_response_timeout_minutes') window.therapistResponseTimeoutMinutes = Number(s.value);
         if (s.key === 'urgent_response_timeout_minutes') window.urgentResponseTimeoutMinutes = Number(s.value);
         if (s.key === 'standard_response_timeout_minutes') window.standardResponseTimeoutMinutes = Number(s.value);
+        if (s.key === 'tax_rate_percentage') window.taxRatePercentage = Number(s.value);
       }
+      console.log('💰 Tax rate loaded from system settings:', window.taxRatePercentage + '%');
       }
     } catch (error) {
       console.error('❌ Error fetching settings:', error);
@@ -1307,11 +1312,11 @@ console.log('Globals:', {
 
     // Store gross price for discount calculations
     window.grossPrice = price;
-    
+
     // Apply discounts if available
     let finalPrice = price;
     let discountAmount = 0;
-    
+
     // Check for applied discount
     if (window.appliedDiscount) {
       if (window.appliedDiscount.discount_type === 'percentage') {
@@ -1322,7 +1327,7 @@ console.log('Globals:', {
       finalPrice = price - discountAmount;
       breakdown.push(`Discount (${window.appliedDiscount.code}): -$${discountAmount.toFixed(2)}`);
     }
-    
+
     // Apply gift card if available
     let giftCardAmount = 0;
     if (window.appliedGiftCard) {
@@ -1330,10 +1335,27 @@ console.log('Globals:', {
       finalPrice = finalPrice - giftCardAmount;
       breakdown.push(`Gift Card (${window.appliedGiftCard.code}): -$${giftCardAmount.toFixed(2)}`);
     }
-    
-    // Show GST as percentage breakdown only (already included in price)
-    const gstAmount = finalPrice / 11 * 1; // GST component of final price
-    breakdown.push(`GST (10%): $${gstAmount.toFixed(2)}`);
+
+    // Calculate GST using tax_rate_percentage from system settings
+    // GST is included in price, so calculate the tax component
+    const taxRate = window.taxRatePercentage || 10; // Default to 10% if not loaded
+    const gstAmount = finalPrice - (finalPrice / (1 + taxRate / 100)); // Extract GST from GST-inclusive price
+    breakdown.push(`GST (${taxRate}%): $${gstAmount.toFixed(2)}`);
+
+    // Set window.pricingState for booking summary display
+    window.pricingState = {
+      finalPricing: {
+        grossPrice: price,
+        discountAmount: discountAmount,
+        giftCardAmount: giftCardAmount,
+        taxAmount: gstAmount,
+        taxRatePercentage: taxRate,
+        netPrice: finalPrice
+      },
+      appliedDiscount: window.appliedDiscount || null,
+      appliedGiftCard: window.appliedGiftCard || null
+    };
+    console.log('💰 Pricing state updated:', window.pricingState);
     
     // Update price display
     document.getElementById('priceAmount').textContent = finalPrice.toFixed(2);
@@ -3808,29 +3830,40 @@ function generatePricingSummaryHTML() {
   const finalPricing = window.pricingState?.finalPricing;
   const appliedDiscount = window.pricingState?.appliedDiscount;
   const appliedGiftCard = window.pricingState?.appliedGiftCard;
-  
-  if (!finalPricing || (finalPricing.discountAmount === 0 && finalPricing.giftCardAmount === 0)) {
+
+  // Always show pricing breakdown if we have pricing state (includes GST info)
+  if (!finalPricing) {
     return '';
   }
-  
+
+  // Only show detailed breakdown section if there are discounts/gift cards OR if GST > 0
+  const hasDiscountsOrGST = finalPricing.discountAmount > 0 || finalPricing.giftCardAmount > 0 || finalPricing.taxAmount > 0;
+  if (!hasDiscountsOrGST) {
+    return '';
+  }
+
   let html = '<div style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-left: 3px solid #007e8c; border-radius: 5px;">';
-  html += '<h4 style="margin: 0 0 10px 0; color: #007e8c;">Final Pricing Breakdown</h4>';
-  
-  html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;">`;
-  html += `<span>Subtotal:</span><span>$${finalPricing.grossPrice.toFixed(2)}</span></div>`;
-  
+  html += '<h4 style="margin: 0 0 10px 0; color: #007e8c;">Pricing Breakdown</h4>';
+
+  // Show subtotal if there are any discounts
+  if (finalPricing.discountAmount > 0 || finalPricing.giftCardAmount > 0) {
+    html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px;">`;
+    html += `<span>Subtotal:</span><span>$${finalPricing.grossPrice.toFixed(2)}</span></div>`;
+  }
+
   if (finalPricing.discountAmount > 0) {
     html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #10b981;">`;
     html += `<span>Discount (${appliedDiscount.code}):</span><span>-$${finalPricing.discountAmount.toFixed(2)}</span></div>`;
   }
-  
+
   if (finalPricing.giftCardAmount > 0) {
     html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #007e8c;">`;
     html += `<span>Gift Card (${appliedGiftCard.code}):</span><span>-$${finalPricing.giftCardAmount.toFixed(2)}</span></div>`;
   }
-  
-  html += `<div style="display: flex; justify-content: space-between; margin-bottom: 10px;">`;
-  html += `<span>GST (10%):</span><span>$${finalPricing.taxAmount.toFixed(2)}</span></div>`;
+
+  // Always show GST (included in price)
+  html += `<div style="display: flex; justify-content: space-between; margin-bottom: 5px; color: #666;">`;
+  html += `<span>Includes GST (${finalPricing.taxRatePercentage || 10}%):</span><span>$${finalPricing.taxAmount.toFixed(2)}</span></div>`;
   
   html += `<hr style="border: 1px solid #ddd; margin: 10px 0;">`;
   html += `<div style="display: flex; justify-content: space-between; font-weight: bold; color: #007e8c; font-size: 1.1em;">`;
@@ -4514,10 +4547,12 @@ if (confirmBtn) {
       giftCardAmount = Math.min(window.appliedGiftCard.current_balance, priceAfterDiscount);
     }
 
-    // Calculate GST (10% of final price)
-    const taxRateAmount = netPrice / 11 * 1; // GST component of final price
+    // Calculate GST using tax_rate_percentage from system settings
+    // Prices are GST-inclusive, so extract the tax component for reporting
+    const taxRate = window.taxRatePercentage || 10; // Default to 10% if not loaded
+    const taxRateAmount = netPrice - (netPrice / (1 + taxRate / 100)); // Extract GST from GST-inclusive price
 
-    console.log('💰 Booking pricing:', { originalPrice, discountAmount, giftCardAmount, finalPrice, netPrice });
+    console.log('💰 Booking pricing:', { originalPrice, discountAmount, giftCardAmount, finalPrice, netPrice, taxRateAmount, taxRate });
 
     // Build payload
     const payload = {
