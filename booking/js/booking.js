@@ -4576,7 +4576,8 @@ if (confirmBtn) {
 
         // Check if using card payment method
         const selectedPaymentMethod = payload.payment_method || 'card';
-        const isZeroPriceBooking = payload.price === 0 || parseFloat(payload.price) === 0;
+        // Check net_price (final price after discounts) - NOT payload.price which is original price
+        const isZeroPriceBooking = payload.net_price === 0 || parseFloat(payload.net_price) === 0;
 
         if (selectedPaymentMethod === 'card') {
           // Check if this is a zero-price booking (100% discount/gift card)
