@@ -2,19 +2,20 @@
   "name": "Rejuvenators Admin Panel",
   "short_name": "Admin Panel",
   "description": "Manage Rejuvenators Mobile Massage bookings and operations",
-  "start_url": "/",
+  "start_url": "/admin/",
+  "scope": "/admin/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#dc3545",
   "icons": [
     {
-      "src": "/favicon.png",
+      "src": "/admin/favicon.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/favicon.png",
+      "src": "/admin/favicon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
