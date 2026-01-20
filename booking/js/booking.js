@@ -4489,29 +4489,35 @@ if (confirmBtn) {
     const discountCode = window.appliedDiscount?.code || null;
     const giftCardCode = window.appliedGiftCard?.code || null;
 
-    // Get the final calculated price from the display
-    const finalPrice = parseFloat(document.getElementById('priceAmount').textContent) || price;
+    // Get the ORIGINAL price (before discount) from window.grossPrice set by calculatePrice()
+    // This is the full price before any discounts or gift cards are applied
+    const originalPrice = window.grossPrice || price;
+
+    // Get the final calculated price from the display (after all discounts)
+    const finalPrice = parseFloat(document.getElementById('priceAmount').textContent) || 0;
     const netPrice = finalPrice;
 
-    // Calculate discount amount
+    // Calculate discount amount using ORIGINAL price (not the already-discounted price)
     let discountAmount = 0;
     if (window.appliedDiscount) {
       if (window.appliedDiscount.discount_type === 'percentage') {
-        discountAmount = (price * window.appliedDiscount.discount_value) / 100;
+        discountAmount = (originalPrice * window.appliedDiscount.discount_value) / 100;
       } else if (window.appliedDiscount.discount_type === 'fixed_amount') {
-        discountAmount = Math.min(window.appliedDiscount.discount_value, price);
+        discountAmount = Math.min(window.appliedDiscount.discount_value, originalPrice);
       }
     }
 
-    // Calculate gift card amount
+    // Calculate gift card amount (applied after discount)
     let giftCardAmount = 0;
     if (window.appliedGiftCard) {
-      const priceAfterDiscount = price - discountAmount;
+      const priceAfterDiscount = originalPrice - discountAmount;
       giftCardAmount = Math.min(window.appliedGiftCard.current_balance, priceAfterDiscount);
     }
 
     // Calculate GST (10% of final price)
     const taxRateAmount = netPrice / 11 * 1; // GST component of final price
+
+    console.log('💰 Booking pricing:', { originalPrice, discountAmount, giftCardAmount, finalPrice, netPrice });
 
     // Build payload
     const payload = {
@@ -4534,10 +4540,10 @@ if (confirmBtn) {
       room_number: roomNumber,
       booker_name: bookerName,
       notes,
-      price,
+      price: originalPrice, // Original price before discounts
       therapist_fee,
       // Pricing fields
-      net_price: netPrice,
+      net_price: netPrice, // Final price after all discounts
       discount_code: discountCode,
       gift_card_code: giftCardCode,
       discount_amount: discountAmount,
