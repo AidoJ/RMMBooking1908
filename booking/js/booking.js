@@ -3474,10 +3474,25 @@ async function authorizeCard() {
     const customerEmail = document.getElementById('customerEmail')?.value || '';
     const customerPhone = document.getElementById('customerPhone')?.value || '';
     const addressInput = document.getElementById('address');
-    const price = document.getElementById('priceAmount').textContent ? parseFloat(document.getElementById('priceAmount').textContent) : null;
+    const priceText = document.getElementById('priceAmount')?.textContent;
+    const price = priceText ? parseFloat(priceText) : null;
+
+    // Debug logging to identify missing fields
+    console.log('🔍 Authorization check - Fields:', {
+      customerFirstName,
+      customerLastName,
+      customerEmail,
+      priceText,
+      price
+    });
 
     if (!customerEmail || !customerFirstName || !customerLastName || !price) {
-      throw new Error('Missing customer information. Please go back and complete all fields.');
+      const missingFields = [];
+      if (!customerEmail) missingFields.push('Email');
+      if (!customerFirstName) missingFields.push('First Name');
+      if (!customerLastName) missingFields.push('Last Name');
+      if (!price) missingFields.push('Price');
+      throw new Error(`Missing: ${missingFields.join(', ')}. Please go back and complete all fields.`);
     }
 
     // Track payment initiation
