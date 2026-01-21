@@ -2916,6 +2916,30 @@ async function getAvailableSlotsForTherapist(therapist, date, durationMinutes) {
     return [];
   }
   console.log('getAvailableSlotsForTherapist called for therapist:', therapist, 'date:', date, 'duration:', durationMinutes);
+
+  // 0. CRITICAL: Check for time-off on this date FIRST
+  const { data: timeOffs, error: timeOffError } = await window.supabase
+    .from('therapist_time_off')
+    .select('start_time, end_time, reason')
+    .eq('therapist_id', therapist.id)
+    .eq('is_active', true)
+    .lte('start_date', date)
+    .gte('end_date', date);
+
+  if (timeOffError) {
+    console.error('Error checking therapist time-off:', timeOffError);
+  }
+
+  // If therapist has ALL-DAY time-off (no specific times), they're completely unavailable
+  if (timeOffs && timeOffs.length > 0) {
+    const allDayTimeOff = timeOffs.find(t => !t.start_time && !t.end_time);
+    if (allDayTimeOff) {
+      console.log(`⛔ Therapist ${therapist.id} has all-day time-off on ${date}:`, allDayTimeOff.reason || 'No reason specified');
+      return [];
+    }
+    console.log(`⚠️ Therapist ${therapist.id} has partial time-off on ${date}:`, timeOffs);
+  }
+
   // 1. Get working hours for the day
   const dayOfWeek = new Date(date).getDay();
   const { data: availabilities } = await window.supabase
@@ -2936,10 +2960,31 @@ async function getAvailableSlotsForTherapist(therapist, date, durationMinutes) {
 
   // 3. Build all possible slots (hourly, businessOpeningHour to businessClosingHour)
   const slots = [];
+
+  // Get partial time-offs (those with specific start_time and end_time)
+  const partialTimeOffs = (timeOffs || []).filter(t => t.start_time && t.end_time);
+
   for (let hour = window.businessOpeningHour; hour <= window.businessClosingHour; hour++) {
     const slotStart = `${hour.toString().padStart(2, '0')}:00`;
     // Check if slot is within working hours
     if (slotStart < start_time || slotStart >= end_time) continue;
+
+    // Check for overlap with PARTIAL time-off periods
+    let blockedByTimeOff = false;
+    for (const timeOff of partialTimeOffs) {
+      // Time-off times are in HH:MM:SS format, slot is HH:MM
+      const timeOffStart = timeOff.start_time.substring(0, 5); // Get HH:MM
+      const timeOffEnd = timeOff.end_time.substring(0, 5);     // Get HH:MM
+
+      // Check if slot start falls within time-off period
+      if (slotStart >= timeOffStart && slotStart < timeOffEnd) {
+        console.log(`⛔ Slot ${slotStart} blocked by partial time-off (${timeOffStart} - ${timeOffEnd})`);
+        blockedByTimeOff = true;
+        break;
+      }
+    }
+    if (blockedByTimeOff) continue;
+
     // Check for overlap with existing bookings (including before/after buffer)
     const slotStartDate = new Date(date + 'T' + slotStart);
     const slotEndDate = new Date(slotStartDate.getTime() + durationMinutes * 60000 + window.afterServiceBuffer * 60000);
