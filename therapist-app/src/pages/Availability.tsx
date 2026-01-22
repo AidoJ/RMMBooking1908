@@ -13,7 +13,7 @@ import {
   Spin,
   message,
 } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { supabaseClient } from '../utility/supabaseClient';
 import dayjs from 'dayjs';
 
@@ -35,6 +35,8 @@ export const Availability: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
   const [therapistProfileId, setTherapistProfileId] = useState<string | null>(null);
+  const [editingSlot, setEditingSlot] = useState<AvailabilitySlot | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     loadAvailability();
@@ -85,10 +87,13 @@ export const Availability: React.FC = () => {
   const checkTimeOverlap = (
     dayOfWeek: number,
     startTime: string,
-    endTime: string
+    endTime: string,
+    excludeSlotId?: string
   ): { hasOverlap: boolean; conflictingSlot?: AvailabilitySlot } => {
-    // Find all slots for the same day
-    const sameDaySlots = availability.filter(slot => slot.day_of_week === dayOfWeek);
+    // Find all slots for the same day (excluding the slot being edited)
+    const sameDaySlots = availability.filter(slot =>
+      slot.day_of_week === dayOfWeek && slot.id !== excludeSlotId
+    );
 
     // Convert times to minutes for easier comparison
     const toMinutes = (timeStr: string) => {
@@ -119,7 +124,7 @@ export const Availability: React.FC = () => {
     return { hasOverlap: false };
   };
 
-  const handleAdd = async (values: any) => {
+  const handleSubmit = async (values: any) => {
     if (!therapistProfileId) {
       message.error('Profile not found. Please complete your profile first.');
       return;
@@ -130,8 +135,13 @@ export const Availability: React.FC = () => {
       const endTime = values.end_time.format('HH:mm:ss');
       const dayOfWeek = values.day_of_week;
 
-      // Check for overlapping time slots
-      const { hasOverlap, conflictingSlot } = checkTimeOverlap(dayOfWeek, startTime, endTime);
+      // Check for overlapping time slots (exclude current slot if editing)
+      const { hasOverlap, conflictingSlot } = checkTimeOverlap(
+        dayOfWeek,
+        startTime,
+        endTime,
+        isEditMode ? editingSlot?.id : undefined
+      );
 
       if (hasOverlap) {
         if (conflictingSlot) {
@@ -146,29 +156,65 @@ export const Availability: React.FC = () => {
         return;
       }
 
-      const availabilityData = {
-        therapist_id: therapistProfileId,
-        day_of_week: dayOfWeek,
-        start_time: startTime,
-        end_time: endTime
-      };
+      if (isEditMode && editingSlot) {
+        // Update existing availability
+        const { data, error } = await supabaseClient
+          .from('therapist_availability')
+          .update({
+            day_of_week: dayOfWeek,
+            start_time: startTime,
+            end_time: endTime
+          })
+          .eq('id', editingSlot.id)
+          .select()
+          .single();
 
-      const { data, error } = await supabaseClient
-        .from('therapist_availability')
-        .insert([availabilityData])
-        .select()
-        .single();
+        if (error) throw error;
 
-      if (error) throw error;
+        setAvailability(availability.map(slot =>
+          slot.id === editingSlot.id ? data : slot
+        ));
+        message.success('Availability updated successfully!');
+      } else {
+        // Add new availability
+        const availabilityData = {
+          therapist_id: therapistProfileId,
+          day_of_week: dayOfWeek,
+          start_time: startTime,
+          end_time: endTime
+        };
 
-      setAvailability([...availability, data]);
+        const { data, error } = await supabaseClient
+          .from('therapist_availability')
+          .insert([availabilityData])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setAvailability([...availability, data]);
+        message.success('Availability added successfully!');
+      }
+
       setModalVisible(false);
+      setIsEditMode(false);
+      setEditingSlot(null);
       form.resetFields();
-      message.success('Availability added successfully!');
     } catch (error) {
-      console.error('Error adding availability:', error);
-      message.error('Failed to add availability');
+      console.error('Error saving availability:', error);
+      message.error('Failed to save availability');
     }
+  };
+
+  const handleEdit = (slot: AvailabilitySlot) => {
+    setEditingSlot(slot);
+    setIsEditMode(true);
+    form.setFieldsValue({
+      day_of_week: slot.day_of_week,
+      start_time: dayjs(slot.start_time, 'HH:mm:ss'),
+      end_time: dayjs(slot.end_time, 'HH:mm:ss')
+    });
+    setModalVisible(true);
   };
 
   const handleDelete = async (id: string) => {
@@ -212,14 +258,24 @@ export const Availability: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       render: (_: any, record: AvailabilitySlot) => (
-        <Button
-          danger
-          size="small"
-          icon={<DeleteOutlined />}
-          onClick={() => handleDelete(record.id)}
-        >
-          Remove
-        </Button>
+        <>
+          <Button
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEdit(record)}
+            style={{ marginRight: 8 }}
+          >
+            Edit
+          </Button>
+          <Button
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record.id)}
+          >
+            Remove
+          </Button>
+        </>
       ),
     },
   ];
@@ -252,7 +308,12 @@ export const Availability: React.FC = () => {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => setModalVisible(true)}
+            onClick={() => {
+              setIsEditMode(false);
+              setEditingSlot(null);
+              form.resetFields();
+              setModalVisible(true);
+            }}
             disabled={!therapistProfileId}
             size="large"
           >
@@ -269,16 +330,18 @@ export const Availability: React.FC = () => {
       </Card>
 
       <Modal
-        title="Add Availability"
+        title={isEditMode ? "Edit Availability" : "Add Availability"}
         open={modalVisible}
         onCancel={() => {
           setModalVisible(false);
+          setIsEditMode(false);
+          setEditingSlot(null);
           form.resetFields();
         }}
         footer={null}
         width={500}
       >
-        <Form form={form} onFinish={handleAdd} layout="vertical">
+        <Form form={form} onFinish={handleSubmit} layout="vertical">
           <Form.Item
             label="Day of Week"
             name="day_of_week"
@@ -328,7 +391,7 @@ export const Availability: React.FC = () => {
 
           <Form.Item>
             <Button type="primary" htmlType="submit" size="large" block>
-              Add Availability
+              {isEditMode ? "Update Availability" : "Add Availability"}
             </Button>
           </Form.Item>
         </Form>

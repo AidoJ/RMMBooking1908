@@ -30,6 +30,7 @@ import {
   MailOutlined,
   PlusOutlined,
   DeleteOutlined,
+  EditOutlined,
   FileOutlined,
   UploadOutlined,
   BankOutlined,
@@ -112,6 +113,7 @@ const TherapistProfileManagement: React.FC = () => {
   const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
   const [timeOff, setTimeOff] = useState<TimeOff[]>([]);
   const [availabilityModalVisible, setAvailabilityModalVisible] = useState(false);
+  const [editingAvailability, setEditingAvailability] = useState<AvailabilitySlot | null>(null);
   const [timeOffModalVisible, setTimeOffModalVisible] = useState(false);
   const [therapistServices, setTherapistServices] = useState<any[]>([]);
   const [allServices, setAllServices] = useState<any[]>([]);
@@ -593,22 +595,56 @@ const TherapistProfileManagement: React.FC = () => {
         end_time: values.end_time.format('HH:mm:ss')
       };
 
-      const { data, error } = await supabaseClient
-        .from('therapist_availability')
-        .insert([availabilityData])
-        .select()
-        .single();
+      if (editingAvailability) {
+        // Update existing availability
+        const { data, error } = await supabaseClient
+          .from('therapist_availability')
+          .update({
+            day_of_week: values.day_of_week,
+            start_time: values.start_time.format('HH:mm:ss'),
+            end_time: values.end_time.format('HH:mm:ss')
+          })
+          .eq('id', editingAvailability.id)
+          .select()
+          .single();
 
-      if (error) throw error;
+        if (error) throw error;
 
-      setAvailability([...availability, data]);
+        setAvailability(availability.map(slot =>
+          slot.id === editingAvailability.id ? data : slot
+        ));
+        message.success('Availability updated successfully!');
+      } else {
+        // Add new availability
+        const { data, error } = await supabaseClient
+          .from('therapist_availability')
+          .insert([availabilityData])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setAvailability([...availability, data]);
+        message.success('Availability added successfully!');
+      }
+
       setAvailabilityModalVisible(false);
+      setEditingAvailability(null);
       availabilityForm.resetFields();
-      message.success('Availability added successfully!');
     } catch (error) {
-      console.error('Error adding availability:', error);
-      message.error('Failed to add availability');
+      console.error('Error saving availability:', error);
+      message.error('Failed to save availability');
     }
+  };
+
+  const handleEditAvailability = (slot: AvailabilitySlot) => {
+    setEditingAvailability(slot);
+    availabilityForm.setFieldsValue({
+      day_of_week: slot.day_of_week,
+      start_time: dayjs(slot.start_time, 'HH:mm:ss'),
+      end_time: dayjs(slot.end_time, 'HH:mm:ss')
+    });
+    setAvailabilityModalVisible(true);
   };
 
   const handleDeleteAvailability = async (id: string) => {
@@ -730,14 +766,24 @@ const TherapistProfileManagement: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       render: (_: any, record: AvailabilitySlot) => (
-        <Button 
-          danger 
-          size="small" 
-          icon={<DeleteOutlined />}
-          onClick={() => handleDeleteAvailability(record.id!)}
-        >
-          Remove
-        </Button>
+        <>
+          <Button
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEditAvailability(record)}
+            style={{ marginRight: 8 }}
+          >
+            Edit
+          </Button>
+          <Button
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteAvailability(record.id!)}
+          >
+            Remove
+          </Button>
+        </>
       )
     }
   ];
@@ -1118,10 +1164,14 @@ const TherapistProfileManagement: React.FC = () => {
 
               <TabPane tab="Availability" key="availability">
                 <div style={{ marginBottom: 16 }}>
-                  <Button 
-                    type="primary" 
+                  <Button
+                    type="primary"
                     icon={<PlusOutlined />}
-                    onClick={() => setAvailabilityModalVisible(true)}
+                    onClick={() => {
+                      setEditingAvailability(null);
+                      availabilityForm.resetFields();
+                      setAvailabilityModalVisible(true);
+                    }}
                     disabled={!profile?.id}
                   >
                     Add Availability
@@ -1334,9 +1384,13 @@ const TherapistProfileManagement: React.FC = () => {
       </Card>
 
       <Modal
-        title="Add Availability"
+        title={editingAvailability ? "Edit Availability" : "Add Availability"}
         open={availabilityModalVisible}
-        onCancel={() => setAvailabilityModalVisible(false)}
+        onCancel={() => {
+          setAvailabilityModalVisible(false);
+          setEditingAvailability(null);
+          availabilityForm.resetFields();
+        }}
         footer={null}
       >
         <Form form={availabilityForm} onFinish={handleAddAvailability} layout="vertical">
@@ -1351,7 +1405,7 @@ const TherapistProfileManagement: React.FC = () => {
               ))}
             </Select>
           </Form.Item>
-          
+
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
@@ -1372,10 +1426,10 @@ const TherapistProfileManagement: React.FC = () => {
               </Form.Item>
             </Col>
           </Row>
-          
+
           <Form.Item>
             <Button type="primary" htmlType="submit">
-              Add Availability
+              {editingAvailability ? "Update Availability" : "Add Availability"}
             </Button>
           </Form.Item>
         </Form>

@@ -169,6 +169,7 @@ const TherapistEdit: React.FC = () => {
   // Availability modal state
   const [isAvailabilityModalVisible, setIsAvailabilityModalVisible] = useState(false);
   const [availabilityForm] = Form.useForm();
+  const [editingAvailabilityIndex, setEditingAvailabilityIndex] = useState<number | null>(null);
 
   const canEditTherapists = identity?.role === 'admin' || identity?.role === 'super_admin';
   const isSuperAdmin = identity?.role === 'super_admin';
@@ -832,10 +833,13 @@ const TherapistEdit: React.FC = () => {
   const checkTimeOverlap = (
     dayOfWeek: number,
     startTime: string,
-    endTime: string
+    endTime: string,
+    excludeIndex?: number
   ): { hasOverlap: boolean; conflictingSlot?: Availability } => {
-    // Find all slots for the same day
-    const sameDaySlots = availability.filter(slot => slot.day_of_week === dayOfWeek);
+    // Find all slots for the same day (excluding the slot being edited)
+    const sameDaySlots = availability.filter((slot, idx) =>
+      slot.day_of_week === dayOfWeek && idx !== excludeIndex
+    );
 
     // Convert times to minutes for easier comparison
     const toMinutes = (timeStr: string) => {
@@ -871,8 +875,13 @@ const TherapistEdit: React.FC = () => {
       const endTime = values.end_time.format('HH:mm');
       const dayOfWeek = values.day_of_week;
 
-      // Check for overlapping time slots
-      const { hasOverlap, conflictingSlot } = checkTimeOverlap(dayOfWeek, startTime, endTime);
+      // Check for overlapping time slots (exclude current slot if editing)
+      const { hasOverlap, conflictingSlot } = checkTimeOverlap(
+        dayOfWeek,
+        startTime,
+        endTime,
+        editingAvailabilityIndex !== null ? editingAvailabilityIndex : undefined
+      );
 
       if (hasOverlap) {
         if (conflictingSlot) {
@@ -887,21 +896,42 @@ const TherapistEdit: React.FC = () => {
         return;
       }
 
-      // Add the new availability slot to local state
       const newSlot: Availability = {
         day_of_week: dayOfWeek,
         start_time: startTime,
         end_time: endTime
       };
 
-      setAvailability(prev => [...prev, newSlot]);
+      if (editingAvailabilityIndex !== null) {
+        // Update existing slot
+        setAvailability(prev => prev.map((slot, idx) =>
+          idx === editingAvailabilityIndex ? newSlot : slot
+        ));
+        message.success('Availability slot updated. Remember to save changes.');
+      } else {
+        // Add new slot
+        setAvailability(prev => [...prev, newSlot]);
+        message.success('Availability slot added. Remember to save changes.');
+      }
+
       setIsAvailabilityModalVisible(false);
+      setEditingAvailabilityIndex(null);
       availabilityForm.resetFields();
-      message.success('Availability slot added. Remember to save changes.');
     } catch (error) {
-      console.error('Error adding availability:', error);
-      message.error('Failed to add availability slot');
+      console.error('Error saving availability:', error);
+      message.error('Failed to save availability slot');
     }
+  };
+
+  const editAvailabilitySlot = (index: number) => {
+    const slot = availability[index];
+    setEditingAvailabilityIndex(index);
+    availabilityForm.setFieldsValue({
+      day_of_week: slot.day_of_week,
+      start_time: dayjs(slot.start_time.substring(0, 5), 'HH:mm'),
+      end_time: dayjs(slot.end_time.substring(0, 5), 'HH:mm')
+    });
+    setIsAvailabilityModalVisible(true);
   };
 
   const removeAvailabilitySlot = (index: number) => {
@@ -1743,7 +1773,11 @@ const TherapistEdit: React.FC = () => {
                         <Button
                           type="primary"
                           icon={<PlusOutlined />}
-                          onClick={() => setIsAvailabilityModalVisible(true)}
+                          onClick={() => {
+                            setEditingAvailabilityIndex(null);
+                            availabilityForm.resetFields();
+                            setIsAvailabilityModalVisible(true);
+                          }}
                           disabled={!canEditTherapists}
                           size="large"
                         >
@@ -1779,17 +1813,28 @@ const TherapistEdit: React.FC = () => {
                           {
                             title: 'Actions',
                             key: 'actions',
-                            width: 100,
+                            width: 180,
                             render: (_: any, record: any) => (
-                              <Button
-                                danger
-                                size="small"
-                                icon={<DeleteOutlined />}
-                                onClick={() => removeAvailabilitySlot(record.index)}
-                                disabled={!canEditTherapists}
-                              >
-                                Remove
-                              </Button>
+                              <>
+                                <Button
+                                  size="small"
+                                  icon={<EditOutlined />}
+                                  onClick={() => editAvailabilitySlot(record.index)}
+                                  disabled={!canEditTherapists}
+                                  style={{ marginRight: 8 }}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  danger
+                                  size="small"
+                                  icon={<DeleteOutlined />}
+                                  onClick={() => removeAvailabilitySlot(record.index)}
+                                  disabled={!canEditTherapists}
+                                >
+                                  Remove
+                                </Button>
+                              </>
                             ),
                           },
                         ]}
@@ -2072,12 +2117,13 @@ const TherapistEdit: React.FC = () => {
           </Form>
         </Modal>
 
-        {/* Availability Add Modal */}
+        {/* Availability Add/Edit Modal */}
         <Modal
-          title="Add Availability Slot"
+          title={editingAvailabilityIndex !== null ? "Edit Availability Slot" : "Add Availability Slot"}
           open={isAvailabilityModalVisible}
           onCancel={() => {
             setIsAvailabilityModalVisible(false);
+            setEditingAvailabilityIndex(null);
             availabilityForm.resetFields();
           }}
           footer={null}
@@ -2141,7 +2187,7 @@ const TherapistEdit: React.FC = () => {
 
             <Form.Item>
               <Button type="primary" htmlType="submit" size="large" block>
-                Add Availability Slot
+                {editingAvailabilityIndex !== null ? "Update Availability Slot" : "Add Availability Slot"}
               </Button>
             </Form.Item>
           </Form>
