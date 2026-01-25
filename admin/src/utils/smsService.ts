@@ -39,10 +39,10 @@ Time: ${new Date(booking.booking_time).toLocaleTimeString()}
 Duration: ${booking.duration_minutes} minutes
 Fee: $${booking.therapist_fee || 'TBD'}
 
-Choose Accept:
+Choose ✅ ACCEPT:
 ${acceptLink}
 
-Or if you can't accept, choose Decline:
+Or if you can't accept, choose ❌ DECLINE:
 ${declineLink}
 
 - Rejuvenators`;
