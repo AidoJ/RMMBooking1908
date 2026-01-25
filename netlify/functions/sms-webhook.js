@@ -707,9 +707,11 @@ Time: ${new Date(booking.booking_time).toLocaleTimeString()}
 Duration: ${booking.duration_minutes} minutes
 Fee: $${booking.therapist_fee || 'TBD'}
 
-Quick Response:
-✅ Accept: ${acceptLink}
-❌ Decline: ${declineLink}
+Choose Accept:
+${acceptLink}
+
+Or if you can't accept, choose Decline:
+${declineLink}
 
 Or reply with:
 "ACCEPT ${booking.booking_id}" or "DECLINE ${booking.booking_id}"
