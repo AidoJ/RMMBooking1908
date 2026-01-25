@@ -318,8 +318,11 @@ async sendTherapistBookingRequestSMS(therapistPhone, bookingData, therapistData,
     const message = `📱 NEW BOOKING ${bookingData.booking_id}
 
 ${bookingData.first_name} ${bookingData.last_name}, ${formattedTime}, ${formattedDate}, ${duration} mins, ${address}, ${fee}${recurringNote}
-✅ Accept: ${acceptUrl}
-❌ Decline: ${declineUrl}
+Choose Accept:
+${acceptUrl}
+
+Or if you can't accept, choose Decline:
+${declineUrl}
 
 - Rejuvenators`;
 
