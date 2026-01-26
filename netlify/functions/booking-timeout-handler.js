@@ -134,10 +134,9 @@ async function findBookingsNeedingTimeout(sameDayTimeoutMinutes, standardTimeout
     console.log('📅 First timeout cutoff:', firstTimeoutCutoff.toISOString());
     console.log('📅 Second timeout cutoff:', secondTimeoutCutoff.toISOString());
 
-    // FIXED: Find bookings for FIRST timeout (status = 'requested' and past first timeout AND no therapist response)
+    // Find bookings for FIRST timeout (status = 'requested' and past first timeout AND no therapist response)
     // EXCLUDE quote-based bookings (BK-Q pattern) as they follow quote workflow
-    // CRITICAL: Also exclude bookings that might be in the process of being accepted (updated_at within last 2 minutes)
-    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+    // Race condition protection is handled by status checks in processBookingTimeout, not hardcoded timeouts
     const { data: firstTimeoutBookings, error: error1 } = await supabase
       .from('bookings')
       .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
@@ -145,8 +144,7 @@ async function findBookingsNeedingTimeout(sameDayTimeoutMinutes, standardTimeout
       .is('therapist_response_time', null) // IMPORTANT: Only if therapist hasn't responded yet
       .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
       .lt('created_at', firstTimeoutCutoff.toISOString())
-      .or('updated_at.is.null,updated_at.lt.' + twoMinutesAgo.toISOString()) // Exclude recently updated bookings
-      .or('occurrence_number.is.null,occurrence_number.eq.0'); // NEW: Only check timeout on initial booking or non-recurring (NULL)
+      .or('occurrence_number.is.null,occurrence_number.eq.0'); // Only check timeout on initial booking or non-recurring (NULL)
 
     if (error1) {
       console.error('❌ Error fetching first timeout bookings:', error1);
@@ -193,17 +191,11 @@ async function processBookingTimeout(booking, timeoutMinutes) {
 
     const now = new Date();
 
-    // *** CRITICAL RACE CONDITION PROTECTION: 60-SECOND GRACE PERIOD ***
-    // If booking has therapist_response_time set within last 60 seconds, skip it
-    // This prevents timeout handler from overwriting an acceptance/decline that just happened
+    // If therapist has already responded, skip this booking entirely
+    // The query filters for therapist_response_time IS NULL, but double-check here
     if (booking.therapist_response_time) {
-      const responseTime = new Date(booking.therapist_response_time);
-      const secondsSinceResponse = (now.getTime() - responseTime.getTime()) / 1000;
-
-      if (secondsSinceResponse < 60) {
-        console.log(`🛡️ GRACE PERIOD PROTECTION: Booking ${booking.booking_id} has therapist_response_time from ${Math.floor(secondsSinceResponse)} seconds ago - SKIPPING to prevent race condition`);
-        return { success: true, booking_id: booking.booking_id, action: 'skipped_grace_period', secondsSinceResponse: Math.floor(secondsSinceResponse) };
-      }
+      console.log(`✅ Booking ${booking.booking_id} already has therapist response - SKIPPING`);
+      return { success: true, booking_id: booking.booking_id, action: 'skipped_already_responded' };
     }
 
     // Re-check booking status from database to catch any recent changes

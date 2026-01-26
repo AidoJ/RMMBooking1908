@@ -311,58 +311,109 @@ async function handleBookingAccept(booking, therapist, headers) {
   try {
     console.log('✅ Processing booking acceptance:', booking.booking_id, 'by', therapist.first_name, therapist.last_name);
 
-    // Update both therapist_id and responding_therapist_id
+    const now = new Date().toISOString();
+
+    // STEP 1: IMMEDIATELY set therapist_response_time on the clicked booking
+    // This signals to the timeout handler that a therapist has responded, so it will skip this booking
+    console.log('🛡️ STEP 1: Setting therapist_response_time immediately to prevent timeout race condition');
+    const { error: responseTimeError } = await supabase
+      .from('bookings')
+      .update({ therapist_response_time: now, updated_at: now })
+      .eq('booking_id', booking.booking_id);
+
+    if (responseTimeError) {
+      console.error('⚠️ Warning: Could not set response time:', responseTimeError);
+    } else {
+      console.log('✅ Response time set - timeout handler will now skip this booking');
+    }
+
+    // STEP 2: Update the SPECIFIC clicked booking FIRST (by booking_id, not request_id)
+    // This is more reliable and ensures we confirm at least this booking
     const acceptUpdateData = {
       status: 'confirmed',
       therapist_id: therapist.id,
-      therapist_response_time: new Date().toISOString(),
+      therapist_response_time: now,
       responding_therapist_id: therapist.id,
-      updated_at: new Date().toISOString()
+      updated_at: now
     };
 
-    console.log('📝 Updating booking with data:', JSON.stringify(acceptUpdateData, null, 2));
+    console.log('📝 STEP 2: Updating SPECIFIC booking', booking.booking_id, 'first');
 
-    // First, get the request_id from this booking
-    const { data: bookingForRequestId, error: requestIdError } = await supabase
-      .from('bookings')
-      .select('request_id')
-      .eq('booking_id', booking.booking_id)
-      .single();
-
-    if (requestIdError || !bookingForRequestId || !bookingForRequestId.request_id) {
-      console.error('❌ Error fetching request_id:', requestIdError);
-      throw new Error('Failed to get request_id for booking');
-    }
-
-    console.log('📍 Found request_id:', bookingForRequestId.request_id);
-
-    // CRITICAL: Update ALL bookings in the series with this request_id
-    // Only update if status is still valid (prevents race condition with timeout handler)
     const validStatusesForAccept = ['requested', 'seeking_alternate', 'timeout_reassigned'];
 
-    const { data: updatedBookings, error: updateError } = await supabase
+    const { data: specificBookingUpdate, error: specificUpdateError } = await supabase
       .from('bookings')
       .update(acceptUpdateData)
-      .eq('request_id', bookingForRequestId.request_id)
+      .eq('booking_id', booking.booking_id)
       .in('status', validStatusesForAccept)
-      .select('id, booking_id, status');
+      .select('id, booking_id, status, request_id');
 
-    if (updateError) {
-      console.error('❌ Error updating booking status:', updateError);
+    if (specificUpdateError) {
+      console.error('❌ Error updating specific booking:', specificUpdateError);
       throw new Error('Failed to confirm booking');
     }
 
-    // CRITICAL: Verify at least one booking was actually updated
-    if (!updatedBookings || updatedBookings.length === 0) {
-      console.error('❌ RACE CONDITION DETECTED: No bookings were updated - status already changed');
+    // CRITICAL: Check if the specific booking was updated
+    if (!specificBookingUpdate || specificBookingUpdate.length === 0) {
+      // Re-fetch the booking to see what status it's in now
+      const { data: currentBooking } = await supabase
+        .from('bookings')
+        .select('status')
+        .eq('booking_id', booking.booking_id)
+        .single();
+
+      const currentStatus = currentBooking ? currentBooking.status : 'unknown';
+      console.error('❌ RACE CONDITION: Booking', booking.booking_id, 'could not be updated. Current status:', currentStatus);
+
+      if (currentStatus === 'confirmed') {
+        // Booking was already confirmed - this is actually a success case
+        console.log('✅ Booking was already confirmed - showing success page');
+        return {
+          statusCode: 200,
+          headers,
+          body: generateSuccessPage(
+            'Booking Already Confirmed',
+            'This booking has already been confirmed. Thank you!',
+            ['Booking ID: ' + booking.booking_id]
+          )
+        };
+      }
+
       return {
         statusCode: 409,
         headers,
-        body: generateErrorPage('This booking has already been processed by another action. The status may have changed. Please check the booking status.')
+        body: generateErrorPage('This booking has already been processed. Current status: ' + currentStatus + '. Please contact support if you need assistance.')
       };
     }
 
-    console.log('✅ Updated', updatedBookings.length, 'bookings with request_id', bookingForRequestId.request_id, 'to confirmed');
+    const requestId = specificBookingUpdate[0].request_id;
+    console.log('✅ STEP 2 SUCCESS: Specific booking', booking.booking_id, 'confirmed');
+    console.log('📍 Request ID:', requestId);
+
+    // STEP 3: Now update the REST of the series (excluding the one we just updated)
+    if (requestId) {
+      console.log('📝 STEP 3: Updating remaining bookings in series with request_id:', requestId);
+
+      const { data: seriesUpdate, error: seriesError } = await supabase
+        .from('bookings')
+        .update(acceptUpdateData)
+        .eq('request_id', requestId)
+        .neq('booking_id', booking.booking_id) // Exclude the one we already updated
+        .in('status', validStatusesForAccept)
+        .select('id, booking_id');
+
+      if (seriesError) {
+        console.error('⚠️ Warning: Error updating series bookings:', seriesError);
+        // Don't fail - we already confirmed the main booking
+      } else {
+        const seriesCount = seriesUpdate ? seriesUpdate.length : 0;
+        console.log('✅ STEP 3 SUCCESS: Updated', seriesCount, 'additional bookings in series');
+      }
+    }
+
+    // Calculate total updated count
+    const totalUpdated = 1 + (requestId ? (await supabase.from('bookings').select('id').eq('request_id', requestId).eq('status', 'confirmed')).data?.length || 1 : 0);
+    console.log('✅ Total bookings confirmed:', totalUpdated);
 
     // CAPTURE PAYMENT for initial booking (occurrence_number = 0)
     // occurrence_number can be 0, so use ?? instead of || to handle falsy 0
