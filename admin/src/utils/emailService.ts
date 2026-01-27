@@ -5,7 +5,7 @@ const EMAILJS_PUBLIC_KEY = 'qfM_qA664E4JddSMN';
 // Template IDs for admin notifications
 const TEMPLATE_IDS = {
   BOOKING_UPDATE_CUSTOMER: 'template_butcv1',
-  BOOKING_UPDATE_THERAPIST: 'template_buttv1', 
+  BOOKING_UPDATE_THERAPIST: 'template_buttv1',
   THERAPIST_REASSIGNED_OLD: 'template_brot-v1',
   THERAPIST_REASSIGNED_NEW: 'template_brnt-v1',
   CORPORATE_QUOTE: 'template_corporate_quote',
@@ -17,7 +17,9 @@ const TEMPLATE_IDS = {
   ADMIN_EDIT_CUSTOMER_UPDATE: 'Booking Update-Customer',
   ADMIN_EDIT_THERAPIST_UPDATE: 'Booking Update-Therapist',
   ADMIN_EDIT_THERAPIST_REASSIGN_ORIGINAL: 'Booking Reassign - old',
-  ADMIN_EDIT_THERAPIST_REASSIGN_NEW: 'Booking Reassign - new'
+  ADMIN_EDIT_THERAPIST_REASSIGN_NEW: 'Booking Reassign - new',
+  // Therapist Payment Confirmation
+  THERAPIST_PAYMENT_CONFIRMATION: 'template_pay_confirm'
 };
 
 // Declare emailjs as global variable (loaded via CDN)
@@ -1346,6 +1348,76 @@ export const EmailService = {
       return { success: true };
     } catch (error) {
       console.error('❌ Error sending individual invoice:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  /**
+   * Send payment confirmation to therapist after payment is recorded
+   */
+  async sendTherapistPaymentConfirmation(params: {
+    therapistEmail: string;
+    therapistName: string;
+    paymentDate: string;
+    eftReference: string;
+    weekPeriod: string;
+    invoiceNumber: string;
+    bookings: Array<{
+      booking_id: string;
+      booking_time: string;
+      service_name: string;
+      customer_name: string;
+      therapist_fee: number;
+    }>;
+    totalFees: number;
+    parkingAmount: number;
+    totalPaid: number;
+    paymentNotes?: string;
+  }): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      // Generate booking items HTML
+      const bookingItemsHtml = params.bookings.map(b => `
+        <div class="booking-item">
+          <span class="job-number">${b.booking_id}</span>
+          <span class="date">${new Date(b.booking_time).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })} - ${b.service_name}</span>
+          <span class="fee">$${b.therapist_fee.toFixed(2)}</span>
+        </div>
+      `).join('');
+
+      const templateParams = {
+        to_email: params.therapistEmail,
+        to_name: params.therapistName,
+        therapist_name: params.therapistName,
+        payment_date: params.paymentDate,
+        eft_reference: params.eftReference,
+        week_period: params.weekPeriod,
+        invoice_number: params.invoiceNumber || 'N/A',
+        booking_items: bookingItemsHtml,
+        booking_count: params.bookings.length.toString(),
+        total_fees: `$${params.totalFees.toFixed(2)}`,
+        parking_amount: `$${params.parkingAmount.toFixed(2)}`,
+        total_paid: `$${params.totalPaid.toFixed(2)}`,
+        payment_notes: params.paymentNotes || '',
+        from_name: 'Rejuvenators Mobile Massage'
+      };
+
+      console.log('📧 Sending therapist payment confirmation:', params.therapistEmail);
+      console.log('📧 Template params:', templateParams);
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.THERAPIST_PAYMENT_CONFIRMATION,
+        templateParams
+      );
+
+      console.log('✅ Therapist payment confirmation sent:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending therapist payment confirmation:', error);
       return { success: false, error: (error as Error).message };
     }
   }

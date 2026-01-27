@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Confirmation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; }
+        .header { background-color: #1a3a5c; color: white; padding: 30px 20px; text-align: center; }
+        .header h1 { margin: 0 0 10px 0; }
+        .header p { margin: 0; opacity: 0.9; }
+        .content { padding: 30px 20px; }
+        .payment-summary { background-color: #f0f5fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #1a3a5c; }
+        .payment-summary h3 { color: #1a3a5c; margin-top: 0; }
+        .booking-list { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; margin: 20px 0; overflow: hidden; }
+        .booking-list-header { background-color: #1a3a5c; color: white; padding: 12px 16px; font-weight: bold; }
+        .booking-item { padding: 12px 16px; border-bottom: 1px solid #e0e0e0; }
+        .booking-item:last-child { border-bottom: none; }
+        .booking-item .job-number { color: #1a3a5c; font-weight: bold; }
+        .booking-item .date { color: #666; font-size: 14px; }
+        .booking-item .fee { float: right; font-weight: bold; color: #1a3a5c; }
+        .total-row { background-color: #e8f0f8; padding: 16px; font-size: 18px; }
+        .total-row .label { color: #1a3a5c; font-weight: bold; }
+        .total-row .amount { float: right; color: #1a3a5c; font-weight: bold; }
+        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
+        .highlight { color: #1a3a5c; font-weight: bold; }
+        .success-badge { display: inline-block; background-color: #28a745; color: white; padding: 4px 12px; border-radius: 4px; font-size: 14px; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 8px 0; }
+        .info-box { background-color: #e8f4fd; padding: 16px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2196f3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Payment Confirmation</h1>
+            <p>Your payment has been processed</p>
+        </div>
+
+        <div class="content">
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                Dear <span class="highlight">{{therapist_name}}</span>,
+            </p>
+
+            <p style="font-size: 16px; line-height: 1.6; margin-bottom: 20px;">
+                We are pleased to confirm that your payment has been processed successfully.
+                Please find the details of your payment below.
+            </p>
+
+            <div class="payment-summary">
+                <h3>Payment Details</h3>
+                <table>
+                    <tr>
+                        <td><strong>Payment Date:</strong></td>
+                        <td style="text-align: right;">{{payment_date}}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>EFT Reference:</strong></td>
+                        <td style="text-align: right;"><span class="highlight">{{eft_reference}}</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Week Period:</strong></td>
+                        <td style="text-align: right;">{{week_period}}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Invoice Number:</strong></td>
+                        <td style="text-align: right;">{{invoice_number}}</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="booking-list">
+                <div class="booking-list-header">
+                    Bookings Included in This Payment
+                </div>
+                {{booking_items}}
+                <div class="total-row">
+                    <span class="label">Service Fees:</span>
+                    <span class="amount">{{total_fees}}</span>
+                </div>
+                <div class="booking-item" style="background-color: #f9f9f9;">
+                    <span>Parking/Expenses:</span>
+                    <span class="fee">{{parking_amount}}</span>
+                </div>
+                <div class="total-row" style="background-color: #1a3a5c; color: white;">
+                    <span class="label" style="color: white;">Total Paid:</span>
+                    <span class="amount" style="color: white;">{{total_paid}}</span>
+                </div>
+            </div>
+
+            {{#if payment_notes}}
+            <div class="info-box">
+                <strong>Payment Notes:</strong><br>
+                {{payment_notes}}
+            </div>
+            {{/if}}
+
+            <p style="font-size: 14px; color: #6c757d; text-align: center; margin-top: 30px;">
+                If you have any questions about this payment, please contact our accounts team.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>Thank you for being part of the Rejuvenators team!</p>
+            <p>For support, call 1300 302542 or email accounts@rejuvenators.com</p>
+        </div>
+    </div>
+</body>
+</html>
