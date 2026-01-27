@@ -35,6 +35,8 @@ import {
   UploadOutlined,
   BankOutlined,
   DollarOutlined,
+  StarOutlined,
+  StarFilled,
 } from '@ant-design/icons';
 import { useGetIdentity } from '@refinedev/core';
 import { useParams, useNavigate } from 'react-router';
@@ -97,11 +99,22 @@ interface TimeOff {
   is_active: boolean;
 }
 
+interface TherapistReview {
+  id?: string;
+  therapist_id: string;
+  reviewer_name: string;
+  rating: number;
+  review_text: string;
+  review_date: string;
+  is_active: boolean;
+}
+
 const TherapistProfileManagement: React.FC = () => {
   const { message } = App.useApp(); // Use v5-correct message API
   const [form] = Form.useForm();
   const [availabilityForm] = Form.useForm();
   const [timeOffForm] = Form.useForm();
+  const [reviewForm] = Form.useForm();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: identity } = useGetIdentity<any>();
@@ -121,6 +134,9 @@ const TherapistProfileManagement: React.FC = () => {
   const [insuranceCertFile, setInsuranceCertFile] = useState<any[]>([]);
   const [firstAidCertFile, setFirstAidCertFile] = useState<any[]>([]);
   const [qualificationCertFile, setQualificationCertFile] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<TherapistReview[]>([]);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [editingReview, setEditingReview] = useState<TherapistReview | null>(null);
 
   const isAdmin = identity?.role === 'admin' || identity?.role === 'super_admin';
   const isSuperAdmin = identity?.role === 'super_admin';
@@ -273,6 +289,7 @@ const TherapistProfileManagement: React.FC = () => {
       await loadAvailability(data.id);
       await loadTimeOff(data.id);
       await loadTherapistServices(data.id);
+      await loadReviews(data.id);
 
     } catch (error: any) {
       console.error('Error loading profile:', error);
@@ -351,6 +368,7 @@ const TherapistProfileManagement: React.FC = () => {
       await loadAvailability(data.id);
       await loadTimeOff(data.id);
       await loadTherapistServices(data.id);
+      await loadReviews(data.id);
 
     } catch (error: any) {
       console.error('Error loading profile:', error);
@@ -424,6 +442,122 @@ const TherapistProfileManagement: React.FC = () => {
       message.error('Failed to load services');
     } finally {
       setServicesLoading(false);
+    }
+  };
+
+  const loadReviews = async (therapistId: string) => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('therapist_reviews')
+        .select('*')
+        .eq('therapist_id', therapistId)
+        .order('review_date', { ascending: false });
+
+      if (error) throw error;
+      setReviews(data || []);
+    } catch (error) {
+      console.error('Error loading reviews:', error);
+    }
+  };
+
+  const handleAddReview = async (values: any) => {
+    if (!profile?.id) {
+      message.error('Please save the profile first before adding reviews');
+      return;
+    }
+
+    try {
+      const reviewData = {
+        therapist_id: profile.id,
+        reviewer_name: values.reviewer_name,
+        rating: values.rating,
+        review_text: values.review_text,
+        review_date: values.review_date.format('YYYY-MM-DD'),
+        is_active: values.is_active !== false
+      };
+
+      if (editingReview) {
+        // Update existing review
+        const { data, error } = await supabaseClient
+          .from('therapist_reviews')
+          .update(reviewData)
+          .eq('id', editingReview.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setReviews(reviews.map(review =>
+          review.id === editingReview.id ? data : review
+        ));
+        message.success('Review updated successfully!');
+      } else {
+        // Add new review
+        const { data, error } = await supabaseClient
+          .from('therapist_reviews')
+          .insert([reviewData])
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        setReviews([data, ...reviews]);
+        message.success('Review added successfully!');
+      }
+
+      // Update total_reviews count in therapist profile
+      const activeReviewCount = reviews.filter(r => r.is_active).length + (editingReview ? 0 : 1);
+      await supabaseClient
+        .from('therapist_profiles')
+        .update({ total_reviews: activeReviewCount })
+        .eq('id', profile.id);
+
+      setReviewModalVisible(false);
+      setEditingReview(null);
+      reviewForm.resetFields();
+    } catch (error) {
+      console.error('Error saving review:', error);
+      message.error('Failed to save review');
+    }
+  };
+
+  const handleEditReview = (review: TherapistReview) => {
+    setEditingReview(review);
+    reviewForm.setFieldsValue({
+      reviewer_name: review.reviewer_name,
+      rating: review.rating,
+      review_text: review.review_text,
+      review_date: dayjs(review.review_date),
+      is_active: review.is_active
+    });
+    setReviewModalVisible(true);
+  };
+
+  const handleDeleteReview = async (id: string) => {
+    try {
+      const { error } = await supabaseClient
+        .from('therapist_reviews')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      const updatedReviews = reviews.filter(review => review.id !== id);
+      setReviews(updatedReviews);
+
+      // Update total_reviews count
+      if (profile?.id) {
+        const activeReviewCount = updatedReviews.filter(r => r.is_active).length;
+        await supabaseClient
+          .from('therapist_profiles')
+          .update({ total_reviews: activeReviewCount })
+          .eq('id', profile.id);
+      }
+
+      message.success('Review removed successfully!');
+    } catch (error) {
+      console.error('Error deleting review:', error);
+      message.error('Failed to remove review');
     }
   };
 
@@ -820,14 +954,81 @@ const TherapistProfileManagement: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       render: (_: any, record: TimeOff) => (
-        <Button 
-          danger 
-          size="small" 
+        <Button
+          danger
+          size="small"
           icon={<DeleteOutlined />}
           onClick={() => handleDeleteTimeOff(record.id!)}
         >
           Remove
         </Button>
+      )
+    }
+  ];
+
+  const reviewColumns = [
+    {
+      title: 'Reviewer',
+      dataIndex: 'reviewer_name',
+      key: 'reviewer_name',
+    },
+    {
+      title: 'Rating',
+      dataIndex: 'rating',
+      key: 'rating',
+      render: (rating: number) => (
+        <span style={{ color: '#faad14' }}>
+          {[...Array(5)].map((_, i) => (
+            i < rating ? <StarFilled key={i} /> : <StarOutlined key={i} style={{ color: '#d9d9d9' }} />
+          ))}
+        </span>
+      )
+    },
+    {
+      title: 'Review',
+      dataIndex: 'review_text',
+      key: 'review_text',
+      ellipsis: true,
+      width: 300,
+    },
+    {
+      title: 'Date',
+      dataIndex: 'review_date',
+      key: 'review_date',
+      render: (date: string) => dayjs(date).format('MMM DD, YYYY')
+    },
+    {
+      title: 'Active',
+      dataIndex: 'is_active',
+      key: 'is_active',
+      render: (active: boolean) => (
+        <span style={{ color: active ? '#52c41a' : '#ff4d4f' }}>
+          {active ? 'Yes' : 'No'}
+        </span>
+      )
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      render: (_: any, record: TherapistReview) => (
+        <>
+          <Button
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEditReview(record)}
+            style={{ marginRight: 8 }}
+          >
+            Edit
+          </Button>
+          <Button
+            danger
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteReview(record.id!)}
+          >
+            Remove
+          </Button>
+        </>
       )
     }
   ];
@@ -1358,8 +1559,63 @@ const TherapistProfileManagement: React.FC = () => {
 
                 <div style={{ marginTop: 16, padding: 12, backgroundColor: '#f0f0f0', borderRadius: 4 }}>
                   <Text type="secondary" style={{ fontSize: '12px' }}>
-                    💡 <strong>Note:</strong> These services will be available for customers to book with this therapist. 
+                    💡 <strong>Note:</strong> These services will be available for customers to book with this therapist.
                     Make sure the therapist is qualified and comfortable providing each selected service.
+                  </Text>
+                </div>
+              </TabPane>
+
+              <TabPane tab="Reviews" key="reviews">
+                <div style={{ marginBottom: 16 }}>
+                  <Row justify="space-between" align="middle">
+                    <Col>
+                      <h3 style={{ margin: 0 }}>Google Reviews</h3>
+                      <p style={{ color: '#666', marginBottom: 0 }}>
+                        Add reviews from Google that mention this therapist. These will be displayed to customers during booking.
+                      </p>
+                    </Col>
+                    <Col>
+                      <div style={{ textAlign: 'right' }}>
+                        <Text strong style={{ fontSize: 16 }}>
+                          Total Active Reviews: {reviews.filter(r => r.is_active).length}
+                        </Text>
+                      </div>
+                    </Col>
+                  </Row>
+                </div>
+
+                <div style={{ marginBottom: 16 }}>
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => {
+                      setEditingReview(null);
+                      reviewForm.resetFields();
+                      reviewForm.setFieldsValue({ is_active: true, rating: 5 });
+                      setReviewModalVisible(true);
+                    }}
+                    disabled={!profile?.id}
+                  >
+                    Add Review
+                  </Button>
+                  {!profile?.id && (
+                    <div style={{ marginTop: 8, color: '#999' }}>
+                      Please save the profile first before adding reviews
+                    </div>
+                  )}
+                </div>
+
+                <Table
+                  dataSource={reviews}
+                  columns={reviewColumns}
+                  rowKey="id"
+                  pagination={{ pageSize: 10 }}
+                />
+
+                <div style={{ marginTop: 16, padding: 12, backgroundColor: '#e6f7ff', border: '1px solid #91d5ff', borderRadius: 4 }}>
+                  <Text type="secondary" style={{ fontSize: '12px' }}>
+                    💡 <strong>Tip:</strong> Only the latest 5 active reviews will be shown to customers during booking.
+                    Toggle "Active" to control which reviews are displayed.
                   </Text>
                 </div>
               </TabPane>
@@ -1449,7 +1705,7 @@ const TherapistProfileManagement: React.FC = () => {
           >
             <RangePicker />
           </Form.Item>
-          
+
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item label="Start Time (Optional)" name="start_time">
@@ -1462,14 +1718,89 @@ const TherapistProfileManagement: React.FC = () => {
               </Form.Item>
             </Col>
           </Row>
-          
+
           <Form.Item label="Reason" name="reason">
             <TextArea rows={3} placeholder="Reason for time off (optional)" />
           </Form.Item>
-          
+
           <Form.Item>
             <Button type="primary" htmlType="submit">
               Add Time Off
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={editingReview ? "Edit Review" : "Add Review"}
+        open={reviewModalVisible}
+        onCancel={() => {
+          setReviewModalVisible(false);
+          setEditingReview(null);
+          reviewForm.resetFields();
+        }}
+        footer={null}
+        width={600}
+      >
+        <Form form={reviewForm} onFinish={handleAddReview} layout="vertical">
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="Reviewer Name"
+                name="reviewer_name"
+                rules={[{ required: true, message: 'Please enter reviewer name' }]}
+              >
+                <Input placeholder="e.g., John S." />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                label="Review Date"
+                name="review_date"
+                rules={[{ required: true, message: 'Please select review date' }]}
+              >
+                <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item
+            label="Rating"
+            name="rating"
+            rules={[{ required: true, message: 'Please select rating' }]}
+          >
+            <Select>
+              <Option value={5}>⭐⭐⭐⭐⭐ 5 Stars</Option>
+              <Option value={4}>⭐⭐⭐⭐ 4 Stars</Option>
+              <Option value={3}>⭐⭐⭐ 3 Stars</Option>
+              <Option value={2}>⭐⭐ 2 Stars</Option>
+              <Option value={1}>⭐ 1 Star</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            label="Review Text"
+            name="review_text"
+            rules={[{ required: true, message: 'Please enter review text' }]}
+          >
+            <TextArea
+              rows={4}
+              placeholder="Paste the review text from Google..."
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="Active"
+            name="is_active"
+            valuePropName="checked"
+            help="Only active reviews will be shown to customers"
+          >
+            <Switch checkedChildren="Active" unCheckedChildren="Hidden" />
+          </Form.Item>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit">
+              {editingReview ? "Update Review" : "Add Review"}
             </Button>
           </Form.Item>
         </Form>

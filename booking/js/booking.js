@@ -3396,31 +3396,73 @@ async function toggleTherapistBio(therapistId) {
   const card = document.querySelector(`[data-therapist-id="${therapistId}"]`);
   const bio = document.getElementById(`bio-${therapistId}`);
   const readMoreBtn = card.querySelector('.read-more-btn');
-  
+
   if (card.classList.contains('expanded')) {
     // Collapse
     card.classList.remove('expanded');
     bio.classList.remove('expanded');
     readMoreBtn.textContent = 'Read More';
   } else {
-    // Expand - fetch bio only
+    // Expand - fetch bio and reviews
     try {
+      // Fetch bio and total_reviews from therapist profile
       const { data: therapistData } = await window.supabase
         .from('therapist_profiles')
-        .select('bio')
+        .select('bio, total_reviews')
         .eq('id', therapistId)
         .single();
-      
+
+      // Fetch latest 5 active reviews
+      const { data: reviewsData } = await window.supabase
+        .from('therapist_reviews')
+        .select('reviewer_name, rating, review_text, review_date')
+        .eq('therapist_id', therapistId)
+        .eq('is_active', true)
+        .order('review_date', { ascending: false })
+        .limit(5);
+
       const bioText = therapistData?.bio || 'No bio available';
-      
-      // Update bio content
-      bio.innerHTML = `<p>${bioText}</p>`;
-      
+      const totalReviews = therapistData?.total_reviews || 0;
+      const reviews = reviewsData || [];
+
+      // Build reviews HTML
+      let reviewsHtml = '';
+      if (reviews.length > 0) {
+        // Calculate average rating
+        const avgRating = reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length;
+
+        reviewsHtml = `
+          <div class="therapist-reviews-section">
+            <div class="reviews-header">
+              <span class="reviews-stars">${generateStarRating(avgRating)}</span>
+              <span class="reviews-count">${totalReviews} review${totalReviews !== 1 ? 's' : ''}</span>
+            </div>
+            <div class="reviews-list">
+              ${reviews.map(review => `
+                <div class="review-item">
+                  <div class="review-header">
+                    <span class="reviewer-name">${review.reviewer_name}</span>
+                    <span class="review-stars">${generateStarRating(review.rating)}</span>
+                  </div>
+                  <p class="review-text">${review.review_text}</p>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // Update bio content with reviews
+      bio.innerHTML = `
+        <p class="bio-text">${bioText}</p>
+        ${reviewsHtml}
+      `;
+
       // Expand the card
       card.classList.add('expanded');
       bio.classList.add('expanded');
       readMoreBtn.textContent = 'Show Less';
-      
+
     } catch (error) {
       console.error('Error fetching therapist bio:', error);
       bio.innerHTML = '<p>Error loading bio</p>';
@@ -3429,6 +3471,25 @@ async function toggleTherapistBio(therapistId) {
       readMoreBtn.textContent = 'Show Less';
     }
   }
+}
+
+// Helper function to generate star rating HTML
+function generateStarRating(rating) {
+  const fullStars = Math.floor(rating);
+  const hasHalfStar = rating % 1 >= 0.5;
+  const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
+
+  let html = '';
+  for (let i = 0; i < fullStars; i++) {
+    html += '<span class="star filled">★</span>';
+  }
+  if (hasHalfStar) {
+    html += '<span class="star half">★</span>';
+  }
+  for (let i = 0; i < emptyStars; i++) {
+    html += '<span class="star empty">☆</span>';
+  }
+  return html;
 }
 
 // STRIPE INTEGRATION

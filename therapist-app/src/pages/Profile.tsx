@@ -25,6 +25,8 @@ import {
   BankOutlined,
   DollarOutlined,
   LockOutlined,
+  StarFilled,
+  StarOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { supabaseClient } from '../utility/supabaseClient';
@@ -58,6 +60,15 @@ interface TherapistProfile {
   afterhours_rate?: number;
 }
 
+interface TherapistReview {
+  id: string;
+  reviewer_name: string;
+  rating: number;
+  review_text: string;
+  review_date: string;
+  is_active: boolean;
+}
+
 export const Profile: React.FC = () => {
   const { message } = App.useApp(); // Use v5-correct message API
   const [form] = Form.useForm();
@@ -70,6 +81,7 @@ export const Profile: React.FC = () => {
   const [qualificationCertFile, setQualificationCertFile] = useState<any[]>([]);
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordForm] = Form.useForm();
+  const [reviews, setReviews] = useState<TherapistReview[]>([]);
 
   useEffect(() => {
     loadProfile();
@@ -152,12 +164,31 @@ export const Profile: React.FC = () => {
             url: data.qualification_certificate_url
           }]);
         }
+
+        // Load reviews
+        await loadReviews(data.id);
       }
     } catch (error: any) {
       console.error('Error loading profile:', error);
       message.error('Failed to load profile');
     } finally {
       setInitialLoading(false);
+    }
+  };
+
+  const loadReviews = async (therapistId: string) => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('therapist_reviews')
+        .select('*')
+        .eq('therapist_id', therapistId)
+        .eq('is_active', true)
+        .order('review_date', { ascending: false });
+
+      if (error) throw error;
+      setReviews(data || []);
+    } catch (error) {
+      console.error('Error loading reviews:', error);
     }
   };
 
@@ -680,6 +711,61 @@ export const Profile: React.FC = () => {
             </Button>
           </div>
         </Form>
+      </Card>
+
+      <Card
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>My Reviews</span>
+            <span style={{ fontSize: 14, fontWeight: 'normal', color: '#666' }}>
+              {reviews.length} review{reviews.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        }
+        style={{ marginTop: 24 }}
+      >
+        {reviews.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40, color: '#999' }}>
+            <StarOutlined style={{ fontSize: 48, marginBottom: 16 }} />
+            <p>No reviews yet</p>
+            <p style={{ fontSize: 12 }}>Reviews from Google that mention you will appear here</p>
+          </div>
+        ) : (
+          <div>
+            {reviews.map((review) => (
+              <div
+                key={review.id}
+                style={{
+                  padding: 16,
+                  marginBottom: 16,
+                  border: '1px solid #f0f0f0',
+                  borderRadius: 8,
+                  backgroundColor: '#fafafa'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontWeight: 'bold' }}>{review.reviewer_name}</span>
+                  <span style={{ color: '#999', fontSize: 12 }}>
+                    {dayjs(review.review_date).format('MMM DD, YYYY')}
+                  </span>
+                </div>
+                <div style={{ marginBottom: 8, color: '#faad14' }}>
+                  {[...Array(5)].map((_, i) => (
+                    i < review.rating
+                      ? <StarFilled key={i} />
+                      : <StarOutlined key={i} style={{ color: '#d9d9d9' }} />
+                  ))}
+                </div>
+                <p style={{ margin: 0, color: '#333' }}>{review.review_text}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        <div style={{ marginTop: 16, padding: 12, backgroundColor: '#e6f7ff', border: '1px solid #91d5ff', borderRadius: 4 }}>
+          <p style={{ margin: 0, fontSize: 12, color: '#666' }}>
+            💡 Reviews are managed by the admin team. If you have a Google review that mentions you, please contact the admin to have it added to your profile.
+          </p>
+        </div>
       </Card>
     </div>
   );
