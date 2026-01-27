@@ -3405,10 +3405,10 @@ async function toggleTherapistBio(therapistId) {
   } else {
     // Expand - fetch bio and reviews
     try {
-      // Fetch bio and total_reviews from therapist profile
+      // Fetch bio from therapist profile
       const { data: therapistData } = await window.supabase
         .from('therapist_profiles')
-        .select('bio, total_reviews')
+        .select('bio')
         .eq('id', therapistId)
         .single();
 
@@ -3421,8 +3421,14 @@ async function toggleTherapistBio(therapistId) {
         .order('review_date', { ascending: false })
         .limit(5);
 
+      // Get total count of active reviews
+      const { count: totalReviews } = await window.supabase
+        .from('therapist_reviews')
+        .select('*', { count: 'exact', head: true })
+        .eq('therapist_id', therapistId)
+        .eq('is_active', true);
+
       const bioText = therapistData?.bio || 'No bio available';
-      const totalReviews = therapistData?.total_reviews || 0;
       const reviews = reviewsData || [];
 
       // Build reviews HTML
@@ -3435,7 +3441,7 @@ async function toggleTherapistBio(therapistId) {
           <div class="therapist-reviews-section">
             <div class="reviews-header">
               <span class="reviews-stars">${generateStarRating(avgRating)}</span>
-              <span class="reviews-count">${totalReviews} review${totalReviews !== 1 ? 's' : ''}</span>
+              <span class="reviews-count">${totalReviews || 0} review${(totalReviews || 0) !== 1 ? 's' : ''}</span>
             </div>
             <div class="reviews-list">
               ${reviews.map(review => `
