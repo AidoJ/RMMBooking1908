@@ -3444,15 +3444,20 @@ async function toggleTherapistBio(therapistId) {
               <span class="reviews-count">${totalReviews || 0} review${(totalReviews || 0) !== 1 ? 's' : ''}</span>
             </div>
             <div class="reviews-list">
-              ${reviews.map(review => `
+              ${reviews.map(review => {
+                const reviewDate = new Date(review.review_date);
+                const formattedDate = reviewDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+                return `
                 <div class="review-item">
                   <div class="review-header">
                     <span class="reviewer-name">${review.reviewer_name}</span>
+                    <span class="review-date">${formattedDate}</span>
                     <span class="review-stars">${generateStarRating(review.rating)}</span>
                   </div>
                   <p class="review-text">${review.review_text}</p>
                 </div>
-              `).join('')}
+              `;
+              }).join('')}
             </div>
           </div>
         `;

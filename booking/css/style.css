@@ -1101,6 +1101,13 @@ input::placeholder {
   font-size: 0.875rem;
 }
 
+.review-date {
+  color: var(--gray-500);
+  font-size: 0.75rem;
+  margin-left: auto;
+  margin-right: var(--space-2);
+}
+
 .review-stars {
   display: flex;
   gap: 1px;
