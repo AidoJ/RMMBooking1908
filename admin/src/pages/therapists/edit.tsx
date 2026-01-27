@@ -41,6 +41,8 @@ import {
   CheckOutlined,
   EditOutlined,
   CloseOutlined,
+  StarOutlined,
+  StarFilled,
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router';
 import { useGetIdentity } from '@refinedev/core';
@@ -101,6 +103,16 @@ interface TimeOff {
   end_date: string;
   reason?: string;
   status: string;
+}
+
+interface TherapistReview {
+  id?: string;
+  therapist_id: string;
+  reviewer_name: string;
+  rating: number;
+  review_text: string;
+  review_date: string;
+  is_active: boolean;
 }
 
 interface Coordinate {
@@ -170,6 +182,12 @@ const TherapistEdit: React.FC = () => {
   const [isAvailabilityModalVisible, setIsAvailabilityModalVisible] = useState(false);
   const [availabilityForm] = Form.useForm();
   const [editingAvailabilityIndex, setEditingAvailabilityIndex] = useState<number | null>(null);
+
+  // Reviews state
+  const [reviews, setReviews] = useState<TherapistReview[]>([]);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [editingReview, setEditingReview] = useState<TherapistReview | null>(null);
+  const [reviewForm] = Form.useForm();
 
   const canEditTherapists = identity?.role === 'admin' || identity?.role === 'super_admin';
   const isSuperAdmin = identity?.role === 'super_admin';
@@ -346,6 +364,9 @@ const TherapistEdit: React.FC = () => {
       if (timeOffError) throw timeOffError;
       setTimeOff(timeOffData || []);
 
+      // Load reviews
+      await loadReviews(id);
+
     } catch (error: any) {
       console.error('Error loading therapist data:', error);
       message.error('Failed to load therapist data');
@@ -477,6 +498,106 @@ const TherapistEdit: React.FC = () => {
     } catch (error: any) {
       console.error('Error loading services with rates:', error);
       message.error('Failed to load services with rates');
+    }
+  };
+
+  const loadReviews = async (therapistId: string) => {
+    try {
+      const { data, error } = await supabaseClient
+        .from('therapist_reviews')
+        .select('*')
+        .eq('therapist_id', therapistId)
+        .order('review_date', { ascending: false });
+
+      if (error) throw error;
+      setReviews(data || []);
+    } catch (error: any) {
+      console.error('Error loading reviews:', error);
+    }
+  };
+
+  const handleAddReview = () => {
+    setEditingReview(null);
+    reviewForm.resetFields();
+    reviewForm.setFieldsValue({
+      rating: 5,
+      review_date: dayjs(),
+      is_active: true
+    });
+    setReviewModalVisible(true);
+  };
+
+  const handleEditReview = (review: TherapistReview) => {
+    setEditingReview(review);
+    reviewForm.setFieldsValue({
+      reviewer_name: review.reviewer_name,
+      rating: review.rating,
+      review_text: review.review_text,
+      review_date: dayjs(review.review_date),
+      is_active: review.is_active
+    });
+    setReviewModalVisible(true);
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    Modal.confirm({
+      title: 'Delete Review',
+      content: 'Are you sure you want to delete this review?',
+      okText: 'Delete',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          const { error } = await supabaseClient
+            .from('therapist_reviews')
+            .delete()
+            .eq('id', reviewId);
+
+          if (error) throw error;
+          message.success('Review deleted successfully');
+          if (id) loadReviews(id);
+        } catch (error: any) {
+          console.error('Error deleting review:', error);
+          message.error('Failed to delete review');
+        }
+      }
+    });
+  };
+
+  const handleSaveReview = async () => {
+    try {
+      const values = await reviewForm.validateFields();
+      const reviewData = {
+        therapist_id: id,
+        reviewer_name: values.reviewer_name,
+        rating: values.rating,
+        review_text: values.review_text,
+        review_date: values.review_date.format('YYYY-MM-DD'),
+        is_active: values.is_active
+      };
+
+      if (editingReview?.id) {
+        const { error } = await supabaseClient
+          .from('therapist_reviews')
+          .update(reviewData)
+          .eq('id', editingReview.id);
+
+        if (error) throw error;
+        message.success('Review updated successfully');
+      } else {
+        const { error } = await supabaseClient
+          .from('therapist_reviews')
+          .insert(reviewData);
+
+        if (error) throw error;
+        message.success('Review added successfully');
+      }
+
+      setReviewModalVisible(false);
+      reviewForm.resetFields();
+      if (id) loadReviews(id);
+    } catch (error: any) {
+      console.error('Error saving review:', error);
+      message.error('Failed to save review');
     }
   };
 
@@ -1927,6 +2048,111 @@ const TherapistEdit: React.FC = () => {
                     </div>
                   ),
                 },
+                {
+                  key: 'reviews',
+                  label: 'Reviews',
+                  children: (
+                    <div>
+                      <Alert
+                        message="Manage Google Reviews"
+                        description="Add reviews from Google Business for this therapist. Active reviews will be displayed on the booking form when clients are selecting therapists."
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                      />
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <Button
+                          type="primary"
+                          icon={<PlusOutlined />}
+                          onClick={handleAddReview}
+                        >
+                          Add Review
+                        </Button>
+                      </div>
+
+                      <Table
+                        dataSource={reviews}
+                        rowKey="id"
+                        pagination={false}
+                        locale={{ emptyText: 'No reviews added yet' }}
+                        columns={[
+                          {
+                            title: 'Reviewer',
+                            dataIndex: 'reviewer_name',
+                            key: 'reviewer_name',
+                            width: 150,
+                          },
+                          {
+                            title: 'Rating',
+                            dataIndex: 'rating',
+                            key: 'rating',
+                            width: 120,
+                            render: (rating: number) => (
+                              <span>
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  star <= rating ? (
+                                    <StarFilled key={star} style={{ color: '#fadb14', marginRight: 2 }} />
+                                  ) : (
+                                    <StarOutlined key={star} style={{ color: '#d9d9d9', marginRight: 2 }} />
+                                  )
+                                ))}
+                              </span>
+                            ),
+                          },
+                          {
+                            title: 'Review',
+                            dataIndex: 'review_text',
+                            key: 'review_text',
+                            ellipsis: true,
+                          },
+                          {
+                            title: 'Date',
+                            dataIndex: 'review_date',
+                            key: 'review_date',
+                            width: 120,
+                            render: (date: string) => dayjs(date).format('DD/MM/YYYY'),
+                          },
+                          {
+                            title: 'Active',
+                            dataIndex: 'is_active',
+                            key: 'is_active',
+                            width: 80,
+                            render: (isActive: boolean) => (
+                              <Tag color={isActive ? 'green' : 'default'}>
+                                {isActive ? 'Yes' : 'No'}
+                              </Tag>
+                            ),
+                          },
+                          {
+                            title: 'Actions',
+                            key: 'actions',
+                            width: 150,
+                            render: (_: any, record: TherapistReview) => (
+                              <Space>
+                                <Button
+                                  size="small"
+                                  icon={<EditOutlined />}
+                                  onClick={() => handleEditReview(record)}
+                                >
+                                  Edit
+                                </Button>
+                                <Button
+                                  size="small"
+                                  danger
+                                  icon={<DeleteOutlined />}
+                                  onClick={() => record.id && handleDeleteReview(record.id)}
+                                >
+                                  Delete
+                                </Button>
+                              </Space>
+                            ),
+                          },
+                        ]}
+                      />
+                    </div>
+                  ),
+                },
               ]}
             />
           </Card>
@@ -2189,6 +2415,80 @@ const TherapistEdit: React.FC = () => {
               <Button type="primary" htmlType="submit" size="large" block>
                 {editingAvailabilityIndex !== null ? "Update Availability Slot" : "Add Availability Slot"}
               </Button>
+            </Form.Item>
+          </Form>
+        </Modal>
+
+        {/* Review Add/Edit Modal */}
+        <Modal
+          title={editingReview ? 'Edit Review' : 'Add Review'}
+          open={reviewModalVisible}
+          onOk={handleSaveReview}
+          onCancel={() => {
+            setReviewModalVisible(false);
+            reviewForm.resetFields();
+            setEditingReview(null);
+          }}
+          okText="Save"
+          cancelText="Cancel"
+          width={600}
+        >
+          <Form form={reviewForm} layout="vertical">
+            <Form.Item
+              label="Reviewer Name"
+              name="reviewer_name"
+              rules={[{ required: true, message: 'Please enter reviewer name' }]}
+            >
+              <Input placeholder="e.g., John D." />
+            </Form.Item>
+
+            <Form.Item
+              label="Rating"
+              name="rating"
+              rules={[{ required: true, message: 'Please select a rating' }]}
+            >
+              <Select placeholder="Select rating">
+                {[5, 4, 3, 2, 1].map(rating => (
+                  <Option key={rating} value={rating}>
+                    {[1, 2, 3, 4, 5].map(star => (
+                      star <= rating ? (
+                        <StarFilled key={star} style={{ color: '#fadb14', marginRight: 2 }} />
+                      ) : (
+                        <StarOutlined key={star} style={{ color: '#d9d9d9', marginRight: 2 }} />
+                      )
+                    ))}
+                    <span style={{ marginLeft: 8 }}>({rating} star{rating !== 1 ? 's' : ''})</span>
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              label="Review Text"
+              name="review_text"
+              rules={[{ required: true, message: 'Please enter review text' }]}
+            >
+              <TextArea
+                rows={4}
+                placeholder="Enter the review text from Google..."
+                maxLength={1000}
+                showCount
+              />
+            </Form.Item>
+
+            <Form.Item
+              label="Review Date"
+              name="review_date"
+              rules={[{ required: true, message: 'Please select review date' }]}
+            >
+              <DatePicker style={{ width: '100%' }} format="DD/MM/YYYY" />
+            </Form.Item>
+
+            <Form.Item
+              name="is_active"
+              valuePropName="checked"
+            >
+              <Checkbox>Active (show on booking form)</Checkbox>
             </Form.Item>
           </Form>
         </Modal>
