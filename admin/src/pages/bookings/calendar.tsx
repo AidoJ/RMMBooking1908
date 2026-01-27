@@ -132,9 +132,10 @@ export const CalendarBookingManagement: React.FC = () => {
 
   const fetchTherapists = async () => {
     try {
+      // Only select needed columns - avoid large fields like profile_pic
       let query = supabaseClient
         .from('therapist_profiles')
-        .select('*')
+        .select('id, first_name, last_name, email, phone, is_active')
         .eq('is_active', true);
 
       // If therapist, only get their own profile
