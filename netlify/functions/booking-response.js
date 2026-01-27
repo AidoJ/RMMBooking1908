@@ -461,11 +461,11 @@ async function handleBookingAccept(booking, therapist, headers) {
 
     // Query series bookings for email
     let seriesBookings = [];
-    console.log('🔍 Querying series bookings for emails using request_id:', bookingForRequestId.request_id);
+    console.log('🔍 Querying series bookings for emails using request_id:', booking.request_id);
     const { data: allBookings, error: seriesError } = await supabase
       .from('bookings')
       .select('booking_id, booking_time, occurrence_number, therapist_fee')
-      .eq('request_id', bookingForRequestId.request_id)
+      .eq('request_id', booking.request_id)
       .order('occurrence_number', { ascending: true, nullsFirst: false });
 
     if (!seriesError && allBookings && allBookings.length > 1) {
