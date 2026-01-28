@@ -228,6 +228,55 @@ const PaymentHistoryTab: React.FC = () => {
     }
   };
 
+  // Resend payment confirmation email
+  const handleResendEmail = async (record: PaymentRecord) => {
+    if (!record.therapist_email) {
+      message.error('No therapist email found');
+      return;
+    }
+
+    try {
+      const emailResult = await EmailService.sendTherapistPaymentConfirmation({
+        therapistEmail: record.therapist_email,
+        therapistName: record.therapist_name,
+        paymentDate: dayjs(record.paid_date).format('DD MMMM YYYY'),
+        eftReference: record.eft_reference || '',
+        weekPeriod: `${dayjs(record.week_start).format('D MMM')} - ${dayjs(record.week_ending).format('D MMM YYYY')}`,
+        invoiceNumber: record.invoice_number || '',
+        bookings: record.bookings,
+        totalFees: record.admin_approved_fees,
+        parkingAmount: record.admin_approved_parking,
+        totalPaid: record.paid_amount,
+        paymentNotes: record.payment_notes
+      });
+
+      if (emailResult.success) {
+        message.success('Payment confirmation email resent successfully');
+      } else {
+        message.error('Failed to resend email: ' + (emailResult.error || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error resending email:', error);
+      message.error('Failed to resend email');
+    }
+  };
+
+  // Download file helper function
+  const downloadFile = (dataUrl: string, filename: string) => {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Check if string is a valid image data URL
+  const isValidImageUrl = (url: string) => {
+    if (!url) return false;
+    return url.startsWith('data:image/') || url.startsWith('http');
+  };
+
   // Expandable row content
   const expandedRowRender = (record: PaymentRecord) => {
     const bookingColumns = [
@@ -264,36 +313,75 @@ const PaymentHistoryTab: React.FC = () => {
       }
     ];
 
+    const invoiceFilename = `Invoice_${record.therapist_name.replace(/\s+/g, '_')}_${dayjs(record.week_ending).format('YYYY-MM-DD')}.png`;
+    const receiptFilename = `ParkingReceipt_${record.therapist_name.replace(/\s+/g, '_')}_${dayjs(record.week_ending).format('YYYY-MM-DD')}.png`;
+
     return (
       <div style={{ padding: '16px', background: '#fafafa' }}>
-        <div style={{ display: 'flex', gap: '24px', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', gap: '24px', marginBottom: '16px', flexWrap: 'wrap' }}>
           {/* Invoice Image */}
-          {record.therapist_invoice_url && (
-            <div style={{ flex: 1 }}>
+          {record.therapist_invoice_url && isValidImageUrl(record.therapist_invoice_url) && (
+            <div style={{ flex: 1, minWidth: '300px' }}>
               <h4 style={{ marginBottom: '8px', color: '#007e8c' }}>
                 <FileImageOutlined /> Submitted Invoice
               </h4>
-              <Image
-                src={record.therapist_invoice_url}
-                alt="Invoice"
-                style={{ maxWidth: '300px', maxHeight: '200px', objectFit: 'contain', border: '1px solid #d9d9d9', borderRadius: '4px' }}
-                preview={{ mask: 'Click to view full size' }}
-              />
+              <div style={{ border: '1px solid #d9d9d9', borderRadius: '4px', padding: '8px', background: '#fff' }}>
+                <Image
+                  src={record.therapist_invoice_url}
+                  alt="Invoice"
+                  style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }}
+                  fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgesAKKYOaZvE7agAAAAgelRUWHRBdXRob3IAQ2xhdWRlAInj7y4AAAHPSURBVHic7dZBCsMgEEDR3P+OfQXBJmkXLYI/ZGGWJgN/MqYKAAAAAAAAAAAAAAAAAAAAAAD8qvN8P+sLwN2s8xqCARbTEYAXdASCdASCdASCdASCdASCdASCdASCdASCdASCdASCdASC9H8EAAAAAAAAAAAAAAAAAAAAAHhj5/l+1xeAO1vnNQADLKYjAC/oCAjpCATpCATpCATpCATpCATpCATpCATpCATpCATpCAT5/wEAAAAAAAAAAAAAAAAAAAA="
+                />
+                <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                  <Button
+                    size="small"
+                    icon={<DownloadOutlined />}
+                    onClick={() => downloadFile(record.therapist_invoice_url, invoiceFilename)}
+                  >
+                    Download
+                  </Button>
+                  <Button
+                    size="small"
+                    icon={<EyeOutlined />}
+                    onClick={() => window.open(record.therapist_invoice_url, '_blank')}
+                  >
+                    Open in New Tab
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Parking Receipt */}
-          {record.parking_receipt_url && (
-            <div style={{ flex: 1 }}>
+          {record.parking_receipt_url && isValidImageUrl(record.parking_receipt_url) && (
+            <div style={{ flex: 1, minWidth: '300px' }}>
               <h4 style={{ marginBottom: '8px', color: '#007e8c' }}>
                 <FileImageOutlined /> Parking Receipt
               </h4>
-              <Image
-                src={record.parking_receipt_url}
-                alt="Parking Receipt"
-                style={{ maxWidth: '300px', maxHeight: '200px', objectFit: 'contain', border: '1px solid #d9d9d9', borderRadius: '4px' }}
-                preview={{ mask: 'Click to view full size' }}
-              />
+              <div style={{ border: '1px solid #d9d9d9', borderRadius: '4px', padding: '8px', background: '#fff' }}>
+                <Image
+                  src={record.parking_receipt_url}
+                  alt="Parking Receipt"
+                  style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }}
+                  fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeNAKKYOaZvE7agAAAAgelRUWHRBdXRob3IAQ2xhdWRlAInj7y4AAAHPSURBVHic7dZBCsMgEEDR3P+OfQXBJmkXLYI/ZGGWJgN/MqYKAAAAAAAAAAAAAAAAAAAAAAD8qvN8P+sLwN2s8xqCARbTEYAXdASCdASCdASCdASCdASCdASCdASCdASCdASCdASCdASC9H8EAAAAAAAAAAAAAAAAAAAAAHhj5/l+1xeAO1vnNQADLKYjAC/oCAjpCATpCATpCATpCATpCATpCATpCATpCATpCATpCAT5/wEAAAAAAAAAAAAAAAAAAAA="
+                />
+                <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
+                  <Button
+                    size="small"
+                    icon={<DownloadOutlined />}
+                    onClick={() => downloadFile(record.parking_receipt_url, receiptFilename)}
+                  >
+                    Download
+                  </Button>
+                  <Button
+                    size="small"
+                    icon={<EyeOutlined />}
+                    onClick={() => window.open(record.parking_receipt_url, '_blank')}
+                  >
+                    Open in New Tab
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -409,7 +497,7 @@ const PaymentHistoryTab: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       align: 'center' as const,
-      width: 120,
+      width: 180,
       render: (_: any, record: PaymentRecord) => (
         <Space>
           {record.status === 'approved' && (
@@ -423,13 +511,23 @@ const PaymentHistoryTab: React.FC = () => {
             </Button>
           )}
           {record.status === 'paid' && (
-            <Button
-              size="small"
-              icon={<EyeOutlined />}
-              onClick={() => handleRecordPayment(record)}
-            >
-              View
-            </Button>
+            <>
+              <Button
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => handleRecordPayment(record)}
+              >
+                View
+              </Button>
+              <Button
+                size="small"
+                icon={<MailOutlined />}
+                onClick={() => handleResendEmail(record)}
+                title="Resend payment confirmation email"
+              >
+                Resend
+              </Button>
+            </>
           )}
         </Space>
       )

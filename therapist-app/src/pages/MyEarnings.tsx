@@ -282,6 +282,12 @@ export const MyEarnings: React.FC = () => {
   const handleInvoiceSubmit = async (values: any) => {
     if (!selectedWeek || !therapistId) return;
 
+    // Validate invoice file is uploaded
+    if (!invoiceFile) {
+      antdMessage.error('Please upload an invoice file before submitting');
+      return;
+    }
+
     try {
       setSubmitting(true);
 
@@ -632,18 +638,22 @@ export const MyEarnings: React.FC = () => {
                 />
               </Form.Item>
 
-              <Form.Item label="Upload Invoice (Optional)">
+              <Form.Item
+                label="Upload Invoice"
+                required
+                validateStatus={!invoiceFile ? 'error' : ''}
+                help={!invoiceFile ? 'Invoice file is required to submit' : 'Accepted formats: PDF, JPG, PNG'}
+              >
                 <Upload
                   beforeUpload={handleInvoiceFileUpload}
                   maxCount={1}
                   accept=".pdf,.jpg,.jpeg,.png"
                   onRemove={() => setInvoiceFile(null)}
                 >
-                  <Button icon={<UploadOutlined />}>Select Invoice File</Button>
+                  <Button icon={<UploadOutlined />} type={invoiceFile ? 'default' : 'primary'}>
+                    {invoiceFile ? 'Invoice Uploaded ✓' : 'Select Invoice File'}
+                  </Button>
                 </Upload>
-                <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                  Accepted formats: PDF, JPG, PNG
-                </Text>
               </Form.Item>
 
               <Form.Item label="Upload Parking Receipt (Optional)">
