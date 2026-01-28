@@ -273,8 +273,17 @@ const PaymentHistoryTab: React.FC = () => {
 
   // Check if string is a valid image data URL
   const isValidImageUrl = (url: string) => {
-    if (!url) return false;
-    return url.startsWith('data:image/') || url.startsWith('http');
+    if (!url || typeof url !== 'string') return false;
+    const trimmedUrl = url.trim();
+    if (!trimmedUrl) return false;
+    // Check for data URLs, http/https URLs, or Supabase storage URLs
+    return (
+      trimmedUrl.startsWith('data:image/') ||
+      trimmedUrl.startsWith('http://') ||
+      trimmedUrl.startsWith('https://') ||
+      trimmedUrl.startsWith('/storage/') ||
+      trimmedUrl.includes('supabase.co/storage')
+    );
   };
 
   // Expandable row content

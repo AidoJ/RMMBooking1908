@@ -1379,29 +1379,51 @@ export const EmailService = {
         throw new Error('EmailJS not loaded');
       }
 
-      // Generate booking items HTML
-      const bookingItemsHtml = params.bookings.map(b => `
-        <div class="booking-item">
-          <span class="job-number">${b.booking_id}</span>
-          <span class="date">${new Date(b.booking_time).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short' })} - ${b.service_name}</span>
-          <span class="fee">$${b.therapist_fee.toFixed(2)}</span>
-        </div>
-      `).join('');
+      // Helper function to escape HTML and ensure string values
+      const escapeHtml = (text: any): string => {
+        if (text === null || text === undefined) return '';
+        const str = String(text);
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      };
 
+      // Generate booking items HTML with proper escaping
+      const bookingItemsHtml = params.bookings.map(b => {
+        const bookingDate = new Date(b.booking_time).toLocaleDateString('en-AU', { 
+          weekday: 'short', 
+          day: 'numeric', 
+          month: 'short' 
+        });
+        const serviceName = escapeHtml(b.service_name || '');
+        const bookingId = escapeHtml(b.booking_id || '');
+        const fee = b.therapist_fee ? b.therapist_fee.toFixed(2) : '0.00';
+        
+        return `<div class="booking-item">
+          <span class="job-number">${bookingId}</span>
+          <span class="date">${escapeHtml(bookingDate)} - ${serviceName}</span>
+          <span class="fee">$${fee}</span>
+        </div>`;
+      }).join('');
+
+      // Ensure all template parameters are properly formatted strings
       const templateParams = {
-        to_email: params.therapistEmail,
-        to_name: params.therapistName,
-        therapist_name: params.therapistName,
-        payment_date: params.paymentDate,
-        eft_reference: params.eftReference,
-        week_period: params.weekPeriod,
-        invoice_number: params.invoiceNumber || 'N/A',
+        to_email: String(params.therapistEmail || ''),
+        to_name: String(params.therapistName || ''),
+        therapist_name: String(params.therapistName || ''),
+        payment_date: String(params.paymentDate || ''),
+        eft_reference: String(params.eftReference || ''),
+        week_period: String(params.weekPeriod || ''),
+        invoice_number: String(params.invoiceNumber || 'N/A'),
         booking_items: bookingItemsHtml,
-        booking_count: params.bookings.length.toString(),
-        total_fees: `$${params.totalFees.toFixed(2)}`,
-        parking_amount: `$${params.parkingAmount.toFixed(2)}`,
-        total_paid: `$${params.totalPaid.toFixed(2)}`,
-        payment_notes: params.paymentNotes || '',
+        booking_count: String(params.bookings?.length || 0),
+        total_fees: `$${Number(params.totalFees || 0).toFixed(2)}`,
+        parking_amount: `$${Number(params.parkingAmount || 0).toFixed(2)}`,
+        total_paid: `$${Number(params.totalPaid || 0).toFixed(2)}`,
+        payment_notes: String(params.paymentNotes || ''),
         from_name: 'Rejuvenators Mobile Massage'
       };
 
