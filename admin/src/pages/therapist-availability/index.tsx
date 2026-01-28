@@ -61,10 +61,15 @@ interface TherapistAvailability {
   bookings: Booking[];
 }
 
-// Extract city from home_address (first part before comma)
+// Extract suburb/city from home_address (second part - format: "Street, Suburb, State")
 const extractCity = (address?: string): string => {
   if (!address) return '';
   const parts = address.split(',');
+  // Australian addresses: "123 Street, Suburb, State Postcode"
+  // Get the suburb (second part) if available, otherwise first part
+  if (parts.length >= 2) {
+    return parts[1]?.trim() || '';
+  }
   return parts[0]?.trim() || '';
 };
 
