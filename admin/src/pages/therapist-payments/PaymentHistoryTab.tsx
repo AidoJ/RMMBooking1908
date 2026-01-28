@@ -271,14 +271,36 @@ const PaymentHistoryTab: React.FC = () => {
     }
   };
 
-  // Download file helper function
-  const downloadFile = (dataUrl: string, filename: string) => {
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Download file helper function - properly handles base64 data URLs
+  const downloadFile = async (dataUrl: string, filename: string) => {
+    try {
+      // If it's a base64 data URL, convert to blob
+      if (dataUrl.startsWith('data:')) {
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        // Clean up the object URL
+        setTimeout(() => window.URL.revokeObjectURL(url), 100);
+      } else {
+        // For regular URLs, use direct download
+        const link = document.createElement('a');
+        link.href = dataUrl;
+        link.download = filename;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      message.error('Failed to download file');
+    }
   };
 
   // Check if string is a valid image URL
@@ -327,8 +349,22 @@ const PaymentHistoryTab: React.FC = () => {
       }
     ];
 
-    const invoiceFilename = `Invoice_${record.therapist_name.replace(/\s+/g, '_')}_${dayjs(record.week_ending).format('YYYY-MM-DD')}.png`;
-    const receiptFilename = `ParkingReceipt_${record.therapist_name.replace(/\s+/g, '_')}_${dayjs(record.week_ending).format('YYYY-MM-DD')}.png`;
+    // Detect file extension from data URL or default to png
+    const getFileExtension = (url: string | null): string => {
+      if (!url) return 'png';
+      if (url.startsWith('data:')) {
+        const match = url.match(/data:image\/(\w+);/);
+        return match ? match[1] : 'png';
+      }
+      // For regular URLs, try to extract extension
+      const match = url.match(/\.(\w+)(?:\?|$)/);
+      return match ? match[1] : 'png';
+    };
+    
+    const invoiceExt = getFileExtension(record.therapist_invoice_url);
+    const receiptExt = getFileExtension(record.parking_receipt_url);
+    const invoiceFilename = `Invoice_${record.therapist_name.replace(/\s+/g, '_')}_${dayjs(record.week_ending).format('YYYY-MM-DD')}.${invoiceExt}`;
+    const receiptFilename = `ParkingReceipt_${record.therapist_name.replace(/\s+/g, '_')}_${dayjs(record.week_ending).format('YYYY-MM-DD')}.${receiptExt}`;
 
     // Debug logging for invoice URL validation
     const hasInvoiceUrl = record.therapist_invoice_url && isValidImageUrl(record.therapist_invoice_url);
@@ -361,7 +397,11 @@ const PaymentHistoryTab: React.FC = () => {
                   <Button
                     size="small"
                     icon={<DownloadOutlined />}
-                    onClick={() => downloadFile(record.therapist_invoice_url, invoiceFilename)}
+                    onClick={() => {
+                      if (record.therapist_invoice_url) {
+                        downloadFile(record.therapist_invoice_url, invoiceFilename);
+                      }
+                    }}
                   >
                     Download
                   </Button>
@@ -394,7 +434,11 @@ const PaymentHistoryTab: React.FC = () => {
                   <Button
                     size="small"
                     icon={<DownloadOutlined />}
-                    onClick={() => downloadFile(record.parking_receipt_url, receiptFilename)}
+                    onClick={() => {
+                      if (record.parking_receipt_url) {
+                        downloadFile(record.parking_receipt_url, receiptFilename);
+                      }
+                    }}
                   >
                     Download
                   </Button>
