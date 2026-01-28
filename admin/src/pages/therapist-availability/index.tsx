@@ -35,7 +35,7 @@ interface Therapist {
   email: string;
   phone: string;
   is_active: boolean;
-  service_area: string[];
+  home_address?: string;
 }
 
 interface AvailabilitySlot {
@@ -61,6 +61,13 @@ interface TherapistAvailability {
   bookings: Booking[];
 }
 
+// Extract city from home_address (first part before comma)
+const extractCity = (address?: string): string => {
+  if (!address) return '';
+  const parts = address.split(',');
+  return parts[0]?.trim() || '';
+};
+
 const TherapistAvailabilityOverview: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCity, setSelectedCity] = useState<string>('all');
@@ -78,18 +85,19 @@ const TherapistAvailabilityOverview: React.FC = () => {
 
   const loadCities = async () => {
     try {
-      // Get unique cities from therapist service areas
+      // Get unique cities from therapist home addresses
       const { data, error } = await supabaseClient
         .from('therapist_profiles')
-        .select('service_area')
+        .select('home_address')
         .eq('is_active', true);
 
       if (error) throw error;
 
       const allCities = new Set<string>();
       data?.forEach((t: any) => {
-        if (t.service_area && Array.isArray(t.service_area)) {
-          t.service_area.forEach((city: string) => allCities.add(city));
+        const city = extractCity(t.home_address);
+        if (city) {
+          allCities.add(city);
         }
       });
 
@@ -105,27 +113,27 @@ const TherapistAvailabilityOverview: React.FC = () => {
 
       const weekEnd = weekStart.add(6, 'day');
 
-      // Load therapists with their service areas
-      let therapistQuery = supabaseClient
+      // Load therapists with their home addresses
+      const { data: therapists, error: therapistError } = await supabaseClient
         .from('therapist_profiles')
-        .select('id, first_name, last_name, email, phone, is_active, service_area')
+        .select('id, first_name, last_name, email, phone, is_active, home_address')
         .eq('is_active', true)
         .order('first_name');
 
-      const { data: therapists, error: therapistError } = await therapistQuery;
       if (therapistError) throw therapistError;
 
       // Filter by city if selected
       let filteredTherapists = therapists || [];
       if (selectedCity !== 'all') {
-        filteredTherapists = filteredTherapists.filter((t: any) =>
-          t.service_area && Array.isArray(t.service_area) && t.service_area.includes(selectedCity)
-        );
+        filteredTherapists = filteredTherapists.filter((t: any) => {
+          const city = extractCity(t.home_address);
+          return city === selectedCity;
+        });
       }
 
       // Load availability, time off, and bookings for each therapist
       const availabilityPromises = filteredTherapists.map(async (therapist: any) => {
-        // Get availability slots (no is_active column on this table)
+        // Get availability slots
         const { data: availabilityData } = await supabaseClient
           .from('therapist_availability')
           .select('day_of_week, start_time, end_time')
@@ -260,11 +268,11 @@ const TherapistAvailabilityOverview: React.FC = () => {
         <Space wrap style={{ marginBottom: 16 }}>
           <Select
             style={{ width: 200 }}
-            placeholder="Filter by City"
+            placeholder="Filter by Location"
             value={selectedCity}
             onChange={setSelectedCity}
           >
-            <Option value="all">All Cities</Option>
+            <Option value="all">All Locations</Option>
             {cities.map((city) => (
               <Option key={city} value={city}>
                 {city}
@@ -354,7 +362,7 @@ const TherapistAvailabilityOverview: React.FC = () => {
                         {data.therapist.first_name} {data.therapist.last_name}
                       </div>
                       <div style={{ fontSize: 11, color: '#888' }}>
-                        {data.therapist.service_area?.join(', ') || 'No areas set'}
+                        {extractCity(data.therapist.home_address) || 'No location set'}
                       </div>
                     </td>
                     {weekDays.map((day) => {
@@ -414,7 +422,7 @@ const TherapistAvailabilityOverview: React.FC = () => {
                 {therapistData.length === 0 && (
                   <tr>
                     <td colSpan={8} style={{ textAlign: 'center', padding: 24, color: '#999' }}>
-                      No therapists found for the selected city
+                      No therapists found for the selected location
                     </td>
                   </tr>
                 )}
