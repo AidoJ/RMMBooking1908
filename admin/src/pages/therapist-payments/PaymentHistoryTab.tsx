@@ -35,8 +35,8 @@ interface PaymentRecord {
   eft_reference: string;
   payment_notes: string;
   status: string;
-  therapist_invoice_url: string;
-  parking_receipt_url: string;
+  therapist_invoice_url: string | null;
+  parking_receipt_url: string | null;
   bookings: BookingDetail[];
 }
 
@@ -123,6 +123,16 @@ const PaymentHistoryTab: React.FC = () => {
           status: b.status
         }));
 
+        // Debug logging for invoice URLs
+        if (payment.therapist_invoice_url) {
+          console.log('📄 Invoice URL found:', {
+            paymentId: payment.id,
+            urlType: typeof payment.therapist_invoice_url,
+            urlLength: payment.therapist_invoice_url?.length,
+            urlPreview: payment.therapist_invoice_url?.substring(0, 50)
+          });
+        }
+
         return {
           id: payment.id,
           therapist_id: payment.therapist_id,
@@ -140,8 +150,8 @@ const PaymentHistoryTab: React.FC = () => {
           eft_reference: payment.eft_reference,
           payment_notes: payment.payment_notes,
           status: payment.status,
-          therapist_invoice_url: payment.therapist_invoice_url,
-          parking_receipt_url: payment.parking_receipt_url,
+          therapist_invoice_url: payment.therapist_invoice_url || null,
+          parking_receipt_url: payment.parking_receipt_url || null,
           bookings
         };
       }));
@@ -271,19 +281,14 @@ const PaymentHistoryTab: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // Check if string is a valid image data URL
-  const isValidImageUrl = (url: string) => {
-    if (!url || typeof url !== 'string') return false;
+  // Check if string is a valid image URL
+  const isValidImageUrl = (url: string | null | undefined) => {
+    if (!url) return false;
+    if (typeof url !== 'string') return false;
     const trimmedUrl = url.trim();
-    if (!trimmedUrl) return false;
-    // Check for data URLs, http/https URLs, or Supabase storage URLs
-    return (
-      trimmedUrl.startsWith('data:image/') ||
-      trimmedUrl.startsWith('http://') ||
-      trimmedUrl.startsWith('https://') ||
-      trimmedUrl.startsWith('/storage/') ||
-      trimmedUrl.includes('supabase.co/storage')
-    );
+    if (!trimmedUrl || trimmedUrl === 'null' || trimmedUrl === 'undefined') return false;
+    // Accept any non-empty string URL (data URLs, http/https URLs, or Supabase storage URLs)
+    return trimmedUrl.length > 0;
   };
 
   // Expandable row content
@@ -325,11 +330,22 @@ const PaymentHistoryTab: React.FC = () => {
     const invoiceFilename = `Invoice_${record.therapist_name.replace(/\s+/g, '_')}_${dayjs(record.week_ending).format('YYYY-MM-DD')}.png`;
     const receiptFilename = `ParkingReceipt_${record.therapist_name.replace(/\s+/g, '_')}_${dayjs(record.week_ending).format('YYYY-MM-DD')}.png`;
 
+    // Debug logging for invoice URL validation
+    const hasInvoiceUrl = record.therapist_invoice_url && isValidImageUrl(record.therapist_invoice_url);
+    if (record.therapist_invoice_url) {
+      console.log('🔍 Invoice URL validation:', {
+        hasUrl: !!record.therapist_invoice_url,
+        urlValue: record.therapist_invoice_url?.substring(0, 100),
+        isValid: isValidImageUrl(record.therapist_invoice_url),
+        willShow: hasInvoiceUrl
+      });
+    }
+
     return (
       <div style={{ padding: '16px', background: '#fafafa' }}>
         <div style={{ display: 'flex', gap: '24px', marginBottom: '16px', flexWrap: 'wrap' }}>
           {/* Invoice Image */}
-          {record.therapist_invoice_url && isValidImageUrl(record.therapist_invoice_url) && (
+          {hasInvoiceUrl && (
             <div style={{ flex: 1, minWidth: '300px' }}>
               <h4 style={{ marginBottom: '8px', color: '#007e8c' }}>
                 <FileImageOutlined /> Submitted Invoice

@@ -1379,37 +1379,41 @@ export const EmailService = {
         throw new Error('EmailJS not loaded');
       }
 
-      // Helper function to escape HTML and ensure string values
-      const escapeHtml = (text: any): string => {
-        if (text === null || text === undefined) return '';
-        const str = String(text);
-        return str
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;')
-          .replace(/'/g, '&#039;');
-      };
+      // Generate booking items as plain text (EmailJS may not support HTML in variables)
+      // Format: "Job #12345 - Mon, 15 Jan - Service Name - $50.00"
+      const bookingItemsText = params.bookings.map(b => {
+        const bookingDate = new Date(b.booking_time).toLocaleDateString('en-AU', { 
+          weekday: 'short', 
+          day: 'numeric', 
+          month: 'short' 
+        });
+        const serviceName = (b.service_name || '').trim();
+        const bookingId = (b.booking_id || '').trim();
+        const fee = b.therapist_fee ? b.therapist_fee.toFixed(2) : '0.00';
+        
+        return `Job #${bookingId} - ${bookingDate} - ${serviceName} - $${fee}`;
+      }).join('\n');
 
-      // Generate booking items HTML with proper escaping
+      // Also generate HTML version for templates that support it
       const bookingItemsHtml = params.bookings.map(b => {
         const bookingDate = new Date(b.booking_time).toLocaleDateString('en-AU', { 
           weekday: 'short', 
           day: 'numeric', 
           month: 'short' 
         });
-        const serviceName = escapeHtml(b.service_name || '');
-        const bookingId = escapeHtml(b.booking_id || '');
+        const serviceName = (b.service_name || '').trim();
+        const bookingId = (b.booking_id || '').trim();
         const fee = b.therapist_fee ? b.therapist_fee.toFixed(2) : '0.00';
         
         return `<div class="booking-item">
           <span class="job-number">${bookingId}</span>
-          <span class="date">${escapeHtml(bookingDate)} - ${serviceName}</span>
+          <span class="date">${bookingDate} - ${serviceName}</span>
           <span class="fee">$${fee}</span>
         </div>`;
       }).join('');
 
       // Ensure all template parameters are properly formatted strings
+      // Use plain text for booking_items to avoid EmailJS corruption issues
       const templateParams = {
         to_email: String(params.therapistEmail || ''),
         to_name: String(params.therapistName || ''),
@@ -1418,11 +1422,12 @@ export const EmailService = {
         eft_reference: String(params.eftReference || ''),
         week_period: String(params.weekPeriod || ''),
         invoice_number: String(params.invoiceNumber || 'N/A'),
-        booking_items: bookingItemsHtml,
+        booking_items: bookingItemsText, // Use plain text instead of HTML
+        booking_items_html: bookingItemsHtml, // Also provide HTML version if template supports it
         booking_count: String(params.bookings?.length || 0),
-        total_fees: `$${Number(params.totalFees || 0).toFixed(2)}`,
-        parking_amount: `$${Number(params.parkingAmount || 0).toFixed(2)}`,
-        total_paid: `$${Number(params.totalPaid || 0).toFixed(2)}`,
+        total_fees: String(Number(params.totalFees || 0).toFixed(2)),
+        parking_amount: String(Number(params.parkingAmount || 0).toFixed(2)),
+        total_paid: String(Number(params.totalPaid || 0).toFixed(2)),
         payment_notes: String(params.paymentNotes || ''),
         from_name: 'Rejuvenators Mobile Massage'
       };
