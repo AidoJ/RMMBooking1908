@@ -1379,40 +1379,32 @@ export const EmailService = {
         throw new Error('EmailJS not loaded');
       }
 
-      // Generate booking items HTML matching the template structure exactly
-      // Template expects: <div class="booking-item"> with job-number, date, and fee spans
-      const bookingItemsHtml = params.bookings.map(b => {
-        const bookingDate = new Date(b.booking_time).toLocaleDateString('en-AU', { 
-          weekday: 'short', 
-          day: 'numeric', 
-          month: 'short' 
+      // Generate booking items as PLAIN TEXT (EmailJS corrupts HTML)
+      const bookingItemsText = params.bookings.map(b => {
+        const bookingDate = new Date(b.booking_time).toLocaleDateString('en-AU', {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short'
         });
-        // Clean and escape values to prevent EmailJS corruption
-        const serviceName = String(b.service_name || '').trim().replace(/[<>]/g, '');
-        const bookingId = String(b.booking_id || '').trim().replace(/[<>]/g, '');
         const fee = b.therapist_fee ? Number(b.therapist_fee).toFixed(2) : '0.00';
-        const dateStr = String(bookingDate).trim();
-        
-        // Return HTML matching the template structure exactly
-        return `<div class="booking-item"><span class="job-number">${bookingId}</span><span class="date">${dateStr} - ${serviceName}</span><span class="fee">$${fee}</span></div>`;
-      }).join('');
+        return `${b.booking_id} - ${bookingDate} - ${b.service_name} - $${fee}`;
+      }).join('\n');
 
-      // Ensure all template parameters are properly formatted strings
-      // Template expects booking_items as HTML matching the structure in payment-confirmation.html
+      // Use plain text values only - EmailJS corrupts HTML
       const templateParams = {
-        to_email: String(params.therapistEmail || ''),
-        to_name: String(params.therapistName || ''),
-        therapist_name: String(params.therapistName || ''),
-        payment_date: String(params.paymentDate || ''),
-        eft_reference: String(params.eftReference || ''),
-        week_period: String(params.weekPeriod || ''),
-        invoice_number: String(params.invoiceNumber || 'N/A'),
-        booking_items: bookingItemsHtml, // HTML matching template structure
+        to_email: params.therapistEmail || '',
+        to_name: params.therapistName || '',
+        therapist_name: params.therapistName || '',
+        payment_date: params.paymentDate || '',
+        eft_reference: params.eftReference || '',
+        week_period: params.weekPeriod || '',
+        invoice_number: params.invoiceNumber || 'N/A',
+        booking_items: bookingItemsText,
         booking_count: String(params.bookings?.length || 0),
-        total_fees: '$' + String(Number(params.totalFees || 0).toFixed(2)),
-        parking_amount: '$' + String(Number(params.parkingAmount || 0).toFixed(2)),
-        total_paid: '$' + String(Number(params.totalPaid || 0).toFixed(2)),
-        payment_notes: String(params.paymentNotes || ''),
+        total_fees: '$' + Number(params.totalFees || 0).toFixed(2),
+        parking_amount: '$' + Number(params.parkingAmount || 0).toFixed(2),
+        total_paid: '$' + Number(params.totalPaid || 0).toFixed(2),
+        payment_notes: params.paymentNotes || '',
         from_name: 'Rejuvenators Mobile Massage'
       };
 

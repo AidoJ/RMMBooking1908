@@ -274,28 +274,46 @@ const PaymentHistoryTab: React.FC = () => {
   // Download file helper function - properly handles base64 data URLs
   const downloadFile = async (dataUrl: string, filename: string) => {
     try {
-      // If it's a base64 data URL, convert to blob
+      if (!dataUrl) {
+        message.error('No file data available');
+        return;
+      }
+
+      // If it's a base64 data URL, convert to blob properly
       if (dataUrl.startsWith('data:')) {
-        const response = await fetch(dataUrl);
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        // Clean up the object URL
-        setTimeout(() => window.URL.revokeObjectURL(url), 100);
+        // Extract the base64 content and mime type
+        const matches = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (matches) {
+          const mimeType = matches[1];
+          const base64Data = matches[2];
+
+          // Decode base64 to binary
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: mimeType });
+
+          // Create download link
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          // Clean up
+          setTimeout(() => window.URL.revokeObjectURL(url), 100);
+          message.success('File downloaded successfully');
+        } else {
+          message.error('Invalid file format');
+        }
       } else {
-        // For regular URLs, use direct download
-        const link = document.createElement('a');
-        link.href = dataUrl;
-        link.download = filename;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // For regular URLs, open in new tab (download attribute doesn't work cross-origin)
+        window.open(dataUrl, '_blank');
       }
     } catch (error) {
       console.error('Error downloading file:', error);
@@ -353,8 +371,15 @@ const PaymentHistoryTab: React.FC = () => {
     const getFileExtension = (url: string | null): string => {
       if (!url) return 'png';
       if (url.startsWith('data:')) {
-        const match = url.match(/data:image\/(\w+);/);
-        return match ? match[1] : 'png';
+        // Handle both image and application (PDF) types
+        const match = url.match(/data:(\w+)\/(\w+);/);
+        if (match) {
+          const type = match[1]; // 'image' or 'application'
+          const subtype = match[2]; // 'png', 'jpeg', 'pdf', etc.
+          if (type === 'application' && subtype === 'pdf') return 'pdf';
+          return subtype === 'jpeg' ? 'jpg' : subtype;
+        }
+        return 'png';
       }
       // For regular URLs, try to extract extension
       const match = url.match(/\.(\w+)(?:\?|$)/);
