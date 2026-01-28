@@ -132,24 +132,31 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: 'Communications',
     },
     {
-      key: '/system-settings',
+      key: 'system-group',
       icon: <SettingOutlined />,
-      label: 'System Settings',
-    },
-    {
-      key: '/user-management',
-      icon: <TeamOutlined />,
-      label: 'User Management',
-    },
-    {
-      key: '/activity-logs',
-      icon: <AuditOutlined />,
-      label: 'Activity Logs',
-    },
-    {
-      key: '/system-tools',
-      icon: <ToolOutlined />,
-      label: 'System Tools',
+      label: 'System',
+      children: [
+        {
+          key: '/system-settings',
+          icon: <SettingOutlined />,
+          label: 'System Settings',
+        },
+        {
+          key: '/user-management',
+          icon: <TeamOutlined />,
+          label: 'User Management',
+        },
+        {
+          key: '/activity-logs',
+          icon: <AuditOutlined />,
+          label: 'Activity Logs',
+        },
+        {
+          key: '/system-tools',
+          icon: <ToolOutlined />,
+          label: 'System Tools',
+        },
+      ],
     },
   ];
 
