@@ -70,6 +70,9 @@ import { GiftCardsList, GiftCardsCreate, GiftCardsEdit, GiftCardsShow } from "./
 // Import the therapist payments management components
 import TherapistPayments from "./pages/therapist-payments";
 
+// Import the therapist availability overview component
+import TherapistAvailabilityOverview from "./pages/therapist-availability";
+
 // Import the user management components
 import { UserManagementList } from "./pages/user-management";
 
@@ -198,6 +201,14 @@ function App() {
                     meta: {
                       label: "Therapist Payments",
                       icon: "💵",
+                    },
+                  },
+                  {
+                    name: "therapist-availability",
+                    list: "/therapist-availability",
+                    meta: {
+                      label: "Therapist Availability",
+                      icon: "📅",
                     },
                   },
                   {
@@ -372,6 +383,9 @@ function App() {
 
                     {/* Therapist Payments */}
                     <Route path="/therapist-payments" element={<TherapistPayments />} />
+
+                    {/* Therapist Availability Overview */}
+                    <Route path="/therapist-availability" element={<TherapistAvailabilityOverview />} />
 
                     {/* Reports */}
                     <Route path="/reports" element={<Reports />} />

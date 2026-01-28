@@ -40,7 +40,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     logout();
   };
 
-  // Menu items matching the reordered navigation
+  // Menu items matching the reordered navigation with submenus
   const menuItems = [
     {
       key: '/',
@@ -63,29 +63,48 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       label: 'Calendar',
     },
     {
-      key: '/services',
+      key: 'services-group',
       icon: <ScheduleOutlined />,
       label: 'Services',
+      children: [
+        {
+          key: '/services',
+          icon: <ScheduleOutlined />,
+          label: 'Service List',
+        },
+        {
+          key: '/services-uplift-rates',
+          icon: <MoneyCollectOutlined />,
+          label: 'Uplift Rates',
+        },
+      ],
     },
     {
-      key: '/services-uplift-rates',
-      icon: <MoneyCollectOutlined />,
-      label: 'Services Uplift Rates',
-    },
-    {
-      key: '/therapists',
+      key: 'therapists-group',
       icon: <UserOutlined />,
       label: 'Therapists',
-    },
-    {
-      key: '/therapist-registrations',
-      icon: <FileTextOutlined />,
-      label: 'Therapist Registrations',
-    },
-    {
-      key: '/therapist-payments',
-      icon: <DollarOutlined />,
-      label: 'Therapist Payments',
+      children: [
+        {
+          key: '/therapists',
+          icon: <UserOutlined />,
+          label: 'Therapist List',
+        },
+        {
+          key: '/therapist-registrations',
+          icon: <FileTextOutlined />,
+          label: 'Registrations',
+        },
+        {
+          key: '/therapist-payments',
+          icon: <DollarOutlined />,
+          label: 'Payments',
+        },
+        {
+          key: '/therapist-availability',
+          icon: <CalendarOutlined />,
+          label: 'Availability Overview',
+        },
+      ],
     },
     {
       key: '/customers',
@@ -139,15 +158,48 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     setDrawerVisible(false);
   };
 
-  // Get current path for menu selection
+  // Get current path for menu selection (handles submenus)
   const getCurrentPath = () => {
     const path = location.pathname;
-    // Handle nested routes (e.g., /bookings/show/123 -> /bookings)
-    const matchedItem = menuItems.find(item => {
-      if (item.key === '/') return path === '/';
-      return path.startsWith(item.key);
-    });
-    return matchedItem ? matchedItem.key : '/';
+
+    // Check all menu items including children
+    for (const item of menuItems) {
+      if (item.children) {
+        // Check children items
+        for (const child of item.children) {
+          if (child.key === '/') {
+            if (path === '/') return child.key;
+          } else if (path.startsWith(child.key)) {
+            return child.key;
+          }
+        }
+      } else {
+        if (item.key === '/') {
+          if (path === '/') return item.key;
+        } else if (path.startsWith(item.key)) {
+          return item.key;
+        }
+      }
+    }
+    return '/';
+  };
+
+  // Get open submenu keys based on current path
+  const getOpenKeys = () => {
+    const path = location.pathname;
+    const openKeys: string[] = [];
+
+    for (const item of menuItems) {
+      if (item.children) {
+        for (const child of item.children) {
+          if (path.startsWith(child.key)) {
+            openKeys.push(item.key);
+            break;
+          }
+        }
+      }
+    }
+    return openKeys;
   };
 
   return (
@@ -311,6 +363,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           <Menu
             mode="inline"
             selectedKeys={[getCurrentPath()]}
+            defaultOpenKeys={getOpenKeys()}
             onClick={({ key }) => handleMenuClick(key)}
             style={{
               border: 'none',
