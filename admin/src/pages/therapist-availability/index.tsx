@@ -125,12 +125,11 @@ const TherapistAvailabilityOverview: React.FC = () => {
 
       // Load availability, time off, and bookings for each therapist
       const availabilityPromises = filteredTherapists.map(async (therapist: any) => {
-        // Get availability slots
+        // Get availability slots (no is_active column on this table)
         const { data: availabilityData } = await supabaseClient
           .from('therapist_availability')
           .select('day_of_week, start_time, end_time')
-          .eq('therapist_id', therapist.id)
-          .eq('is_active', true);
+          .eq('therapist_id', therapist.id);
 
         // Get time off for this week
         const { data: timeOffData } = await supabaseClient
