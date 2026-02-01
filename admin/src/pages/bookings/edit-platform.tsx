@@ -88,6 +88,8 @@ interface Booking {
   discount_code?: string;
   gift_card_code?: string;
   payment_notes?: string;
+  payment_intent_id?: string;
+  stripe_customer_id?: string;
 
   // Pricing fields
   net_price?: number;
@@ -250,6 +252,11 @@ export const BookingEditPlatform: React.FC = () => {
   const [showMarkPaidModal, setShowMarkPaidModal] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
   const [paymentNotes, setPaymentNotes] = useState('');
+
+  // Recover declined booking state
+  const [showRecoverModal, setShowRecoverModal] = useState(false);
+  const [recovering, setRecovering] = useState(false);
+  const [recoverTherapistId, setRecoverTherapistId] = useState<string>('');
 
   // New state for hybrid platform
   const [activeStep, setActiveStep] = useState('customer');
@@ -2549,6 +2556,77 @@ export const BookingEditPlatform: React.FC = () => {
     }
   };
 
+  // Handle recovering a declined booking
+  const handleRecoverBooking = async () => {
+    if (!booking || !recoverTherapistId) {
+      message.error('Please select a therapist');
+      return;
+    }
+
+    if (!booking.stripe_customer_id) {
+      message.error('No saved payment method found for this booking. Customer will need to make a new booking.');
+      return;
+    }
+
+    try {
+      setRecovering(true);
+
+      // Call the charge-stored-card function
+      const response = await fetch('/.netlify/functions/charge-stored-card', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          booking_id: booking.booking_id,
+          stripe_customer_id: booking.stripe_customer_id,
+          amount: booking.price,
+          new_therapist_id: recoverTherapistId,
+          recovered_by: identity?.name || identity?.email || 'admin',
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || 'Failed to recover booking');
+      }
+
+      message.success(`Booking recovered successfully! Card charged and assigned to ${result.new_therapist.name}`);
+      setShowRecoverModal(false);
+      setRecoverTherapistId('');
+
+      // Send notification to new therapist
+      try {
+        const selectedTherapist = therapists.find(t => t.id === recoverTherapistId);
+        if (selectedTherapist) {
+          // Send SMS to new therapist
+          await SMSService.sendTherapistBookingNotification({
+            therapist_phone: selectedTherapist.phone || '',
+            therapist_name: `${selectedTherapist.first_name} ${selectedTherapist.last_name}`,
+            booking_id: booking.booking_id || '',
+            booking_time: booking.booking_time,
+            customer_name: booking.customer_name || '',
+            address: booking.address || '',
+          });
+          message.success('Notification sent to new therapist');
+        }
+      } catch (notifyError) {
+        console.error('Error sending notification:', notifyError);
+        message.warning('Booking recovered but notification to therapist failed');
+      }
+
+      // Refresh booking data
+      await fetchBookingDetails();
+
+    } catch (error: any) {
+      console.error('Error recovering booking:', error);
+      message.error(error.message || 'Failed to recover booking');
+    } finally {
+      setRecovering(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '400px' }}>
@@ -4130,6 +4208,19 @@ export const BookingEditPlatform: React.FC = () => {
                 >
                   🧾 Send Invoice
                 </Button>
+                {booking?.status === 'declined' && booking?.stripe_customer_id && (
+                  <Button
+                    block
+                    type="primary"
+                    style={{ textAlign: 'left', background: '#10b981', borderColor: '#10b981' }}
+                    onClick={() => {
+                      fetchTherapists(); // Load therapists for selection
+                      setShowRecoverModal(true);
+                    }}
+                  >
+                    🔄 Recover Booking
+                  </Button>
+                )}
               </div>
             </Card>
 
@@ -4190,25 +4281,88 @@ export const BookingEditPlatform: React.FC = () => {
                   }} />
                   <span>Completed</span>
                 </div>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '12px', 
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
                   padding: '12px',
                   border: '2px solid #e5e7eb',
                   borderRadius: '8px',
                   cursor: 'pointer'
                 }}>
-                  <div style={{ 
-                    width: '12px', 
-                    height: '12px', 
-                    borderRadius: '50%', 
-                    background: booking.status === 'cancelled' ? '#ef4444' : '#e5e7eb' 
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    background: booking.status === 'declined' ? '#f97316' : '#e5e7eb'
+                  }} />
+                  <span>Declined</span>
+                </div>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  padding: '12px',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  cursor: 'pointer'
+                }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '50%',
+                    background: booking.status === 'cancelled' ? '#ef4444' : '#e5e7eb'
                   }} />
                   <span>Cancelled</span>
                 </div>
               </div>
             </Card>
+
+            {/* Recover Booking Alert - Show for declined bookings */}
+            {booking.status === 'declined' && (
+              <Card
+                style={{
+                  borderRadius: '12px',
+                  border: booking.stripe_customer_id ? '2px solid #10b981' : '2px solid #f97316',
+                  background: booking.stripe_customer_id ? '#f0fdf4' : '#fff7ed'
+                }}
+                bodyStyle={{ padding: '16px' }}
+              >
+                <div style={{ textAlign: 'center' }}>
+                  {booking.stripe_customer_id ? (
+                    <>
+                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔄</div>
+                      <Text strong style={{ color: '#15803d', display: 'block', marginBottom: '8px' }}>
+                        This booking can be recovered
+                      </Text>
+                      <Text style={{ color: '#166534', fontSize: '13px', display: 'block', marginBottom: '12px' }}>
+                        Customer has a saved payment method. You can assign a new therapist and charge their card.
+                      </Text>
+                      <Button
+                        type="primary"
+                        style={{ background: '#10b981', borderColor: '#10b981' }}
+                        onClick={() => {
+                          fetchTherapists();
+                          setShowRecoverModal(true);
+                        }}
+                      >
+                        🔄 Recover Booking
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>⚠️</div>
+                      <Text strong style={{ color: '#c2410c', display: 'block', marginBottom: '8px' }}>
+                        No saved payment method
+                      </Text>
+                      <Text style={{ color: '#9a3412', fontSize: '13px' }}>
+                        This booking cannot be recovered automatically. Customer will need to make a new booking.
+                      </Text>
+                    </>
+                  )}
+                </div>
+              </Card>
+            )}
 
             <Card 
               title="📋 Booking Info" 
@@ -4650,6 +4804,106 @@ export const BookingEditPlatform: React.FC = () => {
                   />
                   <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
                     E.g., "Paid via bank transfer - Ref: 123456" or "Cash payment received"
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </Modal>
+
+        {/* Recover Declined Booking Modal */}
+        <Modal
+          title="🔄 Recover Declined Booking"
+          open={showRecoverModal}
+          onOk={handleRecoverBooking}
+          onCancel={() => {
+            setShowRecoverModal(false);
+            setRecoverTherapistId('');
+          }}
+          confirmLoading={recovering}
+          okText="Recover & Charge Card"
+          cancelText="Cancel"
+          okButtonProps={{
+            style: { background: '#10b981', borderColor: '#10b981' },
+            disabled: !recoverTherapistId
+          }}
+          width={600}
+        >
+          <div style={{ padding: '16px 0' }}>
+            <Alert
+              message="Recover this declined booking"
+              description="This will assign a new therapist and charge the customer's saved card. The booking will be set to 'Confirmed' status."
+              type="info"
+              showIcon
+              style={{ marginBottom: '20px' }}
+            />
+
+            {booking && (
+              <>
+                <div style={{
+                  background: '#f0fdf4',
+                  border: '2px solid #86efac',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginBottom: '20px'
+                }}>
+                  <h4 style={{ color: '#15803d', fontSize: '16px', marginBottom: '12px', fontWeight: 600 }}>
+                    📋 Booking Details
+                  </h4>
+                  <div style={{ fontSize: '14px', color: '#166534', lineHeight: '1.8' }}>
+                    <p><strong>Booking ID:</strong> {booking.booking_id || booking.id}</p>
+                    <p><strong>Customer:</strong> {booking.customer_name}</p>
+                    <p><strong>Service:</strong> {booking.service_name}</p>
+                    <p><strong>Amount to Charge:</strong> ${booking.price?.toFixed(2) || '0.00'}</p>
+                    <p><strong>Date:</strong> {new Date(booking.booking_time).toLocaleDateString('en-AU', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}</p>
+                    <p><strong>Time:</strong> {new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}</p>
+                    <p><strong>Address:</strong> {booking.address}</p>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <p style={{ fontWeight: 600, marginBottom: '8px', color: '#374151' }}>
+                    Select New Therapist <span style={{ color: '#ef4444' }}>*</span>
+                  </p>
+                  <Select
+                    style={{ width: '100%' }}
+                    placeholder="Choose a therapist to assign"
+                    value={recoverTherapistId || undefined}
+                    onChange={(value) => setRecoverTherapistId(value)}
+                    showSearch
+                    optionFilterProp="children"
+                    filterOption={(input, option) =>
+                      (option?.children as unknown as string)?.toLowerCase().includes(input.toLowerCase())
+                    }
+                  >
+                    {therapists.map((therapist) => (
+                      <Option key={therapist.id} value={therapist.id}>
+                        {therapist.first_name} {therapist.last_name} ({therapist.email})
+                      </Option>
+                    ))}
+                  </Select>
+                  <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '8px' }}>
+                    The new therapist will receive an SMS notification about this booking.
+                  </p>
+                </div>
+
+                <div style={{
+                  padding: '16px',
+                  backgroundColor: '#fef3c7',
+                  borderRadius: '8px',
+                  border: '1px solid #fcd34d'
+                }}>
+                  <p style={{ color: '#92400e', fontSize: '14px', margin: 0 }}>
+                    <strong>💳 Payment:</strong> The customer's saved card will be authorized for ${booking.price?.toFixed(2)}.
+                    Payment will be captured when the job is marked as completed.
                   </p>
                 </div>
               </>
