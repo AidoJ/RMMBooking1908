@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Select, Button, Tag, Space, Modal, Form, Input, InputNumber, DatePicker, message, Image, Descriptions, Collapse, Checkbox } from 'antd';
-import { PlusOutlined, EyeOutlined, EditOutlined, DollarOutlined, FileImageOutlined, DownloadOutlined, ExpandOutlined, MailOutlined } from '@ant-design/icons';
+import { PlusOutlined, EyeOutlined, EditOutlined, DollarOutlined, FileImageOutlined, DownloadOutlined, ExpandOutlined, MailOutlined, SendOutlined } from '@ant-design/icons';
 import { supabaseClient } from '../../utility';
 import { EmailService } from '../../utils/emailService';
 import dayjs from 'dayjs';
@@ -268,6 +268,44 @@ const PaymentHistoryTab: React.FC = () => {
     } catch (error) {
       console.error('Error resending email:', error);
       message.error('Failed to resend email');
+    }
+  };
+
+  // Send invoice to Xero
+  const handleSendToXero = async (record: PaymentRecord) => {
+    if (!record.therapist_invoice_url) {
+      message.error('No invoice file available to send');
+      return;
+    }
+
+    try {
+      message.loading({ content: 'Sending invoice to Xero...', key: 'xero' });
+
+      const response = await fetch('/.netlify/functions/send-to-xero', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          therapist_name: record.therapist_name,
+          invoice_number: record.invoice_number || '',
+          invoice_date: record.invoice_date ? dayjs(record.invoice_date).format('DD/MM/YYYY') : '',
+          total_amount: record.admin_total_approved,
+          invoice_file_base64: record.therapist_invoice_url,
+          week_period: `${dayjs(record.week_start).format('D MMM')} - ${dayjs(record.week_ending).format('D MMM YYYY')}`
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || 'Failed to send to Xero');
+      }
+
+      message.success({ content: 'Invoice sent to Xero successfully!', key: 'xero' });
+    } catch (error: any) {
+      console.error('Error sending to Xero:', error);
+      message.error({ content: error.message || 'Failed to send invoice to Xero', key: 'xero' });
     }
   };
 
@@ -591,7 +629,7 @@ const PaymentHistoryTab: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       align: 'center' as const,
-      width: 180,
+      width: 240,
       render: (_: any, record: PaymentRecord) => (
         <Space>
           {record.status === 'approved' && (
@@ -621,6 +659,17 @@ const PaymentHistoryTab: React.FC = () => {
               >
                 Resend
               </Button>
+              {record.therapist_invoice_url && (
+                <Button
+                  size="small"
+                  icon={<SendOutlined />}
+                  onClick={() => handleSendToXero(record)}
+                  title="Send invoice to Xero"
+                  style={{ background: '#13c2c2', borderColor: '#13c2c2', color: 'white' }}
+                >
+                  Xero
+                </Button>
+              )}
             </>
           )}
         </Space>

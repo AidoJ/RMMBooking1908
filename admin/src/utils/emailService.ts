@@ -19,7 +19,9 @@ const TEMPLATE_IDS = {
   ADMIN_EDIT_THERAPIST_REASSIGN_ORIGINAL: 'Booking Reassign - old',
   ADMIN_EDIT_THERAPIST_REASSIGN_NEW: 'Booking Reassign - new',
   // Therapist Payment Confirmation
-  THERAPIST_PAYMENT_CONFIRMATION: 'template_pay_confirm'
+  THERAPIST_PAYMENT_CONFIRMATION: 'template_pay_confirm',
+  // Xero Invoice Submission
+  XERO_INVOICE: 'template_xero_invoice'
 };
 
 // Declare emailjs as global variable (loaded via CDN)
@@ -1421,6 +1423,63 @@ export const EmailService = {
       return { success: true };
     } catch (error) {
       console.error('❌ Error sending therapist payment confirmation:', error);
+      return { success: false, error: (error as Error).message };
+    }
+  },
+
+  /**
+   * Send therapist invoice to Xero via email
+   * The invoice PDF is attached and sent to the Xero inbox email
+   */
+  async sendInvoiceToXero(params: {
+    xeroEmail: string;
+    therapistName: string;
+    invoiceNumber: string;
+    invoiceDate: string;
+    totalAmount: number;
+    invoiceFileBase64: string; // Base64 encoded PDF/image
+  }): Promise<{success: boolean, error?: string}> {
+    try {
+      if (!window.emailjs) {
+        throw new Error('EmailJS not loaded');
+      }
+
+      if (!params.xeroEmail) {
+        throw new Error('Xero inbox email not configured');
+      }
+
+      if (!params.invoiceFileBase64) {
+        throw new Error('No invoice file available');
+      }
+
+      // Template params for Xero invoice email
+      const templateParams = {
+        to_email: params.xeroEmail,
+        therapist_name: params.therapistName || '',
+        invoice_number: params.invoiceNumber || 'N/A',
+        invoice_date: params.invoiceDate || '',
+        total_amount: '$' + Number(params.totalAmount || 0).toFixed(2),
+        invoice_attachment: params.invoiceFileBase64,
+        from_name: 'Rejuvenators Mobile Massage'
+      };
+
+      console.log('📧 Sending invoice to Xero:', {
+        xeroEmail: params.xeroEmail,
+        therapistName: params.therapistName,
+        invoiceNumber: params.invoiceNumber,
+        hasAttachment: !!params.invoiceFileBase64
+      });
+
+      const response = await window.emailjs.send(
+        EMAILJS_SERVICE_ID,
+        TEMPLATE_IDS.XERO_INVOICE,
+        templateParams
+      );
+
+      console.log('✅ Invoice sent to Xero:', response);
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error sending invoice to Xero:', error);
       return { success: false, error: (error as Error).message };
     }
   }
