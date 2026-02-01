@@ -108,13 +108,42 @@ exports.handler = async (event, context) => {
       };
     }
 
+    // Parse the base64 data URL to extract content type and raw data
+    let fileContent = invoice_file_base64;
+    let contentType = 'application/pdf'; // Default to PDF
+    let fileExtension = 'pdf';
+
+    if (invoice_file_base64.startsWith('data:')) {
+      const matches = invoice_file_base64.match(/^data:([^;]+);base64,(.+)$/);
+      if (matches) {
+        contentType = matches[1];
+        fileContent = matches[2]; // Just the raw base64, no prefix
+
+        // Determine file extension from content type
+        if (contentType.includes('pdf')) {
+          fileExtension = 'pdf';
+        } else if (contentType.includes('png')) {
+          fileExtension = 'png';
+        } else if (contentType.includes('jpeg') || contentType.includes('jpg')) {
+          fileExtension = 'jpg';
+        }
+      }
+    }
+
     console.log('📧 Sending invoice to Xero:', {
       therapistName: therapist_name,
       invoiceNumber: invoice_number,
       totalAmount: total_amount,
       xeroEmail: xeroEmail.substring(0, 10) + '...',
-      hasInvoice: !!invoice_file_base64
+      contentType: contentType,
+      fileExtension: fileExtension,
+      hasInvoice: !!fileContent
     });
+
+    // Create filename with proper extension
+    const safeTherapistName = (therapist_name || 'Unknown').replace(/[^a-zA-Z0-9\s]/g, '').trim();
+    const safeInvoiceNumber = (invoice_number || 'NA').replace(/[^a-zA-Z0-9]/g, '');
+    const filename = `Invoice_${safeTherapistName}_${safeInvoiceNumber}.${fileExtension}`;
 
     // Prepare template parameters
     const templateParams = {
@@ -124,7 +153,9 @@ exports.handler = async (event, context) => {
       invoice_date: invoice_date || '',
       total_amount: '$' + parseFloat(total_amount || 0).toFixed(2),
       week_period: week_period || '',
-      invoice_attachment: invoice_file_base64, // Base64 file for attachment
+      invoice_attachment: fileContent, // Raw base64 content only (no data URL prefix)
+      invoice_content_type: contentType,
+      invoice_filename: filename,
       from_name: 'Rejuvenators Mobile Massage'
     };
 
