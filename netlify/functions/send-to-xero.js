@@ -1,41 +1,16 @@
-const fetch = require('node-fetch');
+const nodemailer = require('nodemailer');
 
 /**
  * Send Therapist Invoice to Xero
  *
- * This function sends the therapist's invoice to Xero via EmailJS.
- * The XERO_INBOX_EMAIL environment variable must be configured.
+ * Uses Nodemailer with Gmail SMTP to send invoices with attachments.
+ * EmailJS has a 50KB limit on variables, which is too small for PDF attachments.
+ *
+ * Required environment variables:
+ * - XERO_INBOX_EMAIL: The Xero inbox email address
+ * - GMAIL_USER: Gmail address for sending
+ * - GMAIL_APP_PASSWORD: Gmail App Password (not regular password)
  */
-
-// EmailJS configuration (same as other functions)
-const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_puww2kb';
-const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || 'qfM_qA664E4JddSMN';
-const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
-const EMAILJS_XERO_TEMPLATE = 'template_xero_invoice';
-
-// Send email via EmailJS API
-async function sendEmailJS(templateParams) {
-  const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      service_id: EMAILJS_SERVICE_ID,
-      template_id: EMAILJS_XERO_TEMPLATE,
-      user_id: EMAILJS_PUBLIC_KEY,
-      accessToken: EMAILJS_PRIVATE_KEY,
-      template_params: templateParams
-    })
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`EmailJS error: ${errorText}`);
-  }
-
-  return response;
-}
 
 exports.handler = async (event, context) => {
   // CORS headers
@@ -66,32 +41,34 @@ exports.handler = async (event, context) => {
       invoice_number,
       invoice_date,
       total_amount,
-      invoice_file_base64, // Base64 data URL (e.g., data:application/pdf;base64,...)
+      invoice_file_base64,
       week_period
     } = JSON.parse(event.body);
 
-    // Get Xero inbox email from environment variable
+    // Get environment variables
     const xeroEmail = process.env.XERO_INBOX_EMAIL;
+    const gmailUser = process.env.GMAIL_USER;
+    const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
 
     if (!xeroEmail) {
-      console.error('❌ XERO_INBOX_EMAIL environment variable not configured');
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: 'Xero email not configured. Please add XERO_INBOX_EMAIL to Netlify environment variables.' }),
+        body: JSON.stringify({ error: 'XERO_INBOX_EMAIL not configured in Netlify environment variables.' }),
       };
     }
 
-    if (!EMAILJS_PRIVATE_KEY) {
-      console.error('❌ EMAILJS_PRIVATE_KEY environment variable not configured');
+    if (!gmailUser || !gmailAppPassword) {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: 'EmailJS private key not configured.' }),
+        body: JSON.stringify({
+          error: 'Gmail credentials not configured. Please add GMAIL_USER and GMAIL_APP_PASSWORD to Netlify environment variables.',
+          setup_instructions: 'Create a Gmail App Password at: https://myaccount.google.com/apppasswords'
+        }),
       };
     }
 
-    // Validate required fields
     if (!invoice_file_base64) {
       return {
         statusCode: 400,
@@ -110,16 +87,15 @@ exports.handler = async (event, context) => {
 
     // Parse the base64 data URL to extract content type and raw data
     let fileContent = invoice_file_base64;
-    let contentType = 'application/pdf'; // Default to PDF
+    let contentType = 'application/pdf';
     let fileExtension = 'pdf';
 
     if (invoice_file_base64.startsWith('data:')) {
       const matches = invoice_file_base64.match(/^data:([^;]+);base64,(.+)$/);
       if (matches) {
         contentType = matches[1];
-        fileContent = matches[2]; // Just the raw base64, no prefix
+        fileContent = matches[2];
 
-        // Determine file extension from content type
         if (contentType.includes('pdf')) {
           fileExtension = 'pdf';
         } else if (contentType.includes('png')) {
@@ -130,39 +106,96 @@ exports.handler = async (event, context) => {
       }
     }
 
+    // Create safe filename
+    const safeTherapistName = (therapist_name || 'Unknown').replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_');
+    const safeInvoiceNumber = (invoice_number || 'NA').replace(/[^a-zA-Z0-9]/g, '');
+    const filename = `Invoice_${safeTherapistName}_${safeInvoiceNumber}.${fileExtension}`;
+
     console.log('📧 Sending invoice to Xero:', {
       therapistName: therapist_name,
       invoiceNumber: invoice_number,
       totalAmount: total_amount,
-      xeroEmail: xeroEmail.substring(0, 10) + '...',
+      xeroEmail: xeroEmail.substring(0, 15) + '...',
       contentType: contentType,
-      fileExtension: fileExtension,
-      hasInvoice: !!fileContent
+      filename: filename,
+      fileSizeKB: Math.round(fileContent.length * 0.75 / 1024) // Approx decoded size
     });
 
-    // Create filename with proper extension
-    const safeTherapistName = (therapist_name || 'Unknown').replace(/[^a-zA-Z0-9\s]/g, '').trim();
-    const safeInvoiceNumber = (invoice_number || 'NA').replace(/[^a-zA-Z0-9]/g, '');
-    const filename = `Invoice_${safeTherapistName}_${safeInvoiceNumber}.${fileExtension}`;
+    // Create Gmail transporter
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: gmailUser,
+        pass: gmailAppPassword
+      }
+    });
 
-    // Prepare template parameters
-    const templateParams = {
-      to_email: xeroEmail,
-      therapist_name: therapist_name || '',
-      invoice_number: invoice_number || 'N/A',
-      invoice_date: invoice_date || '',
-      total_amount: '$' + parseFloat(total_amount || 0).toFixed(2),
-      week_period: week_period || '',
-      invoice_attachment: fileContent, // Raw base64 content only (no data URL prefix)
-      invoice_content_type: contentType,
-      invoice_filename: filename,
-      from_name: 'Rejuvenators Mobile Massage'
+    // Prepare email
+    const mailOptions = {
+      from: `"Rejuvenators Mobile Massage" <${gmailUser}>`,
+      to: xeroEmail,
+      subject: `Therapist Invoice - ${therapist_name} - ${invoice_number || 'N/A'}`,
+      text: `Therapist Invoice Submission
+
+Therapist: ${therapist_name}
+Invoice Number: ${invoice_number || 'N/A'}
+Invoice Date: ${invoice_date || 'N/A'}
+Week Period: ${week_period || 'N/A'}
+Total Amount: $${parseFloat(total_amount || 0).toFixed(2)}
+
+Please find the invoice attached.
+
+---
+Sent from Rejuvenators Admin Portal`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #1a3a5c; color: white; padding: 20px; text-align: center;">
+            <h2 style="margin: 0;">Therapist Invoice</h2>
+          </div>
+          <div style="padding: 20px; background: #f9f9f9;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Therapist:</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">${therapist_name}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Invoice Number:</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">${invoice_number || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Invoice Date:</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">${invoice_date || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>Week Period:</strong></td>
+                <td style="padding: 10px; border-bottom: 1px solid #ddd;">${week_period || 'N/A'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px;"><strong>Total Amount:</strong></td>
+                <td style="padding: 10px; font-weight: bold; color: #007e8c;">$${parseFloat(total_amount || 0).toFixed(2)}</td>
+              </tr>
+            </table>
+            <p style="margin-top: 20px; color: #666;">Please find the invoice attached.</p>
+          </div>
+          <div style="background: #eee; padding: 10px; text-align: center; font-size: 12px; color: #666;">
+            Sent from Rejuvenators Admin Portal
+          </div>
+        </div>
+      `,
+      attachments: [
+        {
+          filename: filename,
+          content: fileContent,
+          encoding: 'base64',
+          contentType: contentType
+        }
+      ]
     };
 
-    // Send via EmailJS
-    await sendEmailJS(templateParams);
+    // Send email
+    const result = await transporter.sendMail(mailOptions);
 
-    console.log('✅ Invoice sent to Xero successfully');
+    console.log('✅ Invoice sent to Xero successfully:', result.messageId);
 
     return {
       statusCode: 200,
@@ -170,10 +203,11 @@ exports.handler = async (event, context) => {
       body: JSON.stringify({
         success: true,
         message: 'Invoice sent to Xero successfully',
+        messageId: result.messageId,
         details: {
           therapist: therapist_name,
           invoice_number: invoice_number,
-          sent_to: xeroEmail.substring(0, 5) + '***'
+          filename: filename
         }
       }),
     };
