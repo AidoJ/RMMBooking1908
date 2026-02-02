@@ -1,17 +1,13 @@
-const fetch = require('node-fetch');
+const nodemailer = require('nodemailer');
 
 /**
- * Send Therapist Invoice to Xero via EmailJS
+ * Send Therapist Invoice to Xero via Gmail SMTP
  *
  * Required environment variables:
  * - XERO_INBOX_EMAIL: The Xero inbox email address
- * - EMAILJS_PRIVATE_KEY: EmailJS private/access key
+ * - GMAIL_USER: Gmail address for sending
+ * - GMAIL_APP_PASSWORD: Gmail App Password
  */
-
-const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_puww2kb';
-const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY || 'qfM_qA664E4JddSMN';
-const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
-const EMAILJS_XERO_TEMPLATE = 'template_xero_invoice';
 
 exports.handler = async (event, context) => {
   const headers = {
@@ -44,6 +40,8 @@ exports.handler = async (event, context) => {
     } = JSON.parse(event.body);
 
     const xeroEmail = process.env.XERO_INBOX_EMAIL;
+    const gmailUser = process.env.GMAIL_USER;
+    const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
 
     if (!xeroEmail) {
       return {
@@ -53,11 +51,11 @@ exports.handler = async (event, context) => {
       };
     }
 
-    if (!EMAILJS_PRIVATE_KEY) {
+    if (!gmailUser || !gmailAppPassword) {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: 'EMAILJS_PRIVATE_KEY not configured' }),
+        body: JSON.stringify({ error: 'Gmail credentials not configured (GMAIL_USER, GMAIL_APP_PASSWORD)' }),
       };
     }
 
@@ -78,7 +76,7 @@ exports.handler = async (event, context) => {
       const matches = invoice_file_base64.match(/^data:([^;]+);base64,(.+)$/);
       if (matches) {
         contentType = matches[1];
-        fileContent = matches[2]; // Raw base64 only
+        fileContent = matches[2];
 
         if (contentType.includes('png')) fileExtension = 'png';
         else if (contentType.includes('jpeg') || contentType.includes('jpg')) fileExtension = 'jpg';
@@ -91,7 +89,7 @@ exports.handler = async (event, context) => {
     const safeInvoiceNumber = (invoice_number || 'NA').replace(/[^a-zA-Z0-9]/g, '');
     const filename = `Invoice_${safeTherapistName}_${safeInvoiceNumber}.${fileExtension}`;
 
-    console.log('📧 Sending invoice to Xero via EmailJS:', {
+    console.log('📧 Sending invoice to Xero via Gmail:', {
       therapistName: therapist_name,
       invoiceNumber: invoice_number,
       xeroEmail: xeroEmail.substring(0, 15) + '...',
@@ -100,43 +98,36 @@ exports.handler = async (event, context) => {
       fileSizeKB: Math.round(fileContent.length * 0.75 / 1024)
     });
 
-    // Template params - keep variables small, attachment separate
-    const templateParams = {
-      to_email: xeroEmail,
-      therapist_name: therapist_name || '',
-      invoice_number: invoice_number || 'N/A',
-      invoice_date: invoice_date || '',
-      total_amount: '$' + parseFloat(total_amount || 0).toFixed(2),
-      week_period: week_period || '',
-      // Attachment parameters for EmailJS
-      invoice_attachment: fileContent,
-      invoice_filename: filename,
-      invoice_content_type: contentType
-    };
-
-    // Send via EmailJS API
-    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'origin': 'https://rejuvenators.com.au'
-      },
-      body: JSON.stringify({
-        service_id: EMAILJS_SERVICE_ID,
-        template_id: EMAILJS_XERO_TEMPLATE,
-        user_id: EMAILJS_PUBLIC_KEY,
-        accessToken: EMAILJS_PRIVATE_KEY,
-        template_params: templateParams
-      })
+    // Create Gmail transporter
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: gmailUser,
+        pass: gmailAppPassword
+      }
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ EmailJS error:', errorText);
-      throw new Error(`EmailJS error: ${errorText}`);
-    }
+    // Send email
+    const result = await transporter.sendMail({
+      from: `"Rejuvenators" <${gmailUser}>`,
+      to: xeroEmail,
+      subject: `Invoice - ${therapist_name} - ${invoice_number || 'N/A'}`,
+      text: `Therapist: ${therapist_name}
+Invoice Number: ${invoice_number || 'N/A'}
+Invoice Date: ${invoice_date || 'N/A'}
+Week Period: ${week_period || 'N/A'}
+Total Amount: $${parseFloat(total_amount || 0).toFixed(2)}`,
+      attachments: [
+        {
+          filename: filename,
+          content: fileContent,
+          encoding: 'base64',
+          contentType: contentType
+        }
+      ]
+    });
 
-    console.log('✅ Invoice sent to Xero successfully');
+    console.log('✅ Invoice sent to Xero:', result.messageId);
 
     return {
       statusCode: 200,
