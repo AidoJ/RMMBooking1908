@@ -2,6 +2,7 @@
  * Get Available Slots Function
  *
  * Returns available time slots and therapists for a given date.
+ * Filters therapists by service area using the booking's location.
  * Used by the client reschedule page.
  */
 
@@ -11,6 +12,56 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+// Point-in-polygon check - EXACTLY like frontend/admin
+function isPointInPolygon(point, polygon) {
+  if (!polygon || polygon.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].lng, yi = polygon[i].lat;
+    const xj = polygon[j].lng, yj = polygon[j].lat;
+    const intersect = ((yi > point.lat) !== (yj > point.lat))
+      && (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// Calculate distance between two coordinates in km
+function getDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Check if therapist covers the booking location
+function therapistCoversLocation(therapist, bookingLat, bookingLng) {
+  if (therapist.latitude == null || therapist.longitude == null) {
+    console.log(`⚠️ Therapist ${therapist.id} missing location data`);
+    return false;
+  }
+
+  // Check polygon first
+  if (therapist.service_area_polygon && Array.isArray(therapist.service_area_polygon) && therapist.service_area_polygon.length >= 3) {
+    const inPolygon = isPointInPolygon({ lat: bookingLat, lng: bookingLng }, therapist.service_area_polygon);
+    console.log(`📍 Therapist ${therapist.id}: polygon check = ${inPolygon}`);
+    if (inPolygon) return true;
+  }
+
+  // Fallback to radius
+  if (therapist.service_radius_km != null) {
+    const dist = getDistanceKm(bookingLat, bookingLng, therapist.latitude, therapist.longitude);
+    console.log(`📍 Therapist ${therapist.id}: distance ${dist.toFixed(2)}km, radius ${therapist.service_radius_km}km`);
+    return dist <= therapist.service_radius_km;
+  }
+
+  return false;
+}
 
 exports.handler = async (event, context) => {
   const headers = {
@@ -30,7 +81,9 @@ exports.handler = async (event, context) => {
       service_id,
       duration,
       gender,
-      booking_id
+      booking_id,
+      latitude,
+      longitude
     } = event.queryStringParameters || {};
 
     if (!date || !service_id) {
@@ -40,6 +93,20 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({ error: 'Date and service_id are required' })
       };
     }
+
+    // Parse coordinates
+    const bookingLat = latitude ? parseFloat(latitude) : null;
+    const bookingLng = longitude ? parseFloat(longitude) : null;
+
+    if (!bookingLat || !bookingLng) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Booking latitude and longitude are required for therapist filtering' })
+      };
+    }
+
+    console.log(`📍 Filtering therapists for location: ${bookingLat}, ${bookingLng}`);
 
     const durationMinutes = parseInt(duration) || 60;
     const genderPreference = gender || 'any';
@@ -73,6 +140,7 @@ exports.handler = async (event, context) => {
     const therapistIds = (therapistLinks || []).map(link => link.therapist_id);
 
     if (therapistIds.length === 0) {
+      console.log('❌ No therapists found for this service');
       return {
         statusCode: 200,
         headers,
@@ -80,21 +148,36 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Fetch active therapists
-    let therapistQuery = supabase
+    // Fetch active therapists with location data
+    const { data: allTherapists } = await supabase
       .from('therapist_profiles')
-      .select('id, first_name, last_name, gender, profile_pic, is_active')
+      .select('id, first_name, last_name, gender, profile_pic, is_active, latitude, longitude, service_radius_km, service_area_polygon')
       .in('id', therapistIds)
       .eq('is_active', true);
 
-    // Filter by gender if specified
-    if (genderPreference && genderPreference !== 'any') {
-      therapistQuery = therapistQuery.eq('gender', genderPreference);
+    if (!allTherapists || allTherapists.length === 0) {
+      console.log('❌ No active therapists found');
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ therapists: [], therapistAvailability: {} })
+      };
     }
 
-    const { data: therapists } = await therapistQuery;
+    console.log(`📊 Found ${allTherapists.length} therapists for service, checking coverage...`);
 
-    if (!therapists || therapists.length === 0) {
+    // Filter therapists by service area coverage
+    let therapists = allTherapists.filter(t => therapistCoversLocation(t, bookingLat, bookingLng));
+
+    console.log(`📍 ${therapists.length} therapists cover the booking location`);
+
+    // Filter by gender if specified
+    if (genderPreference && genderPreference !== 'any') {
+      therapists = therapists.filter(t => t.gender === genderPreference);
+      console.log(`👤 ${therapists.length} therapists after gender filter (${genderPreference})`);
+    }
+
+    if (therapists.length === 0) {
       return {
         statusCode: 200,
         headers,
@@ -114,6 +197,7 @@ exports.handler = async (event, context) => {
         .eq('day_of_week', dayOfWeek);
 
       if (!availabilities || availabilities.length === 0) {
+        console.log(`⏰ Therapist ${therapist.id} has no availability on day ${dayOfWeek}`);
         continue;
       }
 
@@ -176,17 +260,26 @@ exports.handler = async (event, context) => {
 
       if (slots.length > 0) {
         therapistAvailability[therapist.id] = slots;
+        console.log(`✅ Therapist ${therapist.first_name} has ${slots.length} available slots`);
       }
     }
 
     // Filter therapists to only those with available slots
     const availableTherapists = therapists.filter(t => therapistAvailability[t.id]?.length > 0);
 
+    console.log(`📊 Final result: ${availableTherapists.length} therapists with available slots`);
+
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
-        therapists: availableTherapists,
+        therapists: availableTherapists.map(t => ({
+          id: t.id,
+          first_name: t.first_name,
+          last_name: t.last_name,
+          gender: t.gender,
+          profile_pic: t.profile_pic
+        })),
         therapistAvailability
       })
     };

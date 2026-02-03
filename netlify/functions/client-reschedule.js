@@ -444,74 +444,8 @@ exports.handler = async (event, context) => {
 
       console.log(`💰 Price calculation: Original $${originalPrice} → New $${newPrice} = Difference $${priceDifference}`);
 
-      // If price increased, charge the difference
-      let additionalPaymentIntent = null;
-      if (priceDifference > 0) {
-        if (!booking.stripe_customer_id || !booking.stripe_payment_method_id) {
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({
-              error: 'Payment required but no saved payment method',
-              price_difference: priceDifference,
-              message: 'Please contact us to complete the reschedule'
-            })
-          };
-        }
-
-        // Create payment intent for the difference
-        try {
-          // Attach payment method if needed
-          try {
-            await stripe.paymentMethods.attach(booking.stripe_payment_method_id, {
-              customer: booking.stripe_customer_id,
-            });
-          } catch (attachError) {
-            // May already be attached
-            console.log('Payment method attach:', attachError.message);
-          }
-
-          additionalPaymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(priceDifference * 100),
-            currency: 'aud',
-            customer: booking.stripe_customer_id,
-            payment_method: booking.stripe_payment_method_id,
-            confirm: true,
-            capture_method: 'manual', // Authorize only
-            off_session: true,
-            metadata: {
-              booking_id: booking.booking_id,
-              type: 'reschedule_additional_payment',
-              original_price: originalPrice.toString(),
-              new_price: newPrice.toString()
-            },
-            description: `Reschedule Additional Payment - ${booking.booking_id}`
-          });
-
-          if (additionalPaymentIntent.status !== 'requires_capture') {
-            return {
-              statusCode: 400,
-              headers,
-              body: JSON.stringify({
-                error: 'Payment authorization failed',
-                message: additionalPaymentIntent.last_payment_error?.message || 'Card declined'
-              })
-            };
-          }
-
-          console.log(`✅ Additional payment authorized: ${additionalPaymentIntent.id}`);
-        } catch (stripeError) {
-          console.error('❌ Stripe error:', stripeError);
-          return {
-            statusCode: 400,
-            headers,
-            body: JSON.stringify({
-              error: 'Payment failed',
-              message: stripeError.message
-            })
-          };
-        }
-      }
+      // Note: If price increased, payment was already authorized via Stripe Elements on the frontend
+      // The payment_intent_client_secret is passed from the frontend after successful authorization
 
       // Get new therapist details if changed
       let newTherapist = booking.therapist_profiles;
@@ -544,9 +478,9 @@ exports.handler = async (event, context) => {
         updated_at: new Date().toISOString()
       };
 
-      // If there was additional payment, update payment info
-      if (additionalPaymentIntent) {
-        updateData.payment_notes = `${booking.payment_notes || ''}\nReschedule additional payment: $${priceDifference} (${additionalPaymentIntent.id})`.trim();
+      // If there was additional payment (authorized via Stripe Elements), note it
+      if (priceDifference > 0) {
+        updateData.payment_notes = `${booking.payment_notes || ''}\nReschedule additional payment: $${priceDifference.toFixed(2)}`.trim();
       }
 
       const { error: updateError } = await supabase
@@ -556,14 +490,6 @@ exports.handler = async (event, context) => {
 
       if (updateError) {
         console.error('❌ Update error:', updateError);
-        // Cancel the payment if booking update failed
-        if (additionalPaymentIntent) {
-          try {
-            await stripe.paymentIntents.cancel(additionalPaymentIntent.id);
-          } catch (e) {
-            console.error('Failed to cancel payment intent:', e);
-          }
-        }
         return {
           statusCode: 500,
           headers,
@@ -699,11 +625,7 @@ The client rescheduled and selected a different therapist.
             new_booking_time: new_booking_time,
             new_therapist: newTherapistName,
             new_price: newPrice,
-            price_difference: priceDifference,
-            additional_payment: additionalPaymentIntent ? {
-              id: additionalPaymentIntent.id,
-              amount: priceDifference
-            } : null
+            price_difference: priceDifference > 0 ? priceDifference : 0
           }
         })
       };

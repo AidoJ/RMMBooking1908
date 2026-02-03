@@ -3,8 +3,9 @@
  *
  * Serves an interactive HTML page that allows clients to reschedule their bookings.
  * - Select new date/time
- * - Choose different therapist (optional)
+ * - Choose different therapist (optional) - filtered by service area
  * - See price comparison
+ * - Process payment via Stripe Elements if price increases
  * - Process reschedule via client-reschedule API
  *
  * Policy: Can reschedule up to 3 hours before appointment, max 2 times.
@@ -34,6 +35,7 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reschedule Booking - Rejuvenators Mobile Massage</title>
+    <script src="https://js.stripe.com/v3/"></script>
     <style>
         * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
@@ -87,11 +89,21 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
         .price-note { background: #fff3cd; color: #856404; padding: 12px 15px; border-radius: 8px; margin-top: 15px; font-size: 14px; }
         .price-note.info { background: #e8f4f5; color: #007e8c; }
 
+        /* Payment section */
+        .payment-section { background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 10px; padding: 20px; margin: 20px 0; }
+        .payment-section h4 { margin: 0 0 15px 0; color: #374151; }
+        .payment-section p { color: #6b7280; font-size: 14px; margin-bottom: 16px; }
+        #stripe-card-element { padding: 12px 14px; border: 2px solid #e5e7eb; border-radius: 6px; background: white; }
+        .card-errors { color: #dc3545; font-size: 14px; margin-top: 10px; }
+        .payment-success { background: #d4edda; color: #155724; padding: 12px; border-radius: 8px; margin-top: 15px; text-align: center; font-weight: 600; }
+
         .btn { display: block; width: 100%; padding: 16px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center; }
         .btn-primary { background: #007e8c; color: white; }
         .btn-primary:hover { background: #006570; }
         .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
-        .btn-secondary { background: #f8f9fa; color: #333; border: 2px solid #dee2e6; margin-top: 10px; }
+        .btn-payment { background: #0891b2; color: white; margin-bottom: 10px; }
+        .btn-payment:hover { background: #0e7490; }
+        .btn-secondary { background: #f8f9fa; color: #333; border: 2px solid #dee2e6; margin-top: 10px; text-decoration: none; }
         .btn-secondary:hover { background: #e9ecef; }
 
         .loading { display: none; align-items: center; justify-content: center; padding: 20px; }
@@ -143,6 +155,10 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
                 <div class="booking-detail">
                     <span class="label">Therapist</span>
                     <span class="value">${therapistName}</span>
+                </div>
+                <div class="booking-detail">
+                    <span class="label">Location</span>
+                    <span class="value">${booking.address || 'N/A'}</span>
                 </div>
                 <div class="booking-detail">
                     <span class="label">Current Price</span>
@@ -211,8 +227,22 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
                     <span class="amount zero" id="priceDifferenceDisplay">$0.00</span>
                 </div>
                 <div class="price-note info hidden" id="priceNote">
-                    Additional payment will be charged to your saved card.
+                    Additional payment will be charged to your card.
                 </div>
+            </div>
+
+            <!-- Payment Section (shown when price increases) -->
+            <div class="payment-section hidden" id="paymentSection">
+                <h4>💳 Payment Required</h4>
+                <p>The new time has a higher price. Please enter your card details to authorize the additional payment.</p>
+                <div id="stripe-card-element"></div>
+                <div class="card-errors" id="cardErrors"></div>
+                <div class="payment-success hidden" id="paymentSuccess">
+                    ✅ Payment authorized successfully!
+                </div>
+                <button class="btn btn-payment" id="authorizePaymentBtn" style="margin-top: 15px;">
+                    Authorize Payment
+                </button>
             </div>
 
             <!-- Error Message -->
@@ -262,13 +292,22 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
         const genderPreference = '${booking.gender_preference || 'any'}';
         const originalPrice = ${booking.price || 0};
         const bookingTimezone = '${booking.booking_timezone || 'Australia/Brisbane'}';
+        const bookingLat = ${booking.latitude || 'null'};
+        const bookingLng = ${booking.longitude || 'null'};
 
         let selectedDate = null;
         let selectedTime = null;
         let selectedTherapistId = currentTherapistId;
         let availableTherapists = [];
         let newPrice = originalPrice;
+        let priceDifference = 0;
         let therapistAvailability = {};
+
+        // Stripe
+        let stripe = null;
+        let cardElement = null;
+        let paymentAuthorized = false;
+        let paymentIntentClientSecret = null;
 
         const API_BASE = '/.netlify/functions';
 
@@ -285,12 +324,47 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
         const newPriceDisplay = document.getElementById('newPriceDisplay');
         const priceDifferenceDisplay = document.getElementById('priceDifferenceDisplay');
         const priceNote = document.getElementById('priceNote');
+        const paymentSection = document.getElementById('paymentSection');
+        const cardErrors = document.getElementById('cardErrors');
+        const paymentSuccess = document.getElementById('paymentSuccess');
+        const authorizePaymentBtn = document.getElementById('authorizePaymentBtn');
+
+        // Initialize Stripe
+        async function initStripe() {
+            try {
+                const response = await fetch(API_BASE + '/get-stripe-key');
+                const data = await response.json();
+                if (data.publishableKey) {
+                    stripe = Stripe(data.publishableKey);
+                    const elements = stripe.elements();
+                    cardElement = elements.create('card', {
+                        style: {
+                            base: {
+                                fontSize: '16px',
+                                color: '#333',
+                                fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
+                                '::placeholder': { color: '#aab7c4' }
+                            }
+                        }
+                    });
+                    cardElement.mount('#stripe-card-element');
+                    cardElement.on('change', (event) => {
+                        cardErrors.textContent = event.error ? event.error.message : '';
+                    });
+                    console.log('✅ Stripe initialized');
+                }
+            } catch (error) {
+                console.error('Failed to initialize Stripe:', error);
+            }
+        }
 
         // Date change handler
         dateInput.addEventListener('change', async (e) => {
             selectedDate = e.target.value;
             selectedTime = null;
             selectedTherapistId = currentTherapistId;
+            paymentAuthorized = false;
+            paymentSuccess.classList.add('hidden');
 
             if (!selectedDate) return;
 
@@ -305,9 +379,18 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
             noTimesMessage.classList.add('hidden');
             therapistCardsContainer.innerHTML = '';
 
+            if (!bookingLat || !bookingLng) {
+                showError('Booking location not found. Please contact us to reschedule.');
+                timeLoading.classList.remove('active');
+                return;
+            }
+
             try {
-                // Fetch therapist availability for this date
-                const response = await fetch(\`\${API_BASE}/get-available-slots?date=\${selectedDate}&service_id=\${serviceId}&duration=\${durationMinutes}&gender=\${genderPreference}&booking_id=\${bookingId}\`);
+                // Fetch therapist availability for this date with location filtering
+                const url = \`\${API_BASE}/get-available-slots?date=\${selectedDate}&service_id=\${serviceId}&duration=\${durationMinutes}&gender=\${genderPreference}&booking_id=\${bookingId}&latitude=\${bookingLat}&longitude=\${bookingLng}\`;
+                console.log('Fetching slots:', url);
+
+                const response = await fetch(url);
                 const data = await response.json();
 
                 if (data.error) {
@@ -316,6 +399,9 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
 
                 therapistAvailability = data.therapistAvailability || {};
                 availableTherapists = data.therapists || [];
+
+                console.log('Available therapists:', availableTherapists.length);
+                console.log('Therapist availability:', therapistAvailability);
 
                 // Get all unique time slots
                 const allSlots = new Set();
@@ -350,6 +436,8 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
             document.querySelectorAll('.time-slot.selected').forEach(el => el.classList.remove('selected'));
             element.classList.add('selected');
             selectedTime = time;
+            paymentAuthorized = false;
+            paymentSuccess.classList.add('hidden');
 
             // Update therapist cards based on availability for this slot
             updateTherapistCards();
@@ -369,6 +457,8 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
                 return slots.includes(selectedTime);
             });
 
+            console.log('Therapists available for', selectedTime, ':', availableForTime.length);
+
             availableForTime.forEach(therapist => {
                 const card = document.createElement('div');
                 const isCurrent = therapist.id === currentTherapistId;
@@ -386,7 +476,8 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
             // If current therapist not available, auto-select first available
             if (!availableForTime.find(t => t.id === selectedTherapistId) && availableForTime.length > 0) {
                 selectedTherapistId = availableForTime[0].id;
-                therapistCardsContainer.querySelector('.therapist-card').classList.add('selected');
+                const firstCard = therapistCardsContainer.querySelector('.therapist-card');
+                if (firstCard) firstCard.classList.add('selected');
             }
         }
 
@@ -409,35 +500,125 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
 
                 if (data.price) {
                     newPrice = data.price;
-                    const difference = newPrice - originalPrice;
+                    priceDifference = newPrice - originalPrice;
 
                     newPriceDisplay.textContent = '$' + newPrice.toFixed(2);
 
-                    if (difference > 0) {
-                        priceDifferenceDisplay.textContent = '+$' + difference.toFixed(2);
+                    if (priceDifference > 0) {
+                        priceDifferenceDisplay.textContent = '+$' + priceDifference.toFixed(2);
                         priceDifferenceDisplay.className = 'amount positive';
                         priceNote.classList.remove('hidden');
-                        priceNote.textContent = 'Additional $' + difference.toFixed(2) + ' will be charged to your saved card.';
-                    } else if (difference < 0) {
-                        priceDifferenceDisplay.textContent = '-$' + Math.abs(difference).toFixed(2);
+                        priceNote.textContent = 'Additional $' + priceDifference.toFixed(2) + ' payment required.';
+                        priceNote.className = 'price-note';
+
+                        // Show payment section
+                        paymentSection.classList.remove('hidden');
+                        paymentAuthorized = false;
+                        paymentSuccess.classList.add('hidden');
+                    } else if (priceDifference < 0) {
+                        priceDifferenceDisplay.textContent = '-$' + Math.abs(priceDifference).toFixed(2);
                         priceDifferenceDisplay.className = 'amount negative';
                         priceNote.classList.remove('hidden');
                         priceNote.textContent = 'The new time is cheaper, but no refund will be issued.';
+                        priceNote.className = 'price-note info';
+
+                        // Hide payment section
+                        paymentSection.classList.add('hidden');
+                        paymentAuthorized = false;
                     } else {
                         priceDifferenceDisplay.textContent = '$0.00';
                         priceDifferenceDisplay.className = 'amount zero';
                         priceNote.classList.add('hidden');
+
+                        // Hide payment section
+                        paymentSection.classList.add('hidden');
+                        paymentAuthorized = false;
                     }
+
+                    validateForm();
                 }
             } catch (error) {
                 console.error('Error calculating price:', error);
             }
         }
 
+        // Authorize payment
+        authorizePaymentBtn.addEventListener('click', async () => {
+            if (!stripe || !cardElement) {
+                showError('Payment system not ready. Please refresh the page.');
+                return;
+            }
+
+            authorizePaymentBtn.disabled = true;
+            authorizePaymentBtn.textContent = 'Processing...';
+            cardErrors.textContent = '';
+
+            try {
+                // Step 1: Create payment intent
+                const response = await fetch(API_BASE + '/create-payment-intent', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        amount: priceDifference,
+                        currency: 'aud',
+                        bookingData: {
+                            booking_id: '${booking.booking_id}',
+                            customer_email: '${booking.customer_email || ''}',
+                            service_name: '${booking.services?.name || 'Massage'}',
+                            booking_time: selectedDate + 'T' + selectedTime + ':00',
+                            additional_payment: true,
+                            reschedule: true
+                        }
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Failed to create payment');
+                }
+
+                const { client_secret } = await response.json();
+                paymentIntentClientSecret = client_secret;
+
+                // Step 2: Confirm card payment
+                const { error, paymentIntent } = await stripe.confirmCardPayment(client_secret, {
+                    payment_method: {
+                        card: cardElement,
+                        billing_details: {
+                            name: '${(booking.first_name || '') + ' ' + (booking.last_name || '')}',
+                            email: '${booking.customer_email || ''}'
+                        }
+                    }
+                });
+
+                if (error) {
+                    throw new Error(error.message);
+                }
+
+                if (paymentIntent.status === 'requires_capture') {
+                    paymentAuthorized = true;
+                    paymentSuccess.classList.remove('hidden');
+                    authorizePaymentBtn.classList.add('hidden');
+                    validateForm();
+                    console.log('✅ Payment authorized:', paymentIntent.id);
+                } else {
+                    throw new Error('Payment authorization failed. Status: ' + paymentIntent.status);
+                }
+
+            } catch (error) {
+                console.error('Payment error:', error);
+                cardErrors.textContent = error.message;
+            } finally {
+                authorizePaymentBtn.disabled = false;
+                authorizePaymentBtn.textContent = 'Authorize Payment';
+            }
+        });
+
         // Validate form
         function validateForm() {
-            const isValid = selectedDate && selectedTime && selectedTherapistId;
-            submitBtn.disabled = !isValid;
+            const hasSelection = selectedDate && selectedTime && selectedTherapistId;
+            const paymentOk = priceDifference <= 0 || paymentAuthorized;
+            submitBtn.disabled = !(hasSelection && paymentOk);
         }
 
         // Show error message
@@ -466,7 +647,8 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
                     body: JSON.stringify({
                         token: token,
                         new_booking_time: newBookingTime,
-                        new_therapist_id: selectedTherapistId
+                        new_therapist_id: selectedTherapistId,
+                        payment_intent_client_secret: paymentIntentClientSecret
                     })
                 });
 
@@ -521,6 +703,9 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
                 \` : ''}
             \`;
         }
+
+        // Initialize
+        initStripe();
     </script>
 </body>
 </html>`;
@@ -653,7 +838,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Look up booking by reschedule token
+    // Look up booking by reschedule token - include lat/lng for location filtering
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .select(`
@@ -715,6 +900,19 @@ exports.handler = async (event, context) => {
         statusCode: 400,
         headers,
         body: generateLimitReachedHTML(booking)
+      };
+    }
+
+    // Verify booking has location data
+    if (!booking.latitude || !booking.longitude) {
+      console.warn('⚠️ Booking missing location data:', booking.id);
+      return {
+        statusCode: 400,
+        headers,
+        body: generateErrorHTML(
+          'Cannot Reschedule Online',
+          'This booking does not have location data required for online rescheduling. Please call us at 1300 302 542 to reschedule your appointment.'
+        )
       };
     }
 
