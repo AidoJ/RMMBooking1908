@@ -1,8 +1,13 @@
 /**
- * Booking Reschedule Function (Option A - Contact to Reschedule)
+ * Booking Reschedule Function - Self-Service Interactive Page
  *
- * Shows booking details and provides contact information for rescheduling.
- * Policy: Can reschedule up to 3 hours before appointment.
+ * Serves an interactive HTML page that allows clients to reschedule their bookings.
+ * - Select new date/time
+ * - Choose different therapist (optional)
+ * - See price comparison
+ * - Process reschedule via client-reschedule API
+ *
+ * Policy: Can reschedule up to 3 hours before appointment, max 2 times.
  */
 
 const { createClient } = require('@supabase/supabase-js');
@@ -12,8 +17,16 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-// Generate HTML response
-function generateHTML(booking, hoursUntil, canReschedule) {
+// Generate the interactive reschedule page
+function generateInteractiveHTML(booking, token, rescheduleCount) {
+  const bookingDate = new Date(booking.booking_time);
+  const formattedDate = bookingDate.toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const formattedTime = bookingDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' });
+  const therapistName = booking.therapist_profiles
+    ? `${booking.therapist_profiles.first_name} ${booking.therapist_profiles.last_name}`
+    : 'To be assigned';
+  const remainingReschedules = 2 - (rescheduleCount || 0);
+
   return `
 <!DOCTYPE html>
 <html>
@@ -22,22 +35,83 @@ function generateHTML(booking, hoursUntil, canReschedule) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reschedule Booking - Rejuvenators Mobile Massage</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
-        .container { max-width: 600px; margin: 50px auto; background-color: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
-        .header { background-color: #007e8c; color: white; padding: 30px 20px; text-align: center; }
-        .content { padding: 30px 20px; }
-        .info { background-color: #e8f4f5; color: #007e8c; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #007e8c; }
-        .warning { background-color: #fff3cd; color: #856404; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107; }
-        .error { background-color: #f8d7da; color: #721c24; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f5c6cb; }
-        .details { background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 20px 0; }
-        .details table { width: 100%; border-collapse: collapse; }
-        .details td { padding: 10px 0; border-bottom: 1px solid #eee; }
-        .contact-box { background-color: #28a745; color: white; padding: 25px; border-radius: 8px; margin: 20px 0; text-align: center; }
-        .contact-box h3 { margin-top: 0; }
-        .contact-box a { color: white; text-decoration: underline; font-size: 18px; }
-        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
-        .btn { display: inline-block; padding: 12px 24px; background-color: #007e8c; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
-        .policy { background-color: #f0f0f0; padding: 15px; border-radius: 8px; margin: 20px 0; font-size: 14px; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 700px; margin: 30px auto; background-color: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #007e8c, #005f6b); color: white; padding: 30px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .content { padding: 25px; }
+
+        .current-booking { background-color: #f8f9fa; padding: 20px; border-radius: 10px; margin-bottom: 25px; border: 1px solid #e9ecef; }
+        .current-booking h3 { margin: 0 0 15px 0; color: #333; font-size: 16px; }
+        .booking-detail { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+        .booking-detail:last-child { border-bottom: none; }
+        .booking-detail .label { color: #666; }
+        .booking-detail .value { font-weight: 600; color: #333; }
+
+        .remaining-badge { display: inline-block; background: #e8f4f5; color: #007e8c; padding: 6px 12px; border-radius: 20px; font-size: 13px; margin-top: 10px; }
+
+        .step { margin-bottom: 25px; }
+        .step-header { display: flex; align-items: center; margin-bottom: 15px; }
+        .step-number { width: 30px; height: 30px; background: #007e8c; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; margin-right: 12px; }
+        .step-title { font-size: 16px; font-weight: 600; color: #333; }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #555; }
+
+        input[type="date"], select { width: 100%; padding: 12px 15px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; transition: border-color 0.2s; }
+        input[type="date"]:focus, select:focus { outline: none; border-color: #007e8c; }
+
+        .time-slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; margin-top: 10px; }
+        .time-slot { padding: 12px; text-align: center; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-weight: 500; }
+        .time-slot:hover { border-color: #007e8c; background: #f0f9fa; }
+        .time-slot.selected { background: #007e8c; color: white; border-color: #007e8c; }
+        .time-slot.disabled { opacity: 0.4; cursor: not-allowed; background: #f5f5f5; }
+
+        .therapist-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 10px; }
+        .therapist-card { padding: 15px; text-align: center; border: 2px solid #e0e0e0; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+        .therapist-card:hover { border-color: #007e8c; transform: translateY(-2px); }
+        .therapist-card.selected { background: #e8f4f5; border-color: #007e8c; }
+        .therapist-card .name { font-weight: 600; margin-top: 8px; }
+        .therapist-card .badge { font-size: 12px; color: #666; }
+        .therapist-card.current .badge { color: #28a745; }
+
+        .price-comparison { background: linear-gradient(135deg, #f8f9fa, #e9ecef); padding: 20px; border-radius: 10px; margin: 20px 0; }
+        .price-row { display: flex; justify-content: space-between; padding: 10px 0; }
+        .price-row.total { border-top: 2px solid #dee2e6; margin-top: 10px; padding-top: 15px; font-weight: bold; font-size: 18px; }
+        .price-row .amount { font-weight: 600; }
+        .price-row .amount.positive { color: #dc3545; }
+        .price-row .amount.negative { color: #28a745; }
+        .price-row .amount.zero { color: #666; }
+
+        .price-note { background: #fff3cd; color: #856404; padding: 12px 15px; border-radius: 8px; margin-top: 15px; font-size: 14px; }
+        .price-note.info { background: #e8f4f5; color: #007e8c; }
+
+        .btn { display: block; width: 100%; padding: 16px; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .btn-primary { background: #007e8c; color: white; }
+        .btn-primary:hover { background: #006570; }
+        .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+        .btn-secondary { background: #f8f9fa; color: #333; border: 2px solid #dee2e6; margin-top: 10px; }
+        .btn-secondary:hover { background: #e9ecef; }
+
+        .loading { display: none; align-items: center; justify-content: center; padding: 20px; }
+        .loading.active { display: flex; }
+        .spinner { width: 24px; height: 24px; border: 3px solid #e0e0e0; border-top-color: #007e8c; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .message { padding: 15px; border-radius: 8px; margin: 15px 0; display: none; }
+        .message.error { background: #f8d7da; color: #721c24; display: block; }
+        .message.success { background: #d4edda; color: #155724; display: block; }
+
+        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; border-top: 1px solid #eee; }
+
+        .hidden { display: none !important; }
+
+        /* Success page styles */
+        .success-container { text-align: center; padding: 40px 20px; }
+        .success-icon { font-size: 64px; margin-bottom: 20px; }
+        .success-title { font-size: 24px; color: #28a745; margin-bottom: 15px; }
+        .success-details { background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: left; margin: 20px 0; }
     </style>
 </head>
 <body>
@@ -45,75 +119,409 @@ function generateHTML(booking, hoursUntil, canReschedule) {
         <div class="header">
             <h1>📅 Reschedule Your Booking</h1>
         </div>
-        <div class="content">
-            ${canReschedule ? `
-            <div class="info">
-                <h3 style="margin-top: 0;">Want to change your appointment time?</h3>
-                <p>We're happy to help you find a new time that works better for you.</p>
-            </div>
-            ` : `
-            <div class="error">
-                <h3 style="margin-top: 0;">⚠️ Rescheduling Not Available</h3>
-                <p>Your booking is in less than 3 hours. Per our policy, appointments cannot be rescheduled within 3 hours of the scheduled time.</p>
-                <p>If you have an emergency, please call us immediately.</p>
-            </div>
-            `}
 
-            <div class="details">
-                <h3 style="margin-top: 0;">Current Booking Details</h3>
-                <table>
-                    <tr><td><strong>Booking ID:</strong></td><td>${booking.booking_id}</td></tr>
-                    <tr><td><strong>Service:</strong></td><td>${booking.services?.name || 'Massage Service'}</td></tr>
-                    <tr><td><strong>Duration:</strong></td><td>${booking.duration_minutes} minutes</td></tr>
-                    <tr><td><strong>Current Date & Time:</strong></td><td>${new Date(booking.booking_time).toLocaleString('en-AU', { dateStyle: 'full', timeStyle: 'short' })}</td></tr>
-                    <tr><td><strong>Therapist:</strong></td><td>${booking.therapist_profiles ? `${booking.therapist_profiles.first_name} ${booking.therapist_profiles.last_name}` : 'To be assigned'}</td></tr>
-                    <tr><td><strong>Address:</strong></td><td>${booking.address}</td></tr>
-                </table>
-            </div>
-
-            ${canReschedule ? `
-            <div class="contact-box">
-                <h3>📞 Contact Us to Reschedule</h3>
-                <p style="margin-bottom: 15px;">Please call or email us with your preferred new date and time:</p>
-                <p style="font-size: 24px; margin: 10px 0;"><a href="tel:1300302542">1300 302 542</a></p>
-                <p style="font-size: 18px; margin: 10px 0;"><a href="mailto:info@rejuvenators.com?subject=Reschedule%20Booking%20${booking.booking_id}">info@rejuvenators.com</a></p>
-                <p style="font-size: 14px; margin-top: 15px; opacity: 0.9;">When contacting us, please mention your Booking ID: <strong>${booking.booking_id}</strong></p>
-            </div>
-
-            <div class="warning">
-                <h4 style="margin-top: 0;">📝 Rescheduling Policy</h4>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li>Reschedules must be requested at least 3 hours before your appointment</li>
-                    <li>Subject to therapist availability</li>
-                    <li>We'll do our best to accommodate your preferred time</li>
-                    <li>The same therapist may not be available for the new time</li>
-                </ul>
-            </div>
-            ` : `
-            <div class="contact-box" style="background-color: #dc3545;">
-                <h3>🆘 Emergency Contact</h3>
-                <p style="margin-bottom: 15px;">If you have an emergency, please call us immediately:</p>
-                <p style="font-size: 24px; margin: 10px 0;"><a href="tel:1300302542">1300 302 542</a></p>
-            </div>
-            `}
-
-            <div class="policy">
-                <strong>Cancellation Policy:</strong>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li><strong>More than 12 hours before:</strong> Full refund</li>
-                    <li><strong>3-12 hours before:</strong> 50% cancellation fee applies</li>
-                    <li><strong>Less than 3 hours before:</strong> No cancellations allowed</li>
-                </ul>
+        <div class="content" id="mainContent">
+            <!-- Current Booking Details -->
+            <div class="current-booking">
+                <h3>Current Booking</h3>
+                <div class="booking-detail">
+                    <span class="label">Booking ID</span>
+                    <span class="value">${booking.booking_id}</span>
+                </div>
+                <div class="booking-detail">
+                    <span class="label">Service</span>
+                    <span class="value">${booking.services?.name || 'Massage'}</span>
+                </div>
+                <div class="booking-detail">
+                    <span class="label">Duration</span>
+                    <span class="value">${booking.duration_minutes} minutes</span>
+                </div>
+                <div class="booking-detail">
+                    <span class="label">Date & Time</span>
+                    <span class="value">${formattedDate} at ${formattedTime}</span>
+                </div>
+                <div class="booking-detail">
+                    <span class="label">Therapist</span>
+                    <span class="value">${therapistName}</span>
+                </div>
+                <div class="booking-detail">
+                    <span class="label">Current Price</span>
+                    <span class="value">$${(booking.price || 0).toFixed(2)}</span>
+                </div>
+                <div class="remaining-badge">
+                    ${remainingReschedules} reschedule${remainingReschedules !== 1 ? 's' : ''} remaining
+                </div>
             </div>
 
-            <p style="text-align: center;">
-                <a href="https://rejuvenators.com" class="btn">Return to Website</a>
-            </p>
+            <!-- Step 1: Select Date -->
+            <div class="step">
+                <div class="step-header">
+                    <div class="step-number">1</div>
+                    <div class="step-title">Select New Date</div>
+                </div>
+                <div class="form-group">
+                    <input type="date" id="newDate" min="${new Date().toISOString().split('T')[0]}" />
+                </div>
+            </div>
+
+            <!-- Step 2: Select Time -->
+            <div class="step" id="timeStep">
+                <div class="step-header">
+                    <div class="step-number">2</div>
+                    <div class="step-title">Select New Time</div>
+                </div>
+                <div class="loading" id="timeLoading">
+                    <div class="spinner"></div>
+                    <span>Loading available times...</span>
+                </div>
+                <div class="time-slots" id="timeSlots"></div>
+                <p id="noTimesMessage" class="hidden" style="color: #666; text-align: center; padding: 20px;">
+                    No available times for this date. Please select a different date.
+                </p>
+            </div>
+
+            <!-- Step 3: Select Therapist (Optional) -->
+            <div class="step" id="therapistStep">
+                <div class="step-header">
+                    <div class="step-number">3</div>
+                    <div class="step-title">Choose Therapist (Optional)</div>
+                </div>
+                <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                    You can keep your current therapist or choose a different available therapist.
+                </p>
+                <div class="loading" id="therapistLoading">
+                    <div class="spinner"></div>
+                    <span>Loading available therapists...</span>
+                </div>
+                <div class="therapist-cards" id="therapistCards"></div>
+            </div>
+
+            <!-- Price Comparison -->
+            <div class="price-comparison" id="priceComparison">
+                <div class="price-row">
+                    <span>Original Price</span>
+                    <span class="amount">$${(booking.price || 0).toFixed(2)}</span>
+                </div>
+                <div class="price-row">
+                    <span>New Price</span>
+                    <span class="amount" id="newPriceDisplay">$${(booking.price || 0).toFixed(2)}</span>
+                </div>
+                <div class="price-row total">
+                    <span>Difference</span>
+                    <span class="amount zero" id="priceDifferenceDisplay">$0.00</span>
+                </div>
+                <div class="price-note info hidden" id="priceNote">
+                    Additional payment will be charged to your saved card.
+                </div>
+            </div>
+
+            <!-- Error Message -->
+            <div class="message" id="errorMessage"></div>
+
+            <!-- Submit Button -->
+            <button class="btn btn-primary" id="submitBtn" disabled>
+                Confirm Reschedule
+            </button>
+            <a href="https://rejuvenators.com" class="btn btn-secondary">Cancel</a>
+
+            <!-- Loading overlay for submission -->
+            <div class="loading" id="submitLoading" style="margin-top: 20px;">
+                <div class="spinner"></div>
+                <span>Processing your reschedule...</span>
+            </div>
         </div>
+
+        <!-- Success Page (hidden initially) -->
+        <div class="content hidden" id="successContent">
+            <div class="success-container">
+                <div class="success-icon">✅</div>
+                <h2 class="success-title">Booking Rescheduled!</h2>
+                <p>Your appointment has been successfully rescheduled.</p>
+                <div class="success-details" id="successDetails"></div>
+                <p style="color: #666; margin-top: 20px;">
+                    Confirmation emails and SMS have been sent to you and your therapist.
+                </p>
+                <a href="https://rejuvenators.com" class="btn btn-primary" style="margin-top: 20px;">
+                    Return to Website
+                </a>
+            </div>
+        </div>
+
         <div class="footer">
-            <p>Thank you for choosing Rejuvenators Mobile Massage</p>
+            <p>Questions? Call us at <a href="tel:1300302542" style="color: #007e8c;">1300 302 542</a></p>
         </div>
     </div>
+
+    <script>
+        // State
+        const token = '${token}';
+        const bookingId = '${booking.id}';
+        const currentTherapistId = '${booking.therapist_id || ''}';
+        const serviceId = '${booking.service_id}';
+        const durationMinutes = ${booking.duration_minutes};
+        const genderPreference = '${booking.gender_preference || 'any'}';
+        const originalPrice = ${booking.price || 0};
+        const bookingTimezone = '${booking.booking_timezone || 'Australia/Brisbane'}';
+
+        let selectedDate = null;
+        let selectedTime = null;
+        let selectedTherapistId = currentTherapistId;
+        let availableTherapists = [];
+        let newPrice = originalPrice;
+        let therapistAvailability = {};
+
+        const API_BASE = '/.netlify/functions';
+
+        // Elements
+        const dateInput = document.getElementById('newDate');
+        const timeSlotsContainer = document.getElementById('timeSlots');
+        const timeLoading = document.getElementById('timeLoading');
+        const noTimesMessage = document.getElementById('noTimesMessage');
+        const therapistCardsContainer = document.getElementById('therapistCards');
+        const therapistLoading = document.getElementById('therapistLoading');
+        const submitBtn = document.getElementById('submitBtn');
+        const submitLoading = document.getElementById('submitLoading');
+        const errorMessage = document.getElementById('errorMessage');
+        const newPriceDisplay = document.getElementById('newPriceDisplay');
+        const priceDifferenceDisplay = document.getElementById('priceDifferenceDisplay');
+        const priceNote = document.getElementById('priceNote');
+
+        // Date change handler
+        dateInput.addEventListener('change', async (e) => {
+            selectedDate = e.target.value;
+            selectedTime = null;
+            selectedTherapistId = currentTherapistId;
+
+            if (!selectedDate) return;
+
+            // Load available time slots
+            await loadAvailableSlots();
+        });
+
+        // Load available time slots for selected date
+        async function loadAvailableSlots() {
+            timeLoading.classList.add('active');
+            timeSlotsContainer.innerHTML = '';
+            noTimesMessage.classList.add('hidden');
+            therapistCardsContainer.innerHTML = '';
+
+            try {
+                // Fetch therapist availability for this date
+                const response = await fetch(\`\${API_BASE}/get-available-slots?date=\${selectedDate}&service_id=\${serviceId}&duration=\${durationMinutes}&gender=\${genderPreference}&booking_id=\${bookingId}\`);
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                therapistAvailability = data.therapistAvailability || {};
+                availableTherapists = data.therapists || [];
+
+                // Get all unique time slots
+                const allSlots = new Set();
+                Object.values(therapistAvailability).forEach(slots => {
+                    slots.forEach(slot => allSlots.add(slot));
+                });
+
+                const sortedSlots = Array.from(allSlots).sort();
+
+                if (sortedSlots.length === 0) {
+                    noTimesMessage.classList.remove('hidden');
+                } else {
+                    sortedSlots.forEach(slot => {
+                        const slotEl = document.createElement('div');
+                        slotEl.className = 'time-slot';
+                        slotEl.textContent = slot;
+                        slotEl.addEventListener('click', () => selectTimeSlot(slot, slotEl));
+                        timeSlotsContainer.appendChild(slotEl);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading slots:', error);
+                showError('Failed to load available times. Please try again.');
+            } finally {
+                timeLoading.classList.remove('active');
+            }
+        }
+
+        // Select time slot
+        function selectTimeSlot(time, element) {
+            // Remove previous selection
+            document.querySelectorAll('.time-slot.selected').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedTime = time;
+
+            // Update therapist cards based on availability for this slot
+            updateTherapistCards();
+            updatePrice();
+            validateForm();
+        }
+
+        // Update therapist cards
+        function updateTherapistCards() {
+            therapistCardsContainer.innerHTML = '';
+
+            if (!selectedTime) return;
+
+            // Filter therapists available for selected time
+            const availableForTime = availableTherapists.filter(t => {
+                const slots = therapistAvailability[t.id] || [];
+                return slots.includes(selectedTime);
+            });
+
+            availableForTime.forEach(therapist => {
+                const card = document.createElement('div');
+                const isCurrent = therapist.id === currentTherapistId;
+                const isSelected = therapist.id === selectedTherapistId;
+
+                card.className = 'therapist-card' + (isSelected ? ' selected' : '') + (isCurrent ? ' current' : '');
+                card.innerHTML = \`
+                    <div class="name">\${therapist.first_name} \${therapist.last_name}</div>
+                    <div class="badge">\${isCurrent ? '✓ Current' : 'Available'}</div>
+                \`;
+                card.addEventListener('click', () => selectTherapist(therapist.id, card));
+                therapistCardsContainer.appendChild(card);
+            });
+
+            // If current therapist not available, auto-select first available
+            if (!availableForTime.find(t => t.id === selectedTherapistId) && availableForTime.length > 0) {
+                selectedTherapistId = availableForTime[0].id;
+                therapistCardsContainer.querySelector('.therapist-card').classList.add('selected');
+            }
+        }
+
+        // Select therapist
+        function selectTherapist(therapistId, element) {
+            document.querySelectorAll('.therapist-card.selected').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedTherapistId = therapistId;
+            validateForm();
+        }
+
+        // Update price display
+        async function updatePrice() {
+            if (!selectedDate || !selectedTime) return;
+
+            try {
+                const dateTime = \`\${selectedDate}T\${selectedTime}:00\`;
+                const response = await fetch(\`\${API_BASE}/calculate-price?service_id=\${serviceId}&duration=\${durationMinutes}&booking_time=\${encodeURIComponent(dateTime)}\`);
+                const data = await response.json();
+
+                if (data.price) {
+                    newPrice = data.price;
+                    const difference = newPrice - originalPrice;
+
+                    newPriceDisplay.textContent = '$' + newPrice.toFixed(2);
+
+                    if (difference > 0) {
+                        priceDifferenceDisplay.textContent = '+$' + difference.toFixed(2);
+                        priceDifferenceDisplay.className = 'amount positive';
+                        priceNote.classList.remove('hidden');
+                        priceNote.textContent = 'Additional $' + difference.toFixed(2) + ' will be charged to your saved card.';
+                    } else if (difference < 0) {
+                        priceDifferenceDisplay.textContent = '-$' + Math.abs(difference).toFixed(2);
+                        priceDifferenceDisplay.className = 'amount negative';
+                        priceNote.classList.remove('hidden');
+                        priceNote.textContent = 'The new time is cheaper, but no refund will be issued.';
+                    } else {
+                        priceDifferenceDisplay.textContent = '$0.00';
+                        priceDifferenceDisplay.className = 'amount zero';
+                        priceNote.classList.add('hidden');
+                    }
+                }
+            } catch (error) {
+                console.error('Error calculating price:', error);
+            }
+        }
+
+        // Validate form
+        function validateForm() {
+            const isValid = selectedDate && selectedTime && selectedTherapistId;
+            submitBtn.disabled = !isValid;
+        }
+
+        // Show error message
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.className = 'message error';
+        }
+
+        // Hide error message
+        function hideError() {
+            errorMessage.className = 'message';
+        }
+
+        // Submit reschedule
+        submitBtn.addEventListener('click', async () => {
+            hideError();
+            submitBtn.disabled = true;
+            submitLoading.classList.add('active');
+
+            try {
+                const newBookingTime = \`\${selectedDate}T\${selectedTime}:00\`;
+
+                const response = await fetch(\`\${API_BASE}/client-reschedule\`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        token: token,
+                        new_booking_time: newBookingTime,
+                        new_therapist_id: selectedTherapistId
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || data.message || 'Failed to reschedule');
+                }
+
+                // Show success page
+                showSuccessPage(data);
+
+            } catch (error) {
+                console.error('Reschedule error:', error);
+                showError(error.message || 'Failed to reschedule. Please try again or contact us.');
+                submitBtn.disabled = false;
+            } finally {
+                submitLoading.classList.remove('active');
+            }
+        });
+
+        // Show success page
+        function showSuccessPage(data) {
+            document.getElementById('mainContent').classList.add('hidden');
+            document.getElementById('successContent').classList.remove('hidden');
+
+            const booking = data.booking;
+            const newDate = new Date(booking.new_booking_time);
+
+            document.getElementById('successDetails').innerHTML = \`
+                <div class="booking-detail">
+                    <span class="label">Booking ID</span>
+                    <span class="value">\${booking.booking_id}</span>
+                </div>
+                <div class="booking-detail">
+                    <span class="label">New Date & Time</span>
+                    <span class="value">\${newDate.toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at \${newDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <div class="booking-detail">
+                    <span class="label">Therapist</span>
+                    <span class="value">\${booking.new_therapist}</span>
+                </div>
+                <div class="booking-detail">
+                    <span class="label">Price</span>
+                    <span class="value">$\${booking.new_price.toFixed(2)}</span>
+                </div>
+                \${booking.price_difference > 0 ? \`
+                <div class="booking-detail">
+                    <span class="label">Additional Charge</span>
+                    <span class="value" style="color: #dc3545;">$\${booking.price_difference.toFixed(2)}</span>
+                </div>
+                \` : ''}
+            \`;
+        }
+    </script>
 </body>
 </html>`;
 }
@@ -127,13 +535,16 @@ function generateErrorHTML(title, message) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>${title} - Rejuvenators Mobile Massage</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
-        .container { max-width: 600px; margin: 50px auto; background-color: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
-        .header { background-color: #007e8c; color: white; padding: 30px 20px; text-align: center; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 50px auto; background-color: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #007e8c, #005f6b); color: white; padding: 30px 20px; text-align: center; }
         .content { padding: 30px 20px; }
-        .error { background-color: #f8d7da; color: #721c24; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f5c6cb; }
+        .error { background-color: #f8d7da; color: #721c24; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc3545; }
+        .error h2 { margin-top: 0; }
+        .contact-box { background-color: #e8f4f5; padding: 20px; border-radius: 8px; margin: 20px 0; text-align: center; }
+        .contact-box a { color: #007e8c; font-weight: bold; font-size: 18px; }
         .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
-        .btn { display: inline-block; padding: 12px 24px; background-color: #007e8c; color: white; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+        .btn { display: inline-block; padding: 12px 24px; background-color: #007e8c; color: white; text-decoration: none; border-radius: 8px; margin-top: 20px; }
     </style>
 </head>
 <body>
@@ -143,15 +554,74 @@ function generateErrorHTML(title, message) {
         </div>
         <div class="content">
             <div class="error">
-                <h2 style="margin-top: 0;">❌ ${title}</h2>
+                <h2>❌ ${title}</h2>
                 <p>${message}</p>
+            </div>
+            <div class="contact-box">
+                <p>Need help? Contact us:</p>
+                <p><a href="tel:1300302542">1300 302 542</a></p>
+                <p><a href="mailto:info@rejuvenators.com">info@rejuvenators.com</a></p>
             </div>
             <p style="text-align: center;">
                 <a href="https://rejuvenators.com" class="btn">Return to Website</a>
             </p>
         </div>
         <div class="footer">
-            <p>Questions? Contact us at 1300 302542 or info@rejuvenators.com</p>
+            <p>Thank you for choosing Rejuvenators Mobile Massage</p>
+        </div>
+    </div>
+</body>
+</html>`;
+}
+
+function generateLimitReachedHTML(booking) {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reschedule Limit Reached - Rejuvenators Mobile Massage</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 50px auto; background-color: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #007e8c, #005f6b); color: white; padding: 30px 20px; text-align: center; }
+        .content { padding: 30px 20px; }
+        .warning { background-color: #fff3cd; color: #856404; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #ffc107; }
+        .warning h2 { margin-top: 0; }
+        .booking-info { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .contact-box { background-color: #28a745; color: white; padding: 25px; border-radius: 8px; margin: 20px 0; text-align: center; }
+        .contact-box a { color: white; font-size: 20px; }
+        .footer { background-color: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
+        .btn { display: inline-block; padding: 12px 24px; background-color: #007e8c; color: white; text-decoration: none; border-radius: 8px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📅 Reschedule Request</h1>
+        </div>
+        <div class="content">
+            <div class="warning">
+                <h2>⚠️ Reschedule Limit Reached</h2>
+                <p>This booking has already been rescheduled 2 times, which is the maximum allowed for self-service rescheduling.</p>
+                <p>Please contact us directly to make any further changes to your appointment.</p>
+            </div>
+            <div class="booking-info">
+                <p><strong>Booking ID:</strong> ${booking.booking_id}</p>
+                <p><strong>Current Date:</strong> ${new Date(booking.booking_time).toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
+            <div class="contact-box">
+                <h3 style="margin-top: 0;">📞 Contact Us</h3>
+                <p><a href="tel:1300302542">1300 302 542</a></p>
+                <p><a href="mailto:info@rejuvenators.com?subject=Reschedule%20Booking%20${booking.booking_id}">info@rejuvenators.com</a></p>
+            </div>
+            <p style="text-align: center;">
+                <a href="https://rejuvenators.com" class="btn">Return to Website</a>
+            </p>
+        </div>
+        <div class="footer">
+            <p>Thank you for choosing Rejuvenators Mobile Massage</p>
         </div>
     </div>
 </body>
@@ -166,19 +636,13 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
   };
 
-  // Handle OPTIONS preflight requests
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: ''
-    };
+    return { statusCode: 200, headers, body: '' };
   }
 
   console.log(`📅 Booking reschedule request: ${event.httpMethod} with token: ${event.queryStringParameters?.token}`);
 
   try {
-    // Get token from query string
     const token = event.queryStringParameters?.token;
 
     if (!token) {
@@ -194,7 +658,7 @@ exports.handler = async (event, context) => {
       .from('bookings')
       .select(`
         *,
-        services (name),
+        services (id, name, service_base_price),
         therapist_profiles!bookings_therapist_id_fkey (id, first_name, last_name, email, phone)
       `)
       .eq('reschedule_token', token)
@@ -232,13 +696,33 @@ exports.handler = async (event, context) => {
     const bookingTime = new Date(booking.booking_time);
     const hoursUntil = (bookingTime.getTime() - now.getTime()) / (1000 * 60 * 60);
 
-    // Can reschedule if more than 3 hours away
-    const canReschedule = hoursUntil >= 3;
+    // Check 3-hour window
+    if (hoursUntil < 3) {
+      return {
+        statusCode: 400,
+        headers,
+        body: generateErrorHTML(
+          'Cannot Reschedule',
+          'Your booking is in less than 3 hours. Per our policy, appointments cannot be rescheduled within 3 hours of the scheduled time. Please call us at 1300 302 542 for emergency assistance.'
+        )
+      };
+    }
 
+    // Check reschedule limit
+    const rescheduleCount = booking.reschedule_count || 0;
+    if (rescheduleCount >= 2) {
+      return {
+        statusCode: 400,
+        headers,
+        body: generateLimitReachedHTML(booking)
+      };
+    }
+
+    // All checks passed - show interactive reschedule page
     return {
       statusCode: 200,
       headers,
-      body: generateHTML(booking, hoursUntil, canReschedule)
+      body: generateInteractiveHTML(booking, token, rescheduleCount)
     };
 
   } catch (error) {
@@ -246,7 +730,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 500,
       headers,
-      body: generateErrorHTML('Error', `An unexpected error occurred. Please contact us at 1300 302542 for assistance.`)
+      body: generateErrorHTML('Error', 'An unexpected error occurred. Please contact us at 1300 302 542 for assistance.')
     };
   }
 };
