@@ -26,14 +26,21 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const { amount, currency = 'aud', bookingData } = JSON.parse(event.body);
+    const body = JSON.parse(event.body);
+    const { currency = 'aud', bookingData } = body;
+
+    // Parse amount as float to handle string inputs
+    const amount = parseFloat(body.amount);
+
+    console.log('📥 Payment intent request:', { amount, currency, bookingData });
 
     // Validate required fields
-    if (!amount || amount <= 0) {
+    if (!amount || isNaN(amount) || amount <= 0) {
+      console.error('❌ Invalid amount:', body.amount);
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Valid amount is required' }),
+        body: JSON.stringify({ error: 'Valid amount is required', received: body.amount }),
       };
     }
 
@@ -92,6 +99,8 @@ exports.handler = async (event, context) => {
 
     const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
 
+    console.log('✅ Payment intent created:', paymentIntent.id, 'Amount:', paymentIntent.amount);
+
     return {
       statusCode: 200,
       headers,
@@ -104,14 +113,18 @@ exports.handler = async (event, context) => {
       }),
     };
   } catch (error) {
-    console.error('Payment Intent Creation Error:', error);
+    console.error('❌ Payment Intent Creation Error:', error);
+    console.error('Error type:', error.type);
+    console.error('Error code:', error.code);
 
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         error: 'Failed to create payment intent',
-        message: error.message
+        message: error.message,
+        type: error.type,
+        code: error.code
       }),
     };
   }
