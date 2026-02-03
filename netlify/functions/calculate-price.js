@@ -87,12 +87,20 @@ exports.handler = async (event, context) => {
     const dayOfWeek = bookingDate.getDay(); // 0 = Sunday, 6 = Saturday
     const timeString = bookingDate.toTimeString().substring(0, 5); // HH:MM
 
-    // Get time pricing rules
-    const { data: timeRules } = await supabase
+    console.log('📅 Time pricing lookup:', { booking_time, dayOfWeek, timeString });
+
+    // Get ALL time pricing rules (not filtered by day) to see what's in the table
+    const { data: allTimeRules, error: timeRulesError } = await supabase
       .from('time_pricing_rules')
-      .select('uplift_percentage, label, start_time, end_time')
-      .eq('day_of_week', dayOfWeek)
+      .select('*')
       .eq('is_active', true);
+
+    console.log('📋 All time pricing rules:', JSON.stringify(allTimeRules, null, 2));
+    if (timeRulesError) console.error('❌ Time rules error:', timeRulesError);
+
+    // Filter rules for this day
+    const timeRules = (allTimeRules || []).filter(rule => Number(rule.day_of_week) === dayOfWeek);
+    console.log('📋 Rules for day', dayOfWeek, ':', timeRules.length, 'rules');
 
     // Find applicable time rules
     if (timeRules && timeRules.length > 0) {
@@ -100,8 +108,10 @@ exports.handler = async (event, context) => {
       let appliedLabel = null;
 
       for (const rule of timeRules) {
+        console.log('🔍 Checking rule:', rule.label, 'start:', rule.start_time, 'end:', rule.end_time, 'time:', timeString);
         // Check if the booking time falls within this rule's time range
         if (timeString >= rule.start_time && timeString < rule.end_time) {
+          console.log('✅ Rule matches!', rule.label, 'uplift:', rule.uplift_percentage);
           if (rule.uplift_percentage > maxUplift) {
             maxUplift = rule.uplift_percentage;
             appliedLabel = rule.label;
@@ -112,8 +122,12 @@ exports.handler = async (event, context) => {
       if (maxUplift > 0) {
         breakdown.timeUplift = maxUplift;
         breakdown.timeUpliftLabel = appliedLabel;
-        price = price * (1 + maxUplift / 100);
+        const upliftAmount = price * (maxUplift / 100);
+        price = price + upliftAmount;
+        console.log('💰 Applied uplift:', maxUplift, '% =', upliftAmount, 'New price:', price);
       }
+    } else {
+      console.log('ℹ️ No time pricing rules found for day', dayOfWeek);
     }
 
     // Round to 2 decimal places
