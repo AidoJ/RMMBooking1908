@@ -76,6 +76,101 @@ function normalizeAustralianPhone(phoneNumber) {
   return '+61' + cleaned;
 }
 
+// Helper: Determine if a booking time is after-hours or weekend
+function isAfterHoursOrWeekend(bookingTime, businessOpeningHour = 9, businessClosingHour = 17) {
+  const date = new Date(bookingTime);
+  const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
+  const hour = date.getHours();
+
+  // Weekend (Saturday or Sunday)
+  if (dayOfWeek === 0 || dayOfWeek === 6) {
+    return { isAfterHours: true, rateType: 'weekend' };
+  }
+
+  // After hours (before opening or after closing)
+  if (hour < businessOpeningHour || hour >= businessClosingHour) {
+    return { isAfterHours: true, rateType: 'afterhours' };
+  }
+
+  return { isAfterHours: false, rateType: 'daytime' };
+}
+
+// Helper: Calculate therapist fee for a given booking time
+async function calculateTherapistFee(therapistId, serviceId, bookingTime, durationMinutes) {
+  console.log(`💰 Calculating therapist fee for therapist ${therapistId}, service ${serviceId}`);
+
+  // Get business hours
+  const { data: settings } = await supabase
+    .from('system_settings')
+    .select('key, value')
+    .in('key', ['business_opening_time', 'business_closing_time']);
+
+  let businessOpeningHour = 9;
+  let businessClosingHour = 17;
+  if (settings) {
+    for (const s of settings) {
+      if (s.key === 'business_opening_time') businessOpeningHour = Number(s.value);
+      if (s.key === 'business_closing_time') businessClosingHour = Number(s.value);
+    }
+  }
+
+  // Determine rate type
+  const { rateType } = isAfterHoursOrWeekend(bookingTime, businessOpeningHour, businessClosingHour);
+  console.log(`   Rate type: ${rateType}`);
+
+  // Try to get service-specific rate first
+  const { data: serviceRate } = await supabase
+    .from('therapist_service_rates')
+    .select('normal_rate, afterhours_rate')
+    .eq('therapist_id', therapistId)
+    .eq('service_id', serviceId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  let normalRate, afterHoursRate;
+
+  if (serviceRate) {
+    normalRate = serviceRate.normal_rate;
+    afterHoursRate = serviceRate.afterhours_rate;
+    console.log(`   Using service-specific rates: normal=$${normalRate}, afterhours=$${afterHoursRate}`);
+  } else {
+    // Fallback to therapist profile rates
+    const { data: therapist } = await supabase
+      .from('therapist_profiles')
+      .select('hourly_rate, afterhours_rate')
+      .eq('id', therapistId)
+      .single();
+
+    if (!therapist) {
+      console.error(`   ❌ Therapist not found: ${therapistId}`);
+      return null;
+    }
+
+    normalRate = therapist.hourly_rate;
+    afterHoursRate = therapist.afterhours_rate;
+    console.log(`   Using profile rates: normal=$${normalRate}, afterhours=$${afterHoursRate}`);
+  }
+
+  if (!normalRate || !afterHoursRate) {
+    console.error(`   ❌ Missing rates for therapist ${therapistId}`);
+    return null;
+  }
+
+  // Select appropriate rate
+  const hourlyRate = (rateType === 'weekend' || rateType === 'afterhours') ? afterHoursRate : normalRate;
+  const hoursWorked = durationMinutes / 60;
+  const therapistFee = Math.round(hoursWorked * hourlyRate * 100) / 100;
+
+  console.log(`   Hourly rate: $${hourlyRate}, Hours: ${hoursWorked}, Fee: $${therapistFee}`);
+
+  return {
+    therapistFee,
+    hourlyRate,
+    hoursWorked,
+    rateType
+  };
+}
+
 // Helper: Send email via EmailJS
 async function sendEmail(templateId, templateParams) {
   try {
@@ -512,12 +607,32 @@ exports.handler = async (event, context) => {
       const originalTherapistName = booking.therapist_profiles
         ? `${booking.therapist_profiles.first_name} ${booking.therapist_profiles.last_name}`
         : 'Previous therapist';
+      const originalTherapistFee = booking.therapist_fee;
+
+      // Recalculate therapist fee for the new time/therapist
+      const finalTherapistId = new_therapist_id || booking.therapist_id;
+      const feeResult = await calculateTherapistFee(
+        finalTherapistId,
+        booking.service_id,
+        new_booking_time,
+        booking.duration_minutes
+      );
+
+      let newTherapistFee = originalTherapistFee;
+      if (feeResult) {
+        newTherapistFee = feeResult.therapistFee;
+        console.log(`💰 Therapist fee: Original $${originalTherapistFee} → New $${newTherapistFee} (${feeResult.rateType})`);
+      } else {
+        console.warn('⚠️ Could not calculate new therapist fee, keeping original');
+      }
 
       // Update booking
       const updateData = {
         booking_time: new_booking_time,
-        therapist_id: new_therapist_id || booking.therapist_id,
+        therapist_id: finalTherapistId,
         price: newPrice,
+        client_fee: newPrice,
+        therapist_fee: newTherapistFee,
         reschedule_count: (booking.reschedule_count || 0) + 1,
         updated_at: new Date().toISOString()
       };
@@ -525,6 +640,12 @@ exports.handler = async (event, context) => {
       // If there was additional payment (authorized via Stripe Elements), note it
       if (priceDifference > 0) {
         updateData.payment_notes = `${booking.payment_notes || ''}\nReschedule additional payment: $${priceDifference.toFixed(2)}`.trim();
+      }
+
+      // Note if therapist fee changed
+      if (newTherapistFee !== originalTherapistFee) {
+        const feeNote = `\nTherapist fee updated: $${originalTherapistFee} → $${newTherapistFee}`;
+        updateData.payment_notes = `${updateData.payment_notes || ''}${feeNote}`.trim();
       }
 
       const { error: updateError } = await supabase
@@ -593,7 +714,7 @@ exports.handler = async (event, context) => {
             booking_time: formatTime(new_booking_time, timezone),
             address: booking.address,
             duration: booking.duration_minutes,
-            therapist_fee: booking.therapist_fee || 'TBD',
+            therapist_fee: newTherapistFee ? `$${newTherapistFee.toFixed(2)}` : 'TBD',
             subject_line: `Booking Rescheduled - ${booking.booking_id}`
           });
           console.log('✅ Therapist email sent');
@@ -628,7 +749,7 @@ Check your email for full details!
 Booking ${booking.booking_id} has been rescheduled.
 Client: ${booking.first_name || ''} ${booking.last_name || ''}
 New Date: ${formatShortDate(new_booking_time, timezone)} at ${formatTime(new_booking_time, timezone)}
-Fee: $${booking.therapist_fee || 'TBD'}
+Fee: $${newTherapistFee ? newTherapistFee.toFixed(2) : 'TBD'}
 
 Check your email for full details!
 - Rejuvenators`;
