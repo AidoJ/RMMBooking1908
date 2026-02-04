@@ -287,6 +287,7 @@ export const EnhancedBookingList = () => {
             acc.confirmed++;
             break;
           case 'requested':
+          case 'pending':
             acc.pending++;
             break;
           case 'cancelled':
@@ -495,6 +496,7 @@ export const EnhancedBookingList = () => {
       case 'completed': return 'green';
       case 'confirmed': return 'blue';
       case 'requested': return 'orange';
+      case 'pending': return 'gold';
       case 'cancelled': return 'red';
       case 'declined': return 'red';
       case 'timeout_reassigned': return 'purple';
@@ -509,6 +511,7 @@ export const EnhancedBookingList = () => {
       case 'completed': return <CheckCircleOutlined />;
       case 'confirmed': return <CalendarOutlined />;
       case 'requested': return <ClockCircleOutlined />;
+      case 'pending': return <ClockCircleOutlined />;
       default: return <ExclamationCircleOutlined />;
     }
   };
@@ -721,6 +724,7 @@ export const EnhancedBookingList = () => {
       key: 'status',
       filters: [
         { text: 'Requested', value: 'requested' },
+        { text: 'Pending', value: 'pending' },
         { text: 'Confirmed', value: 'confirmed' },
         { text: 'Completed', value: 'completed' },
         { text: 'Cancelled', value: 'cancelled' },
@@ -1024,6 +1028,7 @@ export const EnhancedBookingList = () => {
               >
                 <Option value="all">All Status</Option>
                 <Option value="requested">Requested</Option>
+                <Option value="pending">Pending</Option>
                 <Option value="confirmed">Confirmed</Option>
                 <Option value="completed">Completed</Option>
                 <Option value="cancelled">Cancelled</Option>

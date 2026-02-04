@@ -266,7 +266,8 @@ export const CalendarBookingManagement: React.FC = () => {
     switch (status) {
       case 'completed': return '#007e8c';       // Teal
       case 'confirmed': return '#B75DD9';       // Purple
-      case 'requested': return '#ff7900';       // Orange (pending)
+      case 'requested': return '#ff7900';       // Orange (requested)
+      case 'pending': return '#faad14';         // Gold (pending confirmation)
       case 'cancelled': return '#c02000';       // Red
       case 'declined': return '#c02000';        // Red
       default: return '#e0e0e0';                // Light gray
@@ -307,10 +308,11 @@ export const CalendarBookingManagement: React.FC = () => {
       completed: 'green',
       confirmed: 'blue',
       requested: 'orange',
+      pending: 'gold',
       cancelled: 'red',
       declined: 'red',
     };
-    
+
     return (
       <Tag color={colors[status as keyof typeof colors] || 'default'}>
         {status.charAt(0).toUpperCase() + status.slice(1)}

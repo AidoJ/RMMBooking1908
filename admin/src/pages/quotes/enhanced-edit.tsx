@@ -495,6 +495,9 @@ export const EnhancedQuoteEdit: React.FC = () => {
         if (bookingsData && bookingsData.length > 0) {
           console.log('Found existing bookings:', bookingsData.length, 'for quote status:', quotesData?.status);
 
+          // Sum existing therapist fees from bookings
+          let totalExistingFees = 0;
+
           // Transform to TherapistAssignment format
           const assignments: TherapistAssignment[] = bookingsData.map((booking: any) => {
             const date = booking.booking_time.split('T')[0]; // YYYY-MM-DD - direct string split to avoid timezone issues
@@ -504,6 +507,9 @@ export const EnhancedQuoteEdit: React.FC = () => {
             // Use the therapist's rates from their profile
             const hourlyRate = booking.therapist_profiles.hourly_rate || 0;
             const afterhoursRate = booking.therapist_profiles.afterhours_rate || 0;
+
+            // Sum existing fees from the booking records
+            totalExistingFees += parseFloat(booking.therapist_fee) || 0;
 
             return {
               date,
@@ -517,7 +523,14 @@ export const EnhancedQuoteEdit: React.FC = () => {
           });
 
           console.log('Transformed assignments:', assignments);
+          console.log(`💰 Total existing therapist fees from bookings: $${totalExistingFees.toFixed(2)}`);
           setTherapistAssignments(assignments);
+
+          // Set the total therapist fees in the form from existing booking records
+          if (totalExistingFees > 0) {
+            form?.setFieldValue('total_therapist_fees', parseFloat(totalExistingFees.toFixed(2)));
+            console.log(`💰 Set form total_therapist_fees from existing bookings: $${totalExistingFees.toFixed(2)}`);
+          }
           setAvailabilityStatus('available');
           
           // Set appropriate workflow step based on quote status
@@ -974,6 +987,44 @@ export const EnhancedQuoteEdit: React.FC = () => {
     const totalMinutes = (quotesData?.total_sessions || 0) * (quotesData?.session_duration_minutes || 0);
     const totalHours = totalMinutes / 60;
     return totalHours < 12 ? 1 : 2;
+  };
+
+  // Calculate total therapist fees from assignments
+  const calculateTotalTherapistFees = (assignments: TherapistAssignment[]): number => {
+    if (!assignments || assignments.length === 0) return 0;
+
+    const serviceArrangement = form?.getFieldValue('service_arrangement') || quotesData?.service_arrangement || 'split';
+    const isMultiply = serviceArrangement === 'multiply';
+    const totalDurationMinutes = form?.getFieldValue('duration_minutes') || quotesData?.duration_minutes || 0;
+
+    // Group assignments by date to get per-day minutes
+    const dateAssignmentCounts: Record<string, number> = {};
+    assignments.forEach(a => {
+      dateAssignmentCounts[a.date] = (dateAssignmentCounts[a.date] || 0) + 1;
+    });
+
+    let totalFees = 0;
+    const uniqueDays = Object.keys(dateAssignmentCounts).length;
+    const perDayMinutes = uniqueDays > 0 ? totalDurationMinutes / uniqueDays : totalDurationMinutes;
+
+    for (const assignment of assignments) {
+      const therapistCountOnDay = dateAssignmentCounts[assignment.date] || 1;
+
+      // Calculate duration for this assignment
+      const assignmentDurationMinutes = isMultiply
+        ? perDayMinutes  // Full duration for multiply arrangement
+        : perDayMinutes / therapistCountOnDay;  // Split between therapists
+
+      const therapistHours = assignmentDurationMinutes / 60;
+      const hourlyRate = assignment.hourly_rate || 0;
+      const fee = therapistHours * hourlyRate;
+
+      totalFees += fee;
+      console.log(`💰 Assignment fee for ${assignment.therapist_name}: ${therapistHours.toFixed(2)}hrs × $${hourlyRate} = $${fee.toFixed(2)}`);
+    }
+
+    console.log(`💰 Total therapist fees calculated: $${totalFees.toFixed(2)}`);
+    return parseFloat(totalFees.toFixed(2));
   };
 
   // Removed calculateFinishTime - using unified structure with quote_dates
@@ -2027,6 +2078,11 @@ export const EnhancedQuoteEdit: React.FC = () => {
             availabilityConfirmedAt: now
           }));
 
+          // Calculate and set total therapist fees in the form
+          const totalTherapistFees = calculateTotalTherapistFees(assignments);
+          form?.setFieldValue('total_therapist_fees', totalTherapistFees);
+          console.log(`💰 Set total_therapist_fees in form: $${totalTherapistFees}`);
+
           message.success(`✅ Therapist Availability confirmed ${now}`);
         }}
         onAvailabilityDeclined={() => {
@@ -2044,6 +2100,11 @@ export const EnhancedQuoteEdit: React.FC = () => {
             console.log('📊 New workflow state:', newState);
             return newState;
           });
+
+          // Recalculate total therapist fees when assignments change
+          const totalTherapistFees = calculateTotalTherapistFees(therapistAssignments);
+          form?.setFieldValue('total_therapist_fees', totalTherapistFees);
+          console.log(`💰 Recalculated total_therapist_fees after assignment change: $${totalTherapistFees}`);
         }}
         existingAssignments={therapistAssignments}
       />
@@ -2099,6 +2160,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
                 ...values,
                 // Include calculated financial fields from form
                 total_amount: form?.getFieldValue('total_amount'),
+                total_therapist_fees: form?.getFieldValue('total_therapist_fees') || calculateTotalTherapistFees(therapistAssignments),
                 gst_amount: form?.getFieldValue('gst_amount'),
                 final_amount: form?.getFieldValue('final_amount'),
                 // Include calculated duration fields
@@ -2116,6 +2178,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
 
               console.log('💾 Submitting quote with calculated values:', {
                 total_amount: submissionValues.total_amount,
+                total_therapist_fees: submissionValues.total_therapist_fees,
                 gst_amount: submissionValues.gst_amount,
                 final_amount: submissionValues.final_amount,
                 duration_minutes: submissionValues.duration_minutes,

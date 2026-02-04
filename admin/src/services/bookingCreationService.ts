@@ -168,7 +168,14 @@ export async function createBookingsFromQuote(
         ? perDayMinutes
         : Math.floor(perDayMinutes / Math.max(1, totalBookings));
       const therapistHours = assignmentDurationMinutes / 60;
-      const therapistFee = therapistHours * assignment.hourly_rate;
+
+      // Validate hourly rate exists
+      const hourlyRate = assignment.hourly_rate || 0;
+      if (hourlyRate === 0) {
+        console.warn(`⚠️ Missing hourly_rate for therapist ${assignment.therapist_name} (${assignment.therapist_id}). Therapist fee will be $0.`);
+      }
+      const therapistFee = therapistHours * hourlyRate;
+      console.log(`💰 Booking fee calculation: ${therapistHours.toFixed(2)}hrs × $${hourlyRate}/hr = $${therapistFee.toFixed(2)} for ${assignment.therapist_name}`);
 
       // Create booking time string - handle different time formats
       let formattedTime = assignment.start_time;
