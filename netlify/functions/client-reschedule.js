@@ -508,7 +508,8 @@ exports.handler = async (event, context) => {
       const {
         token,
         new_booking_time,
-        new_therapist_id
+        new_therapist_id,
+        payment_intent_id
       } = JSON.parse(event.body);
 
       if (!token || !new_booking_time) {
@@ -660,6 +661,28 @@ exports.handler = async (event, context) => {
           headers,
           body: JSON.stringify({ error: 'Failed to update booking' })
         };
+      }
+
+      // Capture payment if there was an additional charge
+      // For reschedules, we capture immediately (unlike new bookings which wait for therapist confirmation)
+      if (priceDifference > 0 && payment_intent_id) {
+        try {
+          console.log(`💳 Capturing payment ${payment_intent_id} for $${priceDifference.toFixed(2)}...`);
+          const capturedPayment = await stripe.paymentIntents.capture(payment_intent_id);
+          console.log(`✅ Payment captured successfully: ${capturedPayment.id}, status: ${capturedPayment.status}`);
+        } catch (captureError) {
+          console.error('❌ Failed to capture payment:', captureError);
+          // Don't fail the reschedule - booking is already updated
+          // Log for manual follow-up
+          await supabase
+            .from('booking_status_history')
+            .insert({
+              booking_id: booking.id,
+              status: 'payment_capture_failed',
+              notes: `Failed to capture reschedule payment of $${priceDifference.toFixed(2)}. Payment Intent: ${payment_intent_id}. Error: ${captureError.message}`,
+              changed_at: new Date().toISOString()
+            });
+        }
       }
 
       // Add to status history

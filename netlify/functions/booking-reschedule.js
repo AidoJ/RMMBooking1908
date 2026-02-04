@@ -309,6 +309,7 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
         let cardElement = null;
         let paymentAuthorized = false;
         let paymentIntentClientSecret = null;
+        let paymentIntentId = null;
 
         const API_BASE = '/.netlify/functions';
 
@@ -603,6 +604,7 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
 
                 if (paymentIntent.status === 'requires_capture') {
                     paymentAuthorized = true;
+                    paymentIntentId = paymentIntent.id; // Store payment intent ID for capture
                     paymentSuccess.classList.remove('hidden');
                     authorizePaymentBtn.classList.add('hidden');
                     validateForm();
@@ -654,6 +656,7 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
                         token: token,
                         new_booking_time: newBookingTime,
                         new_therapist_id: selectedTherapistId,
+                        payment_intent_id: paymentIntentId,
                         payment_intent_client_secret: paymentIntentClientSecret
                     })
                 });
