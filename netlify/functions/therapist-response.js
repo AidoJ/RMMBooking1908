@@ -1,9 +1,13 @@
 const { createClient } = require('@supabase/supabase-js');
 const { getLocalDate, getLocalTime, getShortDate } = require('./utils/timezoneHelpers');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Valid actions including reschedule actions
+const VALID_ACTIONS = ['accept', 'decline', 'accept_reschedule', 'unavailable_reschedule'];
 
 exports.handler = async (event, context) => {
   // Enable CORS
@@ -35,11 +39,11 @@ exports.handler = async (event, context) => {
       };
     }
 
-    if (!['accept', 'decline'].includes(action)) {
+    if (!VALID_ACTIONS.includes(action)) {
       return {
         statusCode: 400,
         headers,
-        body: generateErrorPage('Invalid action. Must be accept or decline.')
+        body: generateErrorPage('Invalid action.')
       };
     }
 
@@ -74,19 +78,37 @@ exports.handler = async (event, context) => {
     }
 
     // Check if booking has already been responded to
-    if (booking.status === 'confirmed' || booking.status === 'declined') {
-      return {
-        statusCode: 200,
-        headers,
-        body: generateAlreadyRespondedPage(booking, action)
-      };
+    const isRescheduleAction = action === 'accept_reschedule' || action === 'unavailable_reschedule';
+
+    if (isRescheduleAction) {
+      // For reschedule actions, booking should be in 'pending' status
+      if (booking.status !== 'pending') {
+        return {
+          statusCode: 200,
+          headers,
+          body: generateAlreadyRespondedPage(booking, action)
+        };
+      }
+    } else {
+      // For regular accept/decline, check if already responded
+      if (booking.status === 'confirmed' || booking.status === 'declined') {
+        return {
+          statusCode: 200,
+          headers,
+          body: generateAlreadyRespondedPage(booking, action)
+        };
+      }
     }
 
-    // Process the response
+    // Process the response based on action type
     if (action === 'accept') {
       await handleAccept(booking, therapist);
-    } else {
+    } else if (action === 'decline') {
       await handleDecline(booking, therapist);
+    } else if (action === 'accept_reschedule') {
+      await handleAcceptReschedule(booking, therapist);
+    } else if (action === 'unavailable_reschedule') {
+      await handleUnavailableReschedule(booking, therapist);
     }
 
     // Return success page
@@ -229,6 +251,392 @@ async function handleDecline(booking, therapist) {
   console.log('❌ Booking declined successfully');
 }
 
+// Handle therapist accepting a reschedule request
+async function handleAcceptReschedule(booking, therapist) {
+  console.log('✅ Processing reschedule acceptance for booking:', booking.booking_id);
+
+  // Check if this is a valid pending reschedule
+  if (booking.status !== 'pending') {
+    console.log('⚠️ Booking not in pending status:', booking.status);
+    throw new Error('This reschedule request is no longer pending');
+  }
+
+  // Capture additional payment if there's a pending payment intent
+  if (booking.pending_payment_intent_id) {
+    try {
+      console.log('💳 Capturing reschedule payment:', booking.pending_payment_intent_id);
+      const paymentIntent = await stripe.paymentIntents.capture(booking.pending_payment_intent_id);
+      console.log('✅ Payment captured:', paymentIntent.id, paymentIntent.status);
+    } catch (captureError) {
+      console.error('❌ Failed to capture payment:', captureError);
+      // Log but continue - booking update is more important
+      await addStatusHistory(booking.id, 'payment_capture_failed', therapist.id,
+        `Failed to capture reschedule payment: ${captureError.message}`);
+    }
+  }
+
+  // Update booking status to confirmed and clear original fields
+  const { error: updateError } = await supabase
+    .from('bookings')
+    .update({
+      status: 'confirmed',
+      therapist_response_time: new Date().toISOString(),
+      responding_therapist_id: therapist.id,
+      // Clear original fields since reschedule is now confirmed
+      original_booking_time: null,
+      original_therapist_id: null,
+      original_client_fee: null,
+      pending_payment_intent_id: null,
+      updated_at: new Date().toISOString()
+    })
+    .eq('booking_id', booking.booking_id);
+
+  if (updateError) {
+    console.error('❌ Update error:', updateError);
+    throw new Error('Failed to confirm reschedule');
+  }
+
+  // Add status history
+  await addStatusHistory(booking.id, 'reschedule_confirmed', therapist.id,
+    'Reschedule accepted by therapist');
+
+  // Notify old therapist if therapist changed
+  if (booking.original_therapist_id && booking.original_therapist_id !== therapist.id) {
+    try {
+      const { data: oldTherapist } = await supabase
+        .from('therapist_profiles')
+        .select('phone, first_name')
+        .eq('id', booking.original_therapist_id)
+        .single();
+
+      if (oldTherapist?.phone) {
+        await sendSMS(oldTherapist.phone,
+          `📅 BOOKING REASSIGNED\n\nBooking ${booking.booking_id} has been rescheduled to a different therapist.\n\n- Rejuvenators`);
+      }
+    } catch (e) {
+      console.error('⚠️ Failed to notify old therapist:', e);
+    }
+  }
+
+  // Send confirmation notifications
+  const timezone = booking.booking_timezone || 'Australia/Brisbane';
+
+  // Therapist SMS
+  await sendSMS(therapist.phone,
+    `✅ RESCHEDULE CONFIRMED!\n\nYou've accepted the rescheduled booking ${booking.booking_id}\nClient: ${booking.first_name} ${booking.last_name}\nDate: ${getShortDate(booking.booking_time, timezone)} at ${getLocalTime(booking.booking_time, timezone)}\nFee: $${booking.therapist_fee || 'TBD'}\n\n- Rejuvenators`);
+
+  // Customer SMS
+  if (booking.customer_phone) {
+    await sendSMS(booking.customer_phone,
+      `✅ RESCHEDULE CONFIRMED!\n\nYour booking ${booking.booking_id} has been rescheduled and confirmed!\nNew Date: ${getShortDate(booking.booking_time, timezone)} at ${getLocalTime(booking.booking_time, timezone)}\nTherapist: ${therapist.first_name} ${therapist.last_name}\n\nCheck your email for full details!\n- Rejuvenators`);
+  }
+
+  console.log('✅ Reschedule confirmed successfully');
+}
+
+// Handle therapist marking unavailable for reschedule
+async function handleUnavailableReschedule(booking, therapist) {
+  console.log('⚠️ Processing reschedule unavailable for booking:', booking.booking_id);
+
+  // Check if this is a valid pending reschedule
+  if (booking.status !== 'pending') {
+    console.log('⚠️ Booking not in pending status:', booking.status);
+    throw new Error('This reschedule request is no longer pending');
+  }
+
+  // Check if fallback_option is enabled for cascading
+  if (booking.fallback_option === true || booking.fallback_option === 'Yes') {
+    console.log('🔄 Fallback enabled, looking for alternate therapist...');
+
+    // Find next available therapist for this slot
+    const alternateTherapist = await findAlternateTherapist(booking, therapist.id);
+
+    if (alternateTherapist) {
+      console.log('👤 Found alternate therapist:', alternateTherapist.first_name, alternateTherapist.last_name);
+
+      // Update booking with new therapist
+      const { error: updateError } = await supabase
+        .from('bookings')
+        .update({
+          therapist_id: alternateTherapist.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('booking_id', booking.booking_id);
+
+      if (updateError) {
+        console.error('❌ Failed to assign alternate therapist:', updateError);
+        throw new Error('Failed to assign alternate therapist');
+      }
+
+      // Add status history
+      await addStatusHistory(booking.id, 'reschedule_cascaded', therapist.id,
+        `${therapist.first_name} unavailable. Cascading to ${alternateTherapist.first_name} ${alternateTherapist.last_name}`);
+
+      // Recalculate therapist fee for the new therapist
+      const newFee = await calculateTherapistFeeForReschedule(
+        alternateTherapist.id,
+        booking.service_id,
+        booking.booking_time,
+        booking.duration_minutes
+      );
+
+      if (newFee) {
+        await supabase
+          .from('bookings')
+          .update({ therapist_fee: newFee.therapistFee })
+          .eq('booking_id', booking.booking_id);
+      }
+
+      // Send reschedule request to new therapist
+      await sendRescheduleRequestToTherapist(booking, alternateTherapist);
+
+      // Notify original therapist
+      await sendSMS(therapist.phone,
+        `📝 NOTED\n\nYou've marked yourself unavailable for the rescheduled booking ${booking.booking_id}. We're contacting another therapist.\n\n- Rejuvenators`);
+
+      console.log('🔄 Reschedule cascaded to alternate therapist');
+      return;
+    }
+  }
+
+  // No cascade or no alternate found - revert to original booking
+  console.log('↩️ Reverting to original booking...');
+
+  // Cancel the pending payment if any
+  if (booking.pending_payment_intent_id) {
+    try {
+      await stripe.paymentIntents.cancel(booking.pending_payment_intent_id);
+      console.log('💳 Pending payment cancelled');
+    } catch (e) {
+      console.error('⚠️ Failed to cancel payment:', e);
+    }
+  }
+
+  // Revert booking to original details
+  const { error: revertError } = await supabase
+    .from('bookings')
+    .update({
+      booking_time: booking.original_booking_time,
+      therapist_id: booking.original_therapist_id,
+      client_fee: booking.original_client_fee,
+      price: booking.original_client_fee,
+      status: 'confirmed', // Revert to confirmed with original details
+      original_booking_time: null,
+      original_therapist_id: null,
+      original_client_fee: null,
+      pending_payment_intent_id: null,
+      reschedule_count: Math.max(0, (booking.reschedule_count || 1) - 1), // Don't count failed reschedule
+      updated_at: new Date().toISOString()
+    })
+    .eq('booking_id', booking.booking_id);
+
+  if (revertError) {
+    console.error('❌ Failed to revert booking:', revertError);
+    throw new Error('Failed to revert booking');
+  }
+
+  // Add status history
+  await addStatusHistory(booking.id, 'reschedule_failed', therapist.id,
+    'No therapists available for requested time. Reverted to original booking.');
+
+  // Notify HQ
+  await notifyHQRescheduleFailed(booking, therapist);
+
+  // Notify therapist
+  await sendSMS(therapist.phone,
+    `📝 NOTED\n\nYou've marked yourself unavailable for booking ${booking.booking_id}. The original booking has been restored.\n\n- Rejuvenators`);
+
+  // Notify customer
+  if (booking.customer_phone) {
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    await sendSMS(booking.customer_phone,
+      `❌ RESCHEDULE UNAVAILABLE\n\nSorry, no therapists are available for your requested time.\n\nYour original booking remains:\n${getShortDate(booking.original_booking_time, timezone)} at ${getLocalTime(booking.original_booking_time, timezone)}\n\nPlease try a different time or call us at 1300 302 542.\n- Rejuvenators`);
+  }
+
+  console.log('↩️ Booking reverted to original');
+}
+
+// Helper: Find alternate therapist for reschedule
+async function findAlternateTherapist(booking, excludeTherapistId) {
+  try {
+    // Get therapists who provide this service and cover the location
+    const { data: therapistLinks } = await supabase
+      .from('therapist_services')
+      .select('therapist_id')
+      .eq('service_id', booking.service_id);
+
+    if (!therapistLinks || therapistLinks.length === 0) return null;
+
+    const therapistIds = therapistLinks.map(l => l.therapist_id).filter(id => id !== excludeTherapistId);
+
+    // Get active therapists
+    const { data: therapists } = await supabase
+      .from('therapist_profiles')
+      .select('*')
+      .in('id', therapistIds)
+      .eq('is_active', true);
+
+    if (!therapists || therapists.length === 0) return null;
+
+    // Filter by gender preference if specified
+    let filtered = therapists;
+    if (booking.gender_preference && booking.gender_preference !== 'any') {
+      filtered = therapists.filter(t => t.gender === booking.gender_preference);
+    }
+
+    // Filter by location coverage
+    if (booking.latitude && booking.longitude) {
+      filtered = filtered.filter(t => {
+        if (!t.latitude || !t.longitude) return false;
+        if (t.service_radius_km) {
+          const dist = getDistanceKm(booking.latitude, booking.longitude, t.latitude, t.longitude);
+          return dist <= t.service_radius_km;
+        }
+        return false;
+      });
+    }
+
+    // Check availability for the booking time
+    const bookingDate = new Date(booking.booking_time);
+    const dayOfWeek = bookingDate.getDay();
+
+    for (const therapist of filtered) {
+      const { data: availability } = await supabase
+        .from('therapist_availability')
+        .select('start_time, end_time')
+        .eq('therapist_id', therapist.id)
+        .eq('day_of_week', dayOfWeek)
+        .single();
+
+      if (availability) {
+        const bookingTime = bookingDate.toTimeString().substring(0, 5);
+        if (bookingTime >= availability.start_time && bookingTime < availability.end_time) {
+          // Check for conflicts
+          const { data: conflicts } = await supabase
+            .from('bookings')
+            .select('id')
+            .eq('therapist_id', therapist.id)
+            .eq('booking_time', booking.booking_time)
+            .not('status', 'in', '("cancelled","client_cancelled","declined")')
+            .neq('id', booking.id);
+
+          if (!conflicts || conflicts.length === 0) {
+            return therapist;
+          }
+        }
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('❌ Error finding alternate therapist:', error);
+    return null;
+  }
+}
+
+// Helper: Calculate distance between two coordinates
+function getDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Helper: Calculate therapist fee for reschedule
+async function calculateTherapistFeeForReschedule(therapistId, serviceId, bookingTime, durationMinutes) {
+  try {
+    const { data: settings } = await supabase
+      .from('system_settings')
+      .select('key, value')
+      .in('key', ['business_opening_time', 'business_closing_time']);
+
+    let businessOpeningHour = 9;
+    let businessClosingHour = 17;
+    if (settings) {
+      for (const s of settings) {
+        if (s.key === 'business_opening_time') businessOpeningHour = Number(s.value);
+        if (s.key === 'business_closing_time') businessClosingHour = Number(s.value);
+      }
+    }
+
+    const bookingDate = new Date(bookingTime);
+    const dayOfWeek = bookingDate.getDay();
+    const hour = bookingDate.getHours();
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isAfterHours = hour < businessOpeningHour || hour >= businessClosingHour;
+
+    // Get therapist rates
+    const { data: serviceRate } = await supabase
+      .from('therapist_service_rates')
+      .select('normal_rate, afterhours_rate')
+      .eq('therapist_id', therapistId)
+      .eq('service_id', serviceId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    let normalRate, afterHoursRate;
+    if (serviceRate) {
+      normalRate = serviceRate.normal_rate;
+      afterHoursRate = serviceRate.afterhours_rate;
+    } else {
+      const { data: therapist } = await supabase
+        .from('therapist_profiles')
+        .select('hourly_rate, afterhours_rate')
+        .eq('id', therapistId)
+        .single();
+
+      if (!therapist) return null;
+      normalRate = therapist.hourly_rate;
+      afterHoursRate = therapist.afterhours_rate;
+    }
+
+    const hourlyRate = (isWeekend || isAfterHours) ? afterHoursRate : normalRate;
+    const hoursWorked = durationMinutes / 60;
+    const therapistFee = Math.round(hoursWorked * hourlyRate * 100) / 100;
+
+    return { therapistFee, hourlyRate, hoursWorked };
+  } catch (error) {
+    console.error('❌ Error calculating therapist fee:', error);
+    return null;
+  }
+}
+
+// Helper: Send reschedule request to new therapist
+async function sendRescheduleRequestToTherapist(booking, therapist) {
+  const timezone = booking.booking_timezone || 'Australia/Brisbane';
+  const baseUrl = process.env.URL || 'https://booking.rejuvenators.com';
+
+  const acceptUrl = `${baseUrl}/.netlify/functions/therapist-response?booking_id=${booking.booking_id}&action=accept_reschedule&therapist_id=${therapist.id}`;
+  const unavailableUrl = `${baseUrl}/.netlify/functions/therapist-response?booking_id=${booking.booking_id}&action=unavailable_reschedule&therapist_id=${therapist.id}`;
+
+  // Send SMS
+  await sendSMS(therapist.phone,
+    `📅 RESCHEDULE REQUEST\n\nBooking ${booking.booking_id} - Client requests reschedule.\nClient: ${booking.first_name} ${booking.last_name}\nDate: ${getShortDate(booking.booking_time, timezone)} at ${getLocalTime(booking.booking_time, timezone)}\n\nCheck your email to Accept or mark Unavailable.\n- Rejuvenators`);
+
+  // TODO: Also send email via EmailJS with the template
+}
+
+// Helper: Notify HQ about failed reschedule
+async function notifyHQRescheduleFailed(booking, therapist) {
+  try {
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+
+    // Send SMS to HQ number (you may want to configure this)
+    const hqPhone = process.env.HQ_PHONE || '+61731880899';
+
+    await sendSMS(hqPhone,
+      `⚠️ RESCHEDULE FAILED\n\nBooking ${booking.booking_id}\nClient: ${booking.first_name} ${booking.last_name}\nRequested: ${getShortDate(booking.booking_time, timezone)}\n\nNo therapists available. Original booking restored.\n\nClient may need follow-up.`);
+
+    console.log('📞 HQ notified about failed reschedule');
+  } catch (error) {
+    console.error('❌ Failed to notify HQ:', error);
+  }
+}
+
 async function sendConfirmationSMS(therapistPhone, booking, therapist, action) {
   const isAccept = action === 'accept';
 
@@ -309,10 +717,36 @@ async function addStatusHistory(bookingId, status, userId, notes) {
 }
 
 function generateSuccessPage(booking, therapist, action) {
-  const isAccept = action === 'accept';
-  const actionText = isAccept ? 'Accepted' : 'Declined';
-  const actionIcon = isAccept ? '✅' : '❌';
-  const actionColor = isAccept ? '#52c41a' : '#f5222d';
+  let actionText, actionIcon, actionColor, additionalMessage = '';
+
+  switch (action) {
+    case 'accept':
+      actionText = 'Accepted';
+      actionIcon = '✅';
+      actionColor = '#52c41a';
+      break;
+    case 'decline':
+      actionText = 'Declined';
+      actionIcon = '❌';
+      actionColor = '#f5222d';
+      break;
+    case 'accept_reschedule':
+      actionText = 'Reschedule Confirmed';
+      actionIcon = '✅';
+      actionColor = '#52c41a';
+      additionalMessage = 'The client has been notified of the confirmed reschedule.';
+      break;
+    case 'unavailable_reschedule':
+      actionText = 'Marked Unavailable';
+      actionIcon = '📝';
+      actionColor = '#faad14';
+      additionalMessage = 'We are checking for alternate therapists or reverting to the original booking.';
+      break;
+    default:
+      actionText = 'Processed';
+      actionIcon = '✓';
+      actionColor = '#1890ff';
+  }
   
   return `
     <!DOCTYPE html>

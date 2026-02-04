@@ -264,12 +264,16 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
         <!-- Success Page (hidden initially) -->
         <div class="content hidden" id="successContent">
             <div class="success-container">
-                <div class="success-icon">✅</div>
-                <h2 class="success-title">Booking Rescheduled!</h2>
-                <p>Your appointment has been successfully rescheduled.</p>
+                <div class="success-icon">⏳</div>
+                <h2 class="success-title" style="color: #007e8c;">Reschedule Request Submitted</h2>
+                <p>Your reschedule request has been sent to the therapist for confirmation.</p>
                 <div class="success-details" id="successDetails"></div>
-                <p style="color: #666; margin-top: 20px;">
-                    Confirmation emails and SMS have been sent to you and your therapist.
+                <div style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                    <strong>What happens next?</strong><br>
+                    The therapist will review your request and confirm availability. You'll receive an SMS and email once confirmed.
+                </div>
+                <p style="color: #666; margin-top: 15px;">
+                    Your original booking remains active until the reschedule is confirmed.
                 </p>
                 <a href="https://rejuvenators.com" class="btn btn-primary" style="margin-top: 20px;">
                     Return to Website
@@ -693,11 +697,15 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
                     <span class="value">\${booking.booking_id}</span>
                 </div>
                 <div class="booking-detail">
-                    <span class="label">New Date & Time</span>
+                    <span class="label">Status</span>
+                    <span class="value" style="color: #856404;">Pending Confirmation</span>
+                </div>
+                <div class="booking-detail">
+                    <span class="label">Requested Date & Time</span>
                     <span class="value">\${newDate.toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} at \${newDate.toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
                 <div class="booking-detail">
-                    <span class="label">Therapist</span>
+                    <span class="label">Requested Therapist</span>
                     <span class="value">\${booking.new_therapist}</span>
                 </div>
                 <div class="booking-detail">
@@ -706,8 +714,8 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
                 </div>
                 \${booking.price_difference > 0 ? \`
                 <div class="booking-detail">
-                    <span class="label">Additional Charge</span>
-                    <span class="value" style="color: #dc3545;">$\${booking.price_difference.toFixed(2)}</span>
+                    <span class="label">Additional Payment</span>
+                    <span class="value" style="color: #856404;">$\${booking.price_difference.toFixed(2)} (authorized, pending capture)</span>
                 </div>
                 \` : ''}
             \`;

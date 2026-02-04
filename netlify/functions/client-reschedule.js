@@ -23,6 +23,7 @@ const EMAILJS_PUBLIC_KEY = process.env.EMAILJS_PUBLIC_KEY;
 const EMAILJS_PRIVATE_KEY = process.env.EMAILJS_PRIVATE_KEY;
 const EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID = process.env.EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID || 'template_confirmed';
 const EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID = process.env.EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID || 'therapist-confirmation';
+const EMAILJS_RESCHEDULE_REQUEST_TEMPLATE_ID = process.env.EMAILJS_RESCHEDULE_REQUEST_TEMPLATE_ID || 'Booking_Rescheduled';
 
 // Helper: Format date for display
 function formatDate(dateString, timezone = 'Australia/Brisbane') {
@@ -627,20 +628,28 @@ exports.handler = async (event, context) => {
         console.warn('⚠️ Could not calculate new therapist fee, keeping original');
       }
 
-      // Update booking
+      // Update booking - store original details for potential revert, set status to pending
       const updateData = {
+        // Store original booking details for revert if all therapists unavailable
+        original_booking_time: booking.booking_time,
+        original_therapist_id: booking.therapist_id,
+        original_client_fee: booking.client_fee || booking.price,
+        // Update to new requested details
         booking_time: new_booking_time,
         therapist_id: finalTherapistId,
         price: newPrice,
         client_fee: newPrice,
         therapist_fee: newTherapistFee,
+        // Set status to pending - requires therapist confirmation
+        status: 'pending',
         reschedule_count: (booking.reschedule_count || 0) + 1,
         updated_at: new Date().toISOString()
       };
 
-      // If there was additional payment (authorized via Stripe Elements), note it
-      if (priceDifference > 0) {
-        updateData.payment_notes = `${booking.payment_notes || ''}\nReschedule additional payment: $${priceDifference.toFixed(2)}`.trim();
+      // Store payment intent ID for capture when therapist accepts (if there's additional payment)
+      if (priceDifference > 0 && payment_intent_id) {
+        updateData.pending_payment_intent_id = payment_intent_id;
+        updateData.payment_notes = `${booking.payment_notes || ''}\nReschedule additional payment pending: $${priceDifference.toFixed(2)} (PI: ${payment_intent_id})`.trim();
       }
 
       // Note if therapist fee changed
@@ -663,35 +672,13 @@ exports.handler = async (event, context) => {
         };
       }
 
-      // Capture payment if there was an additional charge
-      // For reschedules, we capture immediately (unlike new bookings which wait for therapist confirmation)
-      if (priceDifference > 0 && payment_intent_id) {
-        try {
-          console.log(`💳 Capturing payment ${payment_intent_id} for $${priceDifference.toFixed(2)}...`);
-          const capturedPayment = await stripe.paymentIntents.capture(payment_intent_id);
-          console.log(`✅ Payment captured successfully: ${capturedPayment.id}, status: ${capturedPayment.status}`);
-        } catch (captureError) {
-          console.error('❌ Failed to capture payment:', captureError);
-          // Don't fail the reschedule - booking is already updated
-          // Log for manual follow-up
-          await supabase
-            .from('booking_status_history')
-            .insert({
-              booking_id: booking.id,
-              status: 'payment_capture_failed',
-              notes: `Failed to capture reschedule payment of $${priceDifference.toFixed(2)}. Payment Intent: ${payment_intent_id}. Error: ${captureError.message}`,
-              changed_at: new Date().toISOString()
-            });
-        }
-      }
-
       // Add to status history
       await supabase
         .from('booking_status_history')
         .insert({
           booking_id: booking.id,
-          status: 'rescheduled',
-          notes: `Client rescheduled from ${formatShortDate(originalBookingTime)} to ${formatShortDate(new_booking_time)}${therapistChanged ? `. Therapist changed to ${newTherapist.first_name} ${newTherapist.last_name}` : ''}${priceDifference > 0 ? `. Additional payment: $${priceDifference}` : ''}`,
+          status: 'reschedule_requested',
+          notes: `Client requested reschedule from ${formatShortDate(originalBookingTime)} to ${formatShortDate(new_booking_time)}${therapistChanged ? `. New therapist: ${newTherapist.first_name} ${newTherapist.last_name}` : ''}${priceDifference > 0 ? `. Additional payment authorized: $${priceDifference.toFixed(2)}` : ''}. Awaiting therapist confirmation.`,
           changed_at: new Date().toISOString()
         });
 
@@ -700,81 +687,54 @@ exports.handler = async (event, context) => {
         ? `${newTherapist.first_name} ${newTherapist.last_name}`
         : 'Your therapist';
 
-      // Send notifications
-      console.log('📧 Sending reschedule notifications...');
+      // Generate response URLs for therapist (using booking_id, action, therapist_id format)
+      const baseUrl = process.env.URL || 'https://booking.rejuvenators.com';
+      const acceptUrl = `${baseUrl}/.netlify/functions/therapist-response?booking_id=${booking.booking_id}&action=accept_reschedule&therapist_id=${finalTherapistId}`;
+      const unavailableUrl = `${baseUrl}/.netlify/functions/therapist-response?booking_id=${booking.booking_id}&action=unavailable_reschedule&therapist_id=${finalTherapistId}`;
 
-      // Customer email
-      try {
-        await sendEmail(EMAILJS_BOOKING_CONFIRMED_TEMPLATE_ID, {
-          to_email: booking.customer_email,
-          to_name: `${booking.first_name || ''} ${booking.last_name || ''}`.trim(),
-          booking_id: booking.booking_id,
-          service_name: booking.services?.name || 'Massage',
-          booking_date: formatDate(new_booking_time, timezone),
-          booking_time: formatTime(new_booking_time, timezone),
-          therapist_name: newTherapistName,
-          address: booking.address,
-          duration: booking.duration_minutes,
-          price: newPrice.toFixed(2),
-          subject_line: `Booking Rescheduled - ${booking.booking_id}`
-        });
-        console.log('✅ Customer email sent');
-      } catch (e) {
-        console.error('❌ Customer email error:', e);
-      }
+      // Send notifications - RESCHEDULE REQUEST (not confirmation)
+      console.log('📧 Sending reschedule REQUEST notifications...');
 
-      // Therapist email (to new therapist)
+      // Therapist email - RESCHEDULE REQUEST with Accept/Unavailable buttons
       if (newTherapist?.email) {
         try {
-          await sendEmail(EMAILJS_THERAPIST_CONFIRMED_TEMPLATE_ID, {
+          await sendEmail(EMAILJS_RESCHEDULE_REQUEST_TEMPLATE_ID, {
             to_email: newTherapist.email,
             therapist_name: newTherapist.first_name,
             booking_id: booking.booking_id,
             client_name: `${booking.first_name || ''} ${booking.last_name || ''}`.trim(),
             client_phone: booking.customer_phone || 'N/A',
             service_name: booking.services?.name || 'Massage',
-            booking_date: formatDate(new_booking_time, timezone),
-            booking_time: formatTime(new_booking_time, timezone),
+            // Original booking details
+            original_date: formatDate(originalBookingTime, timezone),
+            original_time: formatTime(originalBookingTime, timezone),
+            // New requested details
+            new_date: formatDate(new_booking_time, timezone),
+            new_time: formatTime(new_booking_time, timezone),
             address: booking.address,
             duration: booking.duration_minutes,
             therapist_fee: newTherapistFee ? `$${newTherapistFee.toFixed(2)}` : 'TBD',
-            subject_line: `Booking Rescheduled - ${booking.booking_id}`
+            // Response URLs
+            accept_url: acceptUrl,
+            unavailable_url: unavailableUrl,
+            subject_line: `Reschedule Request - ${booking.booking_id}`
           });
-          console.log('✅ Therapist email sent');
+          console.log('✅ Therapist reschedule request email sent');
         } catch (e) {
           console.error('❌ Therapist email error:', e);
         }
       }
 
-      // Customer SMS
-      if (booking.customer_phone) {
-        const customerSMS = `📅 BOOKING RESCHEDULED
-
-Your booking ${booking.booking_id} has been rescheduled.
-New Date: ${formatShortDate(new_booking_time, timezone)} at ${formatTime(new_booking_time, timezone)}
-Therapist: ${newTherapistName}
-${priceDifference > 0 ? `Additional charge: $${priceDifference.toFixed(2)}` : ''}
-Check your email for full details!
-- Rejuvenators`;
-
-        try {
-          await sendSMSNotification(booking.customer_phone, customerSMS);
-          console.log('✅ Customer SMS sent');
-        } catch (e) {
-          console.error('❌ Customer SMS error:', e);
-        }
-      }
-
-      // Therapist SMS
+      // Therapist SMS - Reschedule request notification
       if (newTherapist?.phone) {
-        const therapistSMS = `📅 BOOKING RESCHEDULED
+        const therapistSMS = `📅 RESCHEDULE REQUEST
 
-Booking ${booking.booking_id} has been rescheduled.
+Booking ${booking.booking_id} - Client requests reschedule.
 Client: ${booking.first_name || ''} ${booking.last_name || ''}
 New Date: ${formatShortDate(new_booking_time, timezone)} at ${formatTime(new_booking_time, timezone)}
 Fee: $${newTherapistFee ? newTherapistFee.toFixed(2) : 'TBD'}
 
-Check your email for full details!
+Please check your email to Accept or mark Unavailable.
 - Rejuvenators`;
 
         try {
@@ -785,35 +745,40 @@ Check your email for full details!
         }
       }
 
-      // If therapist changed, notify old therapist about cancellation
-      if (therapistChanged && booking.therapist_profiles?.phone) {
-        const oldTherapistSMS = `📅 BOOKING CHANGE
+      // Customer SMS - Pending confirmation (not confirmed yet)
+      if (booking.customer_phone) {
+        const customerSMS = `📅 RESCHEDULE REQUEST SUBMITTED
 
-Booking ${booking.booking_id} has been reassigned.
-The client rescheduled and selected a different therapist.
+Your reschedule request for booking ${booking.booking_id} has been submitted.
+Requested: ${formatShortDate(new_booking_time, timezone)} at ${formatTime(new_booking_time, timezone)}
 
+We'll notify you once the therapist confirms.
 - Rejuvenators`;
 
         try {
-          await sendSMSNotification(booking.therapist_profiles.phone, oldTherapistSMS);
-          console.log('✅ Old therapist SMS sent');
+          await sendSMSNotification(booking.customer_phone, customerSMS);
+          console.log('✅ Customer SMS sent');
         } catch (e) {
-          console.error('❌ Old therapist SMS error:', e);
+          console.error('❌ Customer SMS error:', e);
         }
       }
+
+      // Note: Don't notify old therapist yet - only when reschedule is confirmed
 
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          message: 'Booking rescheduled successfully',
+          pending_confirmation: true,
+          message: 'Reschedule request submitted. Awaiting therapist confirmation.',
           booking: {
             booking_id: booking.booking_id,
             new_booking_time: new_booking_time,
             new_therapist: newTherapistName,
             new_price: newPrice,
-            price_difference: priceDifference > 0 ? priceDifference : 0
+            price_difference: priceDifference > 0 ? priceDifference : 0,
+            status: 'pending'
           }
         })
       };
