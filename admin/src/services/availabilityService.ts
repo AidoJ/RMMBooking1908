@@ -204,6 +204,70 @@ async function checkBookingConflicts(
 }
 
 /**
+ * Point-in-polygon check using ray casting algorithm
+ * Matches the logic used in get-available-slots.js and frontend
+ */
+function isPointInPolygon(point: { lat: number; lng: number }, polygon: Array<{ lat: number; lng: number }>): boolean {
+  if (!polygon || polygon.length < 3) return false;
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].lng, yi = polygon[i].lat;
+    const xj = polygon[j].lng, yj = polygon[j].lat;
+    const intersect = ((yi > point.lat) !== (yj > point.lat))
+      && (point.lng < (xj - xi) * (point.lat - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+/**
+ * Haversine distance calculation between two coordinates
+ */
+function getDistanceKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+/**
+ * Check if therapist covers a specific location using polygon first, then radius fallback
+ */
+function therapistCoversLocation(
+  therapist: any,
+  eventLat: number,
+  eventLng: number
+): boolean {
+  if (therapist.latitude == null || therapist.longitude == null) {
+    console.log(`⚠️ Therapist ${therapist.id} (${therapist.first_name} ${therapist.last_name}) missing location data`);
+    return false;
+  }
+
+  // Check polygon first (more accurate)
+  if (therapist.service_area_polygon && Array.isArray(therapist.service_area_polygon) && therapist.service_area_polygon.length >= 3) {
+    const inPolygon = isPointInPolygon({ lat: eventLat, lng: eventLng }, therapist.service_area_polygon);
+    console.log(`📍 Therapist ${therapist.first_name} ${therapist.last_name}: polygon check = ${inPolygon ? 'IN AREA' : 'OUT OF AREA'}`);
+    if (inPolygon) return true;
+  }
+
+  // Fallback to radius check
+  if (therapist.service_radius_km != null) {
+    const dist = getDistanceKm(eventLat, eventLng, therapist.latitude, therapist.longitude);
+    const inRange = dist <= therapist.service_radius_km;
+    console.log(`📍 Therapist ${therapist.first_name} ${therapist.last_name}: distance ${dist.toFixed(2)}km, radius ${therapist.service_radius_km}km - ${inRange ? 'IN RANGE' : 'OUT OF RANGE'}`);
+    return inRange;
+  }
+
+  console.log(`⚠️ Therapist ${therapist.first_name} ${therapist.last_name}: no polygon or radius defined`);
+  return false;
+}
+
+/**
  * Get available therapists for a specific date/time slot
  */
 export async function getAvailableTherapists(
@@ -216,10 +280,10 @@ export async function getAvailableTherapists(
   serviceId?: string | null
 ): Promise<TherapistAvailability[]> {
   try {
-    // Get all active therapists with their hourly rates and location data
+    // Get all active therapists with their hourly rates and location data INCLUDING polygon
     const { data: therapists, error } = await supabaseClient
       .from('therapist_profiles')
-      .select('id, first_name, last_name, email, gender, rating, is_active, hourly_rate, afterhours_rate, latitude, longitude, service_radius_km')
+      .select('id, first_name, last_name, email, gender, rating, is_active, hourly_rate, afterhours_rate, latitude, longitude, service_radius_km, service_area_polygon')
       .eq('is_active', true);
 
     if (error) {
@@ -251,34 +315,12 @@ export async function getAvailableTherapists(
       }
     }
 
-    // Filter by geolocation if coordinates are provided
+    // Filter by geolocation if coordinates are provided - using polygon AND radius
     let filteredTherapists = therapists;
     if (latitude && longitude) {
       console.log(`🌍 Filtering therapists by location: ${latitude}, ${longitude}`);
 
-      // Haversine distance calculation
-      const getDistanceKm = (lat1: number, lng1: number, lat2: number, lng2: number) => {
-        const R = 6371; // Earth's radius in km
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLng = (lng2 - lng1) * Math.PI / 180;
-        const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-          Math.sin(dLng / 2) * Math.sin(dLng / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-      };
-
-      filteredTherapists = therapists.filter(t => {
-        if (t.latitude == null || t.longitude == null || t.service_radius_km == null) {
-          console.log(`⚠️ Therapist ${t.id} (${t.first_name} ${t.last_name}) missing location data - excluded from location filtering`);
-          return false;
-        }
-        const dist = getDistanceKm(latitude, longitude, t.latitude, t.longitude);
-        const inRange = dist <= t.service_radius_km;
-        console.log(`📍 Therapist ${t.first_name} ${t.last_name}: distance ${dist.toFixed(2)}km, radius ${t.service_radius_km}km - ${inRange ? 'IN RANGE' : 'OUT OF RANGE'}`);
-        return inRange;
-      });
+      filteredTherapists = therapists.filter(t => therapistCoversLocation(t, latitude, longitude));
 
       console.log(`✅ Location filtering: ${filteredTherapists.length} of ${therapists.length} therapists service this area`);
     }
