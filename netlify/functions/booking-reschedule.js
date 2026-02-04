@@ -162,7 +162,7 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
                 </div>
                 <div class="booking-detail">
                     <span class="label">Current Price</span>
-                    <span class="value">$${(booking.price || 0).toFixed(2)}</span>
+                    <span class="value">$${(booking.client_fee || booking.price || 0).toFixed(2)}</span>
                 </div>
                 <div class="remaining-badge">
                     ${remainingReschedules} reschedule${remainingReschedules !== 1 ? 's' : ''} remaining
@@ -216,11 +216,11 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
             <div class="price-comparison" id="priceComparison">
                 <div class="price-row">
                     <span>Original Price</span>
-                    <span class="amount">$${(booking.price || 0).toFixed(2)}</span>
+                    <span class="amount">$${(booking.client_fee || booking.price || 0).toFixed(2)}</span>
                 </div>
                 <div class="price-row">
                     <span>New Price</span>
-                    <span class="amount" id="newPriceDisplay">$${(booking.price || 0).toFixed(2)}</span>
+                    <span class="amount" id="newPriceDisplay">$${(booking.client_fee || booking.price || 0).toFixed(2)}</span>
                 </div>
                 <div class="price-row total">
                     <span>Difference</span>
@@ -290,7 +290,8 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
         const serviceId = '${booking.service_id}';
         const durationMinutes = ${booking.duration_minutes};
         const genderPreference = '${booking.gender_preference || 'any'}';
-        const originalPrice = ${booking.price || 0};
+        const originalPrice = ${booking.client_fee || booking.price || 0};
+        const originalBookingTime = '${booking.booking_time}';
         const bookingTimezone = '${booking.booking_timezone || 'Australia/Brisbane'}';
         const bookingLat = ${booking.latitude || 'null'};
         const bookingLng = ${booking.longitude || 'null'};
@@ -495,12 +496,17 @@ function generateInteractiveHTML(booking, token, rescheduleCount) {
 
             try {
                 const dateTime = \`\${selectedDate}T\${selectedTime}:00\`;
-                const response = await fetch(\`\${API_BASE}/calculate-price?service_id=\${serviceId}&duration=\${durationMinutes}&booking_time=\${encodeURIComponent(dateTime)}\`);
+                // Use reschedule mode: pass original_price and original_booking_time
+                // This calculates only the time-based uplift difference
+                const url = \`\${API_BASE}/calculate-price?booking_time=\${encodeURIComponent(dateTime)}&original_price=\${originalPrice}&original_booking_time=\${encodeURIComponent(originalBookingTime)}\`;
+                console.log('Calculating reschedule price:', url);
+                const response = await fetch(url);
                 const data = await response.json();
 
-                if (data.price) {
+                if (data.price !== undefined) {
                     newPrice = data.price;
-                    priceDifference = newPrice - originalPrice;
+                    priceDifference = data.priceDifference || 0;
+                    console.log('Price calculation result:', { newPrice, priceDifference, breakdown: data.breakdown });
 
                     newPriceDisplay.textContent = '$' + newPrice.toFixed(2);
 

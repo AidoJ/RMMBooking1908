@@ -153,59 +153,100 @@ async function sendSMSNotification(phoneNumber, message) {
   }
 }
 
-// Calculate price with time-based uplifts
-async function calculatePrice(serviceId, durationMinutes, bookingTime) {
-  // Get service base price
-  const { data: service } = await supabase
-    .from('services')
-    .select('service_base_price')
-    .eq('id', serviceId)
-    .single();
-
-  if (!service) {
-    throw new Error('Service not found');
-  }
-
-  let price = service.service_base_price;
-
-  // Apply duration uplift
-  const { data: durationPricing } = await supabase
-    .from('duration_pricing')
-    .select('uplift_percentage')
-    .eq('duration_minutes', durationMinutes)
-    .eq('is_active', true)
-    .single();
-
-  if (durationPricing && durationPricing.uplift_percentage > 0) {
-    price = price * (1 + durationPricing.uplift_percentage / 100);
-  }
-
-  // Calculate duration multiplier (base price is per hour)
-  price = price * (durationMinutes / 60);
-
-  // Apply time-based uplift (after-hours, weekends)
+// Get time-based uplift percentage for a given booking time
+async function getTimeUpliftPercentage(bookingTime) {
   const bookingDate = new Date(bookingTime);
   const dayOfWeek = bookingDate.getDay(); // 0 = Sunday, 6 = Saturday
   const timeString = bookingDate.toTimeString().substring(0, 5); // HH:MM
 
-  const { data: timeRules } = await supabase
-    .from('time_pricing_rules')
-    .select('uplift_percentage, label')
-    .eq('day_of_week', dayOfWeek)
-    .eq('is_active', true)
-    .lte('start_time', timeString)
-    .gte('end_time', timeString);
+  console.log(`📅 Checking time uplift for day ${dayOfWeek}, time ${timeString}`);
 
-  if (timeRules && timeRules.length > 0) {
-    // Apply the highest uplift if multiple rules match
-    const maxUplift = Math.max(...timeRules.map(r => r.uplift_percentage));
-    if (maxUplift > 0) {
-      price = price * (1 + maxUplift / 100);
-      console.log(`📈 Applied ${maxUplift}% time uplift`);
+  // Get ALL active time pricing rules for this day
+  const { data: allRules, error } = await supabase
+    .from('time_pricing_rules')
+    .select('*')
+    .eq('is_active', true);
+
+  if (error) {
+    console.error('❌ Error fetching time rules:', error);
+    return 0;
+  }
+
+  console.log(`📋 Found ${allRules?.length || 0} active time pricing rules`);
+
+  // Filter rules for this day of week
+  const dayRules = (allRules || []).filter(rule => Number(rule.day_of_week) === dayOfWeek);
+  console.log(`📋 Rules for day ${dayOfWeek}: ${dayRules.length}`);
+
+  // Find matching rules where booking time is within the time range
+  let maxUplift = 0;
+  let appliedLabel = null;
+
+  for (const rule of dayRules) {
+    console.log(`🔍 Checking rule: ${rule.label}, start: ${rule.start_time}, end: ${rule.end_time}`);
+    if (timeString >= rule.start_time && timeString < rule.end_time) {
+      console.log(`✅ Rule matches! Uplift: ${rule.uplift_percentage}%`);
+      if (rule.uplift_percentage > maxUplift) {
+        maxUplift = rule.uplift_percentage;
+        appliedLabel = rule.label;
+      }
     }
   }
 
-  return Math.round(price * 100) / 100; // Round to 2 decimal places
+  if (maxUplift > 0) {
+    console.log(`📈 Max time uplift: ${maxUplift}% (${appliedLabel})`);
+  } else {
+    console.log(`ℹ️ No time uplift applies`);
+  }
+
+  return maxUplift;
+}
+
+// Calculate price difference for reschedule
+// Uses original client_fee as base and only applies time-based uplift difference
+async function calculateReschedulePriceDifference(originalPrice, originalBookingTime, newBookingTime) {
+  console.log(`💰 Calculating reschedule price difference...`);
+  console.log(`   Original price: $${originalPrice}`);
+  console.log(`   Original time: ${originalBookingTime}`);
+  console.log(`   New time: ${newBookingTime}`);
+
+  // Get time uplift for original booking time
+  const originalUplift = await getTimeUpliftPercentage(originalBookingTime);
+  console.log(`   Original time uplift: ${originalUplift}%`);
+
+  // Get time uplift for new booking time
+  const newUplift = await getTimeUpliftPercentage(newBookingTime);
+  console.log(`   New time uplift: ${newUplift}%`);
+
+  // If new time has higher uplift, calculate the additional charge
+  if (newUplift > originalUplift) {
+    // Calculate the base price (original price without its time uplift)
+    const basePrice = originalPrice / (1 + originalUplift / 100);
+    console.log(`   Base price (without uplift): $${basePrice.toFixed(2)}`);
+
+    // Calculate new price with new uplift
+    const newPrice = basePrice * (1 + newUplift / 100);
+    console.log(`   New price (with ${newUplift}% uplift): $${newPrice.toFixed(2)}`);
+
+    const priceDifference = newPrice - originalPrice;
+    console.log(`   Price difference to charge: $${priceDifference.toFixed(2)}`);
+
+    return {
+      newPrice: Math.round(newPrice * 100) / 100,
+      priceDifference: Math.round(priceDifference * 100) / 100,
+      originalUplift,
+      newUplift
+    };
+  }
+
+  // No additional charge needed (same or lower uplift - no refund for cheaper time)
+  console.log(`   No additional charge (new uplift ${newUplift}% <= original uplift ${originalUplift}%)`);
+  return {
+    newPrice: originalPrice,
+    priceDifference: 0,
+    originalUplift,
+    newUplift
+  };
 }
 
 // Main handler
@@ -352,6 +393,7 @@ exports.handler = async (event, context) => {
               : null,
             address: booking.address,
             price: booking.price,
+            client_fee: booking.client_fee,
             gender_preference: booking.gender_preference,
             reschedule_count: booking.reschedule_count || 0,
             customer_name: `${booking.first_name || ''} ${booking.last_name || ''}`.trim(),
@@ -432,17 +474,19 @@ exports.handler = async (event, context) => {
         };
       }
 
-      // Calculate new price
-      const newPrice = await calculatePrice(
-        booking.service_id,
-        booking.duration_minutes,
+      // Calculate price difference using original client_fee as base
+      // Only charge for time-based uplift differences (duration doesn't change)
+      const originalPrice = booking.client_fee || booking.price || 0;
+
+      const priceResult = await calculateReschedulePriceDifference(
+        originalPrice,
+        booking.booking_time,
         new_booking_time
       );
 
-      const originalPrice = booking.price || 0;
-      const priceDifference = newPrice - originalPrice;
+      const { newPrice, priceDifference } = priceResult;
 
-      console.log(`💰 Price calculation: Original $${originalPrice} → New $${newPrice} = Difference $${priceDifference}`);
+      console.log(`💰 Reschedule price: Original $${originalPrice} → New $${newPrice} = Difference $${priceDifference}`);
 
       // Note: If price increased, payment was already authorized via Stripe Elements on the frontend
       // The payment_intent_client_secret is passed from the frontend after successful authorization
