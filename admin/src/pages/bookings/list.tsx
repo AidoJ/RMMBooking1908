@@ -180,7 +180,7 @@ export const EnhancedBookingList = () => {
       setLoading(true);
       
       // Build query with joins - FIXED: Specify exact therapist relationship
-      // Filter to show only RB bookings (booking_id starts with 'RB')
+      // Filter to show RB bookings and BK- bookings (from quotes)
       let query = supabaseClient
         .from('bookings')
         .select(`
@@ -189,7 +189,7 @@ export const EnhancedBookingList = () => {
           therapist_profiles!bookings_therapist_id_fkey(id, first_name, last_name, email, phone),
           services(id, name, description, service_base_price, quote_only)
         `, { count: 'exact' })
-        .like('booking_id', 'RB%')
+        .or('booking_id.like.RB%,booking_id.like.BK-%')
         .order('created_at', { ascending: false });
 
       // Role-based filtering: if therapist, only show their bookings
