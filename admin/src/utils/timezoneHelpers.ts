@@ -82,3 +82,71 @@ export const AUSTRALIAN_TIMEZONES = [
   { value: 'Australia/Darwin', label: 'Darwin (UTC+9:30)' },
   { value: 'Australia/Hobart', label: 'Hobart (UTC+10/+11)' },
 ];
+
+/**
+ * Detect Australian timezone from coordinates
+ * @param lat - Latitude
+ * @param lng - Longitude
+ * @returns IANA timezone string
+ */
+export function detectTimezoneFromCoords(lat?: number | null, lng?: number | null): string {
+  if (!lat || !lng) {
+    console.warn('⚠️ No coordinates provided for timezone detection, defaulting to Sydney');
+    return 'Australia/Sydney';
+  }
+
+  // Western Australia (Perth - no DST)
+  if (lng >= 112.5 && lng < 129) return 'Australia/Perth';
+
+  // Northern Territory (Darwin - no DST)
+  if (lat > -26 && lng >= 129 && lng < 138) return 'Australia/Darwin';
+
+  // South Australia (Adelaide - has DST)
+  if (lat <= -26 && lng >= 129 && lng < 141) return 'Australia/Adelaide';
+
+  // Queensland (Brisbane - no DST)
+  if (lat > -29 && lng >= 138 && lng < 154) return 'Australia/Brisbane';
+
+  // Victoria (Melbourne - has DST)
+  if (lat <= -34 && lng >= 141 && lng < 150) return 'Australia/Melbourne';
+
+  // Tasmania (Hobart - has DST)
+  if (lat <= -40) return 'Australia/Hobart';
+
+  // NSW/ACT (Sydney - has DST) - default for eastern Australia
+  if (lng >= 141) return 'Australia/Sydney';
+
+  console.warn('⚠️ Could not determine timezone, defaulting to Sydney');
+  return 'Australia/Sydney';
+}
+
+/**
+ * Convert local date and time to UTC ISO string
+ * @param date - Date string in YYYY-MM-DD format
+ * @param time - Time string in HH:mm or HH:mm:ss format
+ * @param timezone - IANA timezone string (e.g., 'Australia/Brisbane')
+ * @returns UTC ISO string for database storage
+ */
+export function convertLocalToUTC(date: string, time: string, timezone: string): string {
+  if (!date || !time) {
+    console.error('❌ Missing date or time for UTC conversion');
+    return '';
+  }
+
+  // Ensure time has seconds
+  let formattedTime = time;
+  if (formattedTime.length === 5 && formattedTime.includes(':')) {
+    formattedTime += ':00';
+  }
+
+  // Create local datetime string
+  const localDateTimeStr = `${date}T${formattedTime}`;
+
+  // Parse as local time in the specified timezone, then convert to UTC
+  const localTime = dayjs.tz(localDateTimeStr, timezone);
+  const utcTime = localTime.utc();
+
+  console.log(`🕐 Converting: ${localDateTimeStr} (${timezone}) → ${utcTime.toISOString()} (UTC)`);
+
+  return utcTime.toISOString();
+}

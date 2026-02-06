@@ -1,5 +1,6 @@
 import { supabaseClient } from '../utility';
 import { TherapistAssignment } from '../components/QuoteAvailabilityChecker';
+import { detectTimezoneFromCoords, convertLocalToUTC } from '../utils/timezoneHelpers';
 
 interface QuoteData {
   id: string;
@@ -85,6 +86,7 @@ interface BookingRecord {
   latitude?: number;
   longitude?: number;
   notes?: string;
+  booking_timezone?: string;
 }
 
 /**
@@ -177,13 +179,11 @@ export async function createBookingsFromQuote(
       const therapistFee = therapistHours * hourlyRate;
       console.log(`💰 Booking fee calculation: ${therapistHours.toFixed(2)}hrs × $${hourlyRate}/hr = $${therapistFee.toFixed(2)} for ${assignment.therapist_name}`);
 
-      // Create booking time string - handle different time formats
-      let formattedTime = assignment.start_time;
-      // If time is in HH:MM format, add seconds
-      if (formattedTime.length === 5 && formattedTime.includes(':')) {
-        formattedTime += ':00';
-      }
-      const bookingTime = `${assignment.date}T${formattedTime}.000Z`;
+      // Detect timezone from quote coordinates
+      const bookingTimezone = detectTimezoneFromCoords(quoteData.latitude, quoteData.longitude);
+
+      // Convert local time to UTC for proper database storage
+      const bookingTime = convertLocalToUTC(assignment.date, assignment.start_time, bookingTimezone);
 
       // Generate unique booking ID
       const bookingId = `BK-${quoteData.id}-${dayNumber}-${i + 1}`;
@@ -241,7 +241,8 @@ export async function createBookingsFromQuote(
         responding_therapist_id: assignment.therapist_id,
         latitude: quoteData.latitude,
         longitude: quoteData.longitude,
-        notes: notesArray.length > 0 ? notesArray.join(' | ') : undefined
+        notes: notesArray.length > 0 ? notesArray.join(' | ') : undefined,
+        booking_timezone: bookingTimezone
       };
 
       bookingRecords.push(bookingRecord);
