@@ -251,12 +251,16 @@ export const EnhancedBookingList = () => {
           pagination.current * pagination.pageSize - 1
         );
 
-      console.log('Query executed successfully, got data:', data?.length, 'records');
+      console.log('Query executed successfully, got data:', data?.length, 'records, total count:', count);
 
       if (error) throw error;
 
       setBookings(data || []);
-      setPagination(prev => ({ ...prev, total: count || 0 }));
+      setPagination(prev => {
+        const newPagination = { ...prev, total: count || 0 };
+        console.log('Setting pagination:', newPagination);
+        return newPagination;
+      });
 
       // Calculate summary statistics
       calculateSummaryStats(data || []);
