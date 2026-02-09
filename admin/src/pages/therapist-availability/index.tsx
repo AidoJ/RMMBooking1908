@@ -61,6 +61,38 @@ interface TherapistAvailability {
   bookings: Booking[];
 }
 
+// Australian states for filter dropdown
+const AUSTRALIAN_STATES = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'NT', 'ACT'];
+
+// Extract state from home_address (format: "Street, Suburb, State Postcode")
+const extractState = (address?: string): string => {
+  if (!address) return '';
+
+  // Try to find state abbreviation in the address
+  const upperAddress = address.toUpperCase();
+
+  for (const state of AUSTRALIAN_STATES) {
+    // Check if state abbreviation exists in address (with word boundaries)
+    const stateRegex = new RegExp(`\\b${state}\\b`);
+    if (stateRegex.test(upperAddress)) {
+      return state;
+    }
+  }
+
+  // Fallback: try to extract from last part of address
+  const parts = address.split(',');
+  if (parts.length >= 3) {
+    const lastPart = parts[parts.length - 1]?.trim().toUpperCase() || '';
+    // Extract state from "State Postcode" format (e.g., "QLD 4000")
+    const stateMatch = lastPart.match(/^(NSW|VIC|QLD|WA|SA|TAS|NT|ACT)/);
+    if (stateMatch) {
+      return stateMatch[1];
+    }
+  }
+
+  return '';
+};
+
 // Extract suburb/city from home_address (second part - format: "Street, Suburb, State")
 const extractCity = (address?: string): string => {
   if (!address) return '';
@@ -75,22 +107,22 @@ const extractCity = (address?: string): string => {
 
 const TherapistAvailabilityOverview: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [selectedCity, setSelectedCity] = useState<string>('all');
+  const [selectedState, setSelectedState] = useState<string>('all');
   const [weekStart, setWeekStart] = useState(dayjs().startOf('isoWeek'));
-  const [cities, setCities] = useState<string[]>([]);
+  const [availableStates, setAvailableStates] = useState<string[]>([]);
   const [therapistData, setTherapistData] = useState<TherapistAvailability[]>([]);
 
   useEffect(() => {
-    loadCities();
+    loadAvailableStates();
   }, []);
 
   useEffect(() => {
     loadAvailabilityData();
-  }, [selectedCity, weekStart]);
+  }, [selectedState, weekStart]);
 
-  const loadCities = async () => {
+  const loadAvailableStates = async () => {
     try {
-      // Get unique cities from therapist home addresses
+      // Get unique states from therapist home addresses
       const { data, error } = await supabaseClient
         .from('therapist_profiles')
         .select('home_address')
@@ -98,17 +130,19 @@ const TherapistAvailabilityOverview: React.FC = () => {
 
       if (error) throw error;
 
-      const allCities = new Set<string>();
+      const statesWithTherapists = new Set<string>();
       data?.forEach((t: any) => {
-        const city = extractCity(t.home_address);
-        if (city) {
-          allCities.add(city);
+        const state = extractState(t.home_address);
+        if (state) {
+          statesWithTherapists.add(state);
         }
       });
 
-      setCities(Array.from(allCities).sort());
+      // Filter AUSTRALIAN_STATES to only show states that have therapists
+      const filtered = AUSTRALIAN_STATES.filter(s => statesWithTherapists.has(s));
+      setAvailableStates(filtered);
     } catch (error) {
-      console.error('Error loading cities:', error);
+      console.error('Error loading states:', error);
     }
   };
 
@@ -127,12 +161,12 @@ const TherapistAvailabilityOverview: React.FC = () => {
 
       if (therapistError) throw therapistError;
 
-      // Filter by city if selected
+      // Filter by state if selected
       let filteredTherapists = therapists || [];
-      if (selectedCity !== 'all') {
+      if (selectedState !== 'all') {
         filteredTherapists = filteredTherapists.filter((t: any) => {
-          const city = extractCity(t.home_address);
-          return city === selectedCity;
+          const state = extractState(t.home_address);
+          return state === selectedState;
         });
       }
 
@@ -273,14 +307,14 @@ const TherapistAvailabilityOverview: React.FC = () => {
         <Space wrap style={{ marginBottom: 16 }}>
           <Select
             style={{ width: 200 }}
-            placeholder="Filter by Location"
-            value={selectedCity}
-            onChange={setSelectedCity}
+            placeholder="Filter by State"
+            value={selectedState}
+            onChange={setSelectedState}
           >
-            <Option value="all">All Locations</Option>
-            {cities.map((city) => (
-              <Option key={city} value={city}>
-                {city}
+            <Option value="all">All States</Option>
+            {availableStates.map((state) => (
+              <Option key={state} value={state}>
+                {state}
               </Option>
             ))}
           </Select>
@@ -367,7 +401,9 @@ const TherapistAvailabilityOverview: React.FC = () => {
                         {data.therapist.first_name} {data.therapist.last_name}
                       </div>
                       <div style={{ fontSize: 11, color: '#888' }}>
-                        {extractCity(data.therapist.home_address) || 'No location set'}
+                        {extractCity(data.therapist.home_address)}
+                        {extractState(data.therapist.home_address) && `, ${extractState(data.therapist.home_address)}`}
+                        {!extractCity(data.therapist.home_address) && !extractState(data.therapist.home_address) && 'No location set'}
                       </div>
                     </td>
                     {weekDays.map((day) => {
@@ -427,7 +463,7 @@ const TherapistAvailabilityOverview: React.FC = () => {
                 {therapistData.length === 0 && (
                   <tr>
                     <td colSpan={8} style={{ textAlign: 'center', padding: 24, color: '#999' }}>
-                      No therapists found for the selected location
+                      No therapists found for the selected state
                     </td>
                   </tr>
                 )}
