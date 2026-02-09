@@ -239,10 +239,9 @@ export const EnhancedBookingList = () => {
           // Filter for bookings - exclude RQ booking IDs
           query = query.not('booking_id', 'like', 'RQ%');
         }
-      } else {
-        // Default: exclude quotes (booking_id starting with RQ)
-        query = query.not('booking_id', 'like', 'RQ%');
+        // If 'all' is selected, no filter applied - show everything
       }
+      // Removed default RQ exclusion - let users explicitly filter if needed
 
       // Apply pagination and ordering
       const { data, error, count } = await query
