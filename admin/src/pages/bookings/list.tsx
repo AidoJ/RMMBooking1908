@@ -187,7 +187,7 @@ export const EnhancedBookingList = () => {
           customers(id, first_name, last_name, email, phone),
           therapist_profiles!bookings_therapist_id_fkey(id, first_name, last_name, email, phone),
           services(id, name, description, service_base_price, quote_only)
-        `, { count: 'exact' })
+        `, { count: 'exact', head: false })
         .order('created_at', { ascending: false });
 
       // Role-based filtering: if therapist, only show their bookings
