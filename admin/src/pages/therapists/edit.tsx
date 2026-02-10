@@ -1027,30 +1027,58 @@ const TherapistEdit: React.FC = () => {
       // Check if email has changed
       const emailChanged = therapist?.email !== values.email;
 
-      // Update therapist profile with coordinates and polygon
-      const { data: updatedTherapist, error: updateError } = await supabaseClient
+      // Build update object - start with base fields
+      const updateData: Record<string, any> = {
+        ...values,
+        profile_pic: profileImage,
+        insurance_certificate_url: insuranceCertUrl,
+        first_aid_certificate_url: firstAidCertUrls.length > 0 ? firstAidCertUrls[0] : null,
+        qualification_certificate_url: qualificationCertUrls.length > 0 ? qualificationCertUrls[0] : null,
+        // Convert dayjs objects back to strings for database
+        insurance_expiry_date: values.insurance_expiry_date ? dayjs(values.insurance_expiry_date).format('YYYY-MM-DD') : null,
+        first_aid_expiry_date: values.first_aid_expiry_date ? dayjs(values.first_aid_expiry_date).format('YYYY-MM-DD') : null,
+        latitude: coordinateFields.latitude,
+        longitude: coordinateFields.longitude,
+        address_verified: coordinateFields.address_verified,
+        service_area_polygon: serviceAreaPolygon,
+        updated_at: new Date().toISOString()
+      };
+
+      // Try to save with array columns (if migration has been run)
+      // If it fails, we'll fall back to single URL columns only
+      let updatedTherapist;
+      let updateError;
+
+      // First try with array columns
+      const resultWithArrays = await supabaseClient
         .from('therapist_profiles')
         .update({
-          ...values,
-          profile_pic: profileImage,
-          insurance_certificate_url: insuranceCertUrl,
-          // Keep legacy single URL field for backward compatibility (first item)
-          first_aid_certificate_url: firstAidCertUrls.length > 0 ? firstAidCertUrls[0] : null,
+          ...updateData,
           first_aid_certificates: firstAidCertUrls,
-          qualification_certificate_url: qualificationCertUrls.length > 0 ? qualificationCertUrls[0] : null,
           qualification_certificates: qualificationCertUrls,
-          // Convert dayjs objects back to strings for database
-          insurance_expiry_date: values.insurance_expiry_date ? dayjs(values.insurance_expiry_date).format('YYYY-MM-DD') : null,
-          first_aid_expiry_date: values.first_aid_expiry_date ? dayjs(values.first_aid_expiry_date).format('YYYY-MM-DD') : null,
-          latitude: coordinateFields.latitude,
-          longitude: coordinateFields.longitude,
-          address_verified: coordinateFields.address_verified,
-          service_area_polygon: serviceAreaPolygon,
-          updated_at: new Date().toISOString()
         })
         .eq('id', id)
         .select('user_id')
         .single();
+
+      if (resultWithArrays.error?.message?.includes('column') ||
+          resultWithArrays.error?.message?.includes('first_aid_certificates') ||
+          resultWithArrays.error?.message?.includes('qualification_certificates')) {
+        // Array columns don't exist yet - fall back to single URL columns only
+        console.log('Array columns not available, using legacy single URL columns');
+        const resultLegacy = await supabaseClient
+          .from('therapist_profiles')
+          .update(updateData)
+          .eq('id', id)
+          .select('user_id')
+          .single();
+
+        updatedTherapist = resultLegacy.data;
+        updateError = resultLegacy.error;
+      } else {
+        updatedTherapist = resultWithArrays.data;
+        updateError = resultWithArrays.error;
+      }
 
       if (updateError) throw updateError;
 
