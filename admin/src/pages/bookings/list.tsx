@@ -238,12 +238,15 @@ export const EnhancedBookingList = () => {
         return q;
       };
 
-      // Step 1: Separate count query (no joins)
+      // Step 1: Separate count query (no joins) - use '*' so Supabase returns count in response
       let countQuery = supabaseClient
         .from('bookings')
-        .select('id', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true } as Parameters<ReturnType<typeof supabaseClient.from>['select']>[1]);
       countQuery = applyFilters(countQuery);
-      const { count } = await countQuery;
+      const { count: countFromApi, error: countError } = await countQuery;
+      if (countError) {
+        console.warn('Count query warning (using fallback):', countError);
+      }
 
       // Step 2: Separate stats query (all matching bookings, no pagination)
       let statsQuery = supabaseClient
@@ -251,6 +254,12 @@ export const EnhancedBookingList = () => {
         .select('status, price, therapist_fee');
       statsQuery = applyFilters(statsQuery);
       const { data: statsData } = await statsQuery;
+
+      // Total: prefer count from API; fallback to stats length when count is null (known Supabase/head quirk)
+      const totalCount =
+        countFromApi != null
+          ? countFromApi
+          : (statsData?.length ?? 0);
 
       // Step 3: Main data query with joins (no count)
       let query = supabaseClient
@@ -272,16 +281,13 @@ export const EnhancedBookingList = () => {
           pagination.current * pagination.pageSize - 1
         );
 
-      console.log('Query executed successfully, got data:', data?.length, 'records, total count:', count);
-
       if (error) throw error;
 
       setBookings(data || []);
-      setPagination(prev => {
-        const newPagination = { ...prev, total: count || 0 };
-        console.log('Setting pagination:', newPagination);
-        return newPagination;
-      });
+      setPagination(prev => ({
+        ...prev,
+        total: totalCount
+      }));
 
       // Calculate summary statistics from ALL matching bookings (not just current page)
       calculateSummaryStats(statsData || []);
