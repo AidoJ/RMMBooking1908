@@ -141,9 +141,7 @@ interface TherapistFormData {
   insurance_certificate_url?: string;
   first_aid_expiry_date?: string;
   first_aid_certificate_url?: string;
-  first_aid_certificates?: string[];
   qualification_certificate_url?: string;
-  qualification_certificates?: string[];
   bank_account_name?: string;
   bsb?: string;
   bank_account_number?: string;
@@ -315,28 +313,22 @@ const TherapistEdit: React.FC = () => {
         }]);
       }
 
-      // Load first aid certificates (prefer array, fallback to single URL)
-      const firstAidCerts = therapistData.first_aid_certificates ||
-        (therapistData.first_aid_certificate_url ? [therapistData.first_aid_certificate_url] : []);
-      if (firstAidCerts.length > 0) {
-        setFirstAidCertFile(firstAidCerts.map((url: string, idx: number) => ({
-          uid: `first-aid-${idx}`,
-          name: `first_aid_certificate_${idx + 1}.pdf`,
+      if (therapistData.first_aid_certificate_url) {
+        setFirstAidCertFile([{
+          uid: '1',
+          name: 'first_aid_certificate.pdf',
           status: 'done',
-          url: url
-        })));
+          url: therapistData.first_aid_certificate_url
+        }]);
       }
 
-      // Load qualification certificates (prefer array, fallback to single URL)
-      const qualCerts = therapistData.qualification_certificates ||
-        (therapistData.qualification_certificate_url ? [therapistData.qualification_certificate_url] : []);
-      if (qualCerts.length > 0) {
-        setQualificationCertFile(qualCerts.map((url: string, idx: number) => ({
-          uid: `qual-${idx}`,
-          name: `qualification_certificate_${idx + 1}.pdf`,
+      if (therapistData.qualification_certificate_url) {
+        setQualificationCertFile([{
+          uid: '1',
+          name: 'qualification_certificate.pdf',
           status: 'done',
-          url: url
-        })));
+          url: therapistData.qualification_certificate_url
+        }]);
       }
 
       // Load therapist services
@@ -985,100 +977,59 @@ const TherapistEdit: React.FC = () => {
     try {
       setSaving(true);
 
-      // Handle insurance certificate (single file)
+      // Handle insurance certificate - check if removed, new, or existing
       let insuranceCertUrl: string | null = null;
       if (insuranceCertFile.length === 0) {
-        // File was removed - clear URL
-        insuranceCertUrl = null;
+        insuranceCertUrl = null; // Removed
       } else if (insuranceCertFile[0].originFileObj) {
-        // New file uploaded
-        insuranceCertUrl = await handleCertificateUpload(insuranceCertFile[0].originFileObj);
+        insuranceCertUrl = await handleCertificateUpload(insuranceCertFile[0].originFileObj); // New
       } else if (insuranceCertFile[0].url) {
-        // Existing file kept
-        insuranceCertUrl = insuranceCertFile[0].url;
+        insuranceCertUrl = insuranceCertFile[0].url; // Existing
       }
 
-      // Handle first aid certificates (multiple files)
-      const firstAidCertUrls: string[] = [];
-      for (const file of firstAidCertFile) {
-        if (file.originFileObj) {
-          // New file - upload it
-          const url = await handleCertificateUpload(file.originFileObj);
-          firstAidCertUrls.push(url);
-        } else if (file.url) {
-          // Existing file - keep the URL
-          firstAidCertUrls.push(file.url);
-        }
+      // Handle first aid certificate - check if removed, new, or existing
+      let firstAidCertUrl: string | null = null;
+      if (firstAidCertFile.length === 0) {
+        firstAidCertUrl = null; // Removed
+      } else if (firstAidCertFile[0].originFileObj) {
+        firstAidCertUrl = await handleCertificateUpload(firstAidCertFile[0].originFileObj); // New
+      } else if (firstAidCertFile[0].url) {
+        firstAidCertUrl = firstAidCertFile[0].url; // Existing
       }
 
-      // Handle qualification certificates (multiple files)
-      const qualificationCertUrls: string[] = [];
-      for (const file of qualificationCertFile) {
-        if (file.originFileObj) {
-          // New file - upload it
-          const url = await handleCertificateUpload(file.originFileObj);
-          qualificationCertUrls.push(url);
-        } else if (file.url) {
-          // Existing file - keep the URL
-          qualificationCertUrls.push(file.url);
-        }
+      // Handle qualification certificate - check if removed, new, or existing
+      let qualificationCertUrl: string | null = null;
+      if (qualificationCertFile.length === 0) {
+        qualificationCertUrl = null; // Removed
+      } else if (qualificationCertFile[0].originFileObj) {
+        qualificationCertUrl = await handleCertificateUpload(qualificationCertFile[0].originFileObj); // New
+      } else if (qualificationCertFile[0].url) {
+        qualificationCertUrl = qualificationCertFile[0].url; // Existing
       }
 
       // Check if email has changed
       const emailChanged = therapist?.email !== values.email;
 
-      // Build update object - start with base fields
-      const updateData: Record<string, any> = {
-        ...values,
-        profile_pic: profileImage,
-        insurance_certificate_url: insuranceCertUrl,
-        first_aid_certificate_url: firstAidCertUrls.length > 0 ? firstAidCertUrls[0] : null,
-        qualification_certificate_url: qualificationCertUrls.length > 0 ? qualificationCertUrls[0] : null,
-        // Convert dayjs objects back to strings for database
-        insurance_expiry_date: values.insurance_expiry_date ? dayjs(values.insurance_expiry_date).format('YYYY-MM-DD') : null,
-        first_aid_expiry_date: values.first_aid_expiry_date ? dayjs(values.first_aid_expiry_date).format('YYYY-MM-DD') : null,
-        latitude: coordinateFields.latitude,
-        longitude: coordinateFields.longitude,
-        address_verified: coordinateFields.address_verified,
-        service_area_polygon: serviceAreaPolygon,
-        updated_at: new Date().toISOString()
-      };
-
-      // Try to save with array columns (if migration has been run)
-      // If it fails, we'll fall back to single URL columns only
-      let updatedTherapist;
-      let updateError;
-
-      // First try with array columns
-      const resultWithArrays = await supabaseClient
+      // Update therapist profile
+      const { data: updatedTherapist, error: updateError } = await supabaseClient
         .from('therapist_profiles')
         .update({
-          ...updateData,
-          first_aid_certificates: firstAidCertUrls,
-          qualification_certificates: qualificationCertUrls,
+          ...values,
+          profile_pic: profileImage,
+          insurance_certificate_url: insuranceCertUrl,
+          first_aid_certificate_url: firstAidCertUrl,
+          qualification_certificate_url: qualificationCertUrl,
+          insurance_expiry_date: values.insurance_expiry_date ? dayjs(values.insurance_expiry_date).format('YYYY-MM-DD') : null,
+          first_aid_expiry_date: values.first_aid_expiry_date ? dayjs(values.first_aid_expiry_date).format('YYYY-MM-DD') : null,
+          latitude: coordinateFields.latitude,
+          longitude: coordinateFields.longitude,
+          address_verified: coordinateFields.address_verified,
+          service_area_polygon: serviceAreaPolygon,
+          updated_at: new Date().toISOString()
         })
         .eq('id', id)
         .select('user_id')
         .single();
-
-      if (resultWithArrays.error?.message?.includes('column') ||
-          resultWithArrays.error?.message?.includes('first_aid_certificates') ||
-          resultWithArrays.error?.message?.includes('qualification_certificates')) {
-        // Array columns don't exist yet - fall back to single URL columns only
-        console.log('Array columns not available, using legacy single URL columns');
-        const resultLegacy = await supabaseClient
-          .from('therapist_profiles')
-          .update(updateData)
-          .eq('id', id)
-          .select('user_id')
-          .single();
-
-        updatedTherapist = resultLegacy.data;
-        updateError = resultLegacy.error;
-      } else {
-        updatedTherapist = resultWithArrays.data;
-        updateError = resultWithArrays.error;
-      }
 
       if (updateError) throw updateError;
 
@@ -1405,31 +1356,31 @@ const TherapistEdit: React.FC = () => {
                           </Form.Item>
                         </Col>
                         <Col span={12}>
-                          <Form.Item label="First Aid Certificate(s)" extra="You can upload multiple certificates">
+                          <Form.Item label="First Aid Certificate">
                             <Upload
                               listType="text"
                               fileList={firstAidCertFile}
                               beforeUpload={() => false}
                               onChange={({ fileList }) => setFirstAidCertFile(fileList)}
-                              multiple
+                              maxCount={1}
                               accept=".pdf,.jpg,.jpeg,.png"
                             >
-                              <Button icon={<UploadOutlined />}>Upload Certificate(s)</Button>
+                              <Button icon={<UploadOutlined />}>Upload Certificate</Button>
                             </Upload>
                           </Form.Item>
                         </Col>
                       </Row>
 
-                      <Form.Item label="Therapist Qualification Certificate(s)" extra="You can upload multiple certificates">
+                      <Form.Item label="Therapist Qualification Certificate">
                         <Upload
                           listType="text"
                           fileList={qualificationCertFile}
                           beforeUpload={() => false}
                           onChange={({ fileList }) => setQualificationCertFile(fileList)}
-                          multiple
+                          maxCount={1}
                           accept=".pdf,.jpg,.jpeg,.png"
                         >
-                          <Button icon={<UploadOutlined />}>Upload Certificate(s)</Button>
+                          <Button icon={<UploadOutlined />}>Upload Certificate</Button>
                         </Upload>
                       </Form.Item>
 
