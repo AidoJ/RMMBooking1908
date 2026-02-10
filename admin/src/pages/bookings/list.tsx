@@ -744,16 +744,7 @@ export const EnhancedBookingList = () => {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      filters: [
-        { text: 'Requested', value: 'requested' },
-        { text: 'Pending', value: 'pending' },
-        { text: 'Confirmed', value: 'confirmed' },
-        { text: 'Completed', value: 'completed' },
-        { text: 'Cancelled', value: 'cancelled' },
-        { text: 'Declined', value: 'declined' },
-      ],
-      onFilter: (value: any, record: BookingRecord) => record.status === value,
-      sorter: (a: BookingRecord, b: BookingRecord) => a.status.localeCompare(b.status),
+      // Filtering handled server-side via filters.status
       render: (status: string) => (
         <Tag color={getStatusColor(status)} icon={getStatusIcon(status)}>
           {status.replace('_', ' ').toUpperCase()}
@@ -764,13 +755,7 @@ export const EnhancedBookingList = () => {
       title: 'Payment',
       dataIndex: 'payment_status',
       key: 'payment_status',
-      filters: [
-        { text: 'Pending', value: 'pending' },
-        { text: 'Paid', value: 'paid' },
-        { text: 'Refunded', value: 'refunded' },
-      ],
-      onFilter: (value: any, record: BookingRecord) => record.payment_status === value,
-      sorter: (a: BookingRecord, b: BookingRecord) => a.payment_status.localeCompare(b.payment_status),
+      // Filtering handled server-side via filters.payment_status
       render: (status: string) => (
         <Tag color={getPaymentStatusColor(status)}>
           {status.toUpperCase()}
