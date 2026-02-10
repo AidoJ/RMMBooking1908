@@ -40,6 +40,7 @@ const { Option } = Select;
 interface BookingStats {
   totalBookings: number;
   totalRevenue: number;
+  confirmedRevenue: number;
   totalTherapistFees: number;
   feesConfirmed: number;
   feesCompleted: number;
@@ -285,6 +286,9 @@ export const Dashboard = () => {
       // Calculate revenue (only from completed bookings)
       const totalRevenue = completedBookings.reduce((sum, b) => sum + (parseFloat(b.price?.toString() || '0') || 0), 0);
 
+      // Calculate revenue from confirmed bookings (upcoming revenue)
+      const confirmedRevenue = confirmedBookings.reduce((sum, b) => sum + (parseFloat(b.price?.toString() || '0') || 0), 0);
+
       // Calculate therapist fees (only from completed bookings)
       const totalTherapistFees = completedBookings.reduce((sum, b) => sum + (parseFloat(b.therapist_fee?.toString() || '0') || 0), 0);
 
@@ -391,6 +395,7 @@ export const Dashboard = () => {
       const dashboardStats: BookingStats = {
         totalBookings: bookings?.length || 0,
         totalRevenue,
+        confirmedRevenue,
         totalTherapistFees,
         feesConfirmed,
         feesCompleted,
@@ -772,16 +777,27 @@ export const Dashboard = () => {
             </Col>
           </>
         ) : (
-          // ADMIN VIEW: Show revenue and average (unchanged)
+          // ADMIN VIEW: Show revenue and average
           <>
             <Col xs={12} sm={12} md={6}>
               <Card>
                 <Statistic
-                  title="Total Revenue"
+                  title="Completed Revenue"
                   value={stats?.totalRevenue || 0}
                   prefix={<DollarOutlined />}
                   precision={2}
                   valueStyle={{ color: '#52c41a' }}
+                />
+              </Card>
+            </Col>
+            <Col xs={12} sm={12} md={6}>
+              <Card>
+                <Statistic
+                  title="Confirmed Revenue"
+                  value={stats?.confirmedRevenue || 0}
+                  prefix={<DollarOutlined />}
+                  precision={2}
+                  valueStyle={{ color: '#1890ff' }}
                 />
               </Card>
             </Col>
