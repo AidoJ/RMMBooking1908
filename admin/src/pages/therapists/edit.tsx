@@ -903,16 +903,38 @@ const TherapistEdit: React.FC = () => {
     return false; // Prevent auto upload
   };
 
-  const handleCertificateUpload = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const base64 = e.target?.result as string;
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
+  /**
+   * Upload a certificate file to Supabase Storage via the existing Netlify function
+   * and return the public URL + original filename.
+   *
+   * This matches the behaviour used in the public therapist registration flow
+   * (`therapist-registration-upload`), so therapist_profiles only stores short URLs
+   * instead of large base64 blobs (which were violating DB length checks).
+   */
+  const handleCertificateUpload = async (
+    file: File,
+    fieldName: 'insuranceCert' | 'firstAidCert' | 'qualifications'
+  ): Promise<{ url: string; filename: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('fieldName', fieldName);
+
+    const response = await fetch('/.netlify/functions/therapist-registration-upload', {
+      method: 'POST',
+      body: formData
     });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      const errorMessage = result?.error || 'File upload failed';
+      throw new Error(errorMessage);
+    }
+
+    return {
+      url: result.url as string,
+      filename: file.name
+    };
   };
 
   const handleResetPassword = async (values: any) => {
@@ -993,7 +1015,12 @@ const TherapistEdit: React.FC = () => {
       if (insuranceCertFile.length === 0) {
         insuranceCertUrl = null; // Removed
       } else if (insuranceCertFile[0].originFileObj) {
-        insuranceCertUrl = await handleCertificateUpload(insuranceCertFile[0].originFileObj); // New
+        // New upload via storage function
+        const uploaded = await handleCertificateUpload(
+          insuranceCertFile[0].originFileObj,
+          'insuranceCert'
+        );
+        insuranceCertUrl = uploaded.url;
       } else if (insuranceCertFile[0].url) {
         insuranceCertUrl = insuranceCertFile[0].url; // Existing
       }
@@ -1003,7 +1030,12 @@ const TherapistEdit: React.FC = () => {
       if (firstAidCertFile.length === 0) {
         firstAidCertUrl = null; // Removed
       } else if (firstAidCertFile[0].originFileObj) {
-        firstAidCertUrl = await handleCertificateUpload(firstAidCertFile[0].originFileObj); // New
+        // New upload via storage function
+        const uploaded = await handleCertificateUpload(
+          firstAidCertFile[0].originFileObj,
+          'firstAidCert'
+        );
+        firstAidCertUrl = uploaded.url;
       } else if (firstAidCertFile[0].url) {
         firstAidCertUrl = firstAidCertFile[0].url; // Existing
       }
@@ -1012,10 +1044,13 @@ const TherapistEdit: React.FC = () => {
       const qualificationCerts: Array<{url: string; filename: string}> = [];
       for (const file of qualificationCertFile) {
         if (file.originFileObj) {
-          // New file - upload it
-          const url = await handleCertificateUpload(file.originFileObj);
+          // New file - upload it to storage and store URL + filename
+          const uploaded = await handleCertificateUpload(
+            file.originFileObj,
+            'qualifications'
+          );
           qualificationCerts.push({
-            url: url,
+            url: uploaded.url,
             filename: file.name || file.originFileObj.name
           });
         } else if (file.url) {
