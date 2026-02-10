@@ -223,7 +223,35 @@ export const Dashboard = () => {
     try {
       setLoading(true);
       
-      // Build base query with role-based filtering - FIXED: Specify exact therapist relationship
+      // Get therapist profile ID if user is a therapist
+      let therapistProfileId: string | null = null;
+      if (isTherapist(userRole) && identity?.id) {
+        const { data: therapistProfile } = await supabaseClient
+          .from('therapist_profiles')
+          .select('id')
+          .eq('user_id', identity.id)
+          .single();
+
+        if (therapistProfile) {
+          therapistProfileId = therapistProfile.id;
+        }
+      }
+
+      // Step 1: Get total count of matching bookings for stats
+      let countQuery = supabaseClient
+        .from('bookings')
+        .select('*', { count: 'exact', head: true })
+        .gte('booking_time', dateRange.start.toISOString())
+        .lte('booking_time', dateRange.end.toISOString());
+
+      if (therapistProfileId) {
+        countQuery = countQuery.eq('therapist_id', therapistProfileId);
+      }
+
+      const { count: totalCount } = await countQuery;
+
+      // Step 2: Fetch ALL bookings for stats calculation (no pagination limit)
+      // Use a high limit to ensure we get all records
       let bookingsQuery = supabaseClient
         .from('bookings')
         .select(`
@@ -233,20 +261,12 @@ export const Dashboard = () => {
           services(name)
         `)
         .gte('booking_time', dateRange.start.toISOString())
-        .lte('booking_time', dateRange.end.toISOString());
+        .lte('booking_time', dateRange.end.toISOString())
+        .order('booking_time', { ascending: false })
+        .limit(10000); // Ensure we get all records for accurate stats
 
-      // If therapist, only show their bookings
-      if (isTherapist(userRole) && identity?.id) {
-        // Get therapist profile ID first
-        const { data: therapistProfile } = await supabaseClient
-          .from('therapist_profiles')
-          .select('id')
-          .eq('user_id', identity.id)
-          .single();
-        
-        if (therapistProfile) {
-          bookingsQuery = bookingsQuery.eq('therapist_id', therapistProfile.id);
-        }
+      if (therapistProfileId) {
+        bookingsQuery = bookingsQuery.eq('therapist_id', therapistProfileId);
       }
 
       const { data: bookings, error } = await bookingsQuery;
