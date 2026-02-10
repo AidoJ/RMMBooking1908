@@ -245,7 +245,14 @@ export const EnhancedBookingList = () => {
       countQuery = applyFilters(countQuery);
       const { count } = await countQuery;
 
-      // Step 2: Main data query with joins (no count)
+      // Step 2: Separate stats query (all matching bookings, no pagination)
+      let statsQuery = supabaseClient
+        .from('bookings')
+        .select('status, price, therapist_fee');
+      statsQuery = applyFilters(statsQuery);
+      const { data: statsData } = await statsQuery;
+
+      // Step 3: Main data query with joins (no count)
       let query = supabaseClient
         .from('bookings')
         .select(`
@@ -253,8 +260,7 @@ export const EnhancedBookingList = () => {
           customers(id, first_name, last_name, email, phone),
           therapist_profiles!bookings_therapist_id_fkey(id, first_name, last_name, email, phone),
           services(id, name, description, service_base_price, quote_only)
-        `)
-        .order('created_at', { ascending: false });
+        `);
 
       query = applyFilters(query);
 
@@ -277,8 +283,8 @@ export const EnhancedBookingList = () => {
         return newPagination;
       });
 
-      // Calculate summary statistics
-      calculateSummaryStats(data || []);
+      // Calculate summary statistics from ALL matching bookings (not just current page)
+      calculateSummaryStats(statsData || []);
 
     } catch (error) {
       console.error('Error fetching bookings:', error);
@@ -290,11 +296,11 @@ export const EnhancedBookingList = () => {
     }
   };
 
-  const calculateSummaryStats = (data: BookingRecord[]) => {
+  const calculateSummaryStats = (data: { status: string; price?: number; therapist_fee?: number }[]) => {
     const stats = data.reduce(
       (acc, booking) => {
         acc.total++;
-        
+
         switch (booking.status) {
           case 'completed':
             acc.completed++;
