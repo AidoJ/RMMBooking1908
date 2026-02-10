@@ -141,7 +141,9 @@ interface TherapistFormData {
   insurance_certificate_url?: string;
   first_aid_expiry_date?: string;
   first_aid_certificate_url?: string;
+  first_aid_certificates?: string[];
   qualification_certificate_url?: string;
+  qualification_certificates?: string[];
   bank_account_name?: string;
   bsb?: string;
   bank_account_number?: string;
@@ -313,22 +315,28 @@ const TherapistEdit: React.FC = () => {
         }]);
       }
 
-      if (therapistData.first_aid_certificate_url) {
-        setFirstAidCertFile([{
-          uid: '1',
-          name: 'first_aid_certificate.pdf',
+      // Load first aid certificates (prefer array, fallback to single URL)
+      const firstAidCerts = therapistData.first_aid_certificates ||
+        (therapistData.first_aid_certificate_url ? [therapistData.first_aid_certificate_url] : []);
+      if (firstAidCerts.length > 0) {
+        setFirstAidCertFile(firstAidCerts.map((url: string, idx: number) => ({
+          uid: `first-aid-${idx}`,
+          name: `first_aid_certificate_${idx + 1}.pdf`,
           status: 'done',
-          url: therapistData.first_aid_certificate_url
-        }]);
+          url: url
+        })));
       }
 
-      if (therapistData.qualification_certificate_url) {
-        setQualificationCertFile([{
-          uid: '1',
-          name: 'qualification_certificate.pdf',
+      // Load qualification certificates (prefer array, fallback to single URL)
+      const qualCerts = therapistData.qualification_certificates ||
+        (therapistData.qualification_certificate_url ? [therapistData.qualification_certificate_url] : []);
+      if (qualCerts.length > 0) {
+        setQualificationCertFile(qualCerts.map((url: string, idx: number) => ({
+          uid: `qual-${idx}`,
+          name: `qualification_certificate_${idx + 1}.pdf`,
           status: 'done',
-          url: therapistData.qualification_certificate_url
-        }]);
+          url: url
+        })));
       }
 
       // Load therapist services
@@ -977,21 +985,43 @@ const TherapistEdit: React.FC = () => {
     try {
       setSaving(true);
 
-      // Handle certificate file uploads
-      let insuranceCertUrl = therapist?.insurance_certificate_url;
-      let firstAidCertUrl = therapist?.first_aid_certificate_url;
-      let qualificationCertUrl = therapist?.qualification_certificate_url;
-
-      if (insuranceCertFile.length > 0 && insuranceCertFile[0].originFileObj) {
+      // Handle insurance certificate (single file)
+      let insuranceCertUrl: string | null = null;
+      if (insuranceCertFile.length === 0) {
+        // File was removed - clear URL
+        insuranceCertUrl = null;
+      } else if (insuranceCertFile[0].originFileObj) {
+        // New file uploaded
         insuranceCertUrl = await handleCertificateUpload(insuranceCertFile[0].originFileObj);
+      } else if (insuranceCertFile[0].url) {
+        // Existing file kept
+        insuranceCertUrl = insuranceCertFile[0].url;
       }
 
-      if (firstAidCertFile.length > 0 && firstAidCertFile[0].originFileObj) {
-        firstAidCertUrl = await handleCertificateUpload(firstAidCertFile[0].originFileObj);
+      // Handle first aid certificates (multiple files)
+      const firstAidCertUrls: string[] = [];
+      for (const file of firstAidCertFile) {
+        if (file.originFileObj) {
+          // New file - upload it
+          const url = await handleCertificateUpload(file.originFileObj);
+          firstAidCertUrls.push(url);
+        } else if (file.url) {
+          // Existing file - keep the URL
+          firstAidCertUrls.push(file.url);
+        }
       }
 
-      if (qualificationCertFile.length > 0 && qualificationCertFile[0].originFileObj) {
-        qualificationCertUrl = await handleCertificateUpload(qualificationCertFile[0].originFileObj);
+      // Handle qualification certificates (multiple files)
+      const qualificationCertUrls: string[] = [];
+      for (const file of qualificationCertFile) {
+        if (file.originFileObj) {
+          // New file - upload it
+          const url = await handleCertificateUpload(file.originFileObj);
+          qualificationCertUrls.push(url);
+        } else if (file.url) {
+          // Existing file - keep the URL
+          qualificationCertUrls.push(file.url);
+        }
       }
 
       // Check if email has changed
@@ -1004,8 +1034,11 @@ const TherapistEdit: React.FC = () => {
           ...values,
           profile_pic: profileImage,
           insurance_certificate_url: insuranceCertUrl,
-          first_aid_certificate_url: firstAidCertUrl,
-          qualification_certificate_url: qualificationCertUrl,
+          // Keep legacy single URL field for backward compatibility (first item)
+          first_aid_certificate_url: firstAidCertUrls.length > 0 ? firstAidCertUrls[0] : null,
+          first_aid_certificates: firstAidCertUrls,
+          qualification_certificate_url: qualificationCertUrls.length > 0 ? qualificationCertUrls[0] : null,
+          qualification_certificates: qualificationCertUrls,
           // Convert dayjs objects back to strings for database
           insurance_expiry_date: values.insurance_expiry_date ? dayjs(values.insurance_expiry_date).format('YYYY-MM-DD') : null,
           first_aid_expiry_date: values.first_aid_expiry_date ? dayjs(values.first_aid_expiry_date).format('YYYY-MM-DD') : null,
@@ -1344,31 +1377,31 @@ const TherapistEdit: React.FC = () => {
                           </Form.Item>
                         </Col>
                         <Col span={12}>
-                          <Form.Item label="First Aid Certificate">
+                          <Form.Item label="First Aid Certificate(s)" extra="You can upload multiple certificates">
                             <Upload
                               listType="text"
                               fileList={firstAidCertFile}
                               beforeUpload={() => false}
                               onChange={({ fileList }) => setFirstAidCertFile(fileList)}
-                              maxCount={1}
+                              multiple
                               accept=".pdf,.jpg,.jpeg,.png"
                             >
-                              <Button icon={<UploadOutlined />}>Upload Certificate</Button>
+                              <Button icon={<UploadOutlined />}>Upload Certificate(s)</Button>
                             </Upload>
                           </Form.Item>
                         </Col>
                       </Row>
 
-                      <Form.Item label="Therapist Qualification Certificate">
+                      <Form.Item label="Therapist Qualification Certificate(s)" extra="You can upload multiple certificates">
                         <Upload
                           listType="text"
                           fileList={qualificationCertFile}
                           beforeUpload={() => false}
                           onChange={({ fileList }) => setQualificationCertFile(fileList)}
-                          maxCount={1}
+                          multiple
                           accept=".pdf,.jpg,.jpeg,.png"
                         >
-                          <Button icon={<UploadOutlined />}>Upload Certificate</Button>
+                          <Button icon={<UploadOutlined />}>Upload Certificate(s)</Button>
                         </Upload>
                       </Form.Item>
 
