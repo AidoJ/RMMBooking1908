@@ -50,6 +50,7 @@ import { RoleGuard } from '../../components/RoleGuard';
 import { supabaseClient, realSupabaseClient } from '../../utility';
 import { useAddressGeocoding } from '../../hooks/useAddressGeocoding';
 import ServiceAreaPolygonEditor from '../../components/ServiceAreaPolygonEditor';
+import WeeklyAvailabilityGrid from '../../components/WeeklyAvailabilityGrid';
 import dayjs from 'dayjs';
 
 const { Title } = Typography;
@@ -177,11 +178,6 @@ const TherapistEdit: React.FC = () => {
   const [isRateModalVisible, setIsRateModalVisible] = useState(false);
   const [editingRate, setEditingRate] = useState<ServiceRate | null>(null);
   const [rateForm] = Form.useForm();
-
-  // Availability modal state
-  const [isAvailabilityModalVisible, setIsAvailabilityModalVisible] = useState(false);
-  const [availabilityForm] = Form.useForm();
-  const [editingAvailabilityIndex, setEditingAvailabilityIndex] = useState<number | null>(null);
 
   // Reviews state
   const [reviews, setReviews] = useState<TherapistReview[]>([]);
@@ -950,124 +946,6 @@ const TherapistEdit: React.FC = () => {
     }
   };
 
-  // Check for overlapping time slots on the same day
-  const checkTimeOverlap = (
-    dayOfWeek: number,
-    startTime: string,
-    endTime: string,
-    excludeIndex?: number
-  ): { hasOverlap: boolean; conflictingSlot?: Availability } => {
-    // Find all slots for the same day (excluding the slot being edited)
-    const sameDaySlots = availability.filter((slot, idx) =>
-      slot.day_of_week === dayOfWeek && idx !== excludeIndex
-    );
-
-    // Convert times to minutes for easier comparison
-    const toMinutes = (timeStr: string) => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + minutes;
-    };
-
-    const newStart = toMinutes(startTime);
-    const newEnd = toMinutes(endTime);
-
-    // Check if end time is before or equal to start time (invalid)
-    if (newEnd <= newStart) {
-      return { hasOverlap: true };
-    }
-
-    // Check for overlap with existing slots
-    for (const slot of sameDaySlots) {
-      const existingStart = toMinutes(slot.start_time.substring(0, 5));
-      const existingEnd = toMinutes(slot.end_time.substring(0, 5));
-
-      // Overlap occurs if: new start is before existing end AND new end is after existing start
-      if (newStart < existingEnd && newEnd > existingStart) {
-        return { hasOverlap: true, conflictingSlot: slot };
-      }
-    }
-
-    return { hasOverlap: false };
-  };
-
-  const handleAddAvailability = async (values: any) => {
-    try {
-      const startTime = values.start_time.format('HH:mm');
-      const endTime = values.end_time.format('HH:mm');
-      const dayOfWeek = values.day_of_week;
-
-      // Check for overlapping time slots (exclude current slot if editing)
-      const { hasOverlap, conflictingSlot } = checkTimeOverlap(
-        dayOfWeek,
-        startTime,
-        endTime,
-        editingAvailabilityIndex !== null ? editingAvailabilityIndex : undefined
-      );
-
-      if (hasOverlap) {
-        if (conflictingSlot) {
-          const conflictStart = dayjs(conflictingSlot.start_time.substring(0, 5), 'HH:mm').format('h:mm A');
-          const conflictEnd = dayjs(conflictingSlot.end_time.substring(0, 5), 'HH:mm').format('h:mm A');
-          message.error(
-            `This time slot overlaps with existing availability on ${getDayName(dayOfWeek)} from ${conflictStart} to ${conflictEnd}. Split shifts are allowed but times cannot overlap.`
-          );
-        } else {
-          message.error('End time must be after start time.');
-        }
-        return;
-      }
-
-      const newSlot: Availability = {
-        day_of_week: dayOfWeek,
-        start_time: startTime,
-        end_time: endTime
-      };
-
-      if (editingAvailabilityIndex !== null) {
-        // Update existing slot
-        setAvailability(prev => prev.map((slot, idx) =>
-          idx === editingAvailabilityIndex ? newSlot : slot
-        ));
-        message.success('Availability slot updated. Remember to save changes.');
-      } else {
-        // Add new slot
-        setAvailability(prev => [...prev, newSlot]);
-        message.success('Availability slot added. Remember to save changes.');
-      }
-
-      setIsAvailabilityModalVisible(false);
-      setEditingAvailabilityIndex(null);
-      availabilityForm.resetFields();
-    } catch (error) {
-      console.error('Error saving availability:', error);
-      message.error('Failed to save availability slot');
-    }
-  };
-
-  const editAvailabilitySlot = (index: number) => {
-    const slot = availability[index];
-    setEditingAvailabilityIndex(index);
-    availabilityForm.setFieldsValue({
-      day_of_week: slot.day_of_week,
-      start_time: dayjs(slot.start_time.substring(0, 5), 'HH:mm'),
-      end_time: dayjs(slot.end_time.substring(0, 5), 'HH:mm')
-    });
-    setIsAvailabilityModalVisible(true);
-  };
-
-  const removeAvailabilitySlot = (index: number) => {
-    Modal.confirm({
-      title: 'Remove Availability Slot',
-      content: 'Are you sure you want to remove this availability slot?',
-      okText: 'Remove',
-      okType: 'danger',
-      onOk: () => {
-        setAvailability(prev => prev.filter((_, i) => i !== index));
-        message.success('Availability slot removed. Remember to save changes.');
-      }
-    });
-  };
-
   const addTimeOffSlot = () => {
     // Use callback form to avoid stale closure issues
     setTimeOff(prev => [...prev, {
@@ -1239,11 +1117,6 @@ const TherapistEdit: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
-
-  const getDayName = (dayOfWeek: number): string => {
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return days[dayOfWeek] || 'Unknown';
   };
 
   if (loading) {
@@ -1882,83 +1755,10 @@ const TherapistEdit: React.FC = () => {
                         />
                       )}
 
-                      <Alert
-                        message="Managing Availability"
-                        description="Add availability slots for each day. Split shifts are supported (e.g., 8am-12pm and 4pm-11pm on the same day) but times cannot overlap."
-                        type="info"
-                        showIcon
-                        style={{ marginBottom: 16 }}
-                      />
-
-                      <div style={{ marginBottom: '16px' }}>
-                        <Button
-                          type="primary"
-                          icon={<PlusOutlined />}
-                          onClick={() => {
-                            setEditingAvailabilityIndex(null);
-                            availabilityForm.resetFields();
-                            setIsAvailabilityModalVisible(true);
-                          }}
-                          disabled={!canEditTherapists}
-                          size="large"
-                        >
-                          Add Availability Slot
-                        </Button>
-                      </div>
-
-                      <Table
-                        dataSource={availability.map((avail, index) => ({ ...avail, index }))}
-                        rowKey="index"
-                        pagination={false}
-                        locale={{ emptyText: 'No availability slots configured' }}
-                        columns={[
-                          {
-                            title: 'Day',
-                            dataIndex: 'day_of_week',
-                            key: 'day',
-                            sorter: (a, b) => a.day_of_week - b.day_of_week,
-                            render: (day: number) => getDayName(day),
-                          },
-                          {
-                            title: 'Start Time',
-                            dataIndex: 'start_time',
-                            key: 'start_time',
-                            render: (time: string) => time ? dayjs(time.substring(0, 5), 'HH:mm').format('h:mm A') : '-',
-                          },
-                          {
-                            title: 'End Time',
-                            dataIndex: 'end_time',
-                            key: 'end_time',
-                            render: (time: string) => time ? dayjs(time.substring(0, 5), 'HH:mm').format('h:mm A') : '-',
-                          },
-                          {
-                            title: 'Actions',
-                            key: 'actions',
-                            width: 180,
-                            render: (_: any, record: any) => (
-                              <>
-                                <Button
-                                  size="small"
-                                  icon={<EditOutlined />}
-                                  onClick={() => editAvailabilitySlot(record.index)}
-                                  disabled={!canEditTherapists}
-                                  style={{ marginRight: 8 }}
-                                >
-                                  Edit
-                                </Button>
-                                <Button
-                                  danger
-                                  size="small"
-                                  icon={<DeleteOutlined />}
-                                  onClick={() => removeAvailabilitySlot(record.index)}
-                                  disabled={!canEditTherapists}
-                                >
-                                  Remove
-                                </Button>
-                              </>
-                            ),
-                          },
-                        ]}
+                      <WeeklyAvailabilityGrid
+                        availability={availability}
+                        onChange={setAvailability}
+                        disabled={!canEditTherapists}
                       />
                     </div>
                   ),
@@ -2340,82 +2140,6 @@ const TherapistEdit: React.FC = () => {
               type="info"
               showIcon
             />
-          </Form>
-        </Modal>
-
-        {/* Availability Add/Edit Modal */}
-        <Modal
-          title={editingAvailabilityIndex !== null ? "Edit Availability Slot" : "Add Availability Slot"}
-          open={isAvailabilityModalVisible}
-          onCancel={() => {
-            setIsAvailabilityModalVisible(false);
-            setEditingAvailabilityIndex(null);
-            availabilityForm.resetFields();
-          }}
-          footer={null}
-          width={500}
-        >
-          <Form form={availabilityForm} onFinish={handleAddAvailability} layout="vertical">
-            <Form.Item
-              label="Day of Week"
-              name="day_of_week"
-              rules={[{ required: true, message: 'Please select a day' }]}
-            >
-              <Select size="large" placeholder="Select a day">
-                {[0, 1, 2, 3, 4, 5, 6].map(day => (
-                  <Option key={day} value={day}>
-                    {getDayName(day)}
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  label="Start Time"
-                  name="start_time"
-                  rules={[{ required: true, message: 'Please select start time' }]}
-                >
-                  <TimePicker
-                    format="h:mm A"
-                    use12Hours
-                    minuteStep={15}
-                    size="large"
-                    style={{ width: '100%' }}
-                  />
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  label="End Time"
-                  name="end_time"
-                  rules={[{ required: true, message: 'Please select end time' }]}
-                >
-                  <TimePicker
-                    format="h:mm A"
-                    use12Hours
-                    minuteStep={15}
-                    size="large"
-                    style={{ width: '100%' }}
-                  />
-                </Form.Item>
-              </Col>
-            </Row>
-
-            <Alert
-              message="Split Shifts"
-              description="You can add multiple time slots for the same day (e.g., 8am-12pm and 4pm-11pm). Times cannot overlap."
-              type="info"
-              showIcon
-              style={{ marginBottom: 16 }}
-            />
-
-            <Form.Item>
-              <Button type="primary" htmlType="submit" size="large" block>
-                {editingAvailabilityIndex !== null ? "Update Availability Slot" : "Add Availability Slot"}
-              </Button>
-            </Form.Item>
           </Form>
         </Modal>
 
