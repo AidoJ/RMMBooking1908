@@ -202,7 +202,7 @@ export const EnhancedBookingList = () => {
 
         // Apply filters - only search bookings table fields (not joined tables)
         if (filters.search) {
-          q = q.or(`booker_name.ilike.%${filters.search}%,customer_email.ilike.%${filters.search}%,address.ilike.%${filters.search}%,booking_id.ilike.%${filters.search}%`);
+          q = q.or(`customer_email.ilike.%${filters.search}%,address.ilike.%${filters.search}%,booking_id.ilike.%${filters.search}%`);
         }
 
         if (filters.status && filters.status !== 'all') {
