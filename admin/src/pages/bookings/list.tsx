@@ -178,8 +178,74 @@ export const EnhancedBookingList = () => {
   const fetchBookings = async () => {
     try {
       setLoading(true);
-      
-      // Build query with joins - FIXED: Specify exact therapist relationship
+
+      // Get therapist ID for role-based filtering
+      let therapistIdFilter: string | null = null;
+      if (isTherapist(userRole) && identity?.id) {
+        const { data: therapistProfile } = await supabaseClient
+          .from('therapist_profiles')
+          .select('id')
+          .eq('user_id', identity.id)
+          .single();
+
+        if (therapistProfile) {
+          therapistIdFilter = therapistProfile.id;
+        }
+      }
+
+      // Helper function to apply common filters to a query
+      const applyFilters = (q: any) => {
+        // Role-based filtering
+        if (therapistIdFilter) {
+          q = q.eq('therapist_id', therapistIdFilter);
+        }
+
+        // Apply filters
+        if (filters.search) {
+          q = q.or(`first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,booker_name.ilike.%${filters.search}%,customer_email.ilike.%${filters.search}%,address.ilike.%${filters.search}%`);
+        }
+
+        if (filters.status && filters.status !== 'all') {
+          q = q.eq('status', filters.status);
+        }
+
+        if (filters.payment_status && filters.payment_status !== 'all') {
+          q = q.eq('payment_status', filters.payment_status);
+        }
+
+        if (filters.therapist_id) {
+          q = q.eq('therapist_id', filters.therapist_id);
+        }
+
+        if (filters.service_id) {
+          q = q.eq('service_id', filters.service_id);
+        }
+
+        if (filters.date_range) {
+          q = q
+            .gte('booking_time', filters.date_range[0].startOf('day').toISOString())
+            .lte('booking_time', filters.date_range[1].endOf('day').toISOString());
+        }
+
+        if (filters.booking_type && filters.booking_type !== 'all') {
+          if (filters.booking_type === 'quotes') {
+            q = q.like('booking_id', 'RQ%');
+          } else if (filters.booking_type === 'bookings') {
+            q = q.not('booking_id', 'like', 'RQ%');
+          }
+        }
+
+        return q;
+      };
+
+      // Step 1: Separate count query (no joins)
+      let countQuery = supabaseClient
+        .from('bookings')
+        .select('id', { count: 'exact', head: true });
+      countQuery = applyFilters(countQuery);
+      const { count } = await countQuery;
+
+      // Step 2: Main data query with joins (no count)
       let query = supabaseClient
         .from('bookings')
         .select(`
@@ -187,64 +253,13 @@ export const EnhancedBookingList = () => {
           customers(id, first_name, last_name, email, phone),
           therapist_profiles!bookings_therapist_id_fkey(id, first_name, last_name, email, phone),
           services(id, name, description, service_base_price, quote_only)
-        `, { count: 'exact', head: false })
+        `)
         .order('created_at', { ascending: false });
 
-      // Role-based filtering: if therapist, only show their bookings
-      if (isTherapist(userRole) && identity?.id) {
-        const { data: therapistProfile } = await supabaseClient
-          .from('therapist_profiles')
-          .select('id')
-          .eq('user_id', identity.id)
-          .single();
-        
-        if (therapistProfile) {
-          query = query.eq('therapist_id', therapistProfile.id);
-        }
-      }
-
-      // Apply filters
-      if (filters.search) {
-        // Search across multiple fields - note: this is simplified, you might want to use full-text search
-        query = query.or(`first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,booker_name.ilike.%${filters.search}%,customer_email.ilike.%${filters.search}%,address.ilike.%${filters.search}%`);
-      }
-
-      if (filters.status && filters.status !== 'all') {
-        query = query.eq('status', filters.status);
-      }
-
-      if (filters.payment_status && filters.payment_status !== 'all') {
-        query = query.eq('payment_status', filters.payment_status);
-      }
-
-      if (filters.therapist_id) {
-        query = query.eq('therapist_id', filters.therapist_id);
-      }
-
-      if (filters.service_id) {
-        query = query.eq('service_id', filters.service_id);
-      }
-
-      if (filters.date_range) {
-        query = query
-          .gte('booking_time', filters.date_range[0].startOf('day').toISOString())
-          .lte('booking_time', filters.date_range[1].endOf('day').toISOString());
-      }
-
-      if (filters.booking_type && filters.booking_type !== 'all') {
-        if (filters.booking_type === 'quotes') {
-          // Filter for quotes - booking_id contains 'RQ'
-          query = query.like('booking_id', 'RQ%');
-        } else if (filters.booking_type === 'bookings') {
-          // Filter for bookings - exclude RQ booking IDs
-          query = query.not('booking_id', 'like', 'RQ%');
-        }
-        // If 'all' is selected, no filter applied - show everything
-      }
-      // Removed default RQ exclusion - let users explicitly filter if needed
+      query = applyFilters(query);
 
       // Apply pagination and ordering
-      const { data, error, count } = await query
+      const { data, error } = await query
         .order('booking_time', { ascending: false })
         .range(
           (pagination.current - 1) * pagination.pageSize,
