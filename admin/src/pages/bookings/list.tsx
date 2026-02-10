@@ -200,9 +200,9 @@ export const EnhancedBookingList = () => {
           q = q.eq('therapist_id', therapistIdFilter);
         }
 
-        // Apply filters
+        // Apply filters - only search bookings table fields (not joined tables)
         if (filters.search) {
-          q = q.or(`first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,booker_name.ilike.%${filters.search}%,customer_email.ilike.%${filters.search}%,address.ilike.%${filters.search}%`);
+          q = q.or(`booker_name.ilike.%${filters.search}%,customer_email.ilike.%${filters.search}%,address.ilike.%${filters.search}%,booking_id.ilike.%${filters.search}%`);
         }
 
         if (filters.status && filters.status !== 'all') {
