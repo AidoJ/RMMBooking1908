@@ -1299,12 +1299,11 @@ export const EnhancedQuoteEdit: React.FC = () => {
             throw deleteError;
           }
 
-          // Update quote status with timestamp
+          // Update quote status
           const { error: updateError } = await supabaseClient
             .from('quotes')
             .update({
               status: 'declined',
-              quote_declined_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
             })
             .eq('id', id);
