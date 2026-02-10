@@ -142,6 +142,7 @@ interface TherapistFormData {
   first_aid_expiry_date?: string;
   first_aid_certificate_url?: string;
   qualification_certificate_url?: string;
+  qualification_certificates?: Array<{url: string; filename: string}>;
   bank_account_name?: string;
   bsb?: string;
   bank_account_number?: string;
@@ -322,7 +323,17 @@ const TherapistEdit: React.FC = () => {
         }]);
       }
 
-      if (therapistData.qualification_certificate_url) {
+      // Load qualification certificates - prefer array format, fallback to single URL
+      if (therapistData.qualification_certificates && therapistData.qualification_certificates.length > 0) {
+        // Array format: [{url, filename}, ...]
+        setQualificationCertFile(therapistData.qualification_certificates.map((cert: {url: string; filename: string}, idx: number) => ({
+          uid: `qual-${idx}`,
+          name: cert.filename || `certificate_${idx + 1}.pdf`,
+          status: 'done',
+          url: cert.url
+        })));
+      } else if (therapistData.qualification_certificate_url) {
+        // Legacy single URL format
         setQualificationCertFile([{
           uid: '1',
           name: 'qualification_certificate.pdf',
@@ -997,14 +1008,23 @@ const TherapistEdit: React.FC = () => {
         firstAidCertUrl = firstAidCertFile[0].url; // Existing
       }
 
-      // Handle qualification certificate - check if removed, new, or existing
-      let qualificationCertUrl: string | null = null;
-      if (qualificationCertFile.length === 0) {
-        qualificationCertUrl = null; // Removed
-      } else if (qualificationCertFile[0].originFileObj) {
-        qualificationCertUrl = await handleCertificateUpload(qualificationCertFile[0].originFileObj); // New
-      } else if (qualificationCertFile[0].url) {
-        qualificationCertUrl = qualificationCertFile[0].url; // Existing
+      // Handle qualification certificates - multiple files, array format [{url, filename}]
+      const qualificationCerts: Array<{url: string; filename: string}> = [];
+      for (const file of qualificationCertFile) {
+        if (file.originFileObj) {
+          // New file - upload it
+          const url = await handleCertificateUpload(file.originFileObj);
+          qualificationCerts.push({
+            url: url,
+            filename: file.name || file.originFileObj.name
+          });
+        } else if (file.url) {
+          // Existing file - keep it
+          qualificationCerts.push({
+            url: file.url,
+            filename: file.name || 'certificate.pdf'
+          });
+        }
       }
 
       // Check if email has changed
@@ -1018,7 +1038,9 @@ const TherapistEdit: React.FC = () => {
           profile_pic: profileImage,
           insurance_certificate_url: insuranceCertUrl,
           first_aid_certificate_url: firstAidCertUrl,
-          qualification_certificate_url: qualificationCertUrl,
+          // Save both array and legacy single URL for backward compatibility
+          qualification_certificates: qualificationCerts,
+          qualification_certificate_url: qualificationCerts.length > 0 ? qualificationCerts[0].url : null,
           insurance_expiry_date: values.insurance_expiry_date ? dayjs(values.insurance_expiry_date).format('YYYY-MM-DD') : null,
           first_aid_expiry_date: values.first_aid_expiry_date ? dayjs(values.first_aid_expiry_date).format('YYYY-MM-DD') : null,
           latitude: coordinateFields.latitude,
@@ -1371,16 +1393,19 @@ const TherapistEdit: React.FC = () => {
                         </Col>
                       </Row>
 
-                      <Form.Item label="Therapist Qualification Certificate">
+                      <Form.Item
+                        label="Therapist Qualification Certificates"
+                        extra="Upload multiple qualification certificates (PDF, JPG, PNG)"
+                      >
                         <Upload
                           listType="text"
                           fileList={qualificationCertFile}
                           beforeUpload={() => false}
                           onChange={({ fileList }) => setQualificationCertFile(fileList)}
-                          maxCount={1}
+                          multiple
                           accept=".pdf,.jpg,.jpeg,.png"
                         >
-                          <Button icon={<UploadOutlined />}>Upload Certificate</Button>
+                          <Button icon={<UploadOutlined />}>Upload Certificate(s)</Button>
                         </Upload>
                       </Form.Item>
 
