@@ -99,10 +99,10 @@ export const Dashboard = () => {
   const [recentBookings, setRecentBookings] = useState<RecentBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<DateRange>({
-    start: dayjs().startOf('month'),
-    end: dayjs().endOf('month')
+    start: dayjs().startOf('year'),
+    end: dayjs().endOf('year')
   });
-  const [selectedPreset, setSelectedPreset] = useState('currentMonth');
+  const [selectedPreset, setSelectedPreset] = useState('currentYear');
 
   const userRole = identity?.role;
 
