@@ -637,92 +637,96 @@ export const Dashboard = () => {
       <Card title="Quick Actions" style={{ marginBottom: 24 }}>
         <Row gutter={[12, 12]}>
           <Col xs={12} sm={6}>
-            <Button
-              type="primary"
-              size="large"
-              icon={<CalendarOutlined />}
+            <div
               onClick={() => { window.location.href = '/admin/calendar'; }}
-              block
               style={{
                 height: 'auto',
                 padding: '20px 16px',
-                background: '#005f6b',
-                borderColor: '#005f6b',
+                backgroundColor: '#005f6b',
+                color: 'white',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 500
               }}
             >
               <CalendarOutlined style={{ fontSize: '24px' }} />
+              <CalendarOutlined style={{ fontSize: '24px' }} />
               <span>Calendar</span>
-            </Button>
+            </div>
           </Col>
           <Col xs={12} sm={6}>
-            <Button
-              type="primary"
-              size="large"
-              icon={<FileTextOutlined />}
+            <div
               onClick={() => { window.location.href = '/admin/bookings'; }}
-              block
               style={{
                 height: 'auto',
                 padding: '20px 16px',
-                background: '#1FBFBF',
-                borderColor: '#1FBFBF',
+                backgroundColor: '#e07a5f',
+                color: 'white',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 500
               }}
             >
               <FileTextOutlined style={{ fontSize: '24px' }} />
+              <FileTextOutlined style={{ fontSize: '24px' }} />
               <span>Bookings</span>
-            </Button>
+            </div>
           </Col>
           <Col xs={12} sm={6}>
-            <Button
-              type="primary"
-              size="large"
-              icon={<DollarOutlined />}
+            <div
               onClick={() => { window.location.href = '/admin/quotes'; }}
-              block
               style={{
                 height: 'auto',
                 padding: '20px 16px',
-                background: '#2a9d8f',
-                borderColor: '#2a9d8f',
+                backgroundColor: '#d4a843',
+                color: 'white',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 500
               }}
             >
               <DollarOutlined style={{ fontSize: '24px' }} />
+              <DollarOutlined style={{ fontSize: '24px' }} />
               <span>Quotes</span>
-            </Button>
+            </div>
           </Col>
           <Col xs={12} sm={6}>
-            <Button
-              type="primary"
-              size="large"
-              icon={<TeamOutlined />}
+            <div
               onClick={() => { window.location.href = '/admin/therapist-payments'; }}
-              block
               style={{
                 height: 'auto',
                 padding: '20px 16px',
-                background: '#48d1cc',
-                borderColor: '#48d1cc',
+                backgroundColor: '#5f7bc7',
+                color: 'white',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '8px'
+                gap: '8px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '16px',
+                fontWeight: 500
               }}
             >
               <TeamOutlined style={{ fontSize: '24px' }} />
+              <TeamOutlined style={{ fontSize: '24px' }} />
               <span>Therapist Payments</span>
-            </Button>
+            </div>
           </Col>
         </Row>
       </Card>
