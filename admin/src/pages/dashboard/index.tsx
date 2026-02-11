@@ -646,8 +646,8 @@ export const Dashboard = () => {
               style={{
                 height: 'auto',
                 padding: '20px 16px',
-                background: '#007e8c',
-                borderColor: '#007e8c',
+                background: '#005f6b',
+                borderColor: '#005f6b',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -690,8 +690,8 @@ export const Dashboard = () => {
               style={{
                 height: 'auto',
                 padding: '20px 16px',
-                background: '#5F7BC7',
-                borderColor: '#5F7BC7',
+                background: '#2a9d8f',
+                borderColor: '#2a9d8f',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -712,8 +712,8 @@ export const Dashboard = () => {
               style={{
                 height: 'auto',
                 padding: '20px 16px',
-                background: '#C74BC7',
-                borderColor: '#C74BC7',
+                background: '#48d1cc',
+                borderColor: '#48d1cc',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
