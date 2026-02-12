@@ -157,6 +157,7 @@ const TherapistEdit: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [therapist, setTherapist] = useState<TherapistFormData | null>(null);
   const [allServices, setAllServices] = useState<Service[]>([]);
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
@@ -1178,13 +1179,28 @@ const TherapistEdit: React.FC = () => {
       }
 
       message.success('Therapist profile updated successfully');
-      navigate('/therapists');
+      setHasUnsavedChanges(false);
 
     } catch (error: any) {
       console.error('Error updating therapist:', error);
       message.error('Failed to update therapist profile');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleClose = () => {
+    if (hasUnsavedChanges) {
+      Modal.confirm({
+        title: 'Unsaved Changes',
+        icon: <ExclamationCircleOutlined />,
+        content: 'You have unsaved changes. Close without saving?',
+        okText: 'Close Without Saving',
+        cancelText: 'Keep Editing',
+        onOk: () => navigate('/therapists'),
+      });
+    } else {
+      navigate('/therapists');
     }
   };
 
@@ -1214,7 +1230,7 @@ const TherapistEdit: React.FC = () => {
             <Col>
               <Button
                 icon={<ArrowLeftOutlined />}
-                onClick={() => navigate('/therapists')}
+                onClick={handleClose}
               >
                 Back to Therapists
               </Button>
@@ -1269,6 +1285,7 @@ const TherapistEdit: React.FC = () => {
           form={form}
           layout="vertical"
           onFinish={handleSubmit}
+          onValuesChange={() => setHasUnsavedChanges(true)}
           size="large"
         >
           {/* Profile Header */}
@@ -2033,11 +2050,12 @@ const TherapistEdit: React.FC = () => {
           <Card style={{ marginTop: '24px' }}>
             <div style={{ textAlign: 'center' }}>
               <Space size="large">
-                <Button 
+                <Button
                   size="large"
-                  onClick={() => navigate('/therapists')}
+                  icon={<CloseOutlined />}
+                  onClick={handleClose}
                 >
-                  Cancel
+                  Close
                 </Button>
                 <Button 
                   type="primary"
