@@ -56,7 +56,9 @@ export const Login: React.FC = () => {
       console.log('✅ Profile loaded:', therapistProfile.email);
 
       // Store therapist profile in localStorage for easy access
-      localStorage.setItem('therapist_profile', JSON.stringify(therapistProfile));
+      // Exclude large fields (base64 images, certificates, polygons) to avoid QuotaExceededError
+      const { profile_pic, insurance_certificate_url, first_aid_certificate_url, qualification_certificate_url, qualification_certificates, service_area_polygon, ...profileForStorage } = therapistProfile;
+      localStorage.setItem('therapist_profile', JSON.stringify(profileForStorage));
 
       message.success('Welcome back!');
       // Force page reload to trigger auth check in App.tsx

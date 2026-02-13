@@ -290,8 +290,9 @@ export const Profile: React.FC = () => {
 
       setProfile(savedProfile);
 
-      // Update localStorage with new profile data
-      localStorage.setItem('therapist_profile', JSON.stringify(savedProfile));
+      // Update localStorage with new profile data (exclude large fields to avoid QuotaExceededError)
+      const { profile_pic, insurance_certificate_url, first_aid_certificate_url, qualification_certificate_url, qualification_certificates, service_area_polygon, ...profileForStorage } = savedProfile as any;
+      localStorage.setItem('therapist_profile', JSON.stringify(profileForStorage));
 
       // Show success message with longer duration
       message.success({
