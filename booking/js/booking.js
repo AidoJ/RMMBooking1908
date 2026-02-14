@@ -2950,13 +2950,14 @@ async function getAvailableSlotsForTherapist(therapist, date, durationMinutes) {
   if (!availabilities || availabilities.length === 0) return [];
   const { start_time, end_time } = availabilities[0];
 
-  // 2. Get existing bookings for the day
+  // 2. Get existing ACTIVE bookings for the day (exclude cancelled/declined)
   const { data: bookings } = await window.supabase
     .from('bookings')
     .select('booking_time, service_id')
     .eq('therapist_id', therapist.id)
     .gte('booking_time', date + 'T00:00:00')
-    .lt('booking_time', date + 'T23:59:59');
+    .lt('booking_time', date + 'T23:59:59')
+    .in('status', ['requested', 'confirmed', 'timeout_reassigned', 'seeking_alternate', 'reschedule_requested']);
 
   // 3. Build all possible slots (hourly, businessOpeningHour to businessClosingHour)
   const slots = [];
