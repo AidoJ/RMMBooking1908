@@ -210,7 +210,7 @@ exports.handler = async (event, context) => {
         .eq('therapist_id', therapist.id)
         .gte('booking_time', date + 'T00:00:00')
         .lt('booking_time', date + 'T23:59:59')
-        .not('status', 'in', '("cancelled","client_cancelled","declined")');
+        .in('status', ['requested', 'confirmed', 'timeout_reassigned', 'seeking_alternate', 'reschedule_requested']);
 
       // Exclude current booking if provided (for rescheduling)
       if (booking_id) {

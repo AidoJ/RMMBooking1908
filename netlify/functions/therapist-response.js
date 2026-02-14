@@ -517,7 +517,7 @@ async function findAlternateTherapist(booking, excludeTherapistId) {
             .select('id')
             .eq('therapist_id', therapist.id)
             .eq('booking_time', booking.booking_time)
-            .not('status', 'in', '("cancelled","client_cancelled","declined")')
+            .in('status', ['requested', 'confirmed', 'timeout_reassigned', 'seeking_alternate', 'reschedule_requested'])
             .neq('id', booking.id);
 
           if (!conflicts || conflicts.length === 0) {
