@@ -957,6 +957,20 @@ async function findAllAvailableTherapists(booking, excludeTherapistId) {
           continue;
         }
 
+        // Check for time-off on this date
+        const { data: timeOffs } = await supabase
+          .from('therapist_time_off')
+          .select('id')
+          .eq('therapist_id', therapist.id)
+          .eq('is_active', true)
+          .lte('start_date', bookingDateOnly)
+          .gte('end_date', bookingDateOnly);
+
+        if (timeOffs && timeOffs.length > 0) {
+          console.log('❌', therapist.first_name, therapist.last_name, 'has time-off on', bookingDateOnly);
+          continue;
+        }
+
         // Check for existing bookings at this time
         const { data: existingBookings } = await supabase
           .from('bookings')

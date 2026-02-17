@@ -196,6 +196,20 @@ exports.handler = async (event, context) => {
       }
     }
 
+    // Validate no time-off for the therapist on the requested date
+    async function validateNoTimeOff(therapistId, bookingDate) {
+      const dateOnly = bookingDate.split('T')[0];
+      const { data: timeOffs } = await supabase
+        .from('therapist_time_off')
+        .select('id')
+        .eq('therapist_id', therapistId)
+        .eq('is_active', true)
+        .lte('start_date', dateOnly)
+        .gte('end_date', dateOnly);
+
+      return !(timeOffs && timeOffs.length > 0);
+    }
+
     // Check if this is a recurring booking
     const isRecurring = bookingData.is_recurring === true;
 
@@ -278,6 +292,23 @@ exports.handler = async (event, context) => {
         bookingsToInsert.push(repeatBooking);
       }
 
+      // Validate no time-off for the therapist on booking dates
+      if (bookingData.therapist_id) {
+        for (const bk of bookingsToInsert) {
+          const isAvailable = await validateNoTimeOff(bookingData.therapist_id, bk.booking_time);
+          if (!isAvailable) {
+            return {
+              statusCode: 400,
+              headers,
+              body: JSON.stringify({
+                success: false,
+                error: 'Therapist has time-off on the requested date: ' + bk.booking_time.split('T')[0]
+              })
+            };
+          }
+        }
+      }
+
       // Insert all bookings in one transaction
       const { data: allBookings, error: insertError } = await supabase
         .from('bookings')
@@ -327,6 +358,21 @@ exports.handler = async (event, context) => {
         cleanBookingData.request_id = bookingData.booking_id;
       }
       cleanBookingData.occurrence_number = null; // NULL for non-recurring bookings
+
+      // Validate no time-off for the therapist on the requested date
+      if (cleanBookingData.therapist_id && cleanBookingData.booking_time) {
+        const isAvailable = await validateNoTimeOff(cleanBookingData.therapist_id, cleanBookingData.booking_time);
+        if (!isAvailable) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              success: false,
+              error: 'Therapist has time-off on the requested date'
+            })
+          };
+        }
+      }
 
       // Insert booking into database (service role bypasses RLS)
       const { data, error } = await supabase

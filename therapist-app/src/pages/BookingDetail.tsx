@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Card,
   Descriptions,
@@ -15,6 +15,8 @@ import {
   Divider,
   List,
   Image,
+  Checkbox,
+  Radio,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -50,6 +52,83 @@ export const BookingDetail: React.FC = () => {
   const [showFullIntakeForm, setShowFullIntakeForm] = useState(false);
   const [therapistNotes, setTherapistNotes] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+
+  // Job completion form state
+  const [completionModalVisible, setCompletionModalVisible] = useState(false);
+  const [sessionConfirmed, setSessionConfirmed] = useState(false);
+  const [clientSatisfied, setClientSatisfied] = useState<boolean | null>(null);
+  const [dissatisfactionReason, setDissatisfactionReason] = useState('');
+  const [submittingCompletion, setSubmittingCompletion] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasSignature, setHasSignature] = useState(false);
+
+  // Initialize signature canvas when completion modal opens
+  useEffect(() => {
+    if (completionModalVisible) {
+      // Small delay to ensure canvas is rendered in DOM
+      setTimeout(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = 200;
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+      }, 100);
+    }
+  }, [completionModalVisible]);
+
+  const startDrawing = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    setIsDrawing(true);
+    setHasSignature(true);
+    const rect = canvas.getBoundingClientRect();
+    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
+    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  }, []);
+
+  const draw = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const rect = canvas.getBoundingClientRect();
+    const x = 'touches' in e ? e.touches[0].clientX - rect.left : e.clientX - rect.left;
+    const y = 'touches' in e ? e.touches[0].clientY - rect.top : e.clientY - rect.top;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  }, [isDrawing]);
+
+  const stopDrawing = useCallback(() => {
+    setIsDrawing(false);
+  }, []);
+
+  const clearSignature = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setHasSignature(false);
+  }, []);
+
+  const getSignatureData = useCallback((): string | null => {
+    if (!hasSignature) return null;
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    return canvas.toDataURL('image/png');
+  }, [hasSignature]);
 
   useEffect(() => {
     if (id) {
@@ -144,16 +223,71 @@ export const BookingDetail: React.FC = () => {
   };
 
   const handleCompleteJob = () => {
-    modal.confirm({
-      title: 'Complete Job',
-      icon: <ExclamationCircleOutlined />,
-      content: 'Please confirm job is now completed.',
-      okText: 'Confirm',
-      cancelText: 'Cancel',
-      onOk: async () => {
-        await updateBookingStatus('completed');
-      },
-    });
+    // Reset form state
+    setSessionConfirmed(false);
+    setClientSatisfied(null);
+    setDissatisfactionReason('');
+    setHasSignature(false);
+    setCompletionModalVisible(true);
+  };
+
+  const handleSubmitCompletion = async () => {
+    // Validate
+    if (!sessionConfirmed) {
+      message.error('Please confirm the session has been completed');
+      return;
+    }
+    if (clientSatisfied === null) {
+      message.error('Please indicate if you are satisfied with the service');
+      return;
+    }
+    if (!clientSatisfied && !dissatisfactionReason.trim()) {
+      message.error('Please provide a reason for your dissatisfaction');
+      return;
+    }
+    if (!hasSignature) {
+      message.error('Please provide your signature');
+      return;
+    }
+
+    const signatureData = getSignatureData();
+    if (!signatureData) {
+      message.error('Signature could not be captured. Please try again.');
+      return;
+    }
+
+    try {
+      setSubmittingCompletion(true);
+
+      // Save to booking_completions table
+      const { error: completionError } = await supabaseClient
+        .from('booking_completions')
+        .insert({
+          booking_id: id,
+          session_confirmed: sessionConfirmed,
+          client_satisfied: clientSatisfied,
+          dissatisfaction_reason: !clientSatisfied ? dissatisfactionReason.trim() : null,
+          signature_data: signatureData,
+          completed_at: new Date().toISOString(),
+        });
+
+      if (completionError) {
+        console.error('Error saving completion:', completionError);
+        message.error('Failed to save completion record: ' + completionError.message);
+        return;
+      }
+
+      // Close modal
+      setCompletionModalVisible(false);
+
+      // Now proceed with existing completion logic (payment capture, review scheduling, etc.)
+      await updateBookingStatus('completed');
+    } catch (error: any) {
+      console.error('Error submitting completion:', error);
+      message.error(error?.message || 'Failed to complete job');
+    } finally {
+      setSubmittingCompletion(false);
+    }
   };
 
   const handleCancelBooking = () => {
@@ -1223,6 +1357,162 @@ export const BookingDetail: React.FC = () => {
             )}
           </Space>
         )}
+      </Modal>
+
+      {/* Job Completion Form Modal */}
+      <Modal
+        title={null}
+        open={completionModalVisible}
+        onCancel={() => setCompletionModalVisible(false)}
+        footer={null}
+        width="100%"
+        style={{ top: 20, maxWidth: 600, margin: '0 auto' }}
+        destroyOnClose
+      >
+        <div style={{ padding: '8px 0' }}>
+          <Title level={3} style={{ textAlign: 'center', color: '#007e8c', marginBottom: 4 }}>
+            Service Completion
+          </Title>
+          <Text type="secondary" style={{ display: 'block', textAlign: 'center', marginBottom: 24, fontSize: '15px' }}>
+            Please review and confirm the service details below
+          </Text>
+
+          {/* Session Confirmation Checkbox */}
+          <div style={{ marginBottom: 24 }}>
+            <Checkbox
+              checked={sessionConfirmed}
+              onChange={(e) => setSessionConfirmed(e.target.checked)}
+              style={{ fontSize: '16px' }}
+            >
+              <Text strong style={{ fontSize: '16px' }}>
+                I confirm the session has been completed as requested
+              </Text>
+            </Checkbox>
+          </div>
+
+          {/* Satisfaction Radio Group */}
+          <div style={{ marginBottom: 24 }}>
+            <Text strong style={{ display: 'block', marginBottom: 12, fontSize: '16px' }}>
+              How was the service?
+            </Text>
+            <Radio.Group
+              value={clientSatisfied}
+              onChange={(e) => setClientSatisfied(e.target.value)}
+              style={{ width: '100%' }}
+            >
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Radio
+                  value={true}
+                  style={{
+                    padding: '12px 16px',
+                    border: '2px solid',
+                    borderColor: clientSatisfied === true ? '#52c41a' : '#d9d9d9',
+                    borderRadius: 8,
+                    width: '100%',
+                    fontSize: '16px',
+                    background: clientSatisfied === true ? '#f6ffed' : 'transparent',
+                  }}
+                >
+                  <Text strong style={{ fontSize: '16px' }}>I am happy with the service provided</Text>
+                </Radio>
+                <Radio
+                  value={false}
+                  style={{
+                    padding: '12px 16px',
+                    border: '2px solid',
+                    borderColor: clientSatisfied === false ? '#ff4d4f' : '#d9d9d9',
+                    borderRadius: 8,
+                    width: '100%',
+                    fontSize: '16px',
+                    background: clientSatisfied === false ? '#fff2f0' : 'transparent',
+                  }}
+                >
+                  <Text strong style={{ fontSize: '16px' }}>I am not happy with the service provided</Text>
+                </Radio>
+              </Space>
+            </Radio.Group>
+          </div>
+
+          {/* Dissatisfaction Reason (conditional) */}
+          {clientSatisfied === false && (
+            <div style={{ marginBottom: 24 }}>
+              <Text strong style={{ display: 'block', marginBottom: 8, fontSize: '15px' }}>
+                Please tell us why you were not happy:
+              </Text>
+              <TextArea
+                rows={3}
+                value={dissatisfactionReason}
+                onChange={(e) => setDissatisfactionReason(e.target.value)}
+                placeholder="Please describe your concerns..."
+                style={{ fontSize: '15px' }}
+              />
+            </div>
+          )}
+
+          <Divider />
+
+          {/* Signature Canvas */}
+          <div style={{ marginBottom: 16 }}>
+            <Text strong style={{ display: 'block', marginBottom: 8, fontSize: '16px' }}>
+              Client Signature
+            </Text>
+            <div
+              style={{
+                border: '2px solid #d9d9d9',
+                borderRadius: 8,
+                overflow: 'hidden',
+                touchAction: 'none',
+                background: '#fafafa',
+              }}
+            >
+              <canvas
+                ref={canvasRef}
+                style={{ width: '100%', height: 200, display: 'block', cursor: 'crosshair' }}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={(e) => { e.preventDefault(); startDrawing(e); }}
+                onTouchMove={(e) => { e.preventDefault(); draw(e); }}
+                onTouchEnd={stopDrawing}
+              />
+            </div>
+            <Button
+              size="small"
+              onClick={clearSignature}
+              style={{ marginTop: 8 }}
+            >
+              Clear Signature
+            </Button>
+          </div>
+
+          {/* Date/Time Display */}
+          <div style={{ marginBottom: 24 }}>
+            <Text type="secondary" style={{ fontSize: '14px' }}>
+              Date & Time: {dayjs().format('dddd, MMMM DD, YYYY [at] h:mm A')}
+            </Text>
+          </div>
+
+          {/* Submit Button */}
+          <Button
+            type="primary"
+            size="large"
+            block
+            onClick={handleSubmitCompletion}
+            loading={submittingCompletion}
+            disabled={!sessionConfirmed || clientSatisfied === null || !hasSignature}
+            style={{
+              height: 56,
+              fontSize: '18px',
+              fontWeight: 600,
+              background: '#52c41a',
+              borderColor: '#52c41a',
+              borderRadius: 8,
+            }}
+          >
+            Confirm & Complete
+          </Button>
+        </div>
       </Modal>
     </div>
   );

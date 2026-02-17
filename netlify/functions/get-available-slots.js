@@ -201,6 +201,23 @@ exports.handler = async (event, context) => {
         continue;
       }
 
+      // Check for time-off on this date
+      const { data: timeOffs } = await supabase
+        .from('therapist_time_off')
+        .select('start_time, end_time')
+        .eq('therapist_id', therapist.id)
+        .eq('is_active', true)
+        .lte('start_date', date)
+        .gte('end_date', date);
+
+      if (timeOffs && timeOffs.length > 0) {
+        const allDayTimeOff = timeOffs.find(t => !t.start_time && !t.end_time);
+        if (allDayTimeOff) {
+          console.log(`⛔ Therapist ${therapist.id} has all-day time-off on ${date}`);
+          continue;
+        }
+      }
+
       const { start_time, end_time } = availabilities[0];
 
       // Get existing bookings for this therapist on this date
@@ -243,6 +260,20 @@ exports.handler = async (event, context) => {
           if (slotStartDate < bookingEnd && slotEndDate > bookingStartWithBuffer) {
             overlaps = true;
             break;
+          }
+        }
+
+        // Check if slot overlaps with partial time-off
+        if (!overlaps && timeOffs && timeOffs.length > 0) {
+          for (const timeOff of timeOffs) {
+            if (timeOff.start_time && timeOff.end_time) {
+              const offStart = new Date(`${date}T${timeOff.start_time}`);
+              const offEnd = new Date(`${date}T${timeOff.end_time}`);
+              if (slotStartDate < offEnd && slotEndDate > offStart) {
+                overlaps = true;
+                break;
+              }
+            }
           }
         }
 
