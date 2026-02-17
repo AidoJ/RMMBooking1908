@@ -196,18 +196,41 @@ exports.handler = async (event, context) => {
       }
     }
 
-    // Validate no time-off for the therapist on the requested date
-    async function validateNoTimeOff(therapistId, bookingDate) {
-      const dateOnly = bookingDate.split('T')[0];
+    // Validate no time-off for the therapist on the requested date/time
+    async function validateNoTimeOff(therapistId, bookingDateTime, durationMinutes) {
+      const dateOnly = bookingDateTime.split('T')[0];
       const { data: timeOffs } = await supabase
         .from('therapist_time_off')
-        .select('id')
+        .select('id, start_time, end_time')
         .eq('therapist_id', therapistId)
         .eq('is_active', true)
         .lte('start_date', dateOnly)
         .gte('end_date', dateOnly);
 
-      return !(timeOffs && timeOffs.length > 0);
+      if (!timeOffs || timeOffs.length === 0) return true;
+
+      for (const timeOff of timeOffs) {
+        // All-day time-off (no start_time/end_time) blocks the entire day
+        if (!timeOff.start_time && !timeOff.end_time) {
+          console.log(`⛔ Therapist ${therapistId} has all-day time-off on ${dateOnly}`);
+          return false;
+        }
+
+        // Partial time-off — check if booking overlaps with the time-off window
+        if (timeOff.start_time && timeOff.end_time) {
+          const bookingStart = new Date(bookingDateTime);
+          const bookingEnd = new Date(bookingStart.getTime() + (durationMinutes || 60) * 60000);
+          const offStart = new Date(`${dateOnly}T${timeOff.start_time}`);
+          const offEnd = new Date(`${dateOnly}T${timeOff.end_time}`);
+
+          if (bookingStart < offEnd && bookingEnd > offStart) {
+            console.log(`⛔ Therapist ${therapistId} has partial time-off ${timeOff.start_time}-${timeOff.end_time} overlapping booking`);
+            return false;
+          }
+        }
+      }
+
+      return true;
     }
 
     // Check if this is a recurring booking
@@ -295,7 +318,7 @@ exports.handler = async (event, context) => {
       // Validate no time-off for the therapist on booking dates
       if (bookingData.therapist_id) {
         for (const bk of bookingsToInsert) {
-          const isAvailable = await validateNoTimeOff(bookingData.therapist_id, bk.booking_time);
+          const isAvailable = await validateNoTimeOff(bookingData.therapist_id, bk.booking_time, bookingData.duration_minutes);
           if (!isAvailable) {
             return {
               statusCode: 400,
@@ -361,7 +384,7 @@ exports.handler = async (event, context) => {
 
       // Validate no time-off for the therapist on the requested date
       if (cleanBookingData.therapist_id && cleanBookingData.booking_time) {
-        const isAvailable = await validateNoTimeOff(cleanBookingData.therapist_id, cleanBookingData.booking_time);
+        const isAvailable = await validateNoTimeOff(cleanBookingData.therapist_id, cleanBookingData.booking_time, cleanBookingData.duration_minutes);
         if (!isAvailable) {
           return {
             statusCode: 400,

@@ -960,15 +960,34 @@ async function findAllAvailableTherapists(booking, excludeTherapistId) {
         // Check for time-off on this date
         const { data: timeOffs } = await supabase
           .from('therapist_time_off')
-          .select('id')
+          .select('id, start_time, end_time')
           .eq('therapist_id', therapist.id)
           .eq('is_active', true)
           .lte('start_date', bookingDateOnly)
           .gte('end_date', bookingDateOnly);
 
         if (timeOffs && timeOffs.length > 0) {
-          console.log('❌', therapist.first_name, therapist.last_name, 'has time-off on', bookingDateOnly);
-          continue;
+          let blockedByTimeOff = false;
+          for (const timeOff of timeOffs) {
+            // All-day time-off blocks entirely
+            if (!timeOff.start_time && !timeOff.end_time) {
+              blockedByTimeOff = true;
+              break;
+            }
+            // Partial time-off — check overlap with booking time
+            if (timeOff.start_time && timeOff.end_time) {
+              const offStart = new Date(`${bookingDateOnly}T${timeOff.start_time}`);
+              const offEnd = new Date(`${bookingDateOnly}T${timeOff.end_time}`);
+              if (bookingStart < offEnd && bookingEnd > offStart) {
+                blockedByTimeOff = true;
+                break;
+              }
+            }
+          }
+          if (blockedByTimeOff) {
+            console.log('❌', therapist.first_name, therapist.last_name, 'has time-off overlapping booking on', bookingDateOnly);
+            continue;
+          }
         }
 
         // Check for existing bookings at this time
