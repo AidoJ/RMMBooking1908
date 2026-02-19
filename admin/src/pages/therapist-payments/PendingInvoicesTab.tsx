@@ -130,29 +130,42 @@ const PendingInvoicesTab: React.FC = () => {
         return;
       }
 
-      const urls: { invoice?: string; receipt?: string; loading: boolean } = { loading: false };
+      const urls: { invoice?: string; receipt?: string; invoiceType?: string; receiptType?: string; loading: boolean } = { loading: false };
 
-      const resolveFileUrl = async (storedValue: string | null): Promise<string | undefined> => {
-        if (!storedValue) return undefined;
-        if (storedValue.startsWith('data:')) return storedValue;
+      // Detect file type from stored path or data URL
+      const getFileType = (storedValue: string): string => {
+        if (storedValue.startsWith('data:application/pdf')) return 'pdf';
+        if (storedValue.startsWith('data:image/')) return 'image';
+        if (storedValue.endsWith('.pdf')) return 'pdf';
+        return 'image'; // default to image
+      };
+
+      const resolveFileUrl = async (storedValue: string | null): Promise<{ url?: string; type?: string }> => {
+        if (!storedValue) return {};
+        const type = getFileType(storedValue);
+        if (storedValue.startsWith('data:')) return { url: storedValue, type };
         if (storedValue.startsWith('invoices/') || storedValue.startsWith('receipts/')) {
           try {
             const { data: { session } } = await realSupabaseClient.auth.getSession();
-            if (!session) return undefined;
+            if (!session) return {};
             const resp = await fetch(`/.netlify/functions/get-signed-url?path=${encodeURIComponent(storedValue)}`, {
               headers: { 'Authorization': `Bearer ${session.access_token}` }
             });
             const result = await resp.json();
-            return result.url || undefined;
+            return { url: result.url || undefined, type };
           } catch {
-            return undefined;
+            return {};
           }
         }
-        return storedValue;
+        return { url: storedValue, type };
       };
 
-      urls.invoice = await resolveFileUrl(data.therapist_invoice_url);
-      urls.receipt = await resolveFileUrl(data.parking_receipt_url);
+      const invoiceResult = await resolveFileUrl(data.therapist_invoice_url);
+      const receiptResult = await resolveFileUrl(data.parking_receipt_url);
+      urls.invoice = invoiceResult.url;
+      urls.invoiceType = invoiceResult.type;
+      urls.receipt = receiptResult.url;
+      urls.receiptType = receiptResult.type;
 
       setFileUrls(prev => ({ ...prev, [paymentId]: urls }));
     } catch (err) {
@@ -492,7 +505,7 @@ const PendingInvoicesTab: React.FC = () => {
 
             {/* On-demand loaded files */}
             {(() => {
-              const files = fileUrls[selectedInvoice.id];
+              const files = fileUrls[selectedInvoice.id] as any;
               if (files?.loading) {
                 return <div style={{ textAlign: 'center', padding: '20px' }}><Spin tip="Loading files..." /></div>;
               }
@@ -501,13 +514,31 @@ const PendingInvoicesTab: React.FC = () => {
                   {files?.invoice && (
                     <div>
                       <h4>Invoice</h4>
-                      <Image src={files.invoice} alt="Invoice" style={{ maxWidth: '100%' }} />
+                      {files.invoiceType === 'pdf' ? (
+                        <div style={{ border: '1px solid #d9d9d9', borderRadius: '4px' }}>
+                          <iframe src={files.invoice} style={{ width: '100%', height: '500px', border: 'none' }} title="Invoice PDF" />
+                          <div style={{ padding: '8px', textAlign: 'center' }}>
+                            <Button type="link" onClick={() => window.open(files.invoice, '_blank')}>Open PDF in new tab</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Image src={files.invoice} alt="Invoice" style={{ maxWidth: '100%' }} />
+                      )}
                     </div>
                   )}
                   {files?.receipt && (
                     <div>
                       <h4>Parking Receipt</h4>
-                      <Image src={files.receipt} alt="Parking Receipt" style={{ maxWidth: '100%' }} />
+                      {files.receiptType === 'pdf' ? (
+                        <div style={{ border: '1px solid #d9d9d9', borderRadius: '4px' }}>
+                          <iframe src={files.receipt} style={{ width: '100%', height: '500px', border: 'none' }} title="Receipt PDF" />
+                          <div style={{ padding: '8px', textAlign: 'center' }}>
+                            <Button type="link" onClick={() => window.open(files.receipt, '_blank')}>Open PDF in new tab</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Image src={files.receipt} alt="Parking Receipt" style={{ maxWidth: '100%' }} />
+                      )}
                     </div>
                   )}
                   {files && !files.invoice && !files.receipt && (

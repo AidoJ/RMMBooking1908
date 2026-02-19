@@ -190,34 +190,42 @@ const PaymentHistoryTab: React.FC = () => {
         return;
       }
 
-      const urls: { invoice?: string; receipt?: string; loading: boolean } = { loading: false };
+      const urls: { invoice?: string; receipt?: string; invoiceType?: string; receiptType?: string; loading: boolean } = { loading: false };
 
-      // Helper to resolve a storage path or legacy base64 to a viewable URL
-      const resolveFileUrl = async (storedValue: string | null): Promise<string | undefined> => {
-        if (!storedValue) return undefined;
-        // Legacy base64 data — return as-is (still viewable)
-        if (storedValue.startsWith('data:')) return storedValue;
-        // Storage path — get a signed URL
+      const getFileType = (storedValue: string): string => {
+        if (storedValue.startsWith('data:application/pdf')) return 'pdf';
+        if (storedValue.startsWith('data:image/')) return 'image';
+        if (storedValue.endsWith('.pdf')) return 'pdf';
+        return 'image';
+      };
+
+      const resolveFileUrl = async (storedValue: string | null): Promise<{ url?: string; type?: string }> => {
+        if (!storedValue) return {};
+        const type = getFileType(storedValue);
+        if (storedValue.startsWith('data:')) return { url: storedValue, type };
         if (storedValue.startsWith('invoices/') || storedValue.startsWith('receipts/')) {
           try {
             const { realSupabaseClient } = await import('../../utility/supabaseClient');
             const { data: { session } } = await realSupabaseClient.auth.getSession();
-            if (!session) return undefined;
+            if (!session) return {};
             const resp = await fetch(`/.netlify/functions/get-signed-url?path=${encodeURIComponent(storedValue)}`, {
               headers: { 'Authorization': `Bearer ${session.access_token}` }
             });
             const result = await resp.json();
-            return result.url || undefined;
+            return { url: result.url || undefined, type };
           } catch {
-            return undefined;
+            return {};
           }
         }
-        // Could be a regular URL already
-        return storedValue;
+        return { url: storedValue, type };
       };
 
-      urls.invoice = await resolveFileUrl(data.therapist_invoice_url);
-      urls.receipt = await resolveFileUrl(data.parking_receipt_url);
+      const invoiceResult = await resolveFileUrl(data.therapist_invoice_url);
+      const receiptResult = await resolveFileUrl(data.parking_receipt_url);
+      urls.invoice = invoiceResult.url;
+      urls.invoiceType = invoiceResult.type;
+      urls.receipt = receiptResult.url;
+      urls.receiptType = receiptResult.type;
 
       setFileUrls(prev => ({ ...prev, [paymentId]: urls }));
     } catch (err) {
@@ -522,9 +530,11 @@ const PaymentHistoryTab: React.FC = () => {
     const invoiceFilename = `Invoice_${record.therapist_name.replace(/\s+/g, '_')}_${dayjs(record.week_ending).format('YYYY-MM-DD')}.${invoiceExt}`;
     const receiptFilename = `ParkingReceipt_${record.therapist_name.replace(/\s+/g, '_')}_${dayjs(record.week_ending).format('YYYY-MM-DD')}.${receiptExt}`;
 
-    const files = fileUrls[record.id];
+    const files = fileUrls[record.id] as any;
     const invoiceUrl = files?.invoice;
     const receiptUrl = files?.receipt;
+    const invoiceType = files?.invoiceType;
+    const receiptType = files?.receiptType;
     const filesLoading = files?.loading;
 
     return (
@@ -540,18 +550,22 @@ const PaymentHistoryTab: React.FC = () => {
             </div>
           )}
 
-          {/* Invoice Image */}
+          {/* Invoice */}
           {invoiceUrl && (
             <div style={{ flex: 1, minWidth: '300px' }}>
               <h4 style={{ marginBottom: '8px', color: '#007e8c' }}>
                 <FileImageOutlined /> Submitted Invoice
               </h4>
               <div style={{ border: '1px solid #d9d9d9', borderRadius: '4px', padding: '8px', background: '#fff' }}>
-                <Image
-                  src={invoiceUrl}
-                  alt="Invoice"
-                  style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }}
-                />
+                {invoiceType === 'pdf' ? (
+                  <iframe src={invoiceUrl} style={{ width: '100%', height: '300px', border: 'none' }} title="Invoice PDF" />
+                ) : (
+                  <Image
+                    src={invoiceUrl}
+                    alt="Invoice"
+                    style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }}
+                  />
+                )}
                 <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
                   <Button
                     size="small"
@@ -579,11 +593,15 @@ const PaymentHistoryTab: React.FC = () => {
                 <FileImageOutlined /> Parking Receipt
               </h4>
               <div style={{ border: '1px solid #d9d9d9', borderRadius: '4px', padding: '8px', background: '#fff' }}>
-                <Image
-                  src={receiptUrl}
-                  alt="Parking Receipt"
-                  style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }}
-                />
+                {receiptType === 'pdf' ? (
+                  <iframe src={receiptUrl} style={{ width: '100%', height: '300px', border: 'none' }} title="Receipt PDF" />
+                ) : (
+                  <Image
+                    src={receiptUrl}
+                    alt="Parking Receipt"
+                    style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }}
+                  />
+                )}
                 <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
                   <Button
                     size="small"
