@@ -279,6 +279,26 @@ export const MyEarnings: React.FC = () => {
     return false; // Prevent auto upload
   };
 
+  // Upload a file to Supabase Storage via therapist-upload-file function
+  const uploadFileToStorage = async (base64Data: string, folder: string, filename: string, accessToken: string): Promise<string | null> => {
+    try {
+      const resp = await fetch('/.netlify/functions/therapist-upload-file', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        },
+        body: JSON.stringify({ base64Data, folder, filename })
+      });
+      const result = await resp.json();
+      if (!resp.ok || !result.success) throw new Error(result.error || 'Upload failed');
+      return result.path;
+    } catch (err: any) {
+      console.error('Error uploading file to storage:', err);
+      throw new Error(`File upload failed: ${err.message}`);
+    }
+  };
+
   const handleInvoiceSubmit = async (values: any) => {
     if (!selectedWeek || !therapistId) return;
 
@@ -291,7 +311,41 @@ export const MyEarnings: React.FC = () => {
     try {
       setSubmitting(true);
 
-      // Prepare invoice data matching the therapist_payments schema
+      // Get Supabase Auth session token
+      const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError || !session) {
+        throw new Error('Not authenticated. Please log in again.');
+      }
+
+      const timestamp = Date.now();
+      const weekEnd = selectedWeek.week_end;
+
+      // Upload files to Storage first (avoids sending large base64 in invoice payload)
+      let invoicePath: string | null = null;
+      if (invoiceFile) {
+        antdMessage.loading({ content: 'Uploading invoice...', key: 'upload' });
+        invoicePath = await uploadFileToStorage(
+          invoiceFile,
+          `invoices/${therapistId}`,
+          `invoice_${weekEnd}_${timestamp}`,
+          session.access_token
+        );
+      }
+
+      let receiptPath: string | null = null;
+      if (parkingReceiptFile) {
+        antdMessage.loading({ content: 'Uploading receipt...', key: 'upload' });
+        receiptPath = await uploadFileToStorage(
+          parkingReceiptFile,
+          `receipts/${therapistId}`,
+          `receipt_${weekEnd}_${timestamp}`,
+          session.access_token
+        );
+      }
+
+      antdMessage.destroy('upload');
+
+      // Prepare invoice data with storage paths (not base64 blobs)
       const invoiceData = {
         // Required fields
         therapist_id: therapistId,
@@ -306,12 +360,12 @@ export const MyEarnings: React.FC = () => {
         // Therapist submitted data
         therapist_invoice_number: values.therapist_invoice_number || null,
         therapist_invoice_date: dayjs().format('YYYY-MM-DD'),
-        therapist_invoice_url: invoiceFile || null,
+        therapist_invoice_url: invoicePath,
         therapist_invoiced_fees: parseFloat(values.therapist_invoiced_fees || selectedWeek.total_fees),
         therapist_parking_amount: parseFloat(values.therapist_parking_amount || 0),
         therapist_total_claimed: parseFloat(values.therapist_invoiced_fees || selectedWeek.total_fees) + parseFloat(values.therapist_parking_amount || 0),
         variance_fees: parseFloat(values.therapist_invoiced_fees || selectedWeek.total_fees) - selectedWeek.total_fees,
-        parking_receipt_url: parkingReceiptFile || null,
+        parking_receipt_url: receiptPath,
         therapist_notes: values.therapist_notes || null,
         submitted_at: new Date().toISOString(),
 
@@ -320,12 +374,6 @@ export const MyEarnings: React.FC = () => {
       };
 
       console.log('Submitting invoice data:', invoiceData);
-
-      // Get Supabase Auth session token
-      const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
-      if (sessionError || !session) {
-        throw new Error('Not authenticated. Please log in again.');
-      }
 
       // Submit via Netlify function (bypasses RLS with service role)
       const response = await fetch('/.netlify/functions/therapist-submit-invoice', {
