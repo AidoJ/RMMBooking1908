@@ -27,9 +27,17 @@ interface PaymentRecord {
   week_ending: string;
   invoice_number: string;
   invoice_date: string;
+  calculated_fees: number;
+  therapist_invoiced_fees: number;
+  therapist_parking_amount: number;
+  therapist_total_claimed: number;
+  variance_fees: number;
+  therapist_notes: string;
   admin_approved_fees: number;
   admin_approved_parking: number;
   admin_total_approved: number;
+  admin_notes: string;
+  reviewed_at: string;
   paid_amount: number;
   paid_date: string;
   eft_reference: string;
@@ -47,6 +55,7 @@ const PaymentHistoryTab: React.FC = () => {
   const [selectedTherapist, setSelectedTherapist] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [recordPaymentModalVisible, setRecordPaymentModalVisible] = useState(false);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
   const [form] = Form.useForm();
   const [fileUrls, setFileUrls] = useState<Record<string, { invoice?: string; receipt?: string; loading?: boolean }>>({});
@@ -84,9 +93,17 @@ const PaymentHistoryTab: React.FC = () => {
           week_end_date,
           therapist_invoice_number,
           therapist_invoice_date,
+          calculated_fees,
+          therapist_invoiced_fees,
+          therapist_parking_amount,
+          therapist_total_claimed,
+          variance_fees,
+          therapist_notes,
           admin_approved_fees,
           admin_approved_parking,
           admin_total_approved,
+          admin_notes,
+          reviewed_at,
           paid_amount,
           paid_date,
           eft_reference,
@@ -147,9 +164,17 @@ const PaymentHistoryTab: React.FC = () => {
           week_ending: payment.week_end_date,
           invoice_number: payment.therapist_invoice_number,
           invoice_date: payment.therapist_invoice_date,
+          calculated_fees: parseFloat(payment.calculated_fees || 0),
+          therapist_invoiced_fees: parseFloat(payment.therapist_invoiced_fees || 0),
+          therapist_parking_amount: parseFloat(payment.therapist_parking_amount || 0),
+          therapist_total_claimed: parseFloat(payment.therapist_total_claimed || 0),
+          variance_fees: parseFloat(payment.variance_fees || 0),
+          therapist_notes: payment.therapist_notes,
           admin_approved_fees: parseFloat(payment.admin_approved_fees || 0),
           admin_approved_parking: parseFloat(payment.admin_approved_parking || 0),
           admin_total_approved: parseFloat(payment.admin_total_approved || 0),
+          admin_notes: payment.admin_notes,
+          reviewed_at: payment.reviewed_at,
           paid_amount: parseFloat(payment.paid_amount || 0),
           paid_date: payment.paid_date,
           eft_reference: payment.eft_reference,
@@ -734,9 +759,20 @@ const PaymentHistoryTab: React.FC = () => {
       title: 'Actions',
       key: 'actions',
       align: 'center' as const,
-      width: 240,
+      width: 300,
       render: (_: any, record: PaymentRecord) => (
         <Space>
+          <Button
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => {
+              setSelectedPayment(record);
+              setReviewModalVisible(true);
+              loadFileUrls(record.id);
+            }}
+          >
+            Review
+          </Button>
           {record.status === 'approved' && (
             <Button
               type="primary"
@@ -749,13 +785,6 @@ const PaymentHistoryTab: React.FC = () => {
           )}
           {record.status === 'paid' && (
             <>
-              <Button
-                size="small"
-                icon={<EyeOutlined />}
-                onClick={() => handleRecordPayment(record)}
-              >
-                View
-              </Button>
               <Button
                 size="small"
                 icon={<MailOutlined />}
@@ -910,6 +939,192 @@ const PaymentHistoryTab: React.FC = () => {
               </Form.Item>
             )}
           </Form>
+        )}
+      </Modal>
+
+      {/* Review Invoice Modal */}
+      <Modal
+        title="Invoice Review"
+        open={reviewModalVisible}
+        onCancel={() => setReviewModalVisible(false)}
+        footer={null}
+        width={900}
+        destroyOnClose
+      >
+        {selectedPayment && (
+          <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            {/* Status Banner */}
+            <div style={{ textAlign: 'center', padding: '12px', background: '#f5f5f5', borderRadius: '8px' }}>
+              <Tag color={selectedPayment.status === 'paid' ? 'green' : 'blue'} style={{ fontSize: '14px', padding: '4px 12px' }}>
+                {selectedPayment.status.toUpperCase()}
+              </Tag>
+            </div>
+
+            {/* Therapist Submission */}
+            <Descriptions bordered column={2} size="small" title="Therapist Submission">
+              <Descriptions.Item label="Therapist">
+                <strong style={{ color: '#007e8c' }}>{selectedPayment.therapist_name}</strong>
+              </Descriptions.Item>
+              <Descriptions.Item label="Week">
+                {dayjs(selectedPayment.week_start).format('MMM D')} - {dayjs(selectedPayment.week_ending).format('MMM D, YYYY')}
+              </Descriptions.Item>
+              <Descriptions.Item label="Invoice #">
+                {selectedPayment.invoice_number || 'N/A'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Invoice Date">
+                {selectedPayment.invoice_date ? dayjs(selectedPayment.invoice_date).format('MMM D, YYYY') : 'N/A'}
+              </Descriptions.Item>
+              <Descriptions.Item label="Calculated Fees">
+                ${selectedPayment.calculated_fees.toFixed(2)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Invoiced Fees">
+                ${selectedPayment.therapist_invoiced_fees.toFixed(2)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Variance" span={2}>
+                <span style={{
+                  color: selectedPayment.variance_fees === 0 ? 'inherit' :
+                         selectedPayment.variance_fees > 0 ? '#f5222d' : '#52c41a',
+                  fontWeight: 600
+                }}>
+                  {selectedPayment.variance_fees > 0 ? '+' : ''}${selectedPayment.variance_fees.toFixed(2)}
+                </span>
+              </Descriptions.Item>
+              <Descriptions.Item label="Parking Claimed">
+                ${selectedPayment.therapist_parking_amount.toFixed(2)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Total Claimed">
+                <strong>${selectedPayment.therapist_total_claimed.toFixed(2)}</strong>
+              </Descriptions.Item>
+              {selectedPayment.therapist_notes && (
+                <Descriptions.Item label="Therapist Notes" span={2}>
+                  {selectedPayment.therapist_notes}
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+
+            {/* Admin Approval */}
+            <Descriptions bordered column={2} size="small" title="Admin Approval">
+              <Descriptions.Item label="Approved Fees">
+                ${selectedPayment.admin_approved_fees.toFixed(2)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Approved Parking">
+                ${selectedPayment.admin_approved_parking.toFixed(2)}
+              </Descriptions.Item>
+              <Descriptions.Item label="Total Approved" span={2}>
+                <strong style={{ color: '#007e8c', fontSize: '16px' }}>
+                  ${selectedPayment.admin_total_approved.toFixed(2)}
+                </strong>
+              </Descriptions.Item>
+              {selectedPayment.reviewed_at && (
+                <Descriptions.Item label="Reviewed At" span={2}>
+                  {dayjs(selectedPayment.reviewed_at).format('MMM D, YYYY h:mm A')}
+                </Descriptions.Item>
+              )}
+              {selectedPayment.admin_notes && (
+                <Descriptions.Item label="Admin Notes" span={2}>
+                  {selectedPayment.admin_notes}
+                </Descriptions.Item>
+              )}
+            </Descriptions>
+
+            {/* Payment Details (if paid) */}
+            {selectedPayment.status === 'paid' && (
+              <Descriptions bordered column={2} size="small" title="Payment Details">
+                <Descriptions.Item label="Paid Amount">
+                  <strong style={{ color: '#52c41a' }}>${selectedPayment.paid_amount.toFixed(2)}</strong>
+                </Descriptions.Item>
+                <Descriptions.Item label="Paid Date">
+                  {selectedPayment.paid_date ? dayjs(selectedPayment.paid_date).format('MMM D, YYYY') : 'N/A'}
+                </Descriptions.Item>
+                {selectedPayment.eft_reference && (
+                  <Descriptions.Item label="EFT Reference" span={2}>
+                    {selectedPayment.eft_reference}
+                  </Descriptions.Item>
+                )}
+                {selectedPayment.payment_notes && (
+                  <Descriptions.Item label="Payment Notes" span={2}>
+                    {selectedPayment.payment_notes}
+                  </Descriptions.Item>
+                )}
+              </Descriptions>
+            )}
+
+            {/* Invoice & Receipt Files */}
+            {(() => {
+              const files = fileUrls[selectedPayment.id] as any;
+              if (files?.loading) {
+                return <div style={{ textAlign: 'center', padding: '20px' }}>Loading files...</div>;
+              }
+              return (
+                <>
+                  {files?.invoice && (
+                    <div>
+                      <h4>Invoice Document</h4>
+                      {files.invoiceType === 'pdf' ? (
+                        <div style={{ border: '1px solid #d9d9d9', borderRadius: '4px' }}>
+                          <iframe src={files.invoice} style={{ width: '100%', height: '500px', border: 'none' }} title="Invoice PDF" />
+                          <div style={{ padding: '8px', textAlign: 'center' }}>
+                            <Button type="link" onClick={() => window.open(files.invoice, '_blank')}>Open PDF in new tab</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Image src={files.invoice} alt="Invoice" style={{ maxWidth: '100%' }} />
+                      )}
+                    </div>
+                  )}
+                  {files?.receipt && (
+                    <div>
+                      <h4>Parking Receipt</h4>
+                      {files.receiptType === 'pdf' ? (
+                        <div style={{ border: '1px solid #d9d9d9', borderRadius: '4px' }}>
+                          <iframe src={files.receipt} style={{ width: '100%', height: '500px', border: 'none' }} title="Receipt PDF" />
+                          <div style={{ padding: '8px', textAlign: 'center' }}>
+                            <Button type="link" onClick={() => window.open(files.receipt, '_blank')}>Open PDF in new tab</Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Image src={files.receipt} alt="Parking Receipt" style={{ maxWidth: '100%' }} />
+                      )}
+                    </div>
+                  )}
+                  {files && !files.invoice && !files.receipt && (
+                    <div style={{ color: '#999', fontStyle: 'italic' }}>No files uploaded</div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* Completed Bookings */}
+            <div>
+              <h4 style={{ color: '#007e8c' }}>Completed Bookings ({selectedPayment.bookings.length})</h4>
+              {selectedPayment.bookings.length > 0 ? (
+                <Table
+                  dataSource={selectedPayment.bookings}
+                  columns={[
+                    { title: 'Job #', dataIndex: 'booking_id', key: 'booking_id', width: 120, render: (id: string) => <Tag color="blue">{id}</Tag> },
+                    { title: 'Date & Time', dataIndex: 'booking_time', key: 'booking_time', width: 180, render: (date: string) => dayjs(date).format('ddd, MMM D h:mm A') },
+                    { title: 'Service', dataIndex: 'service_name', key: 'service_name' },
+                    { title: 'Customer', dataIndex: 'customer_name', key: 'customer_name' },
+                    { title: 'Fee', dataIndex: 'therapist_fee', key: 'therapist_fee', align: 'right' as const, render: (fee: number) => <strong>${fee.toFixed(2)}</strong> },
+                  ]}
+                  rowKey="booking_id"
+                  size="small"
+                  pagination={false}
+                  summary={(pageData) => {
+                    const total = pageData.reduce((sum, b) => sum + b.therapist_fee, 0);
+                    return (
+                      <Table.Summary.Row>
+                        <Table.Summary.Cell index={0} colSpan={4} align="right"><strong>Total:</strong></Table.Summary.Cell>
+                        <Table.Summary.Cell index={1} align="right"><strong style={{ color: '#007e8c' }}>${total.toFixed(2)}</strong></Table.Summary.Cell>
+                      </Table.Summary.Row>
+                    );
+                  }}
+                />
+              ) : (
+                <div style={{ color: '#999', fontStyle: 'italic' }}>No completed bookings found</div>
+              )}
+            </div>
+          </Space>
         )}
       </Modal>
     </div>
