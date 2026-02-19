@@ -145,14 +145,7 @@ export const Invoices: React.FC = () => {
         return;
       }
 
-      // Fetch just the file path columns for this invoice via a dedicated call
-      const response = await fetch(`/.netlify/functions/get-signed-url?path=__lookup__&invoice_id=${encodeURIComponent(invoiceId)}`, {
-        headers: { 'Authorization': `Bearer ${session.access_token}` }
-      });
-
-      // Actually, we need to fetch the file paths first, then resolve them
-      // Use the therapist-get-invoice-files function or fetch paths directly
-      // For now, we'll use a simpler approach: fetch paths via a small query
+      // Fetch file paths for this invoice, then resolve to viewable URLs
       const pathResp = await fetch('/.netlify/functions/therapist-get-invoice-files', {
         method: 'POST',
         headers: {
