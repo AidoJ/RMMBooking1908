@@ -233,6 +233,18 @@ function showStep(stepId) {
     const current = document.getElementById(stepId);
     if (current) current.classList.add('active');
     
+    // Auto-fill booker name when entering step 7 (from Your Details step)
+    if (stepId === 'step7') {
+      const bookerInput = document.getElementById('bookerName');
+      if (bookerInput && !bookerInput.value.trim()) {
+        const firstName = document.getElementById('customerFirstName')?.value?.trim() || '';
+        const lastName = document.getElementById('customerLastName')?.value?.trim() || '';
+        if (firstName || lastName) {
+          bookerInput.value = (firstName + ' ' + lastName).trim();
+        }
+      }
+    }
+
     // If returning to Step 1, check and restore address verification status
     if (stepId === 'step1') {
       const addressInput = document.getElementById('address');
@@ -781,7 +793,13 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         break;
       case 'step7': // Room Details & Notes
-        
+        // Room number is required
+        const roomNumber = document.getElementById('roomNumber');
+        if (!roomNumber?.value?.trim()) {
+          isValid = false;
+          showError(roomNumber || document.getElementById('roomNumber'), 'Please enter a room number, or N/A if not applicable.');
+        }
+
         // Check terms acceptance
         const termsAccept = document.getElementById('termsAcceptance');
         if (!termsAccept?.value || termsAccept.value !== 'yes') {

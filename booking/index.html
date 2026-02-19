@@ -54,7 +54,7 @@
           <div class="booking-options">
             <div class="booking-option" data-type="instant" onclick="selectBookingMethod('instant', this)">
               <div class="option-icon"><img src="images/booking-request-icon.png" alt="Booking Request" style="width: 60px; height: 60px;"></div>
-              <div class="option-text">Request a Booking</div>
+              <div class="option-text">Make a Booking</div>
             </div>
             <div class="booking-option" data-type="quote" onclick="selectBookingMethod('quote', this)">
               <div class="option-icon"><img src="images/quote-request-icon.png" alt="Quote Request" style="width: 60px; height: 60px;"></div>
@@ -66,9 +66,9 @@
             <div class="description-card instant">
               <div class="description-header">
                 <div class="description-icon"><img src="images/booking-request-icon.png" alt="Booking Request" style="width: 40px; height: 40px;"></div>
-                <h3>Request a Booking</h3>
+                <h3>Make a Booking</h3>
               </div>
-              <p>Perfect for one-off sessions. Request your preferred service, therapist and time — we'll confirm availability soon.</p>
+              <p>Your time to unwind starts here. Enter your location, choose your service, preferred time and therapist — we'll confirm availability and handle the details for you.</p>
             </div>
             <div class="description-card quote">
               <div class="description-header">
@@ -467,11 +467,14 @@
           <!-- Two-column layout for Room Number and Booker Name -->
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
             <div class="form-group" style="margin-bottom: 0;">
-              <label for="roomNumber">Room Number</label>
-              <input type="text" id="roomNumber" placeholder="e.g. Room 101, 2B" />
+              <label for="roomNumber">Room Number *</label>
+              <input type="text" id="roomNumber" placeholder="Enter N/A if not known or not applicable" required />
             </div>
             <div class="form-group" style="margin-bottom: 0;">
-              <label for="bookerName">Person who booked</label>
+              <label for="bookerName" style="display: flex; align-items: center; gap: 6px;">
+                Person who Booked
+                <span class="info-tooltip" title="The name of the person who booked your accommodation if not you. This helps us with reception and concierge staff to make sure we find you easily." style="cursor: help; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #007e8c; color: white; font-size: 11px; font-weight: bold; line-height: 1;">i</span>
+              </label>
               <input type="text" id="bookerName" placeholder="N/A if not applicable" />
             </div>
           </div>
