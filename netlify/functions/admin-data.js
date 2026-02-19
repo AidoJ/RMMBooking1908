@@ -420,7 +420,7 @@ exports.handler = async (event, context) => {
       await supabase
         .from('admin_activity_log')
         .insert({
-          user_id: user.userId,
+          user_id: user.id,
           action: `${operation}_${table}`,
           table_name: table,
           record_id: queryParams?.eq?.id || queryParams?.data?.id || null,
