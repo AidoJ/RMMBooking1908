@@ -80,9 +80,37 @@ exports.handler = async (event, context) => {
     console.log('📋 Fetching invoices for therapist:', therapistId);
 
     // Retrieve invoices using service role (bypasses RLS)
+    // Exclude therapist_invoice_url and parking_receipt_url blob columns to avoid Lambda payload limit
     const { data, error } = await supabase
       .from('therapist_payments')
-      .select('*')
+      .select(`
+        id,
+        therapist_id,
+        week_start_date,
+        week_end_date,
+        calculated_fees,
+        booking_count,
+        booking_ids,
+        therapist_invoice_number,
+        therapist_invoice_date,
+        therapist_invoiced_fees,
+        therapist_parking_amount,
+        therapist_total_claimed,
+        therapist_notes,
+        submitted_at,
+        variance_fees,
+        admin_approved_fees,
+        admin_approved_parking,
+        admin_total_approved,
+        admin_notes,
+        reviewed_at,
+        paid_amount,
+        paid_date,
+        eft_reference,
+        payment_notes,
+        status,
+        processed_at
+      `)
       .eq('therapist_id', therapistId)
       .order('week_start_date', { ascending: false });
 

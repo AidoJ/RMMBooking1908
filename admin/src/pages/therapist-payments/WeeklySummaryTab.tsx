@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { DatePicker, Button, Table, Card, Descriptions, Space, message, Tag, Divider, Modal, Form, Input, InputNumber, Upload, Select } from 'antd';
 import { SearchOutlined, DollarOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { supabaseClient } from '../../utility';
+import { realSupabaseClient } from '../../utility/supabaseClient';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 
@@ -175,6 +176,30 @@ const WeeklySummaryTab: React.FC = () => {
     });
   };
 
+  // Upload a file to Supabase Storage via admin-upload-file function
+  const uploadFileToStorage = async (base64Data: string, folder: string, filename: string): Promise<string | null> => {
+    try {
+      const { data: { session } } = await realSupabaseClient.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const resp = await fetch('/.netlify/functions/admin-upload-file', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ base64Data, folder, filename })
+      });
+
+      const result = await resp.json();
+      if (!resp.ok) throw new Error(result.error || 'Upload failed');
+      return result.path;
+    } catch (err) {
+      console.error('Error uploading file:', err);
+      return null;
+    }
+  };
+
   const handleManualEntry = (summary: WeeklySummary) => {
     setSelectedSummary(summary);
     manualForm.setFieldsValue({
@@ -198,22 +223,25 @@ const WeeklySummaryTab: React.FC = () => {
 
       const weekStart = values.week_start_date.format('YYYY-MM-DD');
       const weekEnd = values.week_end_date.format('YYYY-MM-DD');
+      const timestamp = Date.now();
 
-      // Convert invoice file to base64 if present
-      let invoiceUrl = null;
+      // Upload invoice file to Storage if present
+      let invoicePath: string | null = null;
       if (values.invoice_upload?.fileList?.[0]?.originFileObj) {
         const file = values.invoice_upload.fileList[0].originFileObj;
-        invoiceUrl = await convertFileToBase64(file);
+        const base64 = await convertFileToBase64(file);
+        invoicePath = await uploadFileToStorage(base64, `invoices/${selectedSummary.therapist_id}`, `invoice_${weekEnd}_${timestamp}`);
       }
 
-      // Convert parking receipt to base64 if present
-      let receiptUrl = null;
+      // Upload parking receipt to Storage if present
+      let receiptPath: string | null = null;
       if (values.parking_receipt_upload?.fileList?.[0]?.originFileObj) {
         const file = values.parking_receipt_upload.fileList[0].originFileObj;
-        receiptUrl = await convertFileToBase64(file);
+        const base64 = await convertFileToBase64(file);
+        receiptPath = await uploadFileToStorage(base64, `receipts/${selectedSummary.therapist_id}`, `receipt_${weekEnd}_${timestamp}`);
       }
 
-      // Create invoice record
+      // Create invoice record with storage paths (not base64 blobs)
       const { error: insertError } = await supabaseClient
         .from('therapist_payments')
         .insert({
@@ -224,8 +252,8 @@ const WeeklySummaryTab: React.FC = () => {
           therapist_invoice_number: values.invoice_number || null,
           therapist_invoiced_fees: values.invoiced_fees,
           therapist_parking_amount: values.parking_amount || 0,
-          therapist_invoice_url: invoiceUrl,
-          parking_receipt_url: receiptUrl,
+          therapist_invoice_url: invoicePath,
+          parking_receipt_url: receiptPath,
           therapist_notes: values.notes || 'Manually entered by admin',
           submitted_at: new Date().toISOString(),
           status: values.status

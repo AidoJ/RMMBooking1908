@@ -49,6 +49,7 @@ const PaymentHistoryTab: React.FC = () => {
   const [recordPaymentModalVisible, setRecordPaymentModalVisible] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentRecord | null>(null);
   const [form] = Form.useForm();
+  const [fileUrls, setFileUrls] = useState<Record<string, { invoice?: string; receipt?: string; loading?: boolean }>>({});
 
   useEffect(() => {
     loadTherapists();
@@ -77,7 +78,21 @@ const PaymentHistoryTab: React.FC = () => {
       let query = supabaseClient
         .from('therapist_payments')
         .select(`
-          *,
+          id,
+          therapist_id,
+          week_start_date,
+          week_end_date,
+          therapist_invoice_number,
+          therapist_invoice_date,
+          admin_approved_fees,
+          admin_approved_parking,
+          admin_total_approved,
+          paid_amount,
+          paid_date,
+          eft_reference,
+          payment_notes,
+          status,
+          processed_at,
           therapist_profiles!therapist_payments_therapist_id_fkey(id, first_name, last_name, email)
         `)
         .in('status', ['approved', 'paid'])
@@ -123,16 +138,6 @@ const PaymentHistoryTab: React.FC = () => {
           status: b.status
         }));
 
-        // Debug logging for invoice URLs
-        if (payment.therapist_invoice_url) {
-          console.log('📄 Invoice URL found:', {
-            paymentId: payment.id,
-            urlType: typeof payment.therapist_invoice_url,
-            urlLength: payment.therapist_invoice_url?.length,
-            urlPreview: payment.therapist_invoice_url?.substring(0, 50)
-          });
-        }
-
         return {
           id: payment.id,
           therapist_id: payment.therapist_id,
@@ -150,8 +155,8 @@ const PaymentHistoryTab: React.FC = () => {
           eft_reference: payment.eft_reference,
           payment_notes: payment.payment_notes,
           status: payment.status,
-          therapist_invoice_url: payment.therapist_invoice_url || null,
-          parking_receipt_url: payment.parking_receipt_url || null,
+          therapist_invoice_url: null,
+          parking_receipt_url: null,
           bookings
         };
       }));
@@ -163,6 +168,61 @@ const PaymentHistoryTab: React.FC = () => {
       message.error('Failed to load payment history');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load file URLs on demand when a row is expanded
+  const loadFileUrls = async (paymentId: string) => {
+    if (fileUrls[paymentId] && !fileUrls[paymentId].loading) return; // Already loaded
+
+    setFileUrls(prev => ({ ...prev, [paymentId]: { loading: true } }));
+
+    try {
+      // Fetch just the file path columns for this specific payment
+      const { data, error } = await supabaseClient
+        .from('therapist_payments')
+        .select('therapist_invoice_url, parking_receipt_url')
+        .eq('id', paymentId)
+        .single();
+
+      if (error || !data) {
+        setFileUrls(prev => ({ ...prev, [paymentId]: { loading: false } }));
+        return;
+      }
+
+      const urls: { invoice?: string; receipt?: string; loading: boolean } = { loading: false };
+
+      // Helper to resolve a storage path or legacy base64 to a viewable URL
+      const resolveFileUrl = async (storedValue: string | null): Promise<string | undefined> => {
+        if (!storedValue) return undefined;
+        // Legacy base64 data — return as-is (still viewable)
+        if (storedValue.startsWith('data:')) return storedValue;
+        // Storage path — get a signed URL
+        if (storedValue.startsWith('invoices/') || storedValue.startsWith('receipts/')) {
+          try {
+            const { realSupabaseClient } = await import('../../utility/supabaseClient');
+            const { data: { session } } = await realSupabaseClient.auth.getSession();
+            if (!session) return undefined;
+            const resp = await fetch(`/.netlify/functions/get-signed-url?path=${encodeURIComponent(storedValue)}`, {
+              headers: { 'Authorization': `Bearer ${session.access_token}` }
+            });
+            const result = await resp.json();
+            return result.url || undefined;
+          } catch {
+            return undefined;
+          }
+        }
+        // Could be a regular URL already
+        return storedValue;
+      };
+
+      urls.invoice = await resolveFileUrl(data.therapist_invoice_url);
+      urls.receipt = await resolveFileUrl(data.parking_receipt_url);
+
+      setFileUrls(prev => ({ ...prev, [paymentId]: urls }));
+    } catch (err) {
+      console.error('Error loading file URLs:', err);
+      setFileUrls(prev => ({ ...prev, [paymentId]: { loading: false } }));
     }
   };
 
@@ -273,13 +333,46 @@ const PaymentHistoryTab: React.FC = () => {
 
   // Send invoice to Xero
   const handleSendToXero = async (record: PaymentRecord) => {
-    if (!record.therapist_invoice_url) {
-      message.error('No invoice file available to send');
-      return;
-    }
-
     try {
       message.loading({ content: 'Sending invoice to Xero...', key: 'xero' });
+
+      // Fetch the actual invoice file data for this payment
+      const { data: paymentData, error: fetchError } = await supabaseClient
+        .from('therapist_payments')
+        .select('therapist_invoice_url')
+        .eq('id', record.id)
+        .single();
+
+      if (fetchError || !paymentData?.therapist_invoice_url) {
+        message.error({ content: 'No invoice file available to send', key: 'xero' });
+        return;
+      }
+
+      let invoiceFileBase64 = paymentData.therapist_invoice_url;
+
+      // If it's a storage path, we need to download it and convert to base64 for Xero
+      if (!invoiceFileBase64.startsWith('data:') && (invoiceFileBase64.startsWith('invoices/') || invoiceFileBase64.startsWith('receipts/'))) {
+        const { realSupabaseClient } = await import('../../utility/supabaseClient');
+        const { data: { session } } = await realSupabaseClient.auth.getSession();
+        if (!session) {
+          message.error({ content: 'Session expired', key: 'xero' });
+          return;
+        }
+        const resp = await fetch(`/.netlify/functions/get-signed-url?path=${encodeURIComponent(invoiceFileBase64)}`, {
+          headers: { 'Authorization': `Bearer ${session.access_token}` }
+        });
+        const urlResult = await resp.json();
+        if (urlResult.url) {
+          // Fetch the file and convert to base64
+          const fileResp = await fetch(urlResult.url);
+          const blob = await fileResp.blob();
+          invoiceFileBase64 = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+        }
+      }
 
       const response = await fetch('/.netlify/functions/send-to-xero', {
         method: 'POST',
@@ -291,7 +384,7 @@ const PaymentHistoryTab: React.FC = () => {
           invoice_number: record.invoice_number || '',
           invoice_date: record.invoice_date ? dayjs(record.invoice_date).format('DD/MM/YYYY') : '',
           total_amount: record.admin_total_approved,
-          invoice_file_base64: record.therapist_invoice_url,
+          invoice_file_base64: invoiceFileBase64,
           week_period: `${dayjs(record.week_start).format('D MMM')} - ${dayjs(record.week_ending).format('D MMM YYYY')}`
         }),
       });
@@ -429,49 +522,48 @@ const PaymentHistoryTab: React.FC = () => {
     const invoiceFilename = `Invoice_${record.therapist_name.replace(/\s+/g, '_')}_${dayjs(record.week_ending).format('YYYY-MM-DD')}.${invoiceExt}`;
     const receiptFilename = `ParkingReceipt_${record.therapist_name.replace(/\s+/g, '_')}_${dayjs(record.week_ending).format('YYYY-MM-DD')}.${receiptExt}`;
 
-    // Debug logging for invoice URL validation
-    const hasInvoiceUrl = record.therapist_invoice_url && isValidImageUrl(record.therapist_invoice_url);
-    if (record.therapist_invoice_url) {
-      console.log('🔍 Invoice URL validation:', {
-        hasUrl: !!record.therapist_invoice_url,
-        urlValue: record.therapist_invoice_url?.substring(0, 100),
-        isValid: isValidImageUrl(record.therapist_invoice_url),
-        willShow: hasInvoiceUrl
-      });
-    }
+    const files = fileUrls[record.id];
+    const invoiceUrl = files?.invoice;
+    const receiptUrl = files?.receipt;
+    const filesLoading = files?.loading;
 
     return (
       <div style={{ padding: '16px', background: '#fafafa' }}>
         <div style={{ display: 'flex', gap: '24px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          {filesLoading && (
+            <div style={{ color: '#999', fontStyle: 'italic' }}>Loading files...</div>
+          )}
+
+          {!filesLoading && !files && (
+            <div style={{ color: '#999', fontStyle: 'italic' }}>
+              No invoice or receipt files uploaded
+            </div>
+          )}
+
           {/* Invoice Image */}
-          {hasInvoiceUrl && (
+          {invoiceUrl && (
             <div style={{ flex: 1, minWidth: '300px' }}>
               <h4 style={{ marginBottom: '8px', color: '#007e8c' }}>
                 <FileImageOutlined /> Submitted Invoice
               </h4>
               <div style={{ border: '1px solid #d9d9d9', borderRadius: '4px', padding: '8px', background: '#fff' }}>
                 <Image
-                  src={record.therapist_invoice_url}
+                  src={invoiceUrl}
                   alt="Invoice"
                   style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }}
-                  fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgesAKKYOaZvE7agAAAAgelRUWHRBdXRob3IAQ2xhdWRlAInj7y4AAAHPSURBVHic7dZBCsMgEEDR3P+OfQXBJmkXLYI/ZGGWJgN/MqYKAAAAAAAAAAAAAAAAAAAAAAD8qvN8P+sLwN2s8xqCARbTEYAXdASCdASCdASCdASCdASCdASCdASCdASCdASCdASCdASC9H8EAAAAAAAAAAAAAAAAAAAAAHhj5/l+1xeAO1vnNQADLKYjAC/oCAjpCATpCATpCATpCATpCATpCATpCATpCATpCATpCAT5/wEAAAAAAAAAAAAAAAAAAAA="
                 />
                 <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
                   <Button
                     size="small"
                     icon={<DownloadOutlined />}
-                    onClick={() => {
-                      if (record.therapist_invoice_url) {
-                        downloadFile(record.therapist_invoice_url, invoiceFilename);
-                      }
-                    }}
+                    onClick={() => downloadFile(invoiceUrl, invoiceFilename)}
                   >
                     Download
                   </Button>
                   <Button
                     size="small"
                     icon={<EyeOutlined />}
-                    onClick={() => window.open(record.therapist_invoice_url, '_blank')}
+                    onClick={() => window.open(invoiceUrl, '_blank')}
                   >
                     Open in New Tab
                   </Button>
@@ -481,34 +573,29 @@ const PaymentHistoryTab: React.FC = () => {
           )}
 
           {/* Parking Receipt */}
-          {record.parking_receipt_url && isValidImageUrl(record.parking_receipt_url) && (
+          {receiptUrl && (
             <div style={{ flex: 1, minWidth: '300px' }}>
               <h4 style={{ marginBottom: '8px', color: '#007e8c' }}>
                 <FileImageOutlined /> Parking Receipt
               </h4>
               <div style={{ border: '1px solid #d9d9d9', borderRadius: '4px', padding: '8px', background: '#fff' }}>
                 <Image
-                  src={record.parking_receipt_url}
+                  src={receiptUrl}
                   alt="Parking Receipt"
                   style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'contain' }}
-                  fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgeNAKKYOaZvE7agAAAAgelRUWHRBdXRob3IAQ2xhdWRlAInj7y4AAAHPSURBVHic7dZBCsMgEEDR3P+OfQXBJmkXLYI/ZGGWJgN/MqYKAAAAAAAAAAAAAAAAAAAAAAD8qvN8P+sLwN2s8xqCARbTEYAXdASCdASCdASCdASCdASCdASCdASCdASCdASCdASCdASC9H8EAAAAAAAAAAAAAAAAAAAAAHhj5/l+1xeAO1vnNQADLKYjAC/oCAjpCATpCATpCATpCATpCATpCATpCATpCATpCATpCAT5/wEAAAAAAAAAAAAAAAAAAAA="
                 />
                 <div style={{ marginTop: '8px', display: 'flex', gap: '8px' }}>
                   <Button
                     size="small"
                     icon={<DownloadOutlined />}
-                    onClick={() => {
-                      if (record.parking_receipt_url) {
-                        downloadFile(record.parking_receipt_url, receiptFilename);
-                      }
-                    }}
+                    onClick={() => downloadFile(receiptUrl, receiptFilename)}
                   >
                     Download
                   </Button>
                   <Button
                     size="small"
                     icon={<EyeOutlined />}
-                    onClick={() => window.open(record.parking_receipt_url, '_blank')}
+                    onClick={() => window.open(receiptUrl, '_blank')}
                   >
                     Open in New Tab
                   </Button>
@@ -517,7 +604,7 @@ const PaymentHistoryTab: React.FC = () => {
             </div>
           )}
 
-          {!record.therapist_invoice_url && !record.parking_receipt_url && (
+          {!filesLoading && files && !invoiceUrl && !receiptUrl && (
             <div style={{ color: '#999', fontStyle: 'italic' }}>
               No invoice or receipt files uploaded
             </div>
@@ -659,17 +746,15 @@ const PaymentHistoryTab: React.FC = () => {
               >
                 Resend
               </Button>
-              {record.therapist_invoice_url && (
-                <Button
-                  size="small"
-                  icon={<SendOutlined />}
-                  onClick={() => handleSendToXero(record)}
-                  title="Send invoice to Xero"
-                  style={{ background: '#13c2c2', borderColor: '#13c2c2', color: 'white' }}
-                >
-                  Xero
-                </Button>
-              )}
+              <Button
+                size="small"
+                icon={<SendOutlined />}
+                onClick={() => handleSendToXero(record)}
+                title="Send invoice to Xero"
+                style={{ background: '#13c2c2', borderColor: '#13c2c2', color: 'white' }}
+              >
+                Xero
+              </Button>
             </>
           )}
         </Space>
@@ -723,6 +808,11 @@ const PaymentHistoryTab: React.FC = () => {
             expandedRowRender,
             expandRowByClick: false,
             rowExpandable: () => true,
+            onExpand: (expanded, record) => {
+              if (expanded) {
+                loadFileUrls(record.id);
+              }
+            },
           }}
         />
       </Space>

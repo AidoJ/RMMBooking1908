@@ -65,6 +65,7 @@ export const Invoices: React.FC = () => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [fileUrls, setFileUrls] = useState<{ invoice?: string; receipt?: string; loading?: boolean }>({});
 
   useEffect(() => {
     loadData();
@@ -133,9 +134,73 @@ export const Invoices: React.FC = () => {
     }
   };
 
+  // Load file URLs on demand when viewing an invoice
+  const loadFileUrls = async (invoiceId: string) => {
+    setFileUrls({ loading: true });
+
+    try {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      if (!session) {
+        setFileUrls({ loading: false });
+        return;
+      }
+
+      // Fetch just the file path columns for this invoice via a dedicated call
+      const response = await fetch(`/.netlify/functions/get-signed-url?path=__lookup__&invoice_id=${encodeURIComponent(invoiceId)}`, {
+        headers: { 'Authorization': `Bearer ${session.access_token}` }
+      });
+
+      // Actually, we need to fetch the file paths first, then resolve them
+      // Use the therapist-get-invoice-files function or fetch paths directly
+      // For now, we'll use a simpler approach: fetch paths via a small query
+      const pathResp = await fetch('/.netlify/functions/therapist-get-invoice-files', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ invoice_id: invoiceId })
+      });
+
+      const pathResult = await pathResp.json();
+      if (!pathResp.ok || !pathResult.success) {
+        setFileUrls({ loading: false });
+        return;
+      }
+
+      const urls: { invoice?: string; receipt?: string; loading: boolean } = { loading: false };
+
+      const resolveFileUrl = async (storedValue: string | null): Promise<string | undefined> => {
+        if (!storedValue) return undefined;
+        if (storedValue.startsWith('data:')) return storedValue;
+        if (storedValue.startsWith('invoices/') || storedValue.startsWith('receipts/')) {
+          try {
+            const resp = await fetch(`/.netlify/functions/get-signed-url?path=${encodeURIComponent(storedValue)}`, {
+              headers: { 'Authorization': `Bearer ${session.access_token}` }
+            });
+            const result = await resp.json();
+            return result.url || undefined;
+          } catch {
+            return undefined;
+          }
+        }
+        return storedValue;
+      };
+
+      urls.invoice = await resolveFileUrl(pathResult.data?.therapist_invoice_url);
+      urls.receipt = await resolveFileUrl(pathResult.data?.parking_receipt_url);
+
+      setFileUrls(urls);
+    } catch (err) {
+      console.error('Error loading file URLs:', err);
+      setFileUrls({ loading: false });
+    }
+  };
+
   const handleViewInvoice = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setViewModalVisible(true);
+    loadFileUrls(invoice.id);
   };
 
   const getStatusTag = (status: string) => {
@@ -413,28 +478,34 @@ export const Invoices: React.FC = () => {
               </Descriptions>
             )}
 
-            {/* Invoice Document */}
-            {selectedInvoice.therapist_invoice_url && (
-              <div>
-                <h4>Invoice Document</h4>
-                <Image
-                  src={selectedInvoice.therapist_invoice_url}
-                  alt="Invoice"
-                  style={{ maxWidth: '100%' }}
-                />
+            {/* Invoice Document & Parking Receipt - loaded on demand */}
+            {fileUrls.loading ? (
+              <div style={{ textAlign: 'center', padding: '20px' }}>
+                <Spin tip="Loading files..." />
               </div>
-            )}
-
-            {/* Parking Receipt */}
-            {selectedInvoice.parking_receipt_url && (
-              <div>
-                <h4>Parking Receipt</h4>
-                <Image
-                  src={selectedInvoice.parking_receipt_url}
-                  alt="Parking Receipt"
-                  style={{ maxWidth: '100%' }}
-                />
-              </div>
+            ) : (
+              <>
+                {fileUrls.invoice && (
+                  <div>
+                    <h4>Invoice Document</h4>
+                    <Image
+                      src={fileUrls.invoice}
+                      alt="Invoice"
+                      style={{ maxWidth: '100%' }}
+                    />
+                  </div>
+                )}
+                {fileUrls.receipt && (
+                  <div>
+                    <h4>Parking Receipt</h4>
+                    <Image
+                      src={fileUrls.receipt}
+                      alt="Parking Receipt"
+                      style={{ maxWidth: '100%' }}
+                    />
+                  </div>
+                )}
+              </>
             )}
 
             {/* Booking IDs */}

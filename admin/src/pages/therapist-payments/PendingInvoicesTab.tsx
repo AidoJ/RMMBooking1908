@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Tag, message, Modal, Form, Input, InputNumber, Image, Space, Descriptions, DatePicker, Select, Upload } from 'antd';
-import { CheckOutlined, CloseOutlined, EyeOutlined, DollarOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { Table, Button, Tag, message, Modal, Form, Input, InputNumber, Image, Space, Descriptions, DatePicker, Select, Upload, Spin } from 'antd';
+import { CheckOutlined, CloseOutlined, EyeOutlined, DollarOutlined, PlusOutlined, UploadOutlined, LoadingOutlined } from '@ant-design/icons';
 import { supabaseClient, realSupabaseClient } from '../../utility/supabaseClient';
 import dayjs from 'dayjs';
 
@@ -18,8 +18,8 @@ interface PendingInvoice {
   therapist_parking_amount: number;
   therapist_total_claimed: number;
   variance_fees: number;
-  therapist_invoice_url: string;
-  parking_receipt_url: string;
+  therapist_invoice_url: string | null;
+  parking_receipt_url: string | null;
   therapist_notes: string;
   submitted_at: string;
   status: string;
@@ -35,6 +35,7 @@ const PendingInvoicesTab: React.FC = () => {
   const [therapists, setTherapists] = useState<any[]>([]);
   const [form] = Form.useForm();
   const [manualForm] = Form.useForm();
+  const [fileUrls, setFileUrls] = useState<Record<string, { invoice?: string; receipt?: string; loading?: boolean }>>({});
 
   useEffect(() => {
     loadPendingInvoices();
@@ -63,7 +64,19 @@ const PendingInvoicesTab: React.FC = () => {
       const { data, error } = await supabaseClient
         .from('therapist_payments')
         .select(`
-          *,
+          id,
+          therapist_id,
+          week_start_date,
+          week_end_date,
+          calculated_fees,
+          therapist_invoiced_fees,
+          therapist_parking_amount,
+          therapist_total_claimed,
+          variance_fees,
+          therapist_invoice_number,
+          therapist_notes,
+          submitted_at,
+          status,
           therapist_profiles!therapist_payments_therapist_id_fkey(id, first_name, last_name)
         `)
         .in('status', ['submitted', 'under_review'])
@@ -82,8 +95,8 @@ const PendingInvoicesTab: React.FC = () => {
         therapist_parking_amount: parseFloat(inv.therapist_parking_amount || 0),
         therapist_total_claimed: parseFloat(inv.therapist_total_claimed || 0),
         variance_fees: parseFloat(inv.variance_fees || 0),
-        therapist_invoice_url: inv.therapist_invoice_url,
-        parking_receipt_url: inv.parking_receipt_url,
+        therapist_invoice_url: null,
+        parking_receipt_url: null,
         therapist_notes: inv.therapist_notes,
         submitted_at: inv.submitted_at,
         status: inv.status
@@ -99,9 +112,59 @@ const PendingInvoicesTab: React.FC = () => {
     }
   };
 
+  // Load file URLs on demand when viewing an invoice
+  const loadFileUrls = async (paymentId: string) => {
+    if (fileUrls[paymentId] && !fileUrls[paymentId].loading) return;
+
+    setFileUrls(prev => ({ ...prev, [paymentId]: { loading: true } }));
+
+    try {
+      const { data, error } = await supabaseClient
+        .from('therapist_payments')
+        .select('therapist_invoice_url, parking_receipt_url')
+        .eq('id', paymentId)
+        .single();
+
+      if (error || !data) {
+        setFileUrls(prev => ({ ...prev, [paymentId]: { loading: false } }));
+        return;
+      }
+
+      const urls: { invoice?: string; receipt?: string; loading: boolean } = { loading: false };
+
+      const resolveFileUrl = async (storedValue: string | null): Promise<string | undefined> => {
+        if (!storedValue) return undefined;
+        if (storedValue.startsWith('data:')) return storedValue;
+        if (storedValue.startsWith('invoices/') || storedValue.startsWith('receipts/')) {
+          try {
+            const { data: { session } } = await realSupabaseClient.auth.getSession();
+            if (!session) return undefined;
+            const resp = await fetch(`/.netlify/functions/get-signed-url?path=${encodeURIComponent(storedValue)}`, {
+              headers: { 'Authorization': `Bearer ${session.access_token}` }
+            });
+            const result = await resp.json();
+            return result.url || undefined;
+          } catch {
+            return undefined;
+          }
+        }
+        return storedValue;
+      };
+
+      urls.invoice = await resolveFileUrl(data.therapist_invoice_url);
+      urls.receipt = await resolveFileUrl(data.parking_receipt_url);
+
+      setFileUrls(prev => ({ ...prev, [paymentId]: urls }));
+    } catch (err) {
+      console.error('Error loading file URLs:', err);
+      setFileUrls(prev => ({ ...prev, [paymentId]: { loading: false } }));
+    }
+  };
+
   const handleViewDetails = (invoice: PendingInvoice) => {
     setSelectedInvoice(invoice);
     setViewModalVisible(true);
+    loadFileUrls(invoice.id);
   };
 
   const handleApprove = (invoice: PendingInvoice) => {
@@ -283,6 +346,30 @@ const PendingInvoicesTab: React.FC = () => {
     });
   };
 
+  // Upload a file to Supabase Storage via admin-upload-file function
+  const uploadFileToStorage = async (base64Data: string, folder: string, filename: string): Promise<string | null> => {
+    try {
+      const { data: { session } } = await realSupabaseClient.auth.getSession();
+      if (!session) throw new Error('Not authenticated');
+
+      const resp = await fetch('/.netlify/functions/admin-upload-file', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ base64Data, folder, filename })
+      });
+
+      const result = await resp.json();
+      if (!resp.ok) throw new Error(result.error || 'Upload failed');
+      return result.path;
+    } catch (err) {
+      console.error('Error uploading file:', err);
+      return null;
+    }
+  };
+
   const handleSubmitManualEntry = async (values: any) => {
     try {
       setLoading(true);
@@ -303,21 +390,25 @@ const PendingInvoicesTab: React.FC = () => {
 
       const calculatedFees = bookings?.reduce((sum, b) => sum + parseFloat(b.therapist_fee || '0'), 0) || 0;
 
-      // Convert invoice file to base64 if present
-      let invoiceUrl = null;
+      const timestamp = Date.now();
+
+      // Upload invoice file to Storage if present
+      let invoicePath: string | null = null;
       if (values.invoice_upload?.fileList?.[0]?.originFileObj) {
         const file = values.invoice_upload.fileList[0].originFileObj;
-        invoiceUrl = await convertFileToBase64(file);
+        const base64 = await convertFileToBase64(file);
+        invoicePath = await uploadFileToStorage(base64, `invoices/${values.therapist_id}`, `invoice_${weekEnd}_${timestamp}`);
       }
 
-      // Convert parking receipt to base64 if present
-      let receiptUrl = null;
+      // Upload parking receipt to Storage if present
+      let receiptPath: string | null = null;
       if (values.parking_receipt_upload?.fileList?.[0]?.originFileObj) {
         const file = values.parking_receipt_upload.fileList[0].originFileObj;
-        receiptUrl = await convertFileToBase64(file);
+        const base64 = await convertFileToBase64(file);
+        receiptPath = await uploadFileToStorage(base64, `receipts/${values.therapist_id}`, `receipt_${weekEnd}_${timestamp}`);
       }
 
-      // Create invoice record
+      // Create invoice record with storage paths (not base64 blobs)
       const { error: insertError } = await supabaseClient
         .from('therapist_payments')
         .insert({
@@ -328,8 +419,8 @@ const PendingInvoicesTab: React.FC = () => {
           therapist_invoice_number: values.invoice_number || null,
           therapist_invoiced_fees: values.invoiced_fees,
           therapist_parking_amount: values.parking_amount || 0,
-          therapist_invoice_url: invoiceUrl,
-          parking_receipt_url: receiptUrl,
+          therapist_invoice_url: invoicePath,
+          parking_receipt_url: receiptPath,
           therapist_notes: values.notes || 'Manually entered by admin',
           submitted_at: new Date().toISOString(),
           status: values.status
@@ -399,19 +490,32 @@ const PendingInvoicesTab: React.FC = () => {
               )}
             </Descriptions>
 
-            {selectedInvoice.therapist_invoice_url && (
-              <div>
-                <h4>Invoice</h4>
-                <Image src={selectedInvoice.therapist_invoice_url} alt="Invoice" style={{ maxWidth: '100%' }} />
-              </div>
-            )}
-
-            {selectedInvoice.parking_receipt_url && (
-              <div>
-                <h4>Parking Receipt</h4>
-                <Image src={selectedInvoice.parking_receipt_url} alt="Parking Receipt" style={{ maxWidth: '100%' }} />
-              </div>
-            )}
+            {/* On-demand loaded files */}
+            {(() => {
+              const files = fileUrls[selectedInvoice.id];
+              if (files?.loading) {
+                return <div style={{ textAlign: 'center', padding: '20px' }}><Spin tip="Loading files..." /></div>;
+              }
+              return (
+                <>
+                  {files?.invoice && (
+                    <div>
+                      <h4>Invoice</h4>
+                      <Image src={files.invoice} alt="Invoice" style={{ maxWidth: '100%' }} />
+                    </div>
+                  )}
+                  {files?.receipt && (
+                    <div>
+                      <h4>Parking Receipt</h4>
+                      <Image src={files.receipt} alt="Parking Receipt" style={{ maxWidth: '100%' }} />
+                    </div>
+                  )}
+                  {files && !files.invoice && !files.receipt && (
+                    <div style={{ color: '#999', fontStyle: 'italic' }}>No files uploaded</div>
+                  )}
+                </>
+              );
+            })()}
           </Space>
         )}
       </Modal>
