@@ -278,70 +278,28 @@
 
                     <div class="form-group">
                         <label>Weekly Availability <span class="required">*</span></label>
-                        <small style="display: block; margin-bottom: 15px;">Select all time slots you're available</small>
-                        <div class="availability-table-wrapper">
-                            <table class="availability-table">
-                                <thead>
-                                    <tr>
-                                        <th>Day</th>
-                                        <th>7-11am</th>
-                                        <th>12-5pm</th>
-                                        <th>6-11:30pm</th>
-                                        <th>Not Available</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Monday</td>
-                                        <td><input type="checkbox" name="monday" value="7-11am"></td>
-                                        <td><input type="checkbox" name="monday" value="12-5pm"></td>
-                                        <td><input type="checkbox" name="monday" value="6-11:30pm"></td>
-                                        <td><input type="checkbox" name="monday" value="not-available"></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Tuesday</td>
-                                        <td><input type="checkbox" name="tuesday" value="7-11am"></td>
-                                        <td><input type="checkbox" name="tuesday" value="12-5pm"></td>
-                                        <td><input type="checkbox" name="tuesday" value="6-11:30pm"></td>
-                                        <td><input type="checkbox" name="tuesday" value="not-available"></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Wednesday</td>
-                                        <td><input type="checkbox" name="wednesday" value="7-11am"></td>
-                                        <td><input type="checkbox" name="wednesday" value="12-5pm"></td>
-                                        <td><input type="checkbox" name="wednesday" value="6-11:30pm"></td>
-                                        <td><input type="checkbox" name="wednesday" value="not-available"></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Thursday</td>
-                                        <td><input type="checkbox" name="thursday" value="7-11am"></td>
-                                        <td><input type="checkbox" name="thursday" value="12-5pm"></td>
-                                        <td><input type="checkbox" name="thursday" value="6-11:30pm"></td>
-                                        <td><input type="checkbox" name="thursday" value="not-available"></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Friday</td>
-                                        <td><input type="checkbox" name="friday" value="7-11am"></td>
-                                        <td><input type="checkbox" name="friday" value="12-5pm"></td>
-                                        <td><input type="checkbox" name="friday" value="6-11:30pm"></td>
-                                        <td><input type="checkbox" name="friday" value="not-available"></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Saturday</td>
-                                        <td><input type="checkbox" name="saturday" value="7-11am"></td>
-                                        <td><input type="checkbox" name="saturday" value="12-5pm"></td>
-                                        <td><input type="checkbox" name="saturday" value="6-11:30pm"></td>
-                                        <td><input type="checkbox" name="saturday" value="not-available"></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Sunday</td>
-                                        <td><input type="checkbox" name="sunday" value="7-11am"></td>
-                                        <td><input type="checkbox" name="sunday" value="12-5pm"></td>
-                                        <td><input type="checkbox" name="sunday" value="6-11:30pm"></td>
-                                        <td><input type="checkbox" name="sunday" value="not-available"></td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <small style="display: block; margin-bottom: 15px;">
+                            Check the days you're available, then set your start and end times.
+                            Use the + button to add split shifts.
+                        </small>
+
+                        <div class="availability-actions">
+                            <button type="button" class="btn-secondary btn-sm" id="copyMondayBtn">
+                                Copy Mon &rarr; Weekdays
+                            </button>
+                            <button type="button" class="btn-secondary btn-sm btn-danger-outline" id="clearAllBtn">
+                                Clear All
+                            </button>
+                        </div>
+
+                        <div class="availability-grid" id="availabilityGrid">
+                            <div class="avail-header">
+                                <div class="avail-col-day">Day</div>
+                                <div class="avail-col-check">Available</div>
+                                <div class="avail-col-times">Time Slots</div>
+                                <div class="avail-col-add"></div>
+                            </div>
+                            <!-- Day rows rendered by JS -->
                         </div>
                     </div>
 

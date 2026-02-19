@@ -220,6 +220,36 @@ exports.handler = async (event, context) => {
     }
 
     // ===================================================
+    // STEP 5.5: Create Availability Slots
+    // ===================================================
+
+    const availSchedule = registration.availability_schedule;
+
+    if (Array.isArray(availSchedule) && availSchedule.length > 0) {
+      console.log(`Creating ${availSchedule.length} availability slots...`);
+
+      const availabilityRows = availSchedule.map(slot => ({
+        therapist_id: therapistProfile.id,
+        day_of_week: slot.day_of_week,
+        start_time: slot.start_time,
+        end_time: slot.end_time,
+      }));
+
+      const { error: availError } = await supabase
+        .from('therapist_availability')
+        .insert(availabilityRows);
+
+      if (availError) {
+        console.error('Warning: Failed to create availability:', availError);
+        // Don't fail enrollment, just warn (admin can set manually)
+      } else {
+        console.log(`Linked ${availabilityRows.length} availability slots`);
+      }
+    } else {
+      console.log('No availability data to transfer (old format or empty)');
+    }
+
+    // ===================================================
     // STEP 6: Update Registration Status
     // ===================================================
 

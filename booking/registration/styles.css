@@ -343,42 +343,168 @@ body {
     font-size: 20px;
 }
 
-/* Availability Table */
-.availability-table-wrapper {
-    overflow-x: auto;
-}
-
-.availability-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 15px 0;
-}
-
-.availability-table th,
-.availability-table td {
-    padding: 12px;
-    text-align: center;
+/* Availability Grid */
+.availability-grid {
     border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
-.availability-table th {
+.avail-header {
+    display: grid;
+    grid-template-columns: 100px 70px 1fr 50px;
     background: #007e8c;
     color: white;
+    padding: 10px 12px;
     font-weight: 600;
     font-size: 14px;
 }
 
-.availability-table td:first-child {
-    text-align: left;
-    font-weight: 600;
-    background: #f5f7fa;
-    color: #2c3e50;
+.avail-row {
+    display: grid;
+    grid-template-columns: 100px 70px 1fr 50px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0;
+    align-items: flex-start;
 }
 
-.availability-table input[type="checkbox"] {
+.avail-row:last-child {
+    border-bottom: none;
+}
+
+.avail-row.weekend {
+    background: #fafafa;
+}
+
+.avail-col-day {
+    font-weight: 600;
+    color: #2c3e50;
+    padding-top: 4px;
+}
+
+.avail-col-check {
+    text-align: center;
+    padding-top: 2px;
+}
+
+.avail-col-check input[type="checkbox"] {
     width: 20px;
     height: 20px;
     cursor: pointer;
+    accent-color: #007e8c;
+}
+
+.avail-col-times {
+    padding: 0 8px;
+}
+
+.avail-col-add {
+    text-align: center;
+    padding-top: 2px;
+}
+
+.avail-slot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.avail-slot:last-child {
+    margin-bottom: 0;
+}
+
+.avail-slot input[type="time"] {
+    padding: 6px 8px;
+    border: 1px solid #d9d9d9;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    width: 130px;
+}
+
+.avail-slot input[type="time"]:focus {
+    outline: none;
+    border-color: #007e8c;
+}
+
+.avail-slot .avail-separator {
+    color: #999;
+    font-size: 13px;
+}
+
+.avail-slot .avail-remove-slot {
+    background: none;
+    border: none;
+    color: #e74c3c;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    line-height: 1;
+}
+
+.avail-slot .avail-remove-slot:hover {
+    background: #fde8e8;
+}
+
+.avail-not-available {
+    color: #999;
+    font-style: italic;
+    padding-top: 4px;
+    font-size: 13px;
+}
+
+.avail-add-slot {
+    background: none;
+    border: 1px solid #007e8c;
+    color: #007e8c;
+    cursor: pointer;
+    font-size: 18px;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.avail-add-slot:hover {
+    background: #e8f4f5;
+}
+
+.avail-add-slot:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.avail-error {
+    color: #e74c3c;
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+/* Action buttons */
+.availability-actions {
+    margin-bottom: 12px;
+    display: flex;
+    gap: 8px;
+}
+
+.btn-sm {
+    padding: 6px 14px !important;
+    font-size: 13px !important;
+}
+
+.btn-danger-outline {
+    border: 1px solid #e74c3c !important;
+    color: #e74c3c !important;
+    background: white !important;
+}
+
+.btn-danger-outline:hover {
+    background: #fde8e8 !important;
 }
 
 /* Agreement Box */
@@ -678,13 +804,21 @@ body {
         font-size: 10px;
     }
 
-    .availability-table {
+    .avail-header,
+    .avail-row {
+        grid-template-columns: 70px 50px 1fr 40px;
         font-size: 12px;
+        padding: 8px;
     }
 
-    .availability-table th,
-    .availability-table td {
-        padding: 8px 4px;
+    .avail-slot input[type="time"] {
+        width: 100px;
+        font-size: 12px;
+        padding: 4px 6px;
+    }
+
+    .avail-slot {
+        gap: 4px;
     }
 
     .form-navigation {

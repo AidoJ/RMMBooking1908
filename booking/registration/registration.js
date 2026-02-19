@@ -13,6 +13,20 @@ let formData = {
 };
 let autoSaveTimeout = null;
 
+// Availability data — array matching therapist_availability format
+// { day_of_week: 0-6 (0=Sun, 1=Mon, ..., 6=Sat), start_time: "HH:mm", end_time: "HH:mm" }
+let availabilitySlots = [];
+
+const DAYS = [
+    { value: 1, label: 'Monday' },
+    { value: 2, label: 'Tuesday' },
+    { value: 3, label: 'Wednesday' },
+    { value: 4, label: 'Thursday' },
+    { value: 5, label: 'Friday' },
+    { value: 6, label: 'Saturday' },
+    { value: 0, label: 'Sunday' },
+];
+
 // Signature canvas context
 let signaturePad = null;
 let isDrawing = false;
@@ -55,24 +69,12 @@ function setupEventListeners() {
         input.addEventListener('input', scheduleAutoSave);
     });
 
-    // "Not Available" checkbox logic
-    document.querySelectorAll('input[value="not-available"]').forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            const row = this.closest('tr');
-            const otherCheckboxes = row.querySelectorAll('input[type="checkbox"]:not([value="not-available"])');
+    // Availability grid buttons
+    document.getElementById('copyMondayBtn').addEventListener('click', copyMondayToWeekdays);
+    document.getElementById('clearAllBtn').addEventListener('click', clearAllAvailability);
 
-            if (this.checked) {
-                otherCheckboxes.forEach(cb => {
-                    cb.checked = false;
-                    cb.disabled = true;
-                });
-            } else {
-                otherCheckboxes.forEach(cb => {
-                    cb.disabled = false;
-                });
-            }
-        });
-    });
+    // Render availability grid
+    renderAvailabilityGrid();
 }
 
 // ===================================================
@@ -572,16 +574,7 @@ function validateStep(step) {
 }
 
 function checkAvailabilitySelected() {
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-
-    for (let day of days) {
-        const checkboxes = document.querySelectorAll(`input[name="${day}"]:checked`);
-        if (checkboxes.length > 0) {
-            return true;
-        }
-    }
-
-    return false;
+    return availabilitySlots.length > 0;
 }
 
 // ===================================================
@@ -636,7 +629,7 @@ function collectStepData(step) {
         case 3:
             formData.serviceCities = Array.from(document.querySelectorAll('input[name="serviceCities"]:checked'))
                 .map(cb => cb.value);
-            formData.availabilitySchedule = collectAvailability();
+            formData.availabilitySchedule = availabilitySlots.slice(); // Array format
             formData.startDate = safeGetValue('startDate');
             break;
 
@@ -666,21 +659,242 @@ function collectStepData(step) {
     }
 }
 
-function collectAvailability() {
-    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-    const schedule = {};
+// ===================================================
+// AVAILABILITY GRID
+// ===================================================
 
-    days.forEach(day => {
-        const checked = Array.from(document.querySelectorAll(`input[name="${day}"]:checked`))
-            .map(cb => cb.value)
-            .filter(val => val !== 'not-available');
+function renderAvailabilityGrid() {
+    const grid = document.getElementById('availabilityGrid');
 
-        if (checked.length > 0) {
-            schedule[day] = checked;
+    // Keep header, remove old day rows
+    const header = grid.querySelector('.avail-header');
+    grid.innerHTML = '';
+    grid.appendChild(header);
+
+    DAYS.forEach(day => {
+        const daySlots = availabilitySlots.filter(s => s.day_of_week === day.value);
+        const isAvailable = daySlots.length > 0;
+        const isWeekend = day.value === 0 || day.value === 6;
+
+        const row = document.createElement('div');
+        row.className = 'avail-row' + (isWeekend ? ' weekend' : '');
+        row.dataset.day = day.value;
+
+        // Day label
+        const dayCol = document.createElement('div');
+        dayCol.className = 'avail-col-day';
+        dayCol.textContent = day.label;
+        row.appendChild(dayCol);
+
+        // Checkbox
+        const checkCol = document.createElement('div');
+        checkCol.className = 'avail-col-check';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = isAvailable;
+        checkbox.addEventListener('change', () => toggleDayAvailable(day.value));
+        checkCol.appendChild(checkbox);
+        row.appendChild(checkCol);
+
+        // Time slots
+        const timesCol = document.createElement('div');
+        timesCol.className = 'avail-col-times';
+
+        if (isAvailable) {
+            daySlots.forEach((slot, index) => {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = 'avail-slot';
+
+                const startInput = document.createElement('input');
+                startInput.type = 'time';
+                startInput.value = slot.start_time;
+                startInput.addEventListener('change', (e) => {
+                    updateSlotTime(day.value, index, 'start_time', e.target.value);
+                });
+
+                const sep = document.createElement('span');
+                sep.className = 'avail-separator';
+                sep.textContent = 'to';
+
+                const endInput = document.createElement('input');
+                endInput.type = 'time';
+                endInput.value = slot.end_time;
+                endInput.addEventListener('change', (e) => {
+                    updateSlotTime(day.value, index, 'end_time', e.target.value);
+                });
+
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.className = 'avail-remove-slot';
+                removeBtn.innerHTML = '&times;';
+                removeBtn.title = 'Remove slot';
+                removeBtn.addEventListener('click', () => removeSlot(day.value, index));
+
+                slotDiv.appendChild(startInput);
+                slotDiv.appendChild(sep);
+                slotDiv.appendChild(endInput);
+                slotDiv.appendChild(removeBtn);
+                timesCol.appendChild(slotDiv);
+            });
+        } else {
+            const notAvail = document.createElement('div');
+            notAvail.className = 'avail-not-available';
+            notAvail.textContent = 'Not available';
+            timesCol.appendChild(notAvail);
         }
+
+        row.appendChild(timesCol);
+
+        // Add slot button
+        const addCol = document.createElement('div');
+        addCol.className = 'avail-col-add';
+        if (isAvailable) {
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'avail-add-slot';
+            addBtn.textContent = '+';
+            addBtn.title = 'Add split shift';
+            addBtn.addEventListener('click', () => addSlotToDay(day.value));
+            addCol.appendChild(addBtn);
+        }
+        row.appendChild(addCol);
+
+        grid.appendChild(row);
+    });
+}
+
+function toggleDayAvailable(dayValue) {
+    const daySlots = availabilitySlots.filter(s => s.day_of_week === dayValue);
+
+    if (daySlots.length > 0) {
+        // Remove all slots for this day
+        availabilitySlots = availabilitySlots.filter(s => s.day_of_week !== dayValue);
+    } else {
+        // Add default 09:00-17:00 slot
+        availabilitySlots.push({
+            day_of_week: dayValue,
+            start_time: '09:00',
+            end_time: '17:00'
+        });
+    }
+
+    renderAvailabilityGrid();
+    scheduleAutoSave();
+}
+
+function addSlotToDay(dayValue) {
+    const daySlots = availabilitySlots.filter(s => s.day_of_week === dayValue);
+
+    // Default new slot starts after the last slot ends
+    let startTime = '18:00';
+    let endTime = '21:00';
+
+    if (daySlots.length > 0) {
+        const lastSlot = daySlots[daySlots.length - 1];
+        // Start 1 hour after last slot ends
+        const lastEnd = lastSlot.end_time.split(':').map(Number);
+        let newStartHour = lastEnd[0] + 1;
+        if (newStartHour < 24) {
+            startTime = String(newStartHour).padStart(2, '0') + ':00';
+            endTime = String(Math.min(newStartHour + 3, 23)).padStart(2, '0') + ':00';
+        }
+    }
+
+    availabilitySlots.push({
+        day_of_week: dayValue,
+        start_time: startTime,
+        end_time: endTime
     });
 
-    return schedule;
+    renderAvailabilityGrid();
+    scheduleAutoSave();
+}
+
+function removeSlot(dayValue, index) {
+    const daySlots = availabilitySlots.filter(s => s.day_of_week === dayValue);
+
+    if (daySlots.length <= 1) {
+        // Last slot — toggle day off entirely
+        availabilitySlots = availabilitySlots.filter(s => s.day_of_week !== dayValue);
+    } else {
+        // Remove specific slot by index within day
+        let dayIndex = 0;
+        availabilitySlots = availabilitySlots.filter(s => {
+            if (s.day_of_week === dayValue) {
+                return dayIndex++ !== index;
+            }
+            return true;
+        });
+    }
+
+    renderAvailabilityGrid();
+    scheduleAutoSave();
+}
+
+function updateSlotTime(dayValue, index, field, value) {
+    // Find the slot within this day
+    let dayIndex = 0;
+    for (let i = 0; i < availabilitySlots.length; i++) {
+        if (availabilitySlots[i].day_of_week === dayValue) {
+            if (dayIndex === index) {
+                availabilitySlots[i][field] = value;
+
+                // Validate end > start
+                if (availabilitySlots[i].start_time && availabilitySlots[i].end_time) {
+                    if (availabilitySlots[i].end_time <= availabilitySlots[i].start_time) {
+                        // Auto-fix: set end to start + 1 hour
+                        const parts = availabilitySlots[i].start_time.split(':').map(Number);
+                        const newEndHour = Math.min(parts[0] + 1, 23);
+                        availabilitySlots[i].end_time = String(newEndHour).padStart(2, '0') + ':' + String(parts[1]).padStart(2, '0');
+                        showAlert('End time must be after start time. Adjusted automatically.', 'info');
+                        renderAvailabilityGrid();
+                    }
+                }
+
+                break;
+            }
+            dayIndex++;
+        }
+    }
+
+    scheduleAutoSave();
+}
+
+function copyMondayToWeekdays() {
+    const mondaySlots = availabilitySlots.filter(s => s.day_of_week === 1);
+
+    if (mondaySlots.length === 0) {
+        showAlert('Please set Monday availability first', 'error');
+        return;
+    }
+
+    // Remove Tue-Fri slots (2-5)
+    availabilitySlots = availabilitySlots.filter(s => s.day_of_week < 2 || s.day_of_week > 5);
+
+    // Copy Monday's pattern to Tue-Fri
+    for (let day = 2; day <= 5; day++) {
+        mondaySlots.forEach(slot => {
+            availabilitySlots.push({
+                day_of_week: day,
+                start_time: slot.start_time,
+                end_time: slot.end_time
+            });
+        });
+    }
+
+    renderAvailabilityGrid();
+    scheduleAutoSave();
+    showAlert('Monday schedule copied to Tuesday-Friday', 'info');
+}
+
+function clearAllAvailability() {
+    if (availabilitySlots.length === 0) return;
+
+    if (confirm('Clear all availability? This cannot be undone.')) {
+        availabilitySlots = [];
+        renderAvailabilityGrid();
+        scheduleAutoSave();
+    }
 }
 
 // ===================================================

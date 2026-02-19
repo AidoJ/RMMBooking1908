@@ -45,6 +45,14 @@ const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 
+function formatTime(time: string): string {
+  if (!time) return '';
+  const [hours, minutes] = time.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  return `${displayHours}:${String(minutes).padStart(2, '0')} ${period}`;
+}
+
 interface TherapistRegistration {
   id: string;
   // Step 1: Personal Info
@@ -74,7 +82,7 @@ interface TherapistRegistration {
   // Step 3: Service & Availability
   service_cities: string[];
   delivery_locations: string[];
-  availability_schedule: Record<string, string[]>;
+  availability_schedule: Record<string, string[]> | Array<{ day_of_week: number; start_time: string; end_time: string }>;
   start_date?: string;
 
   // Step 4: Qualifications
@@ -467,12 +475,26 @@ const TherapistRegistrationShow: React.FC = () => {
                   ))}
                 </Descriptions.Item>
                 <Descriptions.Item label="Availability">
-                  {Object.entries(registration.availability_schedule || {}).map(([day, times]) => (
-                    <div key={day}>
-                      <Text strong>{day}: </Text>
-                      <Text>{(times as string[]).join(', ')}</Text>
-                    </div>
-                  ))}
+                  {Array.isArray(registration.availability_schedule) ? (
+                    (registration.availability_schedule as Array<{ day_of_week: number; start_time: string; end_time: string }>)
+                      .sort((a, b) => a.day_of_week - b.day_of_week)
+                      .map((slot, idx) => {
+                        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                        return (
+                          <div key={idx}>
+                            <Text strong>{dayNames[slot.day_of_week]}: </Text>
+                            <Text>{formatTime(slot.start_time)} - {formatTime(slot.end_time)}</Text>
+                          </div>
+                        );
+                      })
+                  ) : (
+                    Object.entries(registration.availability_schedule || {}).map(([day, times]) => (
+                      <div key={day}>
+                        <Text strong>{day}: </Text>
+                        <Text>{(times as string[]).join(', ')}</Text>
+                      </div>
+                    ))
+                  )}
                 </Descriptions.Item>
                 {registration.start_date && (
                   <Descriptions.Item label="Preferred Start Date">
