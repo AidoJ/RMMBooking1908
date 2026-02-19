@@ -3339,22 +3339,23 @@ async function updateTherapistSelection() {
     card.className = 'therapist-card';
     card.dataset.therapistId = t.id;
     
+    const displayName = `${t.first_name} ${t.last_name ? t.last_name.charAt(0) : ''}`;
     card.innerHTML = `
       <div class="therapist-info">
         <div class="therapist-image">
           <img src="${t.profile_pic || '/images/default-therapist.svg'}"
-               alt="${t.first_name} ${t.last_name}"
+               alt="${displayName}"
                class="therapist-profile-pic"
                onerror="this.src='/images/default-therapist.svg'">
         </div>
         <div class="therapist-details">
           <div class="therapist-name">
-            <span>${t.first_name} ${t.last_name}</span>
+            <span>${displayName}</span>
             <button type="button" class="read-more-btn" onclick="toggleTherapistBio('${t.id}')">Read More</button>
           </div>
           <div class="therapist-bio" id="bio-${t.id}"></div>
         </div>
-        <input type="radio" name="therapistId" value="${t.id}" data-name="${t.first_name} ${t.last_name}" style="position: absolute; opacity: 0; pointer-events: none;">
+        <input type="radio" name="therapistId" value="${t.id}" data-name="${displayName}" style="position: absolute; opacity: 0; pointer-events: none;">
       </div>
     `;
     
