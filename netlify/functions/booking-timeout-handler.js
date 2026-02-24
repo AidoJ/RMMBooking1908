@@ -1,4 +1,4 @@
-// COMPLETE UPDATED booking-timeout-handler.js - Fixed first therapist timeout logic + recurring support v2
+1// COMPLETE UPDATED booking-timeout-handler.js - Fixed first therapist timeout logic + recurring support v2
 // Replace your entire netlify/functions/booking-timeout-handler.js with this code
 // FORCE DEPLOY: 2025-11-18 20:25 - Added booking_occurrences join
 
@@ -18,18 +18,62 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 /**
- * TIMEOUT LOGIC:
- *
- * SIMPLE RULE:
- * - If booking is TODAY (before midnight) → Use therapist_response_timeout_minutes
- * - If booking is TOMORROW or LATER (after midnight) → Use standard_response_timeout_minutes
- *
- * BOTH STAGES USE THE SAME TIMEOUT:
- * - First stage: Original therapist gets [timeout] minutes to respond
- * - Second stage: Alternate therapists get SAME [timeout] minutes to respond
- *
- * NO DOUBLING, NO MULTIPLICATION - JUST THE APPROPRIATE TIMEOUT VALUE
+ * Calculate dynamic timeout based on booking date
+ * Gives therapists more time for future bookings while maintaining urgency for same-day
+ * 
+ * @param {string} bookingTime - ISO string of booking date/time
+ * @param {number} baseTimeoutMinutes - Base timeout from system settings (for same-day bookings)
+ * @returns {number} Calculated timeout in minutes
  */
+function calculateTimeoutForBooking(bookingTime, baseTimeoutMinutes) {
+  const now = new Date();
+  const bookingDate = new Date(bookingTime);
+  
+  // Calculate days until booking (can be negative for past bookings, but we'll handle that)
+  const diffMs = bookingDate.getTime() - now.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const diffHours = diffMs / (1000 * 60 * 60);
+  
+  // Same day booking (within 24 hours)
+  if (diffHours <= 24) {
+    return baseTimeoutMinutes; // Use base timeout for urgency
+  }
+  
+  // Tomorrow (1 day ahead)
+  if (diffDays === 1) {
+    // Give 6 hours or until end of business day (whichever is longer)
+    // Assuming business day ends at 6 PM (18:00)
+    const businessEnd = new Date(bookingDate);
+    businessEnd.setHours(18, 0, 0, 0);
+    const hoursUntilBusinessEnd = (businessEnd.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return Math.max(6 * 60, Math.min(hoursUntilBusinessEnd * 60, 12 * 60)); // 6-12 hours
+  }
+  
+  // 2-7 days ahead
+  if (diffDays >= 2 && diffDays <= 7) {
+    // Give 24 hours or until end of business day before booking (whichever comes first)
+    const dayBeforeBooking = new Date(bookingDate);
+    dayBeforeBooking.setDate(dayBeforeBooking.getDate() - 1);
+    dayBeforeBooking.setHours(18, 0, 0, 0); // End of business day
+    
+    const hoursUntilDayBefore = (dayBeforeBooking.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return Math.max(24 * 60, Math.min(hoursUntilDayBefore * 60, 48 * 60)); // 24-48 hours
+  }
+  
+  // 7+ days ahead
+  if (diffDays > 7) {
+    // Give 48 hours or until end of business day 2 days before booking
+    const twoDaysBefore = new Date(bookingDate);
+    twoDaysBefore.setDate(twoDaysBefore.getDate() - 2);
+    twoDaysBefore.setHours(18, 0, 0, 0); // End of business day
+    
+    const hoursUntilTwoDaysBefore = (twoDaysBefore.getTime() - now.getTime()) / (1000 * 60 * 60);
+    return Math.max(48 * 60, Math.min(hoursUntilTwoDaysBefore * 60, 72 * 60)); // 48-72 hours
+  }
+  
+  // Fallback to base timeout
+  return baseTimeoutMinutes;
+}
 
 // EmailJS configuration
 const EMAILJS_SERVICE_ID = process.env.EMAILJS_SERVICE_ID || 'service_puww2kb';
@@ -72,26 +116,19 @@ exports.handler = async (event, context) => {
       return { statusCode: 200, body: 'No timeouts to process' };
     }
 
-    // Process each booking with correct timeout
+    // Process each booking with DYNAMIC timeout based on how far away the booking is
     const results = [];
     const now = new Date();
     for (const booking of bookingsToProcess) {
       console.log('🔄 Processing booking:', booking.booking_id, 'status:', booking.status, 'stage:', booking.timeoutStage);
 
-      // Determine if booking is same-day or future
+      // Use dynamic timeout calculation based on booking date distance
+      // Same-day: base timeout (e.g. 60 min), tomorrow: 6-12h, 2-7 days: 24-48h, 7+ days: 48-72h
+      const appropriateTimeout = calculateTimeoutForBooking(booking.booking_time, sameDayTimeoutMinutes);
+
       const bookingDate = new Date(booking.booking_time);
-      const nowDate = new Date(now);
-      const isSameDay = (
-        bookingDate.getFullYear() === nowDate.getFullYear() &&
-        bookingDate.getMonth() === nowDate.getMonth() &&
-        bookingDate.getDate() === nowDate.getDate()
-      );
-
-      // Use appropriate timeout based on booking date
-      const appropriateTimeout = isSameDay ? sameDayTimeoutMinutes : standardTimeoutMinutes;
-
       const daysUntilBooking = Math.floor((bookingDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      console.log(`⏰ Booking ${booking.booking_id}: ${isSameDay ? 'SAME-DAY' : 'FUTURE'} (${daysUntilBooking} days), using ${appropriateTimeout} minute timeout`);
+      console.log(`⏰ Booking ${booking.booking_id}: ${daysUntilBooking} days away, dynamic timeout = ${appropriateTimeout} minutes (${(appropriateTimeout / 60).toFixed(1)} hours)`);
 
       const result = await processBookingTimeout(booking, appropriateTimeout);
       results.push(result);
@@ -123,20 +160,19 @@ async function findBookingsNeedingTimeout(sameDayTimeoutMinutes, standardTimeout
   try {
     const now = new Date();
 
-    // Use the LARGER timeout for query efficiency (standard is larger)
-    // We'll do precise timeout checks per booking in the processing loop
-    const maxTimeoutMinutes = Math.max(sameDayTimeoutMinutes, standardTimeoutMinutes);
-    const firstTimeoutCutoff = new Date(now.getTime() - maxTimeoutMinutes * 60 * 1000);
-    const secondTimeoutCutoff = new Date(now.getTime() - (maxTimeoutMinutes * 2) * 60 * 1000);
+    // Use the SHORTEST timeout for query to catch ALL possibly-timed-out bookings
+    // Each booking is then verified individually with its precise dynamic timeout
+    const queryTimeoutMinutes = Math.min(sameDayTimeoutMinutes, standardTimeoutMinutes);
+    const firstTimeoutCutoff = new Date(now.getTime() - queryTimeoutMinutes * 60 * 1000);
 
     console.log('🔍 Looking for bookings needing timeout processing...');
-    console.log('📅 Using max timeout of', maxTimeoutMinutes, 'minutes for initial query');
+    console.log('📅 Using query cutoff of', queryTimeoutMinutes, 'minutes (shortest timeout)');
     console.log('📅 First timeout cutoff:', firstTimeoutCutoff.toISOString());
-    console.log('📅 Second timeout cutoff:', secondTimeoutCutoff.toISOString());
 
-    // Find bookings for FIRST timeout (status = 'requested' and past first timeout AND no therapist response)
+    // FIXED: Find bookings for FIRST timeout (status = 'requested' and past first timeout AND no therapist response)
     // EXCLUDE quote-based bookings (BK-Q pattern) as they follow quote workflow
-    // Race condition protection is handled by status checks in processBookingTimeout, not hardcoded timeouts
+    // CRITICAL: Also exclude bookings that might be in the process of being accepted (updated_at within last 2 minutes)
+    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
     const { data: firstTimeoutBookings, error: error1 } = await supabase
       .from('bookings')
       .select('*, services(id, name), customers(id, first_name, last_name, email, phone), therapist_profiles!therapist_id(id, first_name, last_name, email)')
@@ -144,7 +180,8 @@ async function findBookingsNeedingTimeout(sameDayTimeoutMinutes, standardTimeout
       .is('therapist_response_time', null) // IMPORTANT: Only if therapist hasn't responded yet
       .not('booking_id', 'like', 'BK-%') // EXCLUDE BK-Q pattern quote bookings only
       .lt('created_at', firstTimeoutCutoff.toISOString())
-      .or('occurrence_number.is.null,occurrence_number.eq.0'); // Only check timeout on initial booking or non-recurring (NULL)
+      .or('updated_at.is.null,updated_at.lt.' + twoMinutesAgo.toISOString()) // Exclude recently updated bookings
+      .or('occurrence_number.is.null,occurrence_number.eq.0'); // NEW: Only check timeout on initial booking or non-recurring (NULL)
 
     if (error1) {
       console.error('❌ Error fetching first timeout bookings:', error1);
@@ -189,70 +226,36 @@ async function processBookingTimeout(booking, timeoutMinutes) {
   try {
     console.log('⚡ Processing', booking.timeoutStage, 'timeout for booking', booking.booking_id);
 
-    const now = new Date();
-
-    // If therapist has already responded, skip this booking entirely
-    // The query filters for therapist_response_time IS NULL, but double-check here
-    if (booking.therapist_response_time) {
-      console.log(`✅ Booking ${booking.booking_id} already has therapist response - SKIPPING`);
-      return { success: true, booking_id: booking.booking_id, action: 'skipped_already_responded' };
-    }
-
-    // Re-check booking status from database to catch any recent changes
-    console.log('🔍 [SAFETY CHECK] Re-verifying booking status before timeout processing...');
-    const { data: currentBooking, error: checkError } = await supabase
-      .from('bookings')
-      .select('status, therapist_response_time, updated_at')
-      .eq('id', booking.id)
-      .single();
-
-    if (checkError) {
-      console.error('❌ Error checking current booking status:', checkError);
-      return { success: false, booking_id: booking.booking_id, error: 'Status check failed' };
-    }
-
-    // If status changed to confirmed or declined, skip processing
-    if (currentBooking.status === 'confirmed') {
-      console.log(`✅ RACE CONDITION AVOIDED: Booking ${booking.booking_id} was just confirmed - SKIPPING timeout processing`);
-      return { success: true, booking_id: booking.booking_id, action: 'skipped_already_confirmed' };
-    }
-
-    if (currentBooking.status === 'declined') {
-      console.log(`❌ RACE CONDITION AVOIDED: Booking ${booking.booking_id} was just declined - SKIPPING timeout processing`);
-      return { success: true, booking_id: booking.booking_id, action: 'skipped_already_declined' };
-    }
-
     // CRITICAL: Verify booking has actually exceeded its timeout before processing
-    console.log('⏰ Proceeding with timeout verification...');
+    const now = new Date();
+    const createdAt = new Date(booking.created_at);
+    const minutesSinceCreated = (now.getTime() - createdAt.getTime()) / (1000 * 60);
+
+    console.log(`⏰ Booking ${booking.booking_id} created ${Math.floor(minutesSinceCreated)} minutes ago, timeout threshold is ${timeoutMinutes} minutes`);
 
     if (booking.timeoutStage === 'first') {
-      // FIRST STAGE: Check time since booking was created
-      const createdAt = new Date(booking.created_at);
-      const minutesSinceCreated = (now.getTime() - createdAt.getTime()) / (1000 * 60);
-
-      console.log(`⏰ FIRST timeout: Booking ${booking.booking_id} created ${Math.floor(minutesSinceCreated)} minutes ago, timeout threshold is ${timeoutMinutes} minutes`);
-
-      // Verify enough time has passed since creation
+      // For first timeout, verify enough time has passed since creation
       if (minutesSinceCreated < timeoutMinutes) {
-        console.log(`⏸️ Booking ${booking.booking_id} has not yet exceeded first timeout (${Math.floor(minutesSinceCreated)}/${timeoutMinutes} minutes) - skipping`);
+        console.log(`⏸️ Booking ${booking.booking_id} has not yet exceeded timeout (${Math.floor(minutesSinceCreated)}/${timeoutMinutes} minutes) - skipping`);
         return { success: true, booking_id: booking.booking_id, action: 'skipped_not_yet_timeout' };
       }
       return await handleFirstTimeout(booking, timeoutMinutes);
-
     } else if (booking.timeoutStage === 'second') {
-      // SECOND STAGE: Check time since booking was reassigned (updated_at)
-      const updatedAt = new Date(booking.updated_at);
+      // For second timeout, measure from when booking was REASSIGNED (updated_at), not created
+      // The reassigned therapists need a full timeout window from when they received the request
+      const updatedAt = new Date(booking.updated_at || booking.created_at);
       const minutesSinceReassigned = (now.getTime() - updatedAt.getTime()) / (1000 * 60);
 
-      console.log(`⏰ SECOND timeout: Booking ${booking.booking_id} reassigned ${Math.floor(minutesSinceReassigned)} minutes ago, timeout threshold is ${timeoutMinutes} minutes (SAME as first)`);
+      // Recalculate timeout for second stage (booking may be closer now)
+      const secondStageTimeout = calculateTimeoutForBooking(booking.booking_time, timeoutMinutes);
 
-      // Verify enough time has passed since reassignment - USE SAME TIMEOUT (no doubling)
-      if (minutesSinceReassigned < timeoutMinutes) {
-        console.log(`⏸️ Booking ${booking.booking_id} has not yet exceeded second timeout (${Math.floor(minutesSinceReassigned)}/${timeoutMinutes} minutes) - skipping`);
+      console.log(`⏰ Booking ${booking.booking_id} reassigned ${Math.floor(minutesSinceReassigned)} minutes ago, second timeout threshold is ${secondStageTimeout} minutes`);
+
+      if (minutesSinceReassigned < secondStageTimeout) {
+        console.log(`⏸️ Booking ${booking.booking_id} has not yet exceeded second timeout (${Math.floor(minutesSinceReassigned)}/${secondStageTimeout} minutes since reassignment) - skipping`);
         return { success: true, booking_id: booking.booking_id, action: 'skipped_not_yet_second_timeout' };
       }
       return await handleSecondTimeout(booking);
-
     } else {
       console.log('⚠️ Unknown timeout stage for booking', booking.booking_id);
       return { success: false, booking_id: booking.booking_id, reason: 'Unknown timeout stage' };
@@ -278,27 +281,17 @@ async function handleFirstTimeout(booking, timeoutMinutes) {
       
       if (availableTherapists.length === 0) {
         console.log('❌ No alternative therapists available for', booking.booking_id, '- declining immediately');
-        // RACE CONDITION FIX: Only decline if status is still 'requested'
-        const declineResult = await updateBookingStatus(booking.booking_id, 'declined', 'requested');
-        if (!declineResult.success && declineResult.reason) {
-          console.log('⚠️ Booking already processed, skipping decline:', declineResult.reason);
-          return { success: true, booking_id: booking.booking_id, action: 'skipped_status_changed' };
-        }
         await sendClientDeclineEmail(booking);
+        await updateBookingStatus(booking.booking_id, 'declined');
         await addStatusHistory(booking.id, 'declined', null, 'Automatic timeout - no available therapists');
         return { success: true, booking_id: booking.booking_id, action: 'declined_no_alternatives' };
       }
 
-      // 1. FIRST: Update booking status to prevent reprocessing (BEFORE sending emails)
-      // RACE CONDITION FIX: Only update if status is still 'requested'
-      const reassignResult = await updateBookingStatus(booking.booking_id, 'timeout_reassigned', 'requested');
-      if (!reassignResult.success && reassignResult.reason) {
-        console.log('⚠️ Booking already processed, skipping reassignment:', reassignResult.reason);
-        return { success: true, booking_id: booking.booking_id, action: 'skipped_status_changed' };
-      }
-
-      // 2. Send "Looking for Alternate" email to customer
+      // 1. FIRST: Send "Looking for Alternate" email to customer
       await sendClientLookingForAlternateEmail(booking);
+
+      // 2. CRITICAL: Update booking status to prevent reprocessing
+      await updateBookingStatus(booking.booking_id, 'timeout_reassigned');
       await addStatusHistory(booking.id, 'timeout_reassigned', null, 'Reassigned to ' + availableTherapists.length + ' therapists after first timeout');
 
       // 3. Send booking requests to ALL available therapists  
@@ -318,15 +311,10 @@ async function handleFirstTimeout(booking, timeoutMinutes) {
     } else {
       // Customer doesn't want alternatives - decline immediately
       console.log('❌ Customer does not want alternatives - declining booking', booking.booking_id);
-      // RACE CONDITION FIX: Only decline if status is still 'requested'
-      const declineResult = await updateBookingStatus(booking.booking_id, 'declined', 'requested');
-      if (!declineResult.success && declineResult.reason) {
-        console.log('⚠️ Booking already processed, skipping decline:', declineResult.reason);
-        return { success: true, booking_id: booking.booking_id, action: 'skipped_status_changed' };
-      }
       await sendClientDeclineEmail(booking);
+      await updateBookingStatus(booking.booking_id, 'declined');
       await addStatusHistory(booking.id, 'declined', null, 'Automatic timeout - customer declined alternatives');
-
+      
       return {
         success: true,
         booking_id: booking.booking_id,
@@ -345,21 +333,11 @@ async function handleSecondTimeout(booking) {
   try {
     console.log('⏰ Second timeout for booking', booking.booking_id, '- sending final decline');
 
-    // RACE CONDITION FIX: Only decline if status is still 'timeout_reassigned' or 'seeking_alternate'
-    // First try timeout_reassigned, then seeking_alternate
-    let declineResult = await updateBookingStatus(booking.booking_id, 'declined', 'timeout_reassigned');
-    if (!declineResult.success && declineResult.reason === 'status_mismatch') {
-      // Try seeking_alternate as fallback
-      declineResult = await updateBookingStatus(booking.booking_id, 'declined', 'seeking_alternate');
-    }
-
-    if (!declineResult.success && declineResult.reason) {
-      console.log('⚠️ Booking already processed, skipping final decline:', declineResult.reason);
-      return { success: true, booking_id: booking.booking_id, action: 'skipped_status_changed' };
-    }
-
-    // Send final decline email to client AFTER status update
+    // Send final decline email to client
     await sendClientDeclineEmail(booking);
+
+    // CRITICAL: Update booking status to prevent reprocessing
+    await updateBookingStatus(booking.booking_id, 'declined');
     await addStatusHistory(booking.id, 'declined', null, 'Automatic final timeout - no therapist responses');
 
     return {
@@ -760,12 +738,12 @@ async function sendTherapistBookingRequest(booking, therapist, timeoutMinutes) {
 }
 
 // Utility functions
-async function updateBookingStatus(bookingId, status, requiredCurrentStatus = null) {
+async function updateBookingStatus(bookingId, status) {
   try {
-    // First, get the request_id and current status for this booking (to handle series)
+    // First, get the request_id for this booking (to handle series)
     const { data: bookingData, error: fetchError } = await supabase
       .from('bookings')
-      .select('request_id, status')
+      .select('request_id')
       .eq('booking_id', bookingId)
       .single();
 
@@ -775,30 +753,10 @@ async function updateBookingStatus(bookingId, status, requiredCurrentStatus = nu
     }
 
     const requestId = bookingData.request_id;
-    const currentStatus = bookingData.status;
 
-    console.log(`🔄 Updating booking ${bookingId} from status '${currentStatus}' to '${status}'`);
-
-    // RACE CONDITION PROTECTION: If requiredCurrentStatus specified, verify it matches
-    if (requiredCurrentStatus && currentStatus !== requiredCurrentStatus) {
-      console.error(`⚠️ RACE CONDITION DETECTED: Expected status '${requiredCurrentStatus}' but found '${currentStatus}' - ABORTING update to prevent data corruption`);
-      return { success: false, reason: 'status_mismatch', expected: requiredCurrentStatus, found: currentStatus };
-    }
-
-    // Additional safety: Don't overwrite confirmed or declined status from timeout handler
-    if (currentStatus === 'confirmed' && (status === 'declined' || status === 'timeout_reassigned')) {
-      console.error(`⚠️ PROTECTION: Booking ${bookingId} is CONFIRMED - refusing to change to '${status}'`);
-      return { success: false, reason: 'protected_confirmed_status' };
-    }
-
-    if (currentStatus === 'declined' && status === 'timeout_reassigned') {
-      console.error(`⚠️ PROTECTION: Booking ${bookingId} is DECLINED - refusing to change to 'timeout_reassigned'`);
-      return { success: false, reason: 'protected_declined_status' };
-    }
-
-    // Update ALL bookings in the series using request_id with status check
+    // Update ALL bookings in the series using request_id
     // This ensures if booking times out, entire recurring series is cancelled
-    const updateQuery = supabase
+    const { error } = await supabase
       .from('bookings')
       .update({
         status: status,
@@ -806,29 +764,13 @@ async function updateBookingStatus(bookingId, status, requiredCurrentStatus = nu
       })
       .eq('request_id', requestId);
 
-    // Add status check if required
-    if (requiredCurrentStatus) {
-      updateQuery.eq('status', requiredCurrentStatus);
-    }
-
-    const { data: result, error } = await updateQuery.select();
-
     if (error) {
       console.error('❌ Error updating booking', bookingId, 'status:', error);
-      return { success: false, error: error.message };
+    } else {
+      console.log('✅ Updated booking', bookingId, 'status to:', status);
     }
-
-    if (requiredCurrentStatus && (!result || result.length === 0)) {
-      console.error(`⚠️ RACE CONDITION: Status update failed - booking status changed from '${requiredCurrentStatus}' before update completed`);
-      return { success: false, reason: 'race_condition_status_changed' };
-    }
-
-    console.log('✅ Updated booking', bookingId, 'status to:', status);
-    return { success: true };
-
   } catch (error) {
     console.error('❌ Error updating booking status:', error);
-    return { success: false, error: error.message };
   }
 }
 
