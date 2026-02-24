@@ -2,7 +2,7 @@
 // Replace your entire netlify/functions/booking-response.js with this code
 
 const { createClient } = require('@supabase/supabase-js');
-const { getLocalDate, getLocalTime, getShortDate, getLocalDateTime, getDateAndTime } = require('./utils/timezoneHelpers');
+const { getLocalDate, getLocalTime, getShortDate, getLocalDateTime, getDateAndTime, getLocalDayOfWeek, getLocalTimeOnly, getLocalDateOnly } = require('./utils/timezoneHelpers');
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Service role bypasses RLS
@@ -927,13 +927,16 @@ async function findAllAvailableTherapists(booking, excludeTherapistId) {
     }
 
     // NEW: Filter by actual time slot availability
+    // CRITICAL: Use booking's timezone for day/time extraction, NOT UTC!
+    // UTC getDay()/toTimeString() returns wrong values for Australian timezones
+    // e.g., Monday 9:00 AM Adelaide (UTC+10:30) = Sunday 10:30 PM UTC = wrong day!
     const availableTherapists = [];
-    const bookingDate = new Date(booking.booking_time);
-    const dayOfWeek = bookingDate.getDay(); // 0=Sunday, 6=Saturday
-    const bookingTimeOnly = bookingDate.toTimeString().slice(0, 5); // HH:MM format
-    const bookingDateOnly = bookingDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const timezone = booking.booking_timezone || 'Australia/Brisbane';
+    const dayOfWeek = getLocalDayOfWeek(booking.booking_time, timezone);
+    const bookingTimeOnly = getLocalTimeOnly(booking.booking_time, timezone);
+    const bookingDateOnly = getLocalDateOnly(booking.booking_time, timezone);
 
-    console.log('🕐 Checking availability for:', bookingDateOnly, 'at', bookingTimeOnly, '(day', dayOfWeek + ')');
+    console.log('🕐 Checking availability for:', bookingDateOnly, 'at', bookingTimeOnly, '(day', dayOfWeek + ') timezone:', timezone);
 
     for (const therapist of candidateTherapists) {
       try {

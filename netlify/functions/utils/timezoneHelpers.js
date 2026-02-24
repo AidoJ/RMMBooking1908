@@ -94,11 +94,61 @@ function getDateAndTime(utcTime, timezone = 'Australia/Brisbane') {
   };
 }
 
+/**
+ * Get day-of-week number in local timezone (0=Sunday, 1=Monday, ..., 6=Saturday)
+ * CRITICAL: Must use this instead of Date.getDay() which returns UTC day
+ * @param {string|Date} utcTime - UTC timestamp
+ * @param {string} timezone - IANA timezone
+ * @returns {number} Day of week (0-6)
+ */
+function getLocalDayOfWeek(utcTime, timezone = 'Australia/Brisbane') {
+  const date = new Date(utcTime);
+  // Get the short weekday name in the local timezone
+  const dayStr = date.toLocaleDateString('en-US', { weekday: 'short', timeZone: timezone });
+  const dayMap = { 'Sun': 0, 'Mon': 1, 'Tue': 2, 'Wed': 3, 'Thu': 4, 'Fri': 5, 'Sat': 6 };
+  return dayMap[dayStr];
+}
+
+/**
+ * Get time-only string (HH:MM) in local timezone
+ * CRITICAL: Must use this instead of Date.toTimeString() which returns UTC time
+ * @param {string|Date} utcTime - UTC timestamp
+ * @param {string} timezone - IANA timezone
+ * @returns {string} Time in HH:MM format (e.g., "09:00")
+ */
+function getLocalTimeOnly(utcTime, timezone = 'Australia/Brisbane') {
+  const date = new Date(utcTime);
+  // Use 24-hour format to get HH:MM for comparison with therapist_availability
+  const timeStr = date.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: timezone
+  });
+  return timeStr; // Returns "09:00" format
+}
+
+/**
+ * Get date-only string (YYYY-MM-DD) in local timezone
+ * CRITICAL: Must use this instead of Date.toISOString().split('T')[0] which returns UTC date
+ * @param {string|Date} utcTime - UTC timestamp
+ * @param {string} timezone - IANA timezone
+ * @returns {string} Date in YYYY-MM-DD format
+ */
+function getLocalDateOnly(utcTime, timezone = 'Australia/Brisbane') {
+  const date = new Date(utcTime);
+  // en-CA locale outputs YYYY-MM-DD format
+  return date.toLocaleDateString('en-CA', { timeZone: timezone });
+}
+
 module.exports = {
   formatInTimezone,
   getLocalDate,
   getLocalTime,
   getShortDate,
   getLocalDateTime,
-  getDateAndTime
+  getDateAndTime,
+  getLocalDayOfWeek,
+  getLocalTimeOnly,
+  getLocalDateOnly
 };
