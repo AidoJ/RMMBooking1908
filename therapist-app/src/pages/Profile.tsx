@@ -192,18 +192,23 @@ export const Profile: React.FC = () => {
     }
   };
 
-  const handleImageUpload = async (file: any) => {
-    try {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    } catch (error) {
-      console.error('Error processing image:', error);
-      throw error;
+  const handleFileUploadToStorage = async (file: any, fieldName: string): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('fieldName', fieldName);
+
+    const response = await fetch('/.netlify/functions/therapist-registration-upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(result?.error || 'File upload failed');
     }
+
+    return result.url;
   };
 
   const handleSubmit = async (values: any) => {
@@ -217,22 +222,22 @@ export const Profile: React.FC = () => {
 
       // Handle profile picture upload
       if (fileList.length > 0 && fileList[0].originFileObj) {
-        profilePicUrl = await handleImageUpload(fileList[0].originFileObj);
+        profilePicUrl = await handleFileUploadToStorage(fileList[0].originFileObj, 'profilePhoto');
       }
 
       // Handle insurance certificate upload
       if (insuranceCertFile.length > 0 && insuranceCertFile[0].originFileObj) {
-        insuranceCertUrl = await handleImageUpload(insuranceCertFile[0].originFileObj);
+        insuranceCertUrl = await handleFileUploadToStorage(insuranceCertFile[0].originFileObj, 'insuranceCert');
       }
 
       // Handle first aid certificate upload
       if (firstAidCertFile.length > 0 && firstAidCertFile[0].originFileObj) {
-        firstAidCertUrl = await handleImageUpload(firstAidCertFile[0].originFileObj);
+        firstAidCertUrl = await handleFileUploadToStorage(firstAidCertFile[0].originFileObj, 'firstAidCert');
       }
 
       // Handle qualification certificate upload
       if (qualificationCertFile.length > 0 && qualificationCertFile[0].originFileObj) {
-        qualificationCertUrl = await handleImageUpload(qualificationCertFile[0].originFileObj);
+        qualificationCertUrl = await handleFileUploadToStorage(qualificationCertFile[0].originFileObj, 'qualifications');
       }
 
       const profileData = {

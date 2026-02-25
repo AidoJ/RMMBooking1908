@@ -98,13 +98,34 @@ const TherapistCreate: React.FC = () => {
     return () => clearTimeout(timer);
   }, [setupAutocomplete]);
 
-  const handleImageUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string;
-      setProfileImage(base64);
-    };
-    reader.readAsDataURL(file);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const handleImageUpload = async (file: File) => {
+    try {
+      setUploadingImage(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fieldName', 'profilePhoto');
+
+      const response = await fetch('/.netlify/functions/therapist-registration-upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result?.error || 'Photo upload failed');
+      }
+
+      setProfileImage(result.url);
+      message.success('Photo uploaded');
+    } catch (error: any) {
+      console.error('Error uploading photo:', error);
+      message.error('Failed to upload photo: ' + error.message);
+    } finally {
+      setUploadingImage(false);
+    }
     return false;
   };
 
@@ -252,8 +273,8 @@ const TherapistCreate: React.FC = () => {
                     beforeUpload={handleImageUpload}
                     showUploadList={false}
                   >
-                    <Button icon={<UploadOutlined />}>
-                      Upload Photo
+                    <Button icon={<UploadOutlined />} loading={uploadingImage}>
+                      {uploadingImage ? 'Uploading...' : 'Upload Photo'}
                     </Button>
                   </Upload>
                 </div>
