@@ -52,6 +52,10 @@ import { getSystemSetting } from '../../utils/systemSettings';
 import { calculateQuoteTotalFromQuoteDates } from '../../services/quoteFinancialCalculation';
 import GooglePlacesAutocomplete from '../../components/GooglePlacesAutocomplete';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import tz from 'dayjs/plugin/timezone';
+dayjs.extend(utc);
+dayjs.extend(tz);
 import './enhanced-edit.css';
 
 const { TextArea } = Input;
@@ -479,6 +483,7 @@ export const EnhancedQuoteEdit: React.FC = () => {
           .from('bookings')
           .select(`
             booking_time,
+            booking_timezone,
             therapist_id,
             therapist_fee,
             duration_minutes,
@@ -500,9 +505,13 @@ export const EnhancedQuoteEdit: React.FC = () => {
 
           // Transform to TherapistAssignment format
           const assignments: TherapistAssignment[] = bookingsData.map((booking: any) => {
-            const date = booking.booking_time.split('T')[0]; // YYYY-MM-DD - direct string split to avoid timezone issues
-            const bookingDateTime = new Date(booking.booking_time);
-            const time = bookingDateTime.toTimeString().split(' ')[0]; // HH:MM:SS
+            // CRITICAL: Convert UTC booking time to the booking's local timezone
+            // Using browser timezone (toTimeString) would show wrong time for cross-timezone bookings
+            // e.g., 9:30 AM Melbourne stored as 22:30 UTC would show as 8:30 AM in a Brisbane browser
+            const bookingTimezone = booking.booking_timezone || 'Australia/Brisbane';
+            const localTime = dayjs.utc(booking.booking_time).tz(bookingTimezone);
+            const date = localTime.format('YYYY-MM-DD');
+            const time = localTime.format('HH:mm:ss');
 
             // Use the therapist's rates from their profile
             const hourlyRate = booking.therapist_profiles.hourly_rate || 0;

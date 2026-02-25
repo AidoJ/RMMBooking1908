@@ -46,6 +46,10 @@ import { supabaseClient } from '../../utility';
 import { UserIdentity, canAccess, isTherapist, isAdmin } from '../../utils/roleUtils';
 import { RoleGuard } from '../../components/RoleGuard';
 import dayjs, { Dayjs } from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import tz from 'dayjs/plugin/timezone';
+dayjs.extend(utc);
+dayjs.extend(tz);
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -666,10 +670,10 @@ export const BookingShow: React.FC<BookingShowProps> = ({ id }) => {
                   <Text>{booking.duration_minutes || booking.service_details?.minimum_duration || 60} minutes</Text>
                 </Descriptions.Item>
                 <Descriptions.Item label="Date">
-                  <Text>{dayjs(booking.booking_time).format('dddd, MMMM DD, YYYY')}</Text>
+                  <Text>{dayjs.utc(booking.booking_time).tz(booking.booking_timezone || 'Australia/Brisbane').format('dddd, MMMM DD, YYYY')}</Text>
                 </Descriptions.Item>
                 <Descriptions.Item label="Time">
-                  <Text>{dayjs(booking.booking_time).format('HH:mm')}</Text>
+                  <Text>{dayjs.utc(booking.booking_time).tz(booking.booking_timezone || 'Australia/Brisbane').format('HH:mm')}</Text>
                 </Descriptions.Item>
                 {!isTherapist(userRole) && !isQuote(booking) && (
                   <Descriptions.Item label="Price">
