@@ -46,6 +46,10 @@ import { UserIdentity, canAccess, isTherapist, isAdmin } from '../../utils/roleU
 import { RoleGuard } from '../../components/RoleGuard';
 import { calculateTherapistFee, FeeCalculationResult } from '../../services/feeCalculation';
 import dayjs, { Dayjs } from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import tz from 'dayjs/plugin/timezone';
+dayjs.extend(utc);
+dayjs.extend(tz);
 import { EmailService, BookingData, TherapistData } from '../../utils/emailService';
 import { SMSService } from '../../utils/smsService';
 import { generateQuotePDF } from '../../utils/pdfGenerator';
@@ -84,6 +88,7 @@ interface Booking {
   customer_phone?: string;
   created_at: string;
   updated_at: string;
+  booking_timezone?: string;
   booking_type?: string;
   discount_code?: string;
   gift_card_code?: string;
@@ -274,6 +279,10 @@ export const BookingEditPlatform: React.FC = () => {
   const isQuote = (booking: Booking) => {
     return booking.service_details?.quote_only || booking.booking_type === 'quote';
   };
+
+  // Convert UTC time to booking's local timezone
+  const toLocalTz = (utcTime: string) =>
+    dayjs.utc(utcTime).tz(booking?.booking_timezone || 'Australia/Brisbane');
 
   // Business settings state
   const [businessSettings, setBusinessSettings] = useState({
@@ -506,7 +515,9 @@ export const BookingEditPlatform: React.FC = () => {
         room_number: bookingData.room_number || '',
         parking: bookingData.parking || '',
         notes: bookingData.notes || '',
-        booking_time: bookingData.booking_time ? dayjs(bookingData.booking_time) : null,
+        booking_time: bookingData.booking_time
+          ? dayjs.utc(bookingData.booking_time).tz(bookingData.booking_timezone || 'Australia/Brisbane')
+          : null,
         duration_minutes: bookingData.duration_minutes || 60,
         service_id: bookingData.service_id || '',
         therapist_id: bookingData.therapist_id || '',
@@ -618,7 +629,9 @@ export const BookingEditPlatform: React.FC = () => {
         room_number: values.room_number,
         parking: values.parking,
         notes: values.notes,
-        booking_time: values.booking_time?.toISOString(),
+        booking_time: values.booking_time
+          ? dayjs.tz(values.booking_time.format('YYYY-MM-DDTHH:mm:ss'), booking?.booking_timezone || 'Australia/Brisbane').utc().toISOString()
+          : undefined,
         duration_minutes: values.duration_minutes,
         service_id: values.service_id,
         therapist_id: values.therapist_id,
@@ -779,8 +792,8 @@ export const BookingEditPlatform: React.FC = () => {
       setLoadingTherapists(true);
       console.log('🔍 Updating available therapists for selected time slot...');
 
-      const dateVal = dayjs(booking.booking_time).format('YYYY-MM-DD');
-      const timeVal = dayjs(booking.booking_time).format('HH:mm');
+      const dateVal = toLocalTz(booking.booking_time).format('YYYY-MM-DD');
+      const timeVal = toLocalTz(booking.booking_time).format('HH:mm');
       const serviceId = booking.service_id;
       const genderVal = booking.gender_preference;
       const durationVal = booking.duration_minutes;
@@ -833,7 +846,7 @@ export const BookingEditPlatform: React.FC = () => {
 
   // Update available time slots - EXACTLY like frontend
   const updateAvailableTimeSlots = async () => {
-    const dateVal = booking?.booking_time ? dayjs(booking.booking_time).format('YYYY-MM-DD') : null;
+    const dateVal = booking?.booking_time ? toLocalTz(booking.booking_time).format('YYYY-MM-DD') : null;
     
     if (!dateVal) {
       setAvailableTimeSlots([]);
@@ -1440,8 +1453,8 @@ export const BookingEditPlatform: React.FC = () => {
     });
 
     // Check if time/duration changed from original booking
-    const originalTime = originalBooking ? dayjs(originalBooking.booking_time).format('YYYY-MM-DD HH:mm') : null;
-    const newTime = dayjs(booking.booking_time).format('YYYY-MM-DD HH:mm');
+    const originalTime = originalBooking ? toLocalTz(originalBooking.booking_time).format('YYYY-MM-DD HH:mm') : null;
+    const newTime = toLocalTz(booking.booking_time).format('YYYY-MM-DD HH:mm');
     const originalDuration = originalBooking?.duration_minutes;
     const newDuration = booking.duration_minutes;
     
@@ -1493,7 +1506,7 @@ export const BookingEditPlatform: React.FC = () => {
     }
 
     // Get day of week and time for NEW booking
-    const bookingTime = dayjs(booking.booking_time);
+    const bookingTime = toLocalTz(booking.booking_time);
     const dayOfWeek = bookingTime.day(); // 0=Sunday, 6=Saturday
     const timeVal = bookingTime.format('HH:mm');
 
@@ -1607,7 +1620,7 @@ export const BookingEditPlatform: React.FC = () => {
     }
 
     // FE logic: determine after-hours/weekend
-    const bookingTime = dayjs(booking.booking_time);
+    const bookingTime = toLocalTz(booking.booking_time);
     const dayOfWeek = bookingTime.day();
     const hour = bookingTime.hour();
     const opening = businessSettings.businessOpeningHour ?? 9;
@@ -1781,12 +1794,12 @@ export const BookingEditPlatform: React.FC = () => {
       });
     }
 
-    if (current.booking_time && dayjs(current.booking_time).format('YYYY-MM-DD HH:mm') !== dayjs(original.booking_time).format('YYYY-MM-DD HH:mm')) {
+    if (current.booking_time && toLocalTz(current.booking_time).format('YYYY-MM-DD HH:mm') !== toLocalTz(original.booking_time).format('YYYY-MM-DD HH:mm')) {
       changes.push({
         field: 'booking_time',
         fieldLabel: 'Date & Time',
-        originalValue: dayjs(original.booking_time).format('ddd, MMM D, YYYY [at] h:mm A'),
-        newValue: dayjs(current.booking_time).format('ddd, MMM D, YYYY [at] h:mm A'),
+        originalValue: toLocalTz(original.booking_time).format('ddd, MMM D, YYYY [at] h:mm A'),
+        newValue: toLocalTz(current.booking_time).format('ddd, MMM D, YYYY [at] h:mm A'),
         changeType: 'modified',
         category: 'booking'
       });
@@ -1881,8 +1894,8 @@ export const BookingEditPlatform: React.FC = () => {
         }
 
         // Check if time-based uplift changed
-        const originalTime = original.booking_time ? dayjs(original.booking_time) : null;
-        const newTime = current.booking_time ? dayjs(current.booking_time) : null;
+        const originalTime = original.booking_time ? toLocalTz(original.booking_time) : null;
+        const newTime = current.booking_time ? toLocalTz(current.booking_time) : null;
         
         if (originalTime && newTime) {
           const originalDay = originalTime.day();
@@ -2013,7 +2026,7 @@ export const BookingEditPlatform: React.FC = () => {
 
       // Handle booking_time safely
       if (booking.booking_time !== originalBooking.booking_time) {
-        updateData.booking_time = dayjs(booking.booking_time).format('YYYY-MM-DD HH:mm:ss');
+        updateData.booking_time = booking.booking_time;
       }
 
       // Other booking fields from state
@@ -2448,8 +2461,8 @@ export const BookingEditPlatform: React.FC = () => {
         // Service details
         service_name: booking.service_name || 'Unknown Service',
         duration: `${booking.duration_minutes || 60} minutes`,
-        booking_date: new Date(booking.booking_time).toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
-        booking_time: new Date(booking.booking_time).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }),
+        booking_date: toLocalTz(booking.booking_time).format('dddd, D MMMM YYYY'),
+        booking_time: toLocalTz(booking.booking_time).format('h:mm A'),
         address: booking.address || '',
         business_name: booking.business_name || 'N/A',
         room_number: booking.room_number || 'N/A',
@@ -3281,12 +3294,14 @@ export const BookingEditPlatform: React.FC = () => {
                       <div style={{ marginBottom: '20px' }}>
                         <Text strong style={{ color: '#374151', marginBottom: '8px', display: 'block' }}>Date</Text>
                         <DatePicker 
-                          value={booking.booking_time ? dayjs(booking.booking_time) : null}
+                          value={booking.booking_time ? toLocalTz(booking.booking_time) : null}
                           style={{ width: '100%', padding: '12px 16px', border: '2px solid #e5e7eb', borderRadius: '8px' }}
                           onChange={(date) => {
                             if (date) {
+                              const tzName = booking?.booking_timezone || 'Australia/Brisbane';
                               form.setFieldsValue({ booking_time: date });
-                              setBooking(prev => prev ? { ...prev, booking_time: date.toISOString() } : null);
+                              const utcIso = dayjs.tz(date.format('YYYY-MM-DDTHH:mm:ss'), tzName).utc().toISOString();
+                              setBooking(prev => prev ? { ...prev, booking_time: utcIso } : null);
                             }
                           }}
                         />
@@ -3336,9 +3351,9 @@ export const BookingEditPlatform: React.FC = () => {
                         margin: '16px 0'
                       }}>
                         {availableTimeSlots.map((time) => {
-                          const isSelected = booking.booking_time ? dayjs(booking.booking_time).format('HH:mm') === time : false;
+                          const isSelected = booking.booking_time ? toLocalTz(booking.booking_time).format('HH:mm') === time : false;
                           const hour = parseInt(time.split(':')[0]);
-                          const isWeekend = booking.booking_time ? dayjs(booking.booking_time).day() === 0 || dayjs(booking.booking_time).day() === 6 : false;
+                          const isWeekend = booking.booking_time ? toLocalTz(booking.booking_time).day() === 0 || toLocalTz(booking.booking_time).day() === 6 : false;
                           const isAfterHours = isWeekend || hour >= 18; // After 18:00 or weekend
                           
                           return (
@@ -3357,10 +3372,12 @@ export const BookingEditPlatform: React.FC = () => {
                                 color: isSelected ? 'white' : isAfterHours ? '#92400e' : '#166534'
                               }}
                               onClick={() => {
-                                const currentDate = booking.booking_time ? dayjs(booking.booking_time) : dayjs();
+                                const tzName = booking?.booking_timezone || 'Australia/Brisbane';
+                                const currentDate = booking.booking_time ? toLocalTz(booking.booking_time) : dayjs();
                                 const newDateTime = currentDate.hour(parseInt(time.split(':')[0])).minute(parseInt(time.split(':')[1]));
                                 form.setFieldsValue({ booking_time: newDateTime });
-                                setBooking(prev => prev ? { ...prev, booking_time: newDateTime.toISOString() } : null);
+                                const utcIso = dayjs.tz(newDateTime.format('YYYY-MM-DDTHH:mm:ss'), tzName).utc().toISOString();
+                                setBooking(prev => prev ? { ...prev, booking_time: utcIso } : null);
                               }}
                             >
                               {time}
@@ -4384,11 +4401,11 @@ export const BookingEditPlatform: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
                   <span style={{ fontWeight: '500', color: '#6b7280' }}>Date:</span>
-                  <span style={{ color: '#1f2937' }}>{dayjs(booking.booking_time).format('MMM DD, YYYY')}</span>
+                  <span style={{ color: '#1f2937' }}>{toLocalTz(booking.booking_time).format('MMM DD, YYYY')}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
                   <span style={{ fontWeight: '500', color: '#6b7280' }}>Time:</span>
-                  <span style={{ color: '#1f2937' }}>{dayjs(booking.booking_time).format('h:mm A')}</span>
+                  <span style={{ color: '#1f2937' }}>{toLocalTz(booking.booking_time).format('h:mm A')}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f3f4f6' }}>
                   <span style={{ fontWeight: '500', color: '#6b7280' }}>Duration:</span>
@@ -4565,7 +4582,7 @@ export const BookingEditPlatform: React.FC = () => {
                   <strong>Therapist Gender Preference:</strong> {booking.gender_preference || 'any'}
                 </p>
                 <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
-                  <strong>Date & Time:</strong> {dayjs(booking.booking_time).format('YYYY-MM-DD [at] HH:mm')}
+                  <strong>Date & Time:</strong> {toLocalTz(booking.booking_time).format('YYYY-MM-DD [at] HH:mm')}
                 </p>
                 <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
                   <strong>Parking:</strong> {booking.parking || 'N/A'}
@@ -4781,12 +4798,7 @@ export const BookingEditPlatform: React.FC = () => {
                     <p><strong>Customer:</strong> {booking.customer_name}</p>
                     <p><strong>Service:</strong> {booking.service_name}</p>
                     <p><strong>Amount:</strong> ${booking.price?.toFixed(2) || '0.00'}</p>
-                    <p><strong>Date:</strong> {new Date(booking.booking_time).toLocaleDateString('en-AU', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}</p>
+                    <p><strong>Date:</strong> {toLocalTz(booking.booking_time).format('dddd, D MMMM YYYY')}</p>
                   </div>
                 </div>
 
@@ -4855,16 +4867,8 @@ export const BookingEditPlatform: React.FC = () => {
                     <p><strong>Customer:</strong> {booking.customer_name}</p>
                     <p><strong>Service:</strong> {booking.service_name}</p>
                     <p><strong>Amount to Charge:</strong> ${booking.price?.toFixed(2) || '0.00'}</p>
-                    <p><strong>Date:</strong> {new Date(booking.booking_time).toLocaleDateString('en-AU', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric'
-                    })}</p>
-                    <p><strong>Time:</strong> {new Date(booking.booking_time).toLocaleTimeString('en-AU', {
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}</p>
+                    <p><strong>Date:</strong> {toLocalTz(booking.booking_time).format('dddd, D MMMM YYYY')}</p>
+                    <p><strong>Time:</strong> {toLocalTz(booking.booking_time).format('h:mm A')}</p>
                     <p><strong>Address:</strong> {booking.address}</p>
                   </div>
                 </div>
@@ -4976,7 +4980,7 @@ export const BookingEditPlatform: React.FC = () => {
                   <strong>Therapist:</strong> {booking.therapist_name || 'Not assigned'}
                 </p>
                 <p style={{ margin: '4px 0', fontSize: '13px', color: '#6b7280' }}>
-                  <strong>Date:</strong> {new Date(booking.booking_time).toLocaleDateString()}
+                  <strong>Date:</strong> {toLocalTz(booking.booking_time).format('D/MM/YYYY')}
                 </p>
               </div>
             )}
@@ -5032,7 +5036,7 @@ export const BookingEditPlatform: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: '#6b7280' }}>Date:</span>
-                      <span style={{ fontWeight: 600 }}>{new Date(booking.booking_time).toLocaleDateString()}</span>
+                      <span style={{ fontWeight: 600 }}>{toLocalTz(booking.booking_time).format('D/MM/YYYY')}</span>
                     </div>
                   </div>
                 </div>
