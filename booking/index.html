@@ -11,6 +11,10 @@
 
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="preconnect" href="https://dcukfurezlkagvvwgsgr.supabase.co" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <link rel="preconnect" href="https://js.stripe.com" />
+  <link rel="preconnect" href="https://maps.googleapis.com" />
   <title>Rejuvenators Mobile Massage Booking</title>
   <link rel="icon" type="image/png" href="images/favicon.png" />
   <link rel="apple-touch-icon" href="images/favicon.png" />
@@ -18,9 +22,9 @@
   <meta name="theme-color" content="#007e8c" />
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/quote-form-enhanced.css" />
-  <script src="https://js.stripe.com/v3/"></script>
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBSFcQHl262KbU3H7-N6AdzEj-VO-wRASI&libraries=places"></script>
-  <script src="js/analytics.js"></script>
+  <script src="https://js.stripe.com/v3/" defer></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBSFcQHl262KbU3H7-N6AdzEj-VO-wRASI&libraries=places&loading=async" defer></script>
+  <script src="js/analytics.js" defer></script>
 </head>
 <body>
   <!-- Google Tag Manager (noscript) -->
@@ -812,7 +816,7 @@
   </div>
 </div>
   </div>
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <script>
     // Ensure EmailJS is loaded before other scripts

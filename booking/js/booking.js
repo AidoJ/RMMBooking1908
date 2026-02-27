@@ -1012,6 +1012,9 @@ document.addEventListener('DOMContentLoaded', function () {
             img.src = service.image_url;
             img.alt = service.image_alt || service.name;
             img.className = 'service-icon';
+            img.loading = 'lazy';
+            img.width = 50;
+            img.height = 50;
             serviceIcon.appendChild(img);
           } else {
             // Fallback to emoji based on service name
@@ -3346,6 +3349,9 @@ async function updateTherapistSelection() {
           <img src="${t.profile_pic || '/images/default-therapist.svg'}"
                alt="${displayName}"
                class="therapist-profile-pic"
+               loading="lazy"
+               width="80"
+               height="80"
                onerror="this.src='/images/default-therapist.svg'">
         </div>
         <div class="therapist-details">
