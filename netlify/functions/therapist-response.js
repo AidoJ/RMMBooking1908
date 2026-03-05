@@ -100,7 +100,16 @@ exports.handler = async (event, context) => {
       }
     }
 
-    // Process the response based on action type
+    // GET: show confirmation page — prevents link-preview ghost-actions
+    if (event.httpMethod === 'GET') {
+      return {
+        statusCode: 200,
+        headers,
+        body: generateConfirmationPage(booking, therapist, action, params)
+      };
+    }
+
+    // POST: execute the action
     if (action === 'accept') {
       await handleAccept(booking, therapist);
     } else if (action === 'decline') {
@@ -719,6 +728,81 @@ async function addStatusHistory(bookingId, status, userId, notes) {
   } catch (error) {
     console.error('❌ Error adding status history:', error);
   }
+}
+
+function generateConfirmationPage(booking, therapist, action, params) {
+  const tz = booking.booking_timezone || 'Australia/Brisbane';
+  const dateStr = new Date(booking.booking_time).toLocaleDateString('en-AU', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: tz
+  });
+  const timeStr = new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+    hour: '2-digit', minute: '2-digit', timeZone: tz
+  });
+
+  const isAccept = action === 'accept' || action === 'accept_reschedule';
+  const actionLabel = isAccept ? 'Accept Booking' : 'Decline Booking';
+  const btnColor = isAccept ? '#52c41a' : '#f5222d';
+  const btnIcon = isAccept ? '✅' : '❌';
+  const btnText = isAccept ? 'CONFIRM ACCEPT' : 'CONFIRM DECLINE';
+
+  const baseAction = `/.netlify/functions/therapist-response?booking_id=${params.booking_id}&therapist_id=${params.therapist_id}`;
+  const primaryUrl = `${baseAction}&action=${action}`;
+  const altAction = isAccept ? 'decline' : 'accept';
+  const altLabel = isAccept ? '❌ Decline instead' : '✅ Accept instead';
+  const altUrl = `${baseAction}&action=${altAction}`;
+
+  const feeDisplay = booking.therapist_fee ? `$${parseFloat(booking.therapist_fee).toFixed(2)}` : 'TBD';
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${actionLabel} - Rejuvenators</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Helvetica', Arial, sans-serif; background: #f5f5f5; color: #333; padding: 20px; }
+    .container { max-width: 480px; margin: 0 auto; background: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); overflow: hidden; }
+    .header { background: #007e8c; color: white; padding: 22px 30px; text-align: center; }
+    .header h1 { font-size: 20px; font-weight: bold; }
+    .content { padding: 28px 24px; }
+    .greeting { font-size: 16px; color: #555; margin-bottom: 20px; }
+    .detail-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 11px 0; border-bottom: 1px solid #f0f0f0; font-size: 15px; gap: 12px; }
+    .detail-row:last-of-type { border-bottom: none; }
+    .detail-label { color: #888; white-space: nowrap; }
+    .detail-value { font-weight: 600; text-align: right; }
+    .actions { margin-top: 24px; }
+    .btn { display: block; width: 100%; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; letter-spacing: 0.3px; }
+    .btn-primary { background: ${btnColor}; color: white; margin-bottom: 12px; }
+    .btn-secondary { background: white; color: #888; border: 1px solid #ddd; font-size: 14px; }
+    form { margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>Rejuvenators</h1></div>
+    <div class="content">
+      <p class="greeting">Hi ${therapist.first_name}, you have a booking request:</p>
+      <div class="detail-row"><span class="detail-label">Booking ID</span><span class="detail-value">${booking.booking_id}</span></div>
+      <div class="detail-row"><span class="detail-label">Service</span><span class="detail-value">${(booking.services && booking.services.name) ? booking.services.name : 'Service'}</span></div>
+      <div class="detail-row"><span class="detail-label">Client</span><span class="detail-value">${booking.first_name} ${booking.last_name}</span></div>
+      <div class="detail-row"><span class="detail-label">Date</span><span class="detail-value">${dateStr}</span></div>
+      <div class="detail-row"><span class="detail-label">Time</span><span class="detail-value">${timeStr}</span></div>
+      <div class="detail-row"><span class="detail-label">Duration</span><span class="detail-value">${booking.duration_minutes} mins</span></div>
+      <div class="detail-row"><span class="detail-label">Your fee</span><span class="detail-value">${feeDisplay}</span></div>
+      <div class="detail-row"><span class="detail-label">Address</span><span class="detail-value">${booking.address || 'N/A'}</span></div>
+      <div class="actions">
+        <form method="POST" action="${primaryUrl}">
+          <button type="submit" class="btn btn-primary">${btnIcon} ${btnText}</button>
+        </form>
+        <form method="POST" action="${altUrl}">
+          <button type="submit" class="btn btn-secondary">${altLabel}</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`;
 }
 
 function generateSuccessPage(booking, therapist, action) {

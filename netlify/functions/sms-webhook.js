@@ -697,13 +697,21 @@ async function sendBookingRequestSMS(therapistPhone, booking, therapist) {
   const acceptLink = `${baseUrl}?booking_id=${booking.booking_id}&action=accept&therapist_id=${therapist.id}`;
   const declineLink = `${baseUrl}?booking_id=${booking.booking_id}&action=decline&therapist_id=${therapist.id}`;
   
+  const tz = booking.booking_timezone || 'Australia/Brisbane';
+  const dateStr = new Date(booking.booking_time).toLocaleDateString('en-AU', {
+    weekday: 'short', day: 'numeric', month: 'short', timeZone: tz
+  });
+  const timeStr = new Date(booking.booking_time).toLocaleTimeString('en-AU', {
+    hour: '2-digit', minute: '2-digit', timeZone: tz
+  });
+
   const message = `📱 NEW BOOKING REQUEST
 
 Booking ID: ${booking.booking_id}
 Service: ${booking.services?.name || 'Service'}
 Client: ${booking.first_name} ${booking.last_name}
-Date: ${new Date(booking.booking_time).toLocaleDateString()}
-Time: ${new Date(booking.booking_time).toLocaleTimeString()}
+Date: ${dateStr}
+Time: ${timeStr}
 Duration: ${booking.duration_minutes} minutes
 Fee: $${booking.therapist_fee || 'TBD'}
 
@@ -712,9 +720,6 @@ ${acceptLink}
 
 Or if you can't accept, choose Decline:
 ${declineLink}
-
-Or reply with:
-"ACCEPT ${booking.booking_id}" or "DECLINE ${booking.booking_id}"
 
 - Rejuvenators`;
 
