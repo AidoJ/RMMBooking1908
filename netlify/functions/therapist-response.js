@@ -1,5 +1,5 @@
 const { createClient } = require('@supabase/supabase-js');
-const { getLocalDate, getLocalTime, getShortDate } = require('./utils/timezoneHelpers');
+const { getLocalDate, getLocalTime, getShortDate, getLocalDayOfWeek, getLocalTimeOnly } = require('./utils/timezoneHelpers');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const supabaseUrl = process.env.SUPABASE_URL;
@@ -377,7 +377,8 @@ async function handleUnavailableReschedule(booking, therapist) {
         alternateTherapist.id,
         booking.service_id,
         booking.booking_time,
-        booking.duration_minutes
+        booking.duration_minutes,
+        booking.booking_timezone
       );
 
       if (newFee) {
@@ -547,8 +548,10 @@ function getDistanceKm(lat1, lon1, lat2, lon2) {
 }
 
 // Helper: Calculate therapist fee for reschedule
-async function calculateTherapistFeeForReschedule(therapistId, serviceId, bookingTime, durationMinutes) {
+async function calculateTherapistFeeForReschedule(therapistId, serviceId, bookingTime, durationMinutes, timezone) {
   try {
+    const tz = timezone || 'Australia/Brisbane';
+
     const { data: settings } = await supabase
       .from('system_settings')
       .select('key, value')
@@ -563,11 +566,13 @@ async function calculateTherapistFeeForReschedule(therapistId, serviceId, bookin
       }
     }
 
-    const bookingDate = new Date(bookingTime);
-    const dayOfWeek = bookingDate.getDay();
-    const hour = bookingDate.getHours();
+    // Use timezone-aware helpers — getHours() returns UTC hour which is wrong for AU timezones
+    const dayOfWeek = getLocalDayOfWeek(bookingTime, tz);
+    const localTimeStr = getLocalTimeOnly(bookingTime, tz); // "HH:MM" in booking timezone
+    const hour = parseInt(localTimeStr.split(':')[0], 10);
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
     const isAfterHours = hour < businessOpeningHour || hour >= businessClosingHour;
+    console.log(`🕐 Fee calc: booking_time=${bookingTime}, tz=${tz}, local=${localTimeStr}, day=${dayOfWeek}, isWeekend=${isWeekend}, isAfterHours=${isAfterHours}`);
 
     // Get therapist rates
     const { data: serviceRate } = await supabase

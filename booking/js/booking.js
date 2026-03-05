@@ -166,15 +166,14 @@ async function calculateTherapistFee(dateVal, timeVal, durationVal, therapistId,
     const hour = parseInt(timeVal.split(':')[0], 10);
 
     // Determine if afterhours/weekend
+    // Use loaded business hours, fall back to standard 9-17 if settings not yet loaded
+    const openingHour = window.businessOpeningHour !== undefined ? window.businessOpeningHour : 9;
+    const closingHour = window.businessClosingHour !== undefined ? window.businessClosingHour : 17;
     let isAfterhours = false;
     if (dayOfWeek === 0 || dayOfWeek === 6) {
       isAfterhours = true;
-    } else {
-      if (window.businessOpeningHour !== undefined && window.businessClosingHour !== undefined) {
-        if (hour < window.businessOpeningHour || hour >= window.businessClosingHour) {
-          isAfterhours = true;
-        }
-      }
+    } else if (hour < openingHour || hour >= closingHour) {
+      isAfterhours = true;
     }
 
     // Get appropriate hourly rate (service-specific or profile default)

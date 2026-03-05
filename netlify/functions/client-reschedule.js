@@ -11,6 +11,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { getLocalDayOfWeek, getLocalTimeOnly } = require('./utils/timezoneHelpers');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -78,10 +79,10 @@ function normalizeAustralianPhone(phoneNumber) {
 }
 
 // Helper: Determine if a booking time is after-hours or weekend
-function isAfterHoursOrWeekend(bookingTime, businessOpeningHour = 9, businessClosingHour = 17) {
-  const date = new Date(bookingTime);
-  const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
-  const hour = date.getHours();
+function isAfterHoursOrWeekend(bookingTime, businessOpeningHour = 9, businessClosingHour = 17, timezone = 'Australia/Brisbane') {
+  const dayOfWeek = getLocalDayOfWeek(bookingTime, timezone);
+  const localTimeStr = getLocalTimeOnly(bookingTime, timezone); // "HH:MM"
+  const hour = parseInt(localTimeStr.split(':')[0], 10);
 
   // Weekend (Saturday or Sunday)
   if (dayOfWeek === 0 || dayOfWeek === 6) {
@@ -97,7 +98,7 @@ function isAfterHoursOrWeekend(bookingTime, businessOpeningHour = 9, businessClo
 }
 
 // Helper: Calculate therapist fee for a given booking time
-async function calculateTherapistFee(therapistId, serviceId, bookingTime, durationMinutes) {
+async function calculateTherapistFee(therapistId, serviceId, bookingTime, durationMinutes, timezone = 'Australia/Brisbane') {
   console.log(`💰 Calculating therapist fee for therapist ${therapistId}, service ${serviceId}`);
 
   // Get business hours
@@ -116,8 +117,8 @@ async function calculateTherapistFee(therapistId, serviceId, bookingTime, durati
   }
 
   // Determine rate type
-  const { rateType } = isAfterHoursOrWeekend(bookingTime, businessOpeningHour, businessClosingHour);
-  console.log(`   Rate type: ${rateType}`);
+  const { rateType } = isAfterHoursOrWeekend(bookingTime, businessOpeningHour, businessClosingHour, timezone);
+  console.log(`   Rate type: ${rateType} (tz: ${timezone})`);
 
   // Try to get service-specific rate first
   const { data: serviceRate } = await supabase
@@ -250,12 +251,11 @@ async function sendSMSNotification(phoneNumber, message) {
 }
 
 // Get time-based uplift percentage for a given booking time
-async function getTimeUpliftPercentage(bookingTime) {
-  const bookingDate = new Date(bookingTime);
-  const dayOfWeek = bookingDate.getDay(); // 0 = Sunday, 6 = Saturday
-  const timeString = bookingDate.toTimeString().substring(0, 5); // HH:MM
+async function getTimeUpliftPercentage(bookingTime, timezone = 'Australia/Brisbane') {
+  const dayOfWeek = getLocalDayOfWeek(bookingTime, timezone);
+  const timeString = getLocalTimeOnly(bookingTime, timezone); // "HH:MM" in booking timezone
 
-  console.log(`📅 Checking time uplift for day ${dayOfWeek}, time ${timeString}`);
+  console.log(`📅 Checking time uplift for day ${dayOfWeek}, time ${timeString} (tz: ${timezone})`);
 
   // Get ALL active time pricing rules for this day
   const { data: allRules, error } = await supabase
@@ -300,18 +300,18 @@ async function getTimeUpliftPercentage(bookingTime) {
 
 // Calculate price difference for reschedule
 // Uses original client_fee as base and only applies time-based uplift difference
-async function calculateReschedulePriceDifference(originalPrice, originalBookingTime, newBookingTime) {
+async function calculateReschedulePriceDifference(originalPrice, originalBookingTime, newBookingTime, timezone = 'Australia/Brisbane') {
   console.log(`💰 Calculating reschedule price difference...`);
   console.log(`   Original price: $${originalPrice}`);
   console.log(`   Original time: ${originalBookingTime}`);
   console.log(`   New time: ${newBookingTime}`);
 
   // Get time uplift for original booking time
-  const originalUplift = await getTimeUpliftPercentage(originalBookingTime);
+  const originalUplift = await getTimeUpliftPercentage(originalBookingTime, timezone);
   console.log(`   Original time uplift: ${originalUplift}%`);
 
   // Get time uplift for new booking time
-  const newUplift = await getTimeUpliftPercentage(newBookingTime);
+  const newUplift = await getTimeUpliftPercentage(newBookingTime, timezone);
   console.log(`   New time uplift: ${newUplift}%`);
 
   // If new time has higher uplift, calculate the additional charge
@@ -575,10 +575,13 @@ exports.handler = async (event, context) => {
       // Only charge for time-based uplift differences (duration doesn't change)
       const originalPrice = booking.client_fee || booking.price || 0;
 
+      const bookingTimezone = booking.booking_timezone || 'Australia/Brisbane';
+
       const priceResult = await calculateReschedulePriceDifference(
         originalPrice,
         booking.booking_time,
-        new_booking_time
+        new_booking_time,
+        bookingTimezone
       );
 
       const { newPrice, priceDifference } = priceResult;
@@ -617,7 +620,8 @@ exports.handler = async (event, context) => {
         finalTherapistId,
         booking.service_id,
         new_booking_time,
-        booking.duration_minutes
+        booking.duration_minutes,
+        bookingTimezone
       );
 
       let newTherapistFee = originalTherapistFee;
