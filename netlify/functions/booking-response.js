@@ -154,16 +154,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // GET: show confirmation page — prevents link-preview ghost-actions
-    if (event.httpMethod === 'GET') {
-      return {
-        statusCode: 200,
-        headers,
-        body: generateConfirmationPage(booking, therapist, action, bookingId, therapistId)
-      };
-    }
-
-    // POST: execute the action
+    // Process the response
     if (action === 'accept') {
       return await handleBookingAccept(booking, therapist, headers);
     } else {
@@ -646,12 +637,66 @@ async function handleBookingDecline(booking, therapist, headers) {
       }
     }
 
-    // If this is a timeout_reassigned or seeking_alternate booking, just record the decline
+    // If this is a timeout_reassigned or seeking_alternate booking, record the decline
+    // then check if any non-declined therapists remain — if not, notify the client immediately
     if (booking.status === 'timeout_reassigned' || booking.status === 'seeking_alternate') {
-      console.log('📝 Recording decline for alternate booking - other therapists can still respond');
-      
-      await addStatusHistory(booking.id, 'therapist_declined', therapist.id, 
+      console.log('📝 Recording decline for alternate booking - checking remaining therapists');
+
+      await addStatusHistory(booking.id, 'therapist_declined', therapist.id,
         therapist.first_name + ' ' + therapist.last_name + ' declined alternate booking');
+
+      // Get all therapist IDs who have already declined this booking
+      const { data: declineHistory } = await supabase
+        .from('booking_status_history')
+        .select('changed_by')
+        .eq('booking_id', booking.id)
+        .eq('status', 'therapist_declined');
+
+      const declinedTherapistIds = (declineHistory || []).map(h => h.changed_by).filter(Boolean);
+      console.log('📊 Total therapists who have declined:', declinedTherapistIds.length, declinedTherapistIds);
+
+      // Find therapists still able to accept (excludes availability conflicts etc.)
+      const allCandidates = await findAllAvailableTherapists(booking, null);
+      const stillAvailable = allCandidates.filter(t => !declinedTherapistIds.includes(t.id));
+      console.log('📊 Therapists still available (not declined):', stillAvailable.length);
+
+      if (stillAvailable.length === 0) {
+        // All alternate therapists have now declined — notify client immediately
+        console.log('❌ All alternate therapists declined - sending client decline email immediately');
+
+        const { data: declinedBooking } = await supabase
+          .from('bookings')
+          .update({ status: 'declined', updated_at: new Date().toISOString() })
+          .eq('booking_id', booking.booking_id)
+          .in('status', ['seeking_alternate', 'timeout_reassigned'])
+          .select('id');
+
+        if (declinedBooking && declinedBooking.length > 0) {
+          await addStatusHistory(booking.id, 'declined', therapist.id, 'All alternate therapists declined - auto declined');
+          await sendClientDeclineEmail(booking);
+
+          if (booking.customer_phone) {
+            try {
+              await sendSMSNotification(booking.customer_phone,
+                `❌ BOOKING UPDATE\n\nUnfortunately, your booking ${booking.booking_id} has been declined and no alternative therapists are available.\n\nPlease contact us at 1300 302542 to reschedule.\n- Rejuvenators`);
+            } catch (smsError) {
+              console.error('❌ Error sending customer decline SMS:', smsError);
+            }
+          }
+
+          if (SUPER_ADMIN_MOBILE_NO) {
+            try {
+              const tz = booking.booking_timezone || 'Australia/Brisbane';
+              await sendSMSNotification(SUPER_ADMIN_MOBILE_NO,
+                `❌ BOOKING DECLINED\n\nID: ${booking.booking_id}\nAll alternates declined\nDate: ${getShortDate(booking.booking_time, tz)} at ${getLocalTime(booking.booking_time, tz)}\nClient: ${booking.first_name} ${booking.last_name}\n- Rejuvenators`);
+            } catch (smsError) {
+              console.error('❌ Error sending admin SMS:', smsError);
+            }
+          }
+        } else {
+          console.log('⚠️ Booking status already changed (race condition) — skipping auto-decline');
+        }
+      }
 
       // Build details array
       const details = [
@@ -659,7 +704,6 @@ async function handleBookingDecline(booking, therapist, headers) {
         'Client: ' + booking.first_name + ' ' + booking.last_name
       ];
 
-      // Add series information if recurring booking
       if (seriesBookings.length > 1) {
         details.push('');
         details.push('🔄 RECURRING BOOKING SERIES:');
@@ -674,12 +718,15 @@ async function handleBookingDecline(booking, therapist, headers) {
         });
       }
 
+      const allDeclined = stillAvailable.length === 0;
       return {
         statusCode: 200,
         headers,
         body: generateSuccessPage(
           'Response Recorded',
-          'Thank you for your response, ' + therapist.first_name + '. Your decline has been recorded. Other therapists may still accept this booking.',
+          allDeclined
+            ? 'Thank you for your response, ' + therapist.first_name + '. All therapists have declined — the client has been notified.'
+            : 'Thank you for your response, ' + therapist.first_name + '. Your decline has been recorded. Other therapists may still accept this booking.',
           details
         )
       };
@@ -1288,8 +1335,12 @@ async function sendClientDeclineEmail(booking) {
       }
     }
 
-    await sendEmail(EMAILJS_BOOKING_DECLINED_TEMPLATE_ID, templateParams);
-    console.log('📧 Decline email sent to client:', booking.customer_email);
+    const emailResult = await sendEmail(EMAILJS_BOOKING_DECLINED_TEMPLATE_ID, templateParams);
+    if (emailResult.success) {
+      console.log('📧 Decline email sent to client:', booking.customer_email);
+    } else {
+      console.error('❌ Decline email FAILED for', booking.customer_email, '- template:', EMAILJS_BOOKING_DECLINED_TEMPLATE_ID, '- error:', emailResult.error);
+    }
 
   } catch (error) {
     console.error('❌ Error sending client decline email:', error);

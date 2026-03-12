@@ -644,7 +644,11 @@ async function sendClientDeclineEmail(booking) {
     };
 
     const result = await sendEmail(EMAILJS_BOOKING_DECLINED_TEMPLATE_ID, templateParams);
-    console.log('📧 Final decline email sent to client:', booking.customer_email);
+    if (result.success) {
+      console.log('📧 Final decline email sent to client:', booking.customer_email);
+    } else {
+      console.error('❌ Final decline email FAILED for', booking.customer_email, '- template:', EMAILJS_BOOKING_DECLINED_TEMPLATE_ID, '- error:', result.error);
+    }
     return result;
 
   } catch (error) {
