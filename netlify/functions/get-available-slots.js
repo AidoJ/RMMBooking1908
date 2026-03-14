@@ -121,6 +121,7 @@ exports.handler = async (event, context) => {
     let businessClosingHour = 17;
     let beforeServiceBuffer = 15;
     let afterServiceBuffer = 15;
+    let minBookingAdvanceHours = null; // must come from DB — no hardcoded fallback
 
     if (settings) {
       for (const s of settings) {
@@ -128,8 +129,15 @@ exports.handler = async (event, context) => {
         if (s.key === 'business_closing_time') businessClosingHour = Number(s.value);
         if (s.key === 'before_service_buffer_time') beforeServiceBuffer = Number(s.value);
         if (s.key === 'after_service_buffer_time') afterServiceBuffer = Number(s.value);
+        if (s.key === 'booking_confirmation_hours' || s.key === 'min_booking_advance_hours') minBookingAdvanceHours = Number(s.value);
       }
     }
+
+    if (minBookingAdvanceHours === null) {
+      console.warn('⚠️ booking_confirmation_hours not found in system_settings — defaulting to 4 hours');
+      minBookingAdvanceHours = 4;
+    }
+    console.log(`⏰ Min advance hours from system_settings: ${minBookingAdvanceHours}`);
 
     // Get therapists who provide this service
     const { data: therapistLinks } = await supabase
@@ -277,9 +285,9 @@ exports.handler = async (event, context) => {
           }
         }
 
-        // Check if slot is in the past (for today)
+        // Check if slot is within minimum advance booking window
         const now = new Date();
-        const minBookingTime = new Date(now.getTime() + 3 * 60 * 60 * 1000); // 3 hours from now
+        const minBookingTime = new Date(now.getTime() + minBookingAdvanceHours * 60 * 60 * 1000);
         if (slotStartDate < minBookingTime) {
           continue;
         }

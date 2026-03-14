@@ -1218,7 +1218,7 @@ console.log('Globals:', {
         if (s.key === 'business_closing_time') window.businessClosingHour = Number(s.value);
         if (s.key === 'before_service_buffer_time') window.beforeServiceBuffer = Number(s.value);
         if (s.key === 'after_service_buffer_time') window.afterServiceBuffer = Number(s.value);
-        if (s.key === 'min_booking_advance_hours') window.minBookingAdvanceHours = Number(s.value);
+        if (s.key === 'booking_confirmation_hours' || s.key === 'min_booking_advance_hours') window.minBookingAdvanceHours = Number(s.value);
         if (s.key === 'therapist_daytime_hourly_rate') window.therapistDaytimeRate = Number(s.value);
         if (s.key === 'therapist_afterhours_hourly_rate') window.therapistAfterhoursRate = Number(s.value);
         if (s.key === 'therapist_response_timeout_minutes') window.therapistResponseTimeoutMinutes = Number(s.value);
@@ -3212,7 +3212,10 @@ async function updateAvailableTimeSlots() {
     selectedDate.getDate() === today.getDate()) {
     
     const now = new Date();
-    now.setHours(now.getHours() + (window.minBookingAdvanceHours || 0));
+    // Use booking_confirmation_hours from system_settings — no fallback to 0 to prevent unsafe same-day bookings
+    const advanceHours = window.minBookingAdvanceHours !== undefined ? window.minBookingAdvanceHours : 4;
+    console.log(`⏰ Min advance hours: ${advanceHours} (from system_settings booking_confirmation_hours)`);
+    now.setHours(now.getHours() + advanceHours);
     
     let earliestBookingHour = now.getHours();
     // If there are any minutes, round up to the next hour
