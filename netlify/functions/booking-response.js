@@ -415,6 +415,51 @@ async function handleBookingAccept(booking, therapist, headers) {
     const totalUpdated = 1 + (requestId ? (await supabase.from('bookings').select('id').eq('request_id', requestId).eq('status', 'confirmed')).data?.length || 1 : 0);
     console.log('✅ Total bookings confirmed:', totalUpdated);
 
+    // STEP 3b: Recalculate therapist_fee using accepting therapist's actual rates
+    // and the booking time in LOCAL timezone (corrects any wrong frontend fee or zero-fee floating bookings)
+    try {
+      const timezone = booking.booking_timezone || 'Australia/Brisbane';
+      const recalcFee = await calculateTherapistFeeForBooking(
+        therapist.id,
+        booking.service_id,
+        booking.booking_time,
+        booking.duration_minutes,
+        timezone
+      );
+      if (recalcFee !== null) {
+        console.log(`💰 Updating therapist_fee: $${booking.therapist_fee || 0} → $${recalcFee} (${timezone})`);
+        await supabase
+          .from('bookings')
+          .update({ therapist_fee: recalcFee, updated_at: new Date().toISOString() })
+          .eq('booking_id', booking.booking_id);
+
+        // Update therapist_fee on series bookings too
+        if (requestId) {
+          const { data: seriesBookings } = await supabase
+            .from('bookings')
+            .select('booking_id, booking_time, duration_minutes, booking_timezone')
+            .eq('request_id', requestId)
+            .neq('booking_id', booking.booking_id)
+            .eq('status', 'confirmed');
+
+          for (const sb of seriesBookings || []) {
+            const sbTimezone = sb.booking_timezone || 'Australia/Brisbane';
+            const sbFee = await calculateTherapistFeeForBooking(therapist.id, booking.service_id, sb.booking_time, sb.duration_minutes, sbTimezone);
+            if (sbFee !== null) {
+              await supabase.from('bookings').update({ therapist_fee: sbFee, updated_at: new Date().toISOString() }).eq('booking_id', sb.booking_id);
+            }
+          }
+        }
+
+        // Use the recalculated fee going forward in this request
+        booking.therapist_fee = recalcFee;
+      } else {
+        console.warn('⚠️ therapist_fee recalculation returned null — keeping existing fee');
+      }
+    } catch (feeErr) {
+      console.error('⚠️ therapist_fee recalculation failed (non-critical):', feeErr.message);
+    }
+
     // CAPTURE PAYMENT for initial booking (occurrence_number = 0)
     // occurrence_number can be 0, so use ?? instead of || to handle falsy 0
     const occurrenceNumber = booking.occurrence_number ?? 0;
@@ -615,6 +660,74 @@ Check your email for full details!
     };
   }
 }
+
+// ─── Therapist fee calculation (timezone-aware) ─────────────────────────────
+
+function isAfterHoursOrWeekend(bookingTime, businessOpeningHour = 9, businessClosingHour = 17, timezone = 'Australia/Brisbane') {
+  const dayOfWeek = getLocalDayOfWeek(bookingTime, timezone);
+  const localTimeStr = getLocalTimeOnly(bookingTime, timezone); // "HH:MM"
+  const hour = parseInt(localTimeStr.split(':')[0], 10);
+  if (dayOfWeek === 0 || dayOfWeek === 6) return { isAfterHours: true, rateType: 'weekend' };
+  if (hour < businessOpeningHour || hour >= businessClosingHour) return { isAfterHours: true, rateType: 'afterhours' };
+  return { isAfterHours: false, rateType: 'daytime' };
+}
+
+async function calculateTherapistFeeForBooking(therapistId, serviceId, bookingTime, durationMinutes, timezone) {
+  try {
+    const { data: settings } = await supabase
+      .from('system_settings')
+      .select('key, value')
+      .in('key', ['business_opening_time', 'business_closing_time']);
+
+    let businessOpeningHour = 9;
+    let businessClosingHour = 17;
+    if (settings) {
+      for (const s of settings) {
+        if (s.key === 'business_opening_time') businessOpeningHour = Number(s.value);
+        if (s.key === 'business_closing_time') businessClosingHour = Number(s.value);
+      }
+    }
+
+    const { rateType } = isAfterHoursOrWeekend(bookingTime, businessOpeningHour, businessClosingHour, timezone);
+    console.log(`💰 Fee calc: rateType=${rateType} at ${bookingTime} (${timezone})`);
+
+    const { data: serviceRate } = await supabase
+      .from('therapist_service_rates')
+      .select('normal_rate, afterhours_rate')
+      .eq('therapist_id', therapistId)
+      .eq('service_id', serviceId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    let normalRate, afterHoursRate;
+    if (serviceRate) {
+      normalRate = serviceRate.normal_rate;
+      afterHoursRate = serviceRate.afterhours_rate;
+    } else {
+      const { data: tp } = await supabase
+        .from('therapist_profiles')
+        .select('hourly_rate, afterhours_rate')
+        .eq('id', therapistId)
+        .single();
+      if (!tp) return null;
+      normalRate = tp.hourly_rate;
+      afterHoursRate = tp.afterhours_rate;
+    }
+
+    if (!normalRate || !afterHoursRate) return null;
+
+    const hourlyRate = (rateType === 'weekend' || rateType === 'afterhours') ? afterHoursRate : normalRate;
+    const hoursWorked = durationMinutes / 60;
+    const fee = Math.round(hoursWorked * hourlyRate * 100) / 100;
+    console.log(`💰 Fee result: $${fee} (${rateType} rate $${hourlyRate}/hr × ${hoursWorked}h)`);
+    return fee;
+  } catch (err) {
+    console.error('❌ Error in calculateTherapistFeeForBooking:', err.message);
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Handle booking decline with multiple therapist approach
 async function handleBookingDecline(booking, therapist, headers) {
