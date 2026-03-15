@@ -196,6 +196,31 @@ exports.handler = async (event, context) => {
       }
     }
 
+    // Validate duration meets service minimum
+    if (bookingData.service_id && bookingData.duration_minutes) {
+      const { data: service, error: serviceErr } = await supabase
+        .from('services')
+        .select('minimum_duration, name')
+        .eq('id', bookingData.service_id)
+        .single();
+
+      if (!serviceErr && service && service.minimum_duration) {
+        const minDuration = parseInt(service.minimum_duration);
+        const requestedDuration = parseInt(bookingData.duration_minutes);
+        if (requestedDuration < minDuration) {
+          console.error(`❌ Duration validation failed: ${requestedDuration}min < minimum ${minDuration}min for service "${service.name}"`);
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({
+              error: `The minimum booking duration for ${service.name} is ${minDuration} minutes. You requested ${requestedDuration} minutes.`
+            })
+          };
+        }
+        console.log(`✅ Duration OK: ${requestedDuration}min >= minimum ${minDuration}min for "${service.name}"`);
+      }
+    }
+
     // Validate no time-off for the therapist on the requested date/time
     async function validateNoTimeOff(therapistId, bookingDateTime, durationMinutes) {
       const dateOnly = bookingDateTime.split('T')[0];

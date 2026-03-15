@@ -740,12 +740,14 @@ document.addEventListener('DOMContentLoaded', function () {
           isValid = false;
           showError(document.getElementById('duration'), 'Please select a duration.');
         } else {
-          // Check if selected duration is disabled (below minimum)
+          // Check if selected duration is below the service minimum
           const durationSelect = document.getElementById('duration');
           const selectedOption = durationSelect.selectedOptions[0];
-          if (selectedOption && selectedOption.disabled) {
+          const minimumDuration = parseInt(durationSelect.dataset.minimumDuration || '0');
+          const selectedDuration = parseInt(durationSelect.value || '0');
+          if ((selectedOption && selectedOption.disabled) || (minimumDuration > 0 && selectedDuration < minimumDuration)) {
             isValid = false;
-            showError(document.getElementById('duration'), 'This duration is below the minimum for the selected service.');
+            showError(document.getElementById('duration'), `This duration is below the minimum for the selected service (minimum ${minimumDuration} minutes).`);
           }
         }
         break;
@@ -1894,21 +1896,25 @@ console.log('Globals:', {
     const durationSelect = document.getElementById('duration');
     if (!durationSelect || !window.durationsCache) return;
 
-    const minimumDurationNum = parseInt(minimumDuration);
+    const minimumDurationNum = parseInt(minimumDuration) || 0;
 
-    // Clear current options
+    // Store minimum on the select so validation can reference it
+    durationSelect.dataset.minimumDuration = minimumDurationNum;
+
+    // Clear current options and reset selection
     durationSelect.innerHTML = '<option value="">Select duration...</option>';
+    durationSelect.value = '';
 
-    // Add duration options, hiding those below minimum
+    // Add duration options — disable and hide those below minimum
     window.durationsCache.forEach(duration => {
       const durationMinutes = duration.duration_minutes;
       const opt = document.createElement('option');
       opt.value = durationMinutes;
       opt.textContent = getDurationLabel(durationMinutes);
 
-      // Hide options below minimum duration
       if (durationMinutes < minimumDurationNum) {
-        opt.style.display = 'none';
+        opt.disabled = true;          // prevents selection and fails validation
+        opt.style.display = 'none';   // hides from dropdown visually
       }
 
       durationSelect.appendChild(opt);
