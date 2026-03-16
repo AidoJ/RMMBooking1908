@@ -3263,7 +3263,7 @@ async function updateTherapistSelection() {
     .from('therapist_services')
     .select(`
       therapist_id,
-      therapist_profiles!therapist_id (id, first_name, last_name, gender, is_active, profile_pic, latitude, longitude, service_radius_km, service_area_polygon)
+      therapist_profiles!therapist_id (id, first_name, last_name, gender, is_active, profile_pic, latitude, longitude, service_radius_km, service_area_polygon, total_reviews)
     `)
     .eq('service_id', serviceId);
   let therapists = (therapistLinks || []).map(row => ({
@@ -3364,7 +3364,7 @@ async function updateTherapistSelection() {
         </div>
         <div class="therapist-details">
           <div class="therapist-name">
-            <span>${displayName}</span>
+            <span>${displayName}</span>${t.total_reviews > 0 ? ' <span class="therapist-stars" title="5 Star Reviews" style="color:#f5a623;font-size:1em;letter-spacing:1px;">&#9733;&#9733;&#9733;&#9733;&#9733;</span>' : ''}
             <button type="button" class="read-more-btn" onclick="toggleTherapistBio('${t.id}')">Read More</button>
           </div>
           <div class="therapist-bio" id="bio-${t.id}"></div>
