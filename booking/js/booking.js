@@ -864,6 +864,13 @@ document.addEventListener('DOMContentLoaded', function () {
   // Fetch and populate services and durations from Supabase
   window.populateTherapyOptions = async function populateTherapyOptions() {
     try {
+    // Skip if already loaded for the same therapist set and booking mode
+    const cacheKey = JSON.stringify(window.availableTherapistIds) + '|' + (window.bookingMode || '');
+    if (window._therapyOptionsCacheKey === cacheKey && document.querySelectorAll('.service-card').length > 0) {
+      console.log('✅ Services already loaded for this location, skipping re-fetch');
+      return;
+    }
+
     let services, serviceError;
 
     // If we have filtered therapist IDs from location check, only show their services
@@ -1057,15 +1064,16 @@ document.addEventListener('DOMContentLoaded', function () {
           }
         }
         
+        // Cache key so we don't re-fetch for same location + mode
+        window._therapyOptionsCacheKey = JSON.stringify(window.availableTherapistIds) + '|' + (window.bookingMode || '');
+
         // Show/hide duration field based on booking mode
         const durationField = document.getElementById('durationField');
         if (durationField) {
           if (window.bookingMode === 'quote') {
             durationField.style.display = 'none';
-            console.log('📋 Hiding duration field for quote mode');
           } else if (window.bookingMode === 'instant') {
             durationField.style.display = 'block';
-            console.log('📋 Showing duration field for instant booking mode');
           }
         }
         } else {
@@ -1166,29 +1174,27 @@ console.log('Globals:', {
 
   async function fetchPricingData() {
     try {
-    // Fetch services
-    const { data: services } = await window.supabase
-      .from('services')
-      .select('id, name, service_base_price, minimum_duration, is_active, image_url, image_alt, short_description')
-      .eq('is_active', true)
-      .order('sort_order');
-    window.servicesCache = services || [];
-
-    // Fetch durations
-    const { data: durations } = await window.supabase
-      .from('duration_pricing')
-      .select('id, duration_minutes, uplift_percentage, is_active')
-      .eq('is_active', true)
-      .order('sort_order');
-    window.durationsCache = durations || [];
-
-    // Fetch time pricing rules
-    const { data: timeRules } = await window.supabase
-      .from('time_pricing_rules')
-      .select('id, day_of_week, start_time, end_time, uplift_percentage, is_active, label')
-      .eq('is_active', true)
-      .order('sort_order');
-    window.timePricingRulesCache = timeRules || [];
+    // Fetch all pricing data in parallel
+    const [servicesResult, durationsResult, timeRulesResult] = await Promise.all([
+      window.supabase
+        .from('services')
+        .select('id, name, service_base_price, minimum_duration, is_active, image_url, image_alt, short_description')
+        .eq('is_active', true)
+        .order('sort_order'),
+      window.supabase
+        .from('duration_pricing')
+        .select('id, duration_minutes, uplift_percentage, is_active')
+        .eq('is_active', true)
+        .order('sort_order'),
+      window.supabase
+        .from('time_pricing_rules')
+        .select('id, day_of_week, start_time, end_time, uplift_percentage, is_active, label')
+        .eq('is_active', true)
+        .order('sort_order')
+    ]);
+    window.servicesCache = servicesResult.data || [];
+    window.durationsCache = durationsResult.data || [];
+    window.timePricingRulesCache = timeRulesResult.data || [];
     } catch (error) {
       console.error('❌ Error fetching pricing data:', error);
       // Use fallback data
@@ -2941,16 +2947,33 @@ async function getAvailableSlotsForTherapist(therapist, date, durationMinutes) {
     console.warn('Business hours, buffer times, or advance booking hours are not set! Check system_settings and fetchSettings().');
     return [];
   }
-  console.log('getAvailableSlotsForTherapist called for therapist:', therapist, 'date:', date, 'duration:', durationMinutes);
+  // Run all 3 DB queries in parallel instead of sequentially
+  const dayOfWeek = new Date(date).getDay();
+  const [timeOffResult, availabilityResult, bookingsResult] = await Promise.all([
+    window.supabase
+      .from('therapist_time_off')
+      .select('start_time, end_time, reason')
+      .eq('therapist_id', therapist.id)
+      .eq('is_active', true)
+      .lte('start_date', date)
+      .gte('end_date', date),
+    window.supabase
+      .from('therapist_availability')
+      .select('start_time, end_time')
+      .eq('therapist_id', therapist.id)
+      .eq('day_of_week', dayOfWeek),
+    window.supabase
+      .from('bookings')
+      .select('booking_time, service_id')
+      .eq('therapist_id', therapist.id)
+      .gte('booking_time', date + 'T00:00:00')
+      .lt('booking_time', date + 'T23:59:59')
+      .in('status', ['requested', 'confirmed', 'timeout_reassigned', 'seeking_alternate', 'reschedule_requested'])
+  ]);
 
-  // 0. CRITICAL: Check for time-off on this date FIRST
-  const { data: timeOffs, error: timeOffError } = await window.supabase
-    .from('therapist_time_off')
-    .select('start_time, end_time, reason')
-    .eq('therapist_id', therapist.id)
-    .eq('is_active', true)
-    .lte('start_date', date)
-    .gte('end_date', date);
+  const { data: timeOffs, error: timeOffError } = timeOffResult;
+  const { data: availabilities } = availabilityResult;
+  const { data: bookings } = bookingsResult;
 
   if (timeOffError) {
     console.error('Error checking therapist time-off:', timeOffError);
@@ -2960,30 +2983,13 @@ async function getAvailableSlotsForTherapist(therapist, date, durationMinutes) {
   if (timeOffs && timeOffs.length > 0) {
     const allDayTimeOff = timeOffs.find(t => !t.start_time && !t.end_time);
     if (allDayTimeOff) {
-      console.log(`⛔ Therapist ${therapist.id} has all-day time-off on ${date}:`, allDayTimeOff.reason || 'No reason specified');
       return [];
     }
-    console.log(`⚠️ Therapist ${therapist.id} has partial time-off on ${date}:`, timeOffs);
   }
 
-  // 1. Get working hours for the day
-  const dayOfWeek = new Date(date).getDay();
-  const { data: availabilities } = await window.supabase
-    .from('therapist_availability')
-    .select('start_time, end_time')
-    .eq('therapist_id', therapist.id)
-    .eq('day_of_week', dayOfWeek);
+  // 1. Check working hours for the day
   if (!availabilities || availabilities.length === 0) return [];
   const { start_time, end_time } = availabilities[0];
-
-  // 2. Get existing ACTIVE bookings for the day (exclude cancelled/declined)
-  const { data: bookings } = await window.supabase
-    .from('bookings')
-    .select('booking_time, service_id')
-    .eq('therapist_id', therapist.id)
-    .gte('booking_time', date + 'T00:00:00')
-    .lt('booking_time', date + 'T23:59:59')
-    .in('status', ['requested', 'confirmed', 'timeout_reassigned', 'seeking_alternate', 'reschedule_requested']);
 
   // 3. Build all possible slots (hourly, businessOpeningHour to businessClosingHour)
   const slots = [];
@@ -3197,13 +3203,11 @@ async function updateAvailableTimeSlots() {
   const uniqueTherapists = [...new Map(therapists.map(t => [t.id, t])).values()];
   console.log('Therapists after filtering & deduplication:', uniqueTherapists);
 
-  // 3. For each therapist, get available slots
-  let allSlots = [];
-  for (const therapist of uniqueTherapists) {
-    const slots = await getAvailableSlotsForTherapist(therapist, dateVal, durationMinutes);
-    allSlots = allSlots.concat(slots);
-  }
-  console.log('All slots before deduplication:', allSlots);
+  // 3. Get available slots for all therapists in parallel
+  const slotArrays = await Promise.all(
+    uniqueTherapists.map(t => getAvailableSlotsForTherapist(t, dateVal, durationMinutes))
+  );
+  const allSlots = slotArrays.flat();
   // 4. Deduplicate and sort
   const uniqueSlots = Array.from(new Set(allSlots)).sort();
   console.log('Unique available slots:', uniqueSlots);
@@ -3330,14 +3334,12 @@ async function updateTherapistSelection() {
     return acc;
   }, {}));
 
-  // For each therapist, check if they are available for the selected slot
-  const availableTherapists = [];
-  for (const therapist of uniqueTherapists) {
-    const slots = await getAvailableSlotsForTherapist(therapist, dateVal, Number(durationVal));
-    if (slots.includes(timeVal)) {
-      availableTherapists.push(therapist);
-    }
-  }
+  // Check all therapists in parallel instead of one-by-one
+  therapistSelectionDiv.innerHTML = '<div style="text-align:center;padding:20px;color:#666;">Finding available therapists...</div>';
+  const slotResults = await Promise.all(
+    uniqueTherapists.map(t => getAvailableSlotsForTherapist(t, dateVal, Number(durationVal)))
+  );
+  const availableTherapists = uniqueTherapists.filter((t, i) => slotResults[i].includes(timeVal));
 
   if (availableTherapists.length === 0) {
     therapistSelectionDiv.innerHTML = '<p>No therapists available for this slot.</p>';
